@@ -50,9 +50,9 @@ function Productos() {
 
   const fetchProductos = async () => {
     try {
-      // *** CAMBIO CLAVE: NO SE AÑADE '/api/' AQUÍ, YA QUE API_BASE_URL YA LO CONTIENE ***
+      // *** CAMBIO CLAVE AQUÍ: Acceder a response.data.results ***
       const response = await axios.get(`${API_BASE_URL}/productos/`);
-      setProductos(response.data);
+      setProductos(response.data.results); // <-- ¡CORRECCIÓN!
       setLoading(false);
       setError(null);
     } catch (err) {
@@ -99,7 +99,6 @@ function Productos() {
     };
 
     try {
-      // *** CAMBIO CLAVE: NO SE AÑADE '/api/' AQUÍ ***
       const response = await axios.post(`${API_BASE_URL}/productos/`, nuevoProducto);
       console.log('Producto añadido:', response.data);
       setSuccessMessage('Producto añadido con éxito!');
@@ -158,7 +157,6 @@ function Productos() {
   const handleDeleteProduct = async (productId) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción es irreversible.')) {
       try {
-        // *** CAMBIO CLAVE: NO SE AÑADE '/api/' AQUÍ ***
         await axios.delete(`${API_BASE_URL}/productos/${productId}/`);
         setSuccessMessage('Producto eliminado con éxito!');
         fetchProductos(); // Recargar la lista de productos
@@ -187,7 +185,6 @@ function Productos() {
 
     try {
       // Usamos PATCH para actualizar solo el campo 'stock'
-      // *** CAMBIO CLAVE: NO SE AÑADE '/api/' AQUÍ ***
       await axios.patch(`${API_BASE_URL}/productos/${productId}/`, { stock: stockInt });
       setSuccessMessage('Stock actualizado con éxito!');
       setEditingStockId(null); // Salir del modo edición
