@@ -1,4 +1,4 @@
-// Store/frontend/src/components/Productos.js
+// BONITO_AMOR/frontend/src/components/Productos.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Barcode from 'react-barcode';
@@ -21,7 +21,7 @@ const TALLE_OPTIONS = [
 
 // ***************************************************************
 // CAMBIO CRÍTICO AQUÍ: Usar la variable de entorno de Render
-const API_BASE_URL = process.env.REACT_APP_API_URL; // Esto debería ser "https://sagistock.onrender.com/api"
+const API_BASE_URL = process.env.REACT_APP_API_URL; 
 // ***************************************************************
 
 function Productos() {

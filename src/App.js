@@ -1,14 +1,14 @@
-// Store/frontend/src/App.js
+// BONITO_AMOR/frontend/src/App.js
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, Navigate } from 'react-router-dom'; // Importa Navigate
+import { Routes, Route, Link, Navigate } from 'react-router-dom';
 
 import Productos from './components/Productos';
 import PuntoVenta from './components/PuntoVenta';
 import Login from './components/Login';
 import UserManagement from './components/UserManagement';
-import ProtectedRoute from './components/ProtectedRoute';
-import { AuthProvider, useAuth } from './AuthContext';
-import { SalesProvider } from './components/SalesContext';
+import ProtectedRoute from './components/ProtectedRoute'; // Asegúrate de que este componente exista y funcione correctamente
+import { AuthProvider, useAuth } from './AuthContext'; // Asegúrate de que AuthContext exista
+import { SalesProvider } from './components/SalesContext'; // Asegúrate de que SalesContext exista
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
@@ -34,14 +34,15 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleResize = () => {
+      // Cierra el menú móvil si la ventana se agranda más allá de 768px
       if (window.innerWidth > 768 && isOpen) { 
         setIsOpen(false);
       }
     };
     window.addEventListener('resize', handleResize);
+    // Limpia el event listener al desmontar el componente
     return () => window.removeEventListener('resize', handleResize);
-  }, [isOpen]);
-
+  }, [isOpen]); // Dependencia en isOpen para re-evaluar cuando cambia
 
   return (
     <nav className="navbar">
@@ -53,10 +54,12 @@ const Navbar = () => {
 
       {isAuthenticated && (
         <>
+          {/* Icono de menú para dispositivos móviles */}
           <div className="menu-icon" onClick={toggleMenu}>
             <FontAwesomeIcon icon={isOpen ? faTimes : faBars} /> 
           </div>
 
+          {/* Enlaces de navegación, con clase 'active' para menú móvil abierto */}
           <ul className={isOpen ? "nav-links active" : "nav-links"}>
             {/* Punto de Venta: Accesible para Staff y Superusuarios */}
             {user && (user.is_staff || user.is_superuser) && ( // Solo si es staff o superusuario
@@ -73,8 +76,8 @@ const Navbar = () => {
                 </>
             )}
             
-            {/* Mensaje de bienvenida y cerrar sesión */}
-            {user && ( // Asegurarse de que `user` existe
+            {/* Mensaje de bienvenida y botón de cerrar sesión */}
+            {user && ( // Asegurarse de que `user` existe antes de acceder a `username`
                 <li>
                     <span className="welcome-message">Bienvenido, {user?.username}!</span>
                     <button onClick={handleLogout}>Cerrar Sesión</button>
@@ -87,90 +90,92 @@ const Navbar = () => {
   );
 };
 
+// Nuevo componente para contener el contenido que depende de AuthContext
+// Esto asegura que AuthProvider y SalesProvider envuelvan todo una sola vez.
+function AppContent() {
+  const { isAuthenticated, loading } = useAuth(); // Solo necesitamos isAuthenticated y loading aquí para la redirección
 
-function App() {
-  const { isAuthenticated, user, loading } = useAuth(); // Obtener estado de autenticación y carga
-
-  // Manejo de redirección inicial si el usuario no está autenticado o no tiene permiso para la ruta base
-  // Esto previene que se muestre una página en blanco antes de redirigir al login
-  if (!loading && !isAuthenticated) {
-    return (
-      <AuthProvider>
-        <Navbar />
-        <div className="container" style={{ padding: '20px' }}>
-          <SalesProvider>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="*" element={<Navigate to="/login" replace />} /> {/* Redirige todo lo demás a login si no autenticado */}
-            </Routes>
-          </SalesProvider>
-        </div>
-      </AuthProvider>
-    );
+  // Muestra un mensaje de carga mientras se determina el estado de autenticación
+  if (loading) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
   }
 
   return (
-    <AuthProvider>
-      <Navbar />
+    <>
+      <Navbar /> {/* Navbar necesita estar dentro de AuthProvider para usar useAuth */}
       <div className="container" style={{ padding: '20px' }}>
-        <SalesProvider> 
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            
-            {/* Ruta por defecto ('/'): Punto de Venta. Accesible SOLO por Staff y Superusuarios */}
-            <Route path="/" element={
-              <ProtectedRoute staffOnly={true}>
-                <PuntoVenta />
-              </ProtectedRoute>
-            } />
+        <Routes>
+          {/* Ruta de Login siempre accesible */}
+          <Route path="/login" element={<Login />} />
 
-            {/* Gestión de Productos: Solo para Superusuarios */}
-            <Route path="/productos" element={
-              <ProtectedRoute adminOnly={true}>
-                <Productos />
-              </ProtectedRoute>
-            } />
-            
-            {/* Gestión de Usuarios: Solo para Superusuarios */}
-            <Route
-                path="/users"
-                element={
-                    <ProtectedRoute adminOnly={true}>
-                        <UserManagement />
-                    </ProtectedRoute>
-                }
-            />
-            
-            {/* Métricas de Ventas: Solo para Superusuarios */}
-            <Route
-                path="/metricas-ventas"
-                element={
-                    <ProtectedRoute adminOnly={true}> {/* Cambiado a adminOnly */}
-                        <MetricasVentas />
-                    </ProtectedRoute>
-                }
-            />
+          {/* Redirige a /login si no está autenticado y no está en la ruta de login */}
+          {!isAuthenticated && <Route path="*" element={<Navigate to="/login" replace />} />}
 
-            {/* Listado de Ventas: Solo para Superusuarios */}
-            <Route
-                path="/ventas"
-                element={
-                    <ProtectedRoute adminOnly={true}> {/* Cambiado a adminOnly */}
-                        <VentasPage />
-                    </ProtectedRoute>
-                }
-            />
+          {/* Rutas Protegidas: Solo se renderizan si el usuario está autenticado */}
+          {isAuthenticated && (
+            <>
+              {/* Ruta por defecto ('/'): Punto de Venta. Accesible SOLO por Staff y Superusuarios */}
+              <Route path="/" element={
+                <ProtectedRoute staffOnly={true}>
+                  <PuntoVenta />
+                </ProtectedRoute>
+              } />
 
-            {/* Catch-all para rutas no definidas si el usuario está logueado pero no tiene permisos */}
-            {isAuthenticated && !loading && user && (user.is_staff || user.is_superuser) && (
-                <Route path="*" element={<Navigate to="/" replace />} /> // Redirige a / (Punto de Venta) si no tiene permiso para la ruta
-            )}
-             {/* Fallback general si no hay autenticación y no es la ruta de login */}
-            {!isAuthenticated && !loading && <Route path="*" element={<Navigate to="/login" replace />} />}
+              {/* Gestión de Productos: Solo para Superusuarios */}
+              <Route path="/productos" element={
+                <ProtectedRoute adminOnly={true}>
+                  <Productos />
+                </ProtectedRoute>
+              } />
+              
+              {/* Gestión de Usuarios: Solo para Superusuarios */}
+              <Route
+                  path="/users"
+                  element={
+                      <ProtectedRoute adminOnly={true}>
+                          <UserManagement />
+                      </ProtectedRoute>
+                  }
+              />
+              
+              {/* Métricas de Ventas: Solo para Superusuarios */}
+              <Route
+                  path="/metricas-ventas"
+                  element={
+                      <ProtectedRoute adminOnly={true}>
+                          <MetricasVentas />
+                      </ProtectedRoute>
+                  }
+              />
 
-          </Routes>
-        </SalesProvider>
+              {/* Listado de Ventas: Solo para Superusuarios */}
+              <Route
+                  path="/ventas"
+                  element={
+                      <ProtectedRoute adminOnly={true}>
+                          <VentasPage />
+                      </ProtectedRoute>
+                  }
+              />
+
+              {/* Catch-all para cualquier otra ruta autenticada no definida, redirige a la página principal */}
+              {/* Esto asegura que los usuarios autenticados no vean una página en blanco si van a una ruta no existente */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </>
+          )}
+        </Routes>
       </div>
+    </>
+  );
+}
+
+// El componente App ahora solo se encarga de envolver toda la aplicación con los Context Providers
+function App() {
+  return (
+    <AuthProvider>
+      <SalesProvider>
+        <AppContent />
+      </SalesProvider>
     </AuthProvider>
   );
 }
