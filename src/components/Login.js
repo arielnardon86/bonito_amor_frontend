@@ -23,9 +23,8 @@ const Login = () => {
 
         try {
             // Paso 1: Obtener los tokens de acceso y refresco
-            // ¡¡¡CORRECCIÓN CLAVE AQUÍ!!!
-            // Cambiado de /token/ a /auth/jwt/create/ para coincidir con Djoser JWT
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/auth/jwt/create/`, {
+            // *** CORRECCIÓN CLAVE AQUI: Cambiado a /token/ para coincidir con tu urls.py ***
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/`, {
                 username,
                 password,
             });
@@ -36,7 +35,7 @@ const Login = () => {
             localStorage.setItem('refresh_token', refresh);
 
             // Paso 2: Obtener los datos del usuario logueado
-            // Esta ruta `/users/me/` parece correcta para Djoser.
+            // Esta ruta `/users/me/` es correcta si tu backend la tiene configurada.
             const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`, {
                 headers: {
                     Authorization: `Bearer ${access}`
@@ -61,7 +60,7 @@ const Login = () => {
             if (err.response && err.response.status === 401) {
                 setError('Usuario o contraseña incorrectos. Por favor, inténtalo de nuevo.');
             } else if (err.response && err.response.status === 404) {
-                // Mensaje de error más genérico o específico si sabes qué 404 esperas
+                // Si /users/me/ o /token/ da 404, es un problema de URL en el backend.
                 setError('Error de comunicación: Una ruta del backend no fue encontrada. Verifica las URLs.');
             }
             else {

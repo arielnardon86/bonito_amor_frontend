@@ -41,9 +41,8 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            // ¡¡¡CORRECCIÓN CLAVE AQUÍ!!!
-            // Cambiado de /token/refresh/ a /auth/jwt/refresh/ para coincidir con Djoser JWT
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/auth/jwt/refresh/`, {
+            // *** CORRECCIÓN AQUI: Cambiado a /token/refresh/ para coincidir con tu urls.py ***
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/refresh/`, {
                 refresh: refresh_token,
             });
             const new_access_token = response.data.access;
@@ -83,9 +82,7 @@ export const AuthProvider = ({ children }) => {
                         const new_access_token = await refreshToken();
                         if (new_access_token) {
                             try {
-                                // Esta ya estaba bien, pero la reviso para confirmar.
-                                // La ruta /users/me/ está bajo /api/ en el backend (por el router),
-                                // así que `${process.env.REACT_APP_API_URL}/users/me/` es correcto.
+                                // La ruta /users/me/ es correcta si tu backend la tiene configurada
                                 const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
                                 if (userResponse.data) {
                                     setUser(userResponse.data);
@@ -104,9 +101,7 @@ export const AuthProvider = ({ children }) => {
                     } else {
                         setAuthToken(access_token);
                         try {
-                            // Esta ya estaba bien, pero la reviso para confirmar.
-                            // La ruta /users/me/ está bajo /api/ en el backend (por el router),
-                            // así que `${process.env.REACT_APP_API_URL}/users/me/` es correcto.
+                            // La ruta /users/me/ es correcta si tu backend la tiene configurada
                             const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
                             if (userResponse.data) {
                                 setUser(userResponse.data);
@@ -162,6 +157,9 @@ export const AuthProvider = ({ children }) => {
         logout,
         loading,
         token,
+        // Asegúrate de que isStaff y isSuperUser estén expuestos si los usas en App.js
+        isStaff: user ? user.is_staff : false,
+        isSuperUser: user ? user.is_superuser : false,
     };
 
     return (
