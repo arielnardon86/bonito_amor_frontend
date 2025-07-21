@@ -29,13 +29,13 @@ const UserManagement = () => {
         setLoadingUsers(true);
         setError('');
         try {
-            // CORREGIDO: Eliminado el '/api/' extra
+            // CORRECCIÓN CLAVE AQUÍ: Acceder a response.data.results
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/users/`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
                 }
             });
-            setUsers(response.data);
+            setUsers(response.data.results); // <-- ¡CORRECCIÓN!
         } catch (err) {
             console.error('Error fetching users:', err.response ? err.response.data : err.message);
             setError('Error al cargar usuarios. Asegúrate de tener permisos de administrador.');
@@ -47,10 +47,11 @@ const UserManagement = () => {
 
     useEffect(() => {
         if (!loading) {
+            // Redirige si no está autenticado o no es superusuario
             if (!isAuthenticated || !user?.is_superuser) {
-                navigate('/');
+                navigate('/'); // O a una página de "Acceso Denegado"
             } else {
-                fetchUsers();
+                fetchUsers(); // Si tiene permisos, carga los usuarios
             }
         }
     }, [isAuthenticated, user, loading, navigate, fetchUsers]);
@@ -74,7 +75,6 @@ const UserManagement = () => {
         }
 
         try {
-            // CORREGIDO: Eliminado el '/api/' extra
             await axios.post(`${process.env.REACT_APP_API_URL}/users/`, newUser, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
@@ -102,7 +102,8 @@ const UserManagement = () => {
     };
 
     const handleDeleteUser = async (userId) => {
-        if (userId === user.id) {
+        // No permitir que un superusuario se elimine a sí mismo
+        if (user && userId === user.id) {
             setError('No puedes eliminar tu propia cuenta de superusuario.');
             return;
         }
@@ -110,7 +111,6 @@ const UserManagement = () => {
         if (window.confirm('¿Estás seguro de que quieres eliminar este usuario?')) {
             setError('');
             try {
-                // CORREGIDO: Eliminado el '/api/' extra
                 await axios.delete(`${process.env.REACT_APP_API_URL}/users/${userId}/`, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
@@ -164,7 +164,6 @@ const UserManagement = () => {
                 delete dataToSend.password2; // Eliminar también password2 si no se cambia la password
             }
 
-            // CORREGIDO: Eliminado el '/api/' extra
             await axios.patch(`${process.env.REACT_APP_API_URL}/users/${editingUser.id}/`, dataToSend, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
@@ -181,11 +180,14 @@ const UserManagement = () => {
         }
     };
 
+    // Manejo de carga y permisos iniciales
     if (loading || (isAuthenticated && !user)) {
         return <div style={{ textAlign: 'center', marginTop: '50px' }}>Cargando datos de usuario...</div>;
     }
 
+    // Redirige si no está autenticado o no es superusuario
     if (!isAuthenticated || !user.is_superuser) {
+        // No renderizamos nada aquí, el useEffect ya manejará la navegación
         return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Acceso denegado. No tienes permisos de administrador.</div>;
     }
 
