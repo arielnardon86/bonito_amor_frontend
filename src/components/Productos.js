@@ -31,7 +31,7 @@ function Productos() {
   const [descripcion, setDescripcion] = useState('');
   const [codigoBarras, setCodigoBarras] = useState('');
   const [precioCompra, setPrecioCompra] = useState('');
-  const [precioVenta, setPrecioVenta] = useState('');
+  const [precioVenta, setPrecioVenta] = useState(''); // Estado para el formulario de añadir
   const [stock, setStock] = useState('');
   const [talle, setTalle] = useState('UNICA');
 
@@ -45,12 +45,15 @@ function Productos() {
   const [editingStockId, setEditingStockId] = useState(null);
   const [newStockValue, setNewStockValue] = useState('');
 
+  // NUEVOS ESTADOS PARA LA EDICIÓN DE PRECIO EN LÍNEA
+  const [editingPriceId, setEditingPriceId] = useState(null);
+  const [newPriceValue, setNewPriceValue] = useState('');
+
 
   const fetchProductos = async () => {
     try {
-      // *** CORRECCIÓN CLAVE AQUÍ: Acceder al array 'results' de la respuesta paginada ***
       const response = await axios.get(`${API_BASE_URL}/productos/`);
-      setProductos(response.data.results); // <-- ¡CORRECCIÓN!
+      setProductos(response.data.results); // Acceder al array 'results' de la respuesta paginada
       setLoading(false);
       setError(null);
     } catch (err) {
@@ -69,6 +72,7 @@ function Productos() {
     setMensajeError(null);
     setSuccessMessage(null);
 
+    // Validaciones del formulario de añadir producto
     if (!nombre || !precioCompra || !precioVenta || !stock || !talle) {
         setMensajeError('Por favor, completa todos los campos requeridos (Nombre, Precios, Stock, Talle).');
         return;
@@ -115,6 +119,7 @@ function Productos() {
     }
   };
 
+  // --- Funciones para selección y impresión de códigos de barras ---
   const handleSelectProduct = (productId) => {
     setSelectedProducts(prevSelected => {
       const newSelected = new Set(prevSelected);
@@ -150,7 +155,7 @@ function Productos() {
 
   const productosParaImprimir = productos.filter(p => selectedProducts.has(p.id));
 
-  // --- FUNCIONES PARA MODIFICAR Y ELIMINAR ---
+  // --- FUNCIONES PARA MODIFICAR Y ELIMINAR PRODUCTOS ---
 
   const handleDeleteProduct = async (productId) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción es irreversible.')) {
@@ -165,6 +170,7 @@ function Productos() {
     }
   };
 
+  // --- Funciones para Edición de STOCK ---
   const handleEditStockClick = (productId, currentStock) => {
     setEditingStockId(productId);
     setNewStockValue(currentStock.toString()); // Convertir a string para el input
@@ -198,6 +204,42 @@ function Productos() {
     setEditingStockId(null);
     setNewStockValue('');
   };
+
+  // --- NUEVAS FUNCIONES para Edición de PRECIO ---
+  const handleEditPriceClick = (productId, currentPrice) => {
+    setEditingPriceId(productId);
+    setNewPriceValue(currentPrice.toString()); // Convertir a string para el input
+  };
+
+  const handleSavePrice = async (productId) => {
+    setMensajeError(null);
+    setSuccessMessage(null);
+
+    const priceFloat = parseFloat(newPriceValue);
+
+    if (isNaN(priceFloat) || priceFloat < 0) {
+      setMensajeError('El precio de venta debe ser un número válido y no negativo.');
+      return;
+    }
+
+    try {
+      // Usamos PATCH para actualizar solo el campo 'precio_venta'
+      await axios.patch(`${API_BASE_URL}/productos/${productId}/`, { precio_venta: priceFloat });
+      setSuccessMessage('Precio de venta actualizado con éxito!');
+      setEditingPriceId(null); // Salir del modo edición
+      setNewPriceValue(''); // Limpiar el valor temporal
+      fetchProductos(); // Recargar la lista para mostrar el precio actualizado
+    } catch (err) {
+      setMensajeError('Error al actualizar el precio de venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
+      console.error('Error updating price:', err.response || err);
+    }
+  };
+
+  const handleCancelEditPrice = () => {
+    setEditingPriceId(null);
+    setNewPriceValue('');
+  };
+
 
   // --- RENDERING ---
   if (loading) {
@@ -293,7 +335,7 @@ function Productos() {
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Talle</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Código</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Imagen Código</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th>
+                <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th> {/* Columna de Precio de Venta */}
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Stock</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Descripción</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Acciones</th>
@@ -332,7 +374,35 @@ function Productos() {
                       <span style={{ color: '#888' }}>Sin código</span>
                     )}
                   </td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>${parseFloat(producto.precio_venta).toFixed(2)}</td>
+                  {/* Celda para Precio de Venta con edición en línea */}
+                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                    {editingPriceId === producto.id ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={newPriceValue}
+                          onChange={(e) => setNewPriceValue(e.target.value)}
+                          min="0"
+                          style={{ width: '80px', padding: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
+                        />
+                        <button onClick={() => handleSavePrice(producto.id)} style={{ padding: '5px 8px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                          Guardar
+                        </button>
+                        <button onClick={handleCancelEditPrice} style={{ padding: '5px 8px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span>${parseFloat(producto.precio_venta).toFixed(2)}</span>
+                        <button onClick={() => handleEditPriceClick(producto.id, producto.precio_venta)} style={{ padding: '5px 8px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                          Editar
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                  {/* Celda para Stock con edición en línea (ya existente) */}
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                     {editingStockId === producto.id ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
