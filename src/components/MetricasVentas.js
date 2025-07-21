@@ -4,15 +4,15 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 
 // Importaciones de Chart.js
-import { Bar, Pie, Line } from 'react-chartjs-2'; // Añadido Line
+import { Bar, Pie, Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
     CategoryScale,
     LinearScale,
     BarElement,
     ArcElement,
-    PointElement, // Añadido para gráficos de línea
-    LineElement,  // Añadido para gráficos de línea
+    PointElement,
+    LineElement,
     Title,
     Tooltip,
     Legend,
@@ -24,8 +24,8 @@ ChartJS.register(
     LinearScale,
     BarElement,
     ArcElement,
-    PointElement, // Registrar PointElement
-    LineElement,  // Registrar LineElement
+    PointElement,
+    LineElement,
     Title,
     Tooltip,
     Legend
@@ -36,7 +36,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL;
 const MetricasVentas = () => {
     const { user, isAuthenticated, loading } = useAuth();
 
-    const [metricas, setMetricas] = useState(null);
+    const [metricas, setMetricas] = useState(null); // State variable for fetched metrics
     const [loadingMetrics, setLoadingMetrics] = useState(true);
     const [error, setError] = useState(null);
 
@@ -53,15 +53,15 @@ const MetricasVentas = () => {
     const [paymentMethods, setPaymentMethods] = useState([]);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
 
-    // Función auxiliar para obtener el token de autenticación
+    // Auxiliary function to get the authentication token
     const getAuthToken = () => {
         return localStorage.getItem('access_token');
     };
 
-    // Función para obtener la lista de usuarios (vendedores) para el filtro
+    // Function to get the list of users (sellers) for the filter
     const fetchSellers = useCallback(async () => {
         try {
-            const token = getAuthToken();
+            const token = getAuthToken(); // Token is retrieved here
             if (!token) {
                 console.error("No hay token de autenticación para obtener vendedores.");
                 return;
@@ -71,24 +71,24 @@ const MetricasVentas = () => {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            // Asume paginación o array directo, accede a .results si existe
+            // Assumes pagination or direct array, accesses .results if it exists
             setSellers(response.data.results || response.data); 
         } catch (err) {
             console.error("Error fetching sellers:", err.response ? err.response.data : err.message);
         }
-    }, [token]); // Depende del token
+    }, []); // Removed 'token' from dependency array as getAuthToken() is used
 
-    // Función para obtener la lista de métodos de pago desde la API
+    // Function to get the list of payment methods from the API
     const fetchPaymentMethods = useCallback(async () => {
         try {
-            const token = getAuthToken();
+            const token = getAuthToken(); // Token is retrieved here
             if (!token) {
                 console.error("No hay token de autenticación para obtener métodos de pago.");
                 setPaymentMethods([{ value: '', label: 'Todos los Métodos de Pago' }]);
                 return;
             }
 
-            // *** CORRECCIÓN CLAVE AQUÍ: URL a /metodos-pago/ ***
+            // Corrected URL to /metodos-pago/
             const response = await axios.get(`${API_BASE_URL}/metodos-pago/`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -99,7 +99,7 @@ const MetricasVentas = () => {
 
         } catch (err) {
             console.error("Error fetching payment methods:", err.response ? err.response.data : err.message);
-            // Fallback si hay un error al cargar desde la API
+            // Fallback if there's an error loading from the API
             setPaymentMethods([
                 { value: '', label: 'Todos los Métodos de Pago' },
                 { value: 'Efectivo', label: 'Efectivo' },
@@ -109,14 +109,14 @@ const MetricasVentas = () => {
                 { value: 'Tarjeta de crédito', label: 'Tarjeta de crédito' },
             ]);
         }
-    }, [token]); // Depende del token
+    }, []); // Removed 'token' from dependency array as getAuthToken() is used
 
-    // Función para obtener las métricas de ventas
+    // Function to get sales metrics
     const fetchMetricas = useCallback(async () => {
         setLoadingMetrics(true);
         setError(null);
         try {
-            const token = getAuthToken();
+            const token = getAuthToken(); // Token is retrieved here
             if (!token) {
                 setError("No hay token de autenticación. Por favor, inicia sesión.");
                 setLoadingMetrics(false);
@@ -128,7 +128,7 @@ const MetricasVentas = () => {
             if (yearFilter) params.append('year', yearFilter);
             if (monthFilter) params.append('month', monthFilter);
             if (dayFilter) params.append('day', dayFilter);
-            // *** CORRECCIÓN CLAVE AQUÍ: Cambiado a 'seller_id' ***
+            // Corrected to 'seller_id'
             if (selectedSellerId) params.append('seller_id', selectedSellerId); 
             if (selectedPaymentMethod) params.append('payment_method', selectedPaymentMethod);
 
@@ -158,10 +158,10 @@ const MetricasVentas = () => {
         } finally {
             setLoadingMetrics(false);
         }
-    }, [yearFilter, monthFilter, dayFilter, selectedSellerId, selectedPaymentMethod, token]); // Añadido token a las dependencias
+    }, [yearFilter, monthFilter, dayFilter, selectedSellerId, selectedPaymentMethod]); // Removed 'token' from dependency array as getAuthToken() is used
 
 
-    // useEffect para cargar vendedores, métodos de pago y métricas al inicio
+    // useEffect to load sellers, payment methods, and metrics on initial render
     useEffect(() => {
         if (!loading && isAuthenticated && user?.is_superuser) {
             fetchSellers();
@@ -185,12 +185,10 @@ const MetricasVentas = () => {
         setDayFilter('');
         setSelectedSellerId('');
         setSelectedPaymentMethod('');
-        // Después de limpiar, vuelve a cargar las métricas sin filtros
-        // No es necesario llamar fetchMetricas aquí, ya que el cambio de estados de filtro
-        // disparará el useEffect que llama a fetchMetricas.
+        // After clearing, metrics will re-fetch due to filter state changes in the useEffect
     };
 
-    // --- GENERADORES DE OPCIONES PARA SELECTS DE FECHA (Calendario-like) ---
+    // --- OPTIONS GENERATORS FOR DATE SELECTS (Calendar-like) ---
     const getYears = () => {
         const currentYear = new Date().getFullYear();
         const years = [];
@@ -202,7 +200,7 @@ const MetricasVentas = () => {
 
     const getMonths = () => {
         return Array.from({ length: 12 }, (_, i) => ({
-            value: (i + 1).toString().padStart(2, '0'), // Formato MM
+            value: (i + 1).toString().padStart(2, '0'), // Format MM
             label: new Date(0, i).toLocaleString('es-ES', { month: 'long' })
         }));
     };
@@ -210,22 +208,23 @@ const MetricasVentas = () => {
     const getDaysInMonth = (year, month) => {
         if (!year || !month) return [];
         const numDays = new Date(parseInt(year), parseInt(month), 0).getDate();
-        return Array.from({ length: numDays }, (_, i) => (i + 1).toString().padStart(2, '0')); // Formato DD
+        return Array.from({ length: numDays }, (_, i) => (i + 1).toString().padStart(2, '0')); // Format DD
     };
 
-    // --- PREPARACIÓN DE DATOS PARA GRÁFICOS ---
+    // --- DATA PREPARATION FOR CHARTS ---
 
-    // Gráfico de Tendencia de Ventas (Line Chart)
+    // Sales Trend Chart (Line Chart)
+    // Corrected 'metrics' to 'metricas'
     const salesTrendData = {
-        labels: metrics?.ventas_agrupadas_por_periodo?.data?.map(item => item.fecha) || [],
+        labels: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => item.fecha) || [],
         datasets: [
             {
-                label: `Total de Ventas por ${metrics?.ventas_agrupadas_por_periodo?.label || 'Periodo'}`,
-                data: metrics?.ventas_agrupadas_por_periodo?.data?.map(item => item.total_monto) || [],
+                label: `Total de Ventas por ${metricas?.ventas_agrupadas_por_periodo?.label || 'Periodo'}`,
+                data: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => item.total_monto) || [],
                 borderColor: 'rgb(75, 192, 192)',
                 backgroundColor: 'rgba(75, 192, 192, 0.5)',
                 tension: 0.1,
-                fill: false, // No rellenar el área bajo la línea
+                fill: false, // Do not fill the area under the line
             },
         ],
     };
@@ -239,14 +238,14 @@ const MetricasVentas = () => {
             },
             title: {
                 display: true,
-                text: `Tendencia de Ventas por ${metrics?.ventas_agrupadas_por_periodo?.label || 'Periodo'}`,
+                text: `Tendencia de Ventas por ${metricas?.ventas_agrupadas_por_periodo?.label || 'Periodo'}`, // Corrected 'metrics' to 'metricas'
             },
         },
         scales: {
             x: {
                 title: {
                     display: true,
-                    text: metrics?.ventas_agrupadas_por_periodo?.label || 'Periodo',
+                    text: metricas?.ventas_agrupadas_por_periodo?.label || 'Periodo', // Corrected 'metrics' to 'metricas'
                 },
             },
             y: {
@@ -281,7 +280,7 @@ const MetricasVentas = () => {
     } : null;
 
     const productsSoldChartOptions = {
-        indexAxis: 'y', // Hace el gráfico de barras horizontal
+        indexAxis: 'y', // Makes the bar chart horizontal
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
@@ -354,7 +353,7 @@ const MetricasVentas = () => {
         },
     };
 
-    // --- GRÁFICO: VENTAS POR MÉTODO DE PAGO (Pie Chart) ---
+    // --- CHART: SALES BY PAYMENT METHOD (Pie Chart) ---
     const salesByPaymentMethodChartData = metricas && metricas.ventas_por_metodo_pago ? {
         labels: metricas.ventas_por_metodo_pago.map(item => item.metodo_pago),
         datasets: [
@@ -362,12 +361,12 @@ const MetricasVentas = () => {
                 label: 'Monto Total Vendido',
                 data: metricas.ventas_por_metodo_pago.map(item => item.monto_total),
                 backgroundColor: [
-                    'rgba(255, 159, 64, 0.7)',  // Naranja
-                    'rgba(54, 162, 235, 0.7)',  // Azul
-                    'rgba(255, 206, 86, 0.7)',  // Amarillo
-                    'rgba(75, 192, 192, 0.7)',  // Verde azulado
-                    'rgba(153, 102, 255, 0.7)', // Púrpura
-                    'rgba(255, 99, 132, 0.7)',  // Rojo
+                    'rgba(255, 159, 64, 0.7)',  // Orange
+                    'rgba(54, 162, 235, 0.7)',  // Blue
+                    'rgba(255, 206, 86, 0.7)',  // Yellow
+                    'rgba(75, 192, 192, 0.7)',  // Teal
+                    'rgba(153, 102, 255, 0.7)', // Purple
+                    'rgba(255, 99, 132, 0.7)',  // Red
                 ],
                 borderColor: [
                     'rgb(255, 159, 64)',
@@ -412,7 +411,7 @@ const MetricasVentas = () => {
             <form onSubmit={handleFilterSubmit} style={styles.formContainer}>
                 <h3 style={styles.subHeader}>Filtros</h3>
                 <div style={styles.filterGroup}>
-                    {/* --- SELECT PARA AÑO --- */}
+                    {/* --- SELECT FOR YEAR --- */}
                     <select
                         value={yearFilter}
                         onChange={(e) => {
@@ -428,7 +427,7 @@ const MetricasVentas = () => {
                         ))}
                     </select>
 
-                    {/* --- SELECT PARA MES --- */}
+                    {/* --- SELECT FOR MONTH --- */}
                     <select
                         value={monthFilter}
                         onChange={(e) => {
@@ -446,7 +445,7 @@ const MetricasVentas = () => {
                         ))}
                     </select>
 
-                    {/* --- SELECT PARA DÍA --- */}
+                    {/* --- SELECT FOR DAY --- */}
                     <select
                         value={dayFilter}
                         onChange={(e) => setDayFilter(e.target.value)}
@@ -459,7 +458,7 @@ const MetricasVentas = () => {
                         ))}
                     </select>
 
-                    {/* --- SELECT PARA VENDEDOR --- */}
+                    {/* --- SELECT FOR SELLER --- */}
                     <select
                         value={selectedSellerId}
                         onChange={(e) => setSelectedSellerId(e.target.value)}
@@ -473,7 +472,7 @@ const MetricasVentas = () => {
                         ))}
                     </select>
 
-                    {/* --- SELECT PARA MÉTODO DE PAGO --- */}
+                    {/* --- SELECT FOR PAYMENT METHOD --- */}
                     <select
                         value={selectedPaymentMethod}
                         onChange={(e) => setSelectedPaymentMethod(e.target.value)}
@@ -494,7 +493,7 @@ const MetricasVentas = () => {
             {loadingMetrics && <p style={styles.loadingMessage}>Cargando métricas...</p>}
             {error && <p style={styles.error}>{error}</p>}
 
-            {/* Muestra el mensaje si no hay métricas después de cargar y no hay error */}
+            {/* Displays message if no metrics after loading and no error */}
             {!loadingMetrics && !metricas && !error && <p style={styles.noDataMessage}>No hay datos de métricas disponibles para los filtros seleccionados.</p>}
 
             {metricas && (
@@ -511,12 +510,12 @@ const MetricasVentas = () => {
                         </div>
                     </div>
 
-                    {/* ACLARACIÓN PARA LOS GRÁFICOS */}
+                    {/* EXPLANATION FOR CHARTS */}
                     <p style={styles.chartExplanation}>
                         A continuación, se muestran los gráficos de métricas. Puedes hacer clic en las leyendas de los gráficos para activar o desactivar la visualización de datos específicos.
                     </p>
 
-                    {/* Gráfico de Tendencia de Ventas (Line Chart) */}
+                    {/* Sales Trend Chart (Line Chart) */}
                     {salesTrendData && salesTrendData.labels.length > 0 ? (
                         <div style={styles.chartContainer}>
                             <Line data={salesTrendData} options={salesTrendOptions} />
@@ -525,7 +524,7 @@ const MetricasVentas = () => {
                         <p style={styles.noDataMessage}>No hay datos de tendencia de ventas para el período seleccionado.</p>
                     )}
 
-                    {/* Gráfico de Top Productos Más Vendidos (Bar Chart) */}
+                    {/* Top Products Sold Chart (Bar Chart) */}
                     {productsSoldChartData && productsSoldChartData.labels.length > 0 ? (
                         <div style={styles.chartContainer}>
                             <Bar data={productsSoldChartData} options={productsSoldChartOptions} />
@@ -534,7 +533,7 @@ const MetricasVentas = () => {
                         <p style={styles.noDataMessage}>No hay datos de productos vendidos para el período seleccionado.</p>
                     )}
 
-                    {/* Gráfico de Ventas por Vendedor (Bar Chart) */}
+                    {/* Sales by User Chart (Bar Chart) */}
                     {salesByUserChartData && salesByUserChartData.labels.length > 0 ? (
                         <div style={styles.chartContainer}>
                             <Bar data={salesByUserChartData} options={salesByUserChartOptions} />
@@ -543,7 +542,7 @@ const MetricasVentas = () => {
                         <p style={styles.noDataMessage}>No hay datos de ventas por usuario para el período seleccionado.</p>
                     )}
 
-                    {/* GRÁFICO: VENTAS POR MÉTODO DE PAGO (Pie Chart) */}
+                    {/* CHART: SALES BY PAYMENT METHOD (Pie Chart) */}
                     {metricas.ventas_por_metodo_pago && metricas.ventas_por_metodo_pago.length > 0 ? (
                         <div style={styles.chartContainer}>
                             <Pie data={salesByPaymentMethodChartData} options={salesByPaymentMethodChartOptions} />
@@ -553,7 +552,7 @@ const MetricasVentas = () => {
                     )}
 
 
-                    {/* Tablas detalladas */}
+                    {/* Detailed Tables */}
                     <h3 style={styles.subHeader}>Ventas por Usuario</h3>
                     <table style={styles.table}>
                         <thead>
@@ -602,7 +601,7 @@ const MetricasVentas = () => {
                         </tbody>
                     </table>
 
-                    {/* TABLA: VENTAS POR MÉTODO DE PAGO */}
+                    {/* TABLE: SALES BY PAYMENT METHOD */}
                     <h3 style={styles.subHeader}>Ventas por Método de Pago</h3>
                     <table style={styles.table}>
                         <thead>
@@ -740,7 +739,7 @@ const styles = {
         borderRadius: '8px',
         boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
         marginBottom: '30px',
-        height: '400px', // Altura fija para los gráficos
+        height: '400px', // Fixed height for charts
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
