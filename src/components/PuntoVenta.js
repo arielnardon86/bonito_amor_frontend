@@ -1,10 +1,11 @@
-// Store/frontend/src/components/PuntoVenta.js
+// BONITO_AMOR/frontend/src/components/PuntoVenta.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Barcode from 'react-barcode';
 import EtiquetasImpresion from './EtiquetasImpresion';
-import { useSales } from './SalesContext';
+import { useSales } from './SalesContext'; // Asegúrate de que SalesContext exista y funcione correctamente
 
+// Define TALLE_OPTIONS aquí o impórtalo desde un archivo de constantes si lo tienes
 const TALLE_OPTIONS = [
     { value: 'XS', label: 'Extra Pequeño' },
     { value: 'S', label: 'Pequeño' },
@@ -28,9 +29,11 @@ const PAYMENT_METHODS = [
     { value: 'Tarjeta de crédito', label: 'Tarjeta de crédito' },
 ];
 
+// Usar la variable de entorno de Render para la URL base de la API
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 function PuntoVenta() {
+    // Desestructuración de funciones y estados del contexto de ventas
     const {
         carts,
         activeCart,
@@ -45,93 +48,108 @@ function PuntoVenta() {
         deleteCart
     } = useSales();
 
+    // Estados para la búsqueda y adición de productos al carrito
     const [searchTerm, setSearchTerm] = useState(''); // Para búsqueda por código de barras
-    const [foundProduct, setFoundProduct] = useState(null);
-    const [cantidadInput, setCantidadInput] = useState(1);
+    const [foundProduct, setFoundProduct] = useState(null); // Producto encontrado por código de barras
+    const [cantidadInput, setCantidadInput] = useState(1); // Cantidad a añadir del producto encontrado
 
+    // Estados para la impresión de etiquetas
     const [showPrintPreview, setShowPrintPreview] = useState(false);
+
+    // Estados para la lista de productos disponibles
     const [productosDisponibles, setProductosDisponibles] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    // Estados para la gestión de carritos (modales, alias)
     const [showNewCartModal, setShowNewCartModal] = useState(false);
     const [newCartAliasInput, setNewCartAliasInput] = useState('');
 
+    // Estado para el método de pago de la venta
     const [paymentMethod, setPaymentMethod] = useState('');
 
-    // NUEVO ESTADO PARA EL BUSCADOR DE PRODUCTOS DISPONIBLES
+    // Estado para el buscador de productos disponibles en la tabla inferior
     const [productSearchTerm, setProductSearchTerm] = useState('');
 
+    // useEffect para cargar los productos disponibles al montar el componente
     useEffect(() => {
         const fetchProductos = async () => {
-            setIsLoading(true);
-            setError(null);
+            setIsLoading(true); // Inicia el estado de carga
+            setError(null);     // Limpia errores previos
             try {
+                // Realiza la solicitud GET a la API de productos
                 const response = await axios.get(`${API_BASE_URL}/productos/`);
-                const mappedProducts = response.data.map(p => ({
+                
+                // *** CORRECCIÓN CLAVE AQUÍ: Acceder al array 'results' de la respuesta paginada ***
+                // Mapea los productos para asegurar que 'precio' sea un número flotante,
+                // usando 'precio_venta' si existe, de lo contrario 'precio', o 0 por defecto.
+                const mappedProducts = response.data.results.map(p => ({
                     ...p,
-                    // Asegúrate de que precio_venta o precio sea un número flotante
                     precio: parseFloat(p.precio_venta || p.precio || 0)
                 }));
-                setProductosDisponibles(mappedProducts);
+                setProductosDisponibles(mappedProducts); // Actualiza el estado con los productos
             } catch (err) {
-                console.error("Error al cargar productos:", err);
+                console.error("Error al cargar productos:", err.response ? err.response.data : err.message);
                 setError("Error al cargar productos. Inténtalo de nuevo más tarde.");
             } finally {
-                setIsLoading(false);
+                setIsLoading(false); // Finaliza el estado de carga
             }
         };
-        fetchProductos();
-    }, []);
+        fetchProductos(); // Llama a la función para cargar productos
+    }, []); // El array vacío asegura que se ejecute solo una vez al montar
 
+    // Manejador para la búsqueda de productos por código de barras
     const handleSearch = () => {
-        // Esta función ahora está más enfocada en la búsqueda por barcode
         if (!searchTerm) {
             alert('Por favor, ingresa un código de barras para buscar.');
             return;
         }
-        // Simular búsqueda por barcode (en una aplicación real, esto iría a tu API de productos)
+        // Busca el producto en la lista de productos disponibles por su código de barras
         const product = productosDisponibles.find(p => p.codigo_barras === searchTerm);
         if (product) {
-            setFoundProduct(product);
-            setCantidadInput(1);
+            setFoundProduct(product); // Establece el producto encontrado
+            setCantidadInput(1);      // Reinicia la cantidad a 1
         } else {
-            setFoundProduct(null);
+            setFoundProduct(null);    // No se encontró el producto
             alert('Producto no encontrado o error en la búsqueda.');
         }
     };
 
+    // Manejador para añadir el producto encontrado (por código de barras) al carrito activo
     const handleAddProductToActiveCart = () => {
         if (!activeCart) {
             alert('Por favor, selecciona o crea un carrito antes de añadir productos.');
             return;
         }
         if (foundProduct && cantidadInput > 0) {
+            // Verifica si hay suficiente stock antes de añadir
             if (foundProduct.stock && cantidadInput > foundProduct.stock) {
                 alert(`No hay suficiente stock. Disponible: ${foundProduct.stock}`);
                 return;
             }
-            addProductToCart(foundProduct, cantidadInput);
-            setSearchTerm('');
-            setFoundProduct(null);
-            setCantidadInput(1);
+            addProductToCart(foundProduct, cantidadInput); // Añade el producto al carrito
+            setSearchTerm('');    // Limpia el término de búsqueda
+            setFoundProduct(null); // Limpia el producto encontrado
+            setCantidadInput(1);  // Reinicia la cantidad
         } else {
             alert('Por favor, busca un producto válido y especifica una cantidad para añadir al carrito.');
         }
     };
 
+    // Manejador para añadir un producto desde la tabla de productos disponibles al carrito
     const handleAddProductFromTable = (product) => {
         if (!activeCart) {
             alert('Por favor, selecciona o crea un carrito antes de añadir productos.');
             return;
         }
         if (product.stock > 0) {
-            addProductToCart(product, 1);
+            addProductToCart(product, 1); // Añade 1 unidad del producto
         } else {
             alert('Este producto no tiene stock disponible.');
         }
     };
 
+    // Manejador para procesar la venta actual
     const handleProcessSale = async () => {
         if (!activeCart || activeCart.items.length === 0) {
             alert('El carrito activo está vacío. Agrega productos para procesar la venta.');
@@ -142,51 +160,58 @@ function PuntoVenta() {
             return;
         }
 
+        // Prepara los datos de la venta para enviar a la API
         const ventaData = {
             detalles: activeCart.items.map(item => ({
                 producto: item.product.id,
                 cantidad: item.quantity,
-                precio_unitario_venta: item.product.precio
+                precio_unitario_venta: parseFloat(item.product.precio) // Asegura que sea un número flotante
             })),
             metodo_pago: paymentMethod,
         };
 
         try {
+            // Realiza la solicitud POST a la API de ventas
             const response = await axios.post(`${API_BASE_URL}/ventas/`, ventaData);
             alert('Venta procesada con éxito. ID de Venta: ' + response.data.id);
             console.log('Venta exitosa:', response.data);
-            finalizeCart(activeCartId);
-            setPaymentMethod('');
+            finalizeCart(activeCartId); // Finaliza el carrito en el contexto
+            setPaymentMethod('');      // Limpia el método de pago
         } catch (error) {
             console.error('Error al procesar la venta:', error.response ? error.response.data : error.message);
             alert('Error al procesar la venta: ' + (error.response ? JSON.stringify(error.response.data) : error.message));
         }
     };
 
+    // Manejador para imprimir el código de barras del producto encontrado
     const handlePrintFoundProduct = () => {
         if (!foundProduct) {
             alert('Primero busca un producto para imprimir su código de barras.');
             return;
         }
-        setShowPrintPreview(true);
+        setShowPrintPreview(true); // Muestra la vista previa de impresión
     };
 
+    // Manejador para cerrar la vista previa de impresión
     const handleClosePrintPreview = () => {
         setShowPrintPreview(false);
     };
 
+    // Manejador para crear un nuevo carrito con un alias
     const handleCreateNewCartWithAlias = () => {
-        createNewCart(newCartAliasInput.trim());
-        setNewCartAliasInput('');
-        setShowNewCartModal(false);
+        createNewCart(newCartAliasInput.trim()); // Crea un nuevo carrito con el alias
+        setNewCartAliasInput('');             // Limpia el input del alias
+        setShowNewCartModal(false);           // Cierra el modal
     };
 
+    // Manejador para eliminar el carrito activo
     const handleDeleteActiveCart = () => {
         if (activeCart && window.confirm(`¿Estás seguro de que quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`)) {
-            deleteCart(activeCartId);
+            deleteCart(activeCartId); // Elimina el carrito del contexto
         }
     };
 
+    // Si showPrintPreview es true, renderiza el componente de impresión de etiquetas
     if (showPrintPreview) {
         return (
             <div style={{ padding: '20px' }}>
@@ -201,12 +226,12 @@ function PuntoVenta() {
         );
     }
 
+    // Manejador para el cambio en el input de búsqueda por código de barras
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
     };
 
-    // Lógica de filtrado para la tabla de productos disponibles
-    // Ahora usa productSearchTerm
+    // Lógica de filtrado para la tabla de productos disponibles (por nombre o talle)
     const filteredProducts = productosDisponibles.filter(product => {
         const lowerCaseSearchTerm = productSearchTerm.toLowerCase();
         return (
@@ -215,6 +240,7 @@ function PuntoVenta() {
         );
     });
 
+    // Renderizado principal del componente PuntoVenta
     return (
         <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: 'auto' }}>
             <h1>Punto de Venta</h1>
@@ -264,6 +290,7 @@ function PuntoVenta() {
                 )}
             </div>
 
+            {/* Modal para crear nueva venta */}
             {showNewCartModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
                     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.2)', width: '300px' }}>
@@ -293,7 +320,7 @@ function PuntoVenta() {
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                     <input
                         type="text"
-                        placeholder="Ingresa código de barras" /* Cambiado el placeholder */
+                        placeholder="Ingresa código de barras" 
                         value={searchTerm}
                         onChange={handleSearchChange}
                         onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
@@ -317,9 +344,9 @@ function PuntoVenta() {
                             <input
                                 type="number"
                                 value={cantidadInput}
-                                onChange={(e) => setCantidadInput(parseInt(e.target.value))}
+                                onChange={(e) => setCantidadInput(parseInt(e.target.value) || 1)}
                                 min="1"
-                                max={foundProduct.stock || 9999} // Asegura que max no sea 0 si stock es 0 o undefined
+                                max={foundProduct.stock || 9999} 
                                 style={{ width: '80px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }}
                             />
                             <button onClick={handleAddProductToActiveCart} style={{ padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
@@ -396,7 +423,7 @@ function PuntoVenta() {
             {/* Lista de Productos Disponibles */}
             <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
                 <h3>Productos Disponibles</h3>
-                {/* NUEVO: Input de búsqueda para productos disponibles */}
+                {/* Input de búsqueda para productos disponibles */}
                 <div style={{ marginBottom: '15px' }}>
                     <input
                         type="text"

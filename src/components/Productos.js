@@ -19,10 +19,8 @@ const TALLE_OPTIONS = [
     { value: 'NUM44', label: '44' },
 ];
 
-// ***************************************************************
-// CAMBIO CRÍTICO AQUÍ: Usar la variable de entorno de Render
+// Usar la variable de entorno de Render para la URL base de la API
 const API_BASE_URL = process.env.REACT_APP_API_URL; 
-// ***************************************************************
 
 function Productos() {
   const [productos, setProductos] = useState([]);
@@ -50,7 +48,7 @@ function Productos() {
 
   const fetchProductos = async () => {
     try {
-      // *** CAMBIO CLAVE AQUÍ: Acceder a response.data.results ***
+      // *** CORRECCIÓN CLAVE AQUÍ: Acceder al array 'results' de la respuesta paginada ***
       const response = await axios.get(`${API_BASE_URL}/productos/`);
       setProductos(response.data.results); // <-- ¡CORRECCIÓN!
       setLoading(false);
