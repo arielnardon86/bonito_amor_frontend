@@ -38,7 +38,8 @@ function Productos() {
   const [successMessage, setSuccessMessage] = useState(null);
   const [mensajeError, setMensajeError] = useState(null);
 
-  const [selectedProducts, setSelectedProducts] = useState(new Set());
+  // Estado para productos seleccionados para imprimir, ahora es un objeto { productId: { productData, quantityToPrint } }
+  const [selectedProducts, setSelectedProducts] = useState({}); 
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   // ESTADOS PARA LA EDICIÓN DE STOCK EN LÍNEA
@@ -120,30 +121,59 @@ function Productos() {
   };
 
   // --- Funciones para selección y impresión de códigos de barras ---
-  const handleSelectProduct = (productId) => {
+  const handleSelectProduct = (product) => {
     setSelectedProducts(prevSelected => {
-      const newSelected = new Set(prevSelected);
-      if (newSelected.has(productId)) {
-        newSelected.delete(productId);
+      const newSelected = { ...prevSelected };
+      if (newSelected[product.id]) {
+        delete newSelected[product.id]; // Deseleccionar si ya estaba seleccionado
       } else {
-        newSelected.add(productId);
+        newSelected[product.id] = { ...product, quantityToPrint: 1 }; // Seleccionar con cantidad 1 por defecto
       }
       return newSelected;
     });
   };
 
+  const handleQuantityChange = (productId, newQuantity) => {
+    setSelectedProducts(prevSelected => {
+      const updatedSelected = { ...prevSelected };
+      const quantity = parseInt(newQuantity);
+
+      if (updatedSelected[productId]) {
+        // Validar que la cantidad sea un número positivo
+        if (!isNaN(quantity) && quantity > 0) {
+          updatedSelected[productId] = { ...updatedSelected[productId], quantityToPrint: quantity };
+        } else if (newQuantity === '') { // Permitir vaciar el campo temporalmente
+          updatedSelected[productId] = { ...updatedSelected[productId], quantityToPrint: '' };
+        } else {
+          // Opcional: mostrar un error o revertir a la última cantidad válida
+          console.warn('Cantidad inválida:', newQuantity);
+        }
+      }
+      return updatedSelected;
+    });
+  };
+
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      const allProductIds = new Set(productos.map(p => p.id));
-      setSelectedProducts(allProductIds);
+      const allProductsMap = {};
+      productos.forEach(p => {
+        allProductsMap[p.id] = { ...p, quantityToPrint: 1 }; // Seleccionar todos con cantidad 1
+      });
+      setSelectedProducts(allProductsMap);
     } else {
-      setSelectedProducts(new Set());
+      setSelectedProducts({}); // Deseleccionar todos
     }
   };
 
   const handlePrintSelected = () => {
-    if (selectedProducts.size === 0) {
+    if (Object.keys(selectedProducts).length === 0) {
       alert('Por favor, selecciona al menos un producto para imprimir.');
+      return;
+    }
+    // Verificar que todas las cantidades sean válidas antes de imprimir
+    const invalidQuantities = Object.values(selectedProducts).some(p => isNaN(parseInt(p.quantityToPrint)) || parseInt(p.quantityToPrint) <= 0);
+    if (invalidQuantities) {
+      alert('Por favor, asegúrate de que todas las cantidades a imprimir sean números enteros positivos.');
       return;
     }
     setShowPrintPreview(true);
@@ -153,7 +183,8 @@ function Productos() {
     setShowPrintPreview(false);
   };
 
-  const productosParaImprimir = productos.filter(p => selectedProducts.has(p.id));
+  // productosParaImprimir ahora es un array de los valores del objeto selectedProducts
+  const productosParaImprimir = Object.values(selectedProducts);
 
   // --- FUNCIONES PARA MODIFICAR Y ELIMINAR PRODUCTOS ---
 
@@ -317,7 +348,7 @@ function Productos() {
         <>
           <div style={{ marginBottom: '15px' }}>
             <button onClick={handlePrintSelected} style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-              Imprimir Códigos de Barras Seleccionados ({selectedProducts.size})
+              Imprimir Códigos de Barras Seleccionados ({Object.keys(selectedProducts).length})
             </button>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', border: '1px solid #ddd' }}>
@@ -327,7 +358,8 @@ function Productos() {
                   <input
                     type="checkbox"
                     onChange={handleSelectAll}
-                    checked={selectedProducts.size === productos.length && productos.length > 0}
+                    // Marca el checkbox "Seleccionar Todo" si todos los productos están en selectedProducts
+                    checked={Object.keys(selectedProducts).length === productos.length && productos.length > 0}
                   />
                 </th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>ID</th>
@@ -338,6 +370,7 @@ function Productos() {
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th> {/* Columna de Precio de Venta */}
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Stock</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Descripción</th>
+                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Cantidad a Imprimir</th> {/* Nueva columna */}
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Acciones</th>
               </tr>
             </thead>
@@ -347,8 +380,8 @@ function Productos() {
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                     <input
                       type="checkbox"
-                      checked={selectedProducts.has(producto.id)}
-                      onChange={() => handleSelectProduct(producto.id)}
+                      checked={!!selectedProducts[producto.id]} // Verifica si el producto está en el objeto
+                      onChange={() => handleSelectProduct(producto)} // Pasa el objeto producto completo
                     />
                   </td>
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.id}</td>
@@ -430,6 +463,20 @@ function Productos() {
                     )}
                   </td>
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.descripcion || 'Sin descripción'}</td>
+                  {/* Nueva celda para la cantidad a imprimir */}
+                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                    {selectedProducts[producto.id] ? (
+                      <input
+                        type="number"
+                        min="1"
+                        value={selectedProducts[producto.id].quantityToPrint}
+                        onChange={(e) => handleQuantityChange(producto.id, e.target.value)}
+                        style={{ width: '60px', padding: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
+                      />
+                    ) : (
+                      <span style={{ color: '#888' }}>-</span>
+                    )}
+                  </td>
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                     <button
                       onClick={() => handleDeleteProduct(producto.id)}
