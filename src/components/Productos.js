@@ -365,11 +365,12 @@ function Productos() {
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>ID</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Nombre</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Talle</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Código</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Imagen Código</th>
+               
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th> {/* Columna de Precio de Venta */}
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Stock</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Descripción</th>
+                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Código</th>
+                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Imagen Código</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Cantidad a Imprimir</th> {/* Nueva columna */}
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Acciones</th>
               </tr>
