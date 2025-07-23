@@ -9,6 +9,7 @@ import UserManagement from './components/UserManagement';
 import ProtectedRoute from './components/ProtectedRoute'; // Asegúrate de que este componente exista y funcione correctamente
 import { AuthProvider, useAuth } from './AuthContext'; // Asegúrate de que AuthContext exista
 import { SalesProvider } from './components/SalesContext'; // Asegúrate de que SalesContext exista
+import HomePage from './components/HomePage'; // Importa el nuevo HomePage
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
@@ -61,9 +62,12 @@ const Navbar = () => {
 
           {/* Enlaces de navegación, con clase 'active' para menú móvil abierto */}
           <ul className={isOpen ? "nav-links active" : "nav-links"}>
+            {/* HomePage: Accesible para todos los autenticados */}
+            <li onClick={() => setIsOpen(false)}><Link to="/">Inicio</Link></li>
+
             {/* Punto de Venta: Accesible para Staff y Superusuarios */}
             {user && (user.is_staff || user.is_superuser) && ( // Solo si es staff o superusuario
-                <li onClick={() => setIsOpen(false)}><Link to="/">Punto de Venta</Link></li>
+                <li onClick={() => setIsOpen(false)}><Link to="/punto-venta">Punto de Venta</Link></li>
             )}
             
             {/* Gestión de Productos, Usuarios, Métricas, Ventas: Solo para Superusuarios */}
@@ -105,17 +109,20 @@ function AppContent() {
       <Navbar /> {/* Navbar necesita estar dentro de AuthProvider para usar useAuth */}
       <div className="container" style={{ padding: '20px' }}>
         <Routes>
-          {/* Ruta de Login siempre accesible */}
+          {/* HomePage es siempre accesible, independientemente de la autenticación */}
+          <Route path="/" element={<HomePage />} />
+
+          {/* Ruta de Login para Bonito Amor siempre accesible */}
           <Route path="/login" element={<Login />} />
 
-          {/* Redirige a /login si no está autenticado y no está en la ruta de login */}
-          {!isAuthenticated && <Route path="*" element={<Navigate to="/login" replace />} />}
+          {/* Nueva Ruta de Login para La Pasion del Hincha Yofre siempre accesible */}
+          <Route path="/la-pasion-yofre-login" element={<Login />} /> {/* <--- ¡NUEVA RUTA AQUÍ! */}
 
-          {/* Rutas Protegidas: Solo se renderizan si el usuario está autenticado */}
-          {isAuthenticated && (
+          {/* Rutas condicionales: Si el usuario está autenticado, renderiza las rutas protegidas. */}
+          {isAuthenticated ? (
             <>
-              {/* Ruta por defecto ('/'): Punto de Venta. Accesible SOLO por Staff y Superusuarios */}
-              <Route path="/" element={
+              {/* Punto de Venta: Accesible SOLO por Staff y Superusuarios */}
+              <Route path="/punto-venta" element={
                 <ProtectedRoute staffOnly={true}>
                   <PuntoVenta />
                 </ProtectedRoute>
@@ -162,6 +169,10 @@ function AppContent() {
               {/* Esto asegura que los usuarios autenticados no vean una página en blanco si van a una ruta no existente */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
+          ) : (
+            /* Si no está autenticado, cualquier ruta diferente a '/' o '/login' o '/la-pasion-yofre-login' redirige al login */
+            /* Las rutas '/', '/login' y '/la-pasion-yofre-login' ya están definidas arriba y son accesibles. */
+            <Route path="*" element={<Navigate to="/login" replace />} />
           )}
         </Routes>
       </div>
