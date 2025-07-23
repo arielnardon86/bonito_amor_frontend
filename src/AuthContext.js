@@ -1,4 +1,4 @@
-// Store/frontend/src/AuthContext.js (CORREGIDO)
+// BONITO_AMOR/frontend/src/AuthContext.js
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
@@ -12,6 +12,8 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [token, setToken] = useState(localStorage.getItem('access_token'));
+    // NUEVO ESTADO: Para almacenar el slug de la tienda seleccionada
+    const [selectedStoreSlug, setSelectedStoreSlug] = useState(localStorage.getItem('selected_store_slug') || null);
     const navigate = useNavigate();
 
     const setAuthToken = useCallback((tkn) => {
@@ -28,6 +30,8 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        localStorage.removeItem('selected_store_slug'); // Limpiar también el slug de la tienda al cerrar sesión
+        setSelectedStoreSlug(null); // Limpiar el estado
         setAuthToken(null);
         navigate('/login');
     }, [setAuthToken, navigate]);
@@ -41,7 +45,6 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            // *** CORRECCIÓN AQUI: Cambiado a /token/refresh/ para coincidir con tu urls.py ***
             const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/refresh/`, {
                 refresh: refresh_token,
             });
@@ -64,12 +67,22 @@ export const AuthProvider = ({ children }) => {
         }
     }, [setAuthToken]);
 
+    // NUEVA FUNCIÓN: Para establecer la tienda seleccionada
+    const selectStore = useCallback((slug) => {
+        localStorage.setItem('selected_store_slug', slug);
+        setSelectedStoreSlug(slug);
+        console.log("Tienda seleccionada:", slug);
+    }, []);
 
     useEffect(() => {
         const loadUser = async () => {
             console.log("AuthContext: Iniciando loadUser...");
             const access_token = localStorage.getItem('access_token');
-            console.log("AuthContext: access_token from localStorage (in loadUser):", access_token ? "Exists" : "Does NOT exist");
+            const stored_store_slug = localStorage.getItem('selected_store_slug');
+
+            if (stored_store_slug) {
+                setSelectedStoreSlug(stored_store_slug);
+            }
 
             if (access_token) {
                 try {
@@ -82,7 +95,6 @@ export const AuthProvider = ({ children }) => {
                         const new_access_token = await refreshToken();
                         if (new_access_token) {
                             try {
-                                // La ruta /users/me/ es correcta si tu backend la tiene configurada
                                 const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
                                 if (userResponse.data) {
                                     setUser(userResponse.data);
@@ -101,7 +113,6 @@ export const AuthProvider = ({ children }) => {
                     } else {
                         setAuthToken(access_token);
                         try {
-                            // La ruta /users/me/ es correcta si tu backend la tiene configurada
                             const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
                             if (userResponse.data) {
                                 setUser(userResponse.data);
@@ -157,7 +168,8 @@ export const AuthProvider = ({ children }) => {
         logout,
         loading,
         token,
-        // Asegúrate de que isStaff y isSuperUser estén expuestos si los usas en App.js
+        selectedStoreSlug, // Expone el slug de la tienda seleccionada
+        selectStore,       // Expone la función para seleccionar la tienda
         isStaff: user ? user.is_staff : false,
         isSuperUser: user ? user.is_superuser : false,
     };
