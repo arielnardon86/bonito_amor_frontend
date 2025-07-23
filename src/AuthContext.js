@@ -8,11 +8,15 @@ const AuthContext = createContext(null);
 
 export const useAuth = () => useContext(AuthContext);
 
+// URL base de la API, obtenida de las variables de entorno de React
+const API_BASE_URL = process.env.REACT_APP_API_URL; 
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [token, setToken] = useState(localStorage.getItem('access_token'));
-    // NUEVO ESTADO: Para almacenar el slug de la tienda seleccionada
+    // NUEVO ESTADO: Para manejar errores de autenticación
+    const [authError, setAuthError] = useState(null); 
     const [selectedStoreSlug, setSelectedStoreSlug] = useState(localStorage.getItem('selected_store_slug') || null);
     const navigate = useNavigate();
 
@@ -30,9 +34,10 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        localStorage.removeItem('selected_store_slug'); // Limpiar también el slug de la tienda al cerrar sesión
-        setSelectedStoreSlug(null); // Limpiar el estado
+        localStorage.removeItem('selected_store_slug'); 
+        setSelectedStoreSlug(null); 
         setAuthToken(null);
+        setAuthError(null); // Limpiar errores al cerrar sesión
         navigate('/login');
     }, [setAuthToken, navigate]);
 
@@ -45,7 +50,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/refresh/`, {
+            const response = await axios.post(`${API_BASE_URL}/token/refresh/`, {
                 refresh: refresh_token,
             });
             const new_access_token = response.data.access;
@@ -59,11 +64,38 @@ export const AuthProvider = ({ children }) => {
         }
     }, [setAuthToken, logout]);
 
-    const login = useCallback((userData) => {
-        setUser(userData);
-        const access_token = localStorage.getItem('access_token');
-        if (access_token) {
-            setAuthToken(access_token);
+    // FUNCIÓN DE LOGIN ACTUALIZADA: Realiza la llamada a la API y maneja la autenticación
+    const login = useCallback(async (username, password) => {
+        setAuthError(null); // Limpiar errores previos
+        try {
+            const response = await axios.post(`${API_BASE_URL}/token/`, {
+                username,
+                password,
+            });
+            const { access, refresh } = response.data;
+
+            localStorage.setItem('access_token', access);
+            localStorage.setItem('refresh_token', refresh);
+            setAuthToken(access);
+
+            // Fetch user details after successful login
+            const userResponse = await axios.get(`${API_BASE_URL}/users/me/`, {
+                headers: { 'Authorization': `Bearer ${access}` }
+            });
+            setUser(userResponse.data);
+            return true; // Login exitoso
+        } catch (error) {
+            console.error("Error logging in:", error.response ? error.response.data : error.message);
+            if (error.response && error.response.status === 401) {
+                setAuthError("Credenciales inválidas. Por favor, verifica tu usuario y contraseña.");
+            } else {
+                setAuthError("Error al iniciar sesión. Inténtalo de nuevo más tarde.");
+            }
+            setUser(null);
+            setAuthToken(null);
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            return false; // Login fallido
         }
     }, [setAuthToken]);
 
@@ -73,6 +105,12 @@ export const AuthProvider = ({ children }) => {
         setSelectedStoreSlug(slug);
         console.log("Tienda seleccionada:", slug);
     }, []);
+
+    // NUEVA FUNCIÓN: Para limpiar el error de autenticación
+    const clearAuthError = useCallback(() => {
+        setAuthError(null);
+    }, []);
+
 
     useEffect(() => {
         const loadUser = async () => {
@@ -95,7 +133,7 @@ export const AuthProvider = ({ children }) => {
                         const new_access_token = await refreshToken();
                         if (new_access_token) {
                             try {
-                                const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
+                                const userResponse = await axios.get(`${API_BASE_URL}/users/me/`);
                                 if (userResponse.data) {
                                     setUser(userResponse.data);
                                     setToken(new_access_token);
@@ -113,7 +151,7 @@ export const AuthProvider = ({ children }) => {
                     } else {
                         setAuthToken(access_token);
                         try {
-                            const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
+                            const userResponse = await axios.get(`${API_BASE_URL}/users/me/`);
                             if (userResponse.data) {
                                 setUser(userResponse.data);
                                 setToken(access_token);
@@ -168,10 +206,12 @@ export const AuthProvider = ({ children }) => {
         logout,
         loading,
         token,
-        selectedStoreSlug, // Expone el slug de la tienda seleccionada
-        selectStore,       // Expone la función para seleccionar la tienda
+        selectedStoreSlug, 
+        selectStore,       
         isStaff: user ? user.is_staff : false,
         isSuperUser: user ? user.is_superuser : false,
+        error: authError, // Exponer el error de autenticación
+        clearError: clearAuthError, // Exponer la función para limpiar el error
     };
 
     return (
