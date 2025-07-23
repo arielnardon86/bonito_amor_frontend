@@ -1,34 +1,40 @@
 // src/components/HomePage.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Importa useEffect para la carga de datos
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios'; // Importa axios para hacer la llamada a la API
+
+const API_BASE_URL = process.env.REACT_APP_API_URL; // Asegúrate de que esta variable de entorno esté configurada
 
 const HomePage = () => {
     const navigate = useNavigate();
-    const [selectedStorePath, setSelectedStorePath] = useState('');
+    const [stores, setStores] = useState([]); // Estado para almacenar las tiendas cargadas del backend
+    const [loadingStores, setLoadingStores] = useState(true); // Estado de carga
+    const [error, setError] = useState(null); // Estado para errores
+    const [selectedStoreSlug, setSelectedStoreSlug] = useState(''); // Cambiado a slug para la URL
 
-    // Define las tiendas con sus nombres y URLs internas/rutas.
-    // **ACTUALIZADO: Incluye "La Pasion del Hincha Yofre" como ruta interna**
-    const stores = [
-        { 
-            name: 'Bonito Amor', 
-            path: '/login', // Redirige a la página de login de Bonito Amor
-            description: 'Gestiona tu inventario y ventas para Bonito Amor.',
-            icon: '/bonito-amor-logo.jpg' // Asegúrate de que esta imagen exista en tu carpeta public/
-        },
-        { 
-            name: 'La Pasion del Hincha Yofre', 
-            path: '/la-pasion-yofre-login', // <--- ¡CAMBIO AQUÍ! Ahora es una ruta interna
-            description: 'Todo para los apasionados del fútbol en Yofre.',
-            icon: 'https://placehold.co/100x100/FF0000/FFFFFF?text=LPdH' // Placeholder, puedes cambiarlo por un logo real
-        },
-    ];
+    useEffect(() => {
+        const fetchStores = async () => {
+            try {
+                // Llama al nuevo endpoint de tiendas en tu backend
+                const response = await axios.get(`${API_BASE_URL}/tiendas/`);
+                setStores(response.data.results || response.data); // Maneja paginación o array directo
+                setLoadingStores(false);
+            } catch (err) {
+                console.error("Error fetching stores:", err.response ? err.response.data : err.message);
+                setError("No se pudieron cargar las tiendas. Intenta de nuevo más tarde.");
+                setLoadingStores(false);
+            }
+        };
+
+        fetchStores();
+    }, []); // Se ejecuta una sola vez al montar el componente
 
     const handleStoreSelect = (event) => {
-        const path = event.target.value;
-        setSelectedStorePath(path);
-        if (path) {
-            // Ahora siempre usamos navigate, ya que todas las rutas serán internas
-            navigate(path);
+        const slug = event.target.value;
+        setSelectedStoreSlug(slug); // Actualiza el estado del select
+        if (slug) { // Solo navega si se ha seleccionado una opción válida (no el placeholder)
+            // Redirige al login usando el slug de la tienda
+            navigate(`/login/${slug}`); 
         }
     };
 
@@ -72,6 +78,14 @@ const HomePage = () => {
             backgroundSize: '12px',
             cursor: 'pointer',
         },
+        loadingMessage: {
+            fontSize: '1.2em',
+            color: '#555',
+        },
+        errorMessage: {
+            fontSize: '1.2em',
+            color: 'red',
+        },
         footerText: {
             fontSize: '1em',
             color: '#777',
@@ -79,6 +93,22 @@ const HomePage = () => {
             lineHeight: '1.5',
         }
     };
+
+    if (loadingStores) {
+        return (
+            <div style={styles.container}>
+                <p style={styles.loadingMessage}>Cargando tiendas...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div style={styles.container}>
+                <p style={styles.errorMessage}>{error}</p>
+            </div>
+        );
+    }
 
     return (
         <div style={styles.container}>
@@ -89,12 +119,12 @@ const HomePage = () => {
                 <select 
                     style={styles.select} 
                     onChange={handleStoreSelect} 
-                    value={selectedStorePath}
+                    value={selectedStoreSlug}
                 >
                     <option value="">-- Seleccionar Tienda --</option>
-                    {stores.map((store, index) => (
-                        <option key={index} value={store.path}>
-                            {store.name}
+                    {stores.map((store) => (
+                        <option key={store.id} value={store.slug}>
+                            {store.nombre}
                         </option>
                     ))}
                 </select>
@@ -102,8 +132,7 @@ const HomePage = () => {
 
             <p style={styles.footerText}>
                 Esta configuración permite que cada tienda tenga su propio entorno independiente.
-                Si en el futuro deseas que compartan datos o funcionalidades,
-                se requeriría una arquitectura de multi-tenancy más compleja en el backend.
+                La lógica de datos para cada tienda se gestionará en el backend.
             </p>
         </div>
     );

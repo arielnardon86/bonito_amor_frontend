@@ -1,107 +1,139 @@
-// Store/frontend/src/components/Login.js (CORREGIDO)
-import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+// src/components/Login.js
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
+import { useNavigate, useParams } from 'react-router-dom'; // Importa useParams
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+    const { login, isAuthenticated, error, clearError } = useAuth();
     const navigate = useNavigate();
-    const { login, isAuthenticated } = useAuth();
+    const { storeSlug } = useParams(); // <--- ¡NUEVO! Captura el storeSlug de la URL
 
-    React.useEffect(() => {
+    // Limpiar errores al montar el componente
+    useEffect(() => {
+        clearError();
+    }, [clearError]);
+
+    // Redirigir si ya está autenticado
+    useEffect(() => {
         if (isAuthenticated) {
-            navigate('/');
+            navigate('/'); // Redirige a la página principal después del login
         }
     }, [isAuthenticated, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-
-        try {
-            // Paso 1: Obtener los tokens de acceso y refresco
-            // *** CORRECCIÓN CLAVE AQUI: Cambiado a /token/ para coincidir con tu urls.py ***
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/`, {
-                username,
-                password,
-            });
-
-            const { access, refresh } = response.data;
-
-            localStorage.setItem('access_token', access);
-            localStorage.setItem('refresh_token', refresh);
-
-            // Paso 2: Obtener los datos del usuario logueado
-            // Esta ruta `/users/me/` es correcta si tu backend la tiene configurada.
-            const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`, {
-                headers: {
-                    Authorization: `Bearer ${access}`
-                }
-            });
-
-            if (userResponse.data) {
-                login(userResponse.data); // Pasar el objeto de usuario directamente
-                console.log("Login successful, user data:", userResponse.data);
-            } else {
-                console.warn("No user data received from /users/me/ after login.");
-                setError("No se pudo obtener la información del usuario después del login.");
-                localStorage.removeItem('access_token');
-                localStorage.removeItem('refresh_token');
-                return;
-            }
-
-            navigate('/');
-
-        } catch (err) {
-            console.error('Error de login:', err.response ? err.response.data : err.message);
-            if (err.response && err.response.status === 401) {
-                setError('Usuario o contraseña incorrectos. Por favor, inténtalo de nuevo.');
-            } else if (err.response && err.response.status === 404) {
-                // Si /users/me/ o /token/ da 404, es un problema de URL en el backend.
-                setError('Error de comunicación: Una ruta del backend no fue encontrada. Verifica las URLs.');
-            }
-            else {
-                setError('Ocurrió un error inesperado al intentar iniciar sesión.');
-            }
-        }
+        // Aquí podrías usar el storeSlug si tu backend lo necesitara para el login
+        // Por ahora, el login es genérico, pero el slug ya está disponible.
+        await login(username, password); 
     };
 
     return (
-        <div style={{ padding: '20px', maxWidth: '400px', margin: '50px auto', border: '1px solid #ccc', borderRadius: '8px', boxShadow: '2px 2px 10px rgba(0,0,0,0.1)' }}>
-            <h2>Iniciar Sesión</h2>
-            <form onSubmit={handleSubmit}>
-                <div style={{ marginBottom: '15px' }}>
-                    <label htmlFor="username" style={{ display: 'block', marginBottom: '5px' }}>Usuario:</label>
-                    <input
-                        type="text"
-                        id="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                    />
-                </div>
-                <div style={{ marginBottom: '15px' }}>
-                    <label htmlFor="password" style={{ display: 'block', marginBottom: '5px' }}>Contraseña:</label>
-                    <input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                    />
-                </div>
-                {error && <p style={{ color: 'red', marginBottom: '15px' }}>{error}</p>}
-                <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                    Ingresar
-                </button>
-            </form>
+        <div style={styles.container}>
+            <div style={styles.loginBox}>
+                <h2 style={styles.header}>Iniciar Sesión</h2>
+                {/* Muestra el slug de la tienda si está presente */}
+                {storeSlug && <p style={styles.storeName}>Tienda: {storeSlug.replace(/-/g, ' ').toUpperCase()}</p>}
+                {error && <p style={styles.error}>{error}</p>}
+                <form onSubmit={handleSubmit}>
+                    <div style={styles.inputGroup}>
+                        <label htmlFor="username" style={styles.label}>Usuario:</label>
+                        <input
+                            type="text"
+                            id="username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            style={styles.input}
+                            required
+                        />
+                    </div>
+                    <div style={styles.inputGroup}>
+                        <label htmlFor="password" style={styles.label}>Contraseña:</label>
+                        <input
+                            type="password"
+                            id="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            style={styles.input}
+                            required
+                        />
+                    </div>
+                    <button type="submit" style={styles.button}>Entrar</button>
+                </form>
+            </div>
         </div>
     );
+};
+
+const styles = {
+    container: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: 'calc(100vh - 60px)', // Ajusta para el navbar
+        backgroundColor: '#f0f2f5',
+        fontFamily: 'Arial, sans-serif',
+    },
+    loginBox: {
+        backgroundColor: '#fff',
+        padding: '40px',
+        borderRadius: '10px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+        width: '100%',
+        maxWidth: '400px',
+        textAlign: 'center',
+    },
+    header: {
+        marginBottom: '25px',
+        color: '#333',
+        fontSize: '2em',
+    },
+    storeName: { // Nuevo estilo para mostrar el nombre de la tienda
+        marginBottom: '20px',
+        color: '#007bff',
+        fontSize: '1.2em',
+        fontWeight: 'bold',
+    },
+    inputGroup: {
+        marginBottom: '15px',
+        textAlign: 'left',
+    },
+    label: {
+        display: 'block',
+        marginBottom: '8px',
+        color: '#555',
+        fontWeight: 'bold',
+    },
+    input: {
+        width: 'calc(100% - 20px)',
+        padding: '10px',
+        border: '1px solid #ddd',
+        borderRadius: '5px',
+        fontSize: '1em',
+    },
+    button: {
+        backgroundColor: '#007bff',
+        color: 'white',
+        padding: '12px 25px',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1.1em',
+        marginTop: '20px',
+        width: '100%',
+        transition: 'background-color 0.3s ease',
+        '&:hover': {
+            backgroundColor: '#0056b3',
+        },
+    },
+    error: {
+        color: 'red',
+        marginBottom: '15px',
+        backgroundColor: '#ffe3e6',
+        padding: '10px',
+        borderRadius: '5px',
+    },
 };
 
 export default Login;
