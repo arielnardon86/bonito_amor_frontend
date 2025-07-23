@@ -9,7 +9,6 @@ import UserManagement from './components/UserManagement';
 import ProtectedRoute from './components/ProtectedRoute'; 
 import { AuthProvider, useAuth } from './AuthContext'; 
 import { SalesProvider } from './components/SalesContext'; 
-import HomePage from './components/HomePage'; 
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
@@ -21,7 +20,7 @@ import { faBars, faTimes } from '@fortawesome/free-solid-svg-icons';
 
 // Componente para la navegación
 const Navbar = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, stores, selectedStoreSlug, selectStore } = useAuth(); // Obtener stores y selectStore
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = () => {
@@ -43,6 +42,10 @@ const Navbar = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [isOpen]);
 
+  const handleStoreChange = (e) => {
+    selectStore(e.target.value);
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-logo">
@@ -58,12 +61,30 @@ const Navbar = () => {
           </div>
 
           <ul className={isOpen ? "nav-links active" : "nav-links"}>
-            <li onClick={() => setIsOpen(false)}><Link to="/">Inicio</Link></li>
+            {/* Selector de Tienda */}
+            {stores.length > 0 && (
+                <li className="store-select-item">
+                    <select
+                        value={selectedStoreSlug || ''}
+                        onChange={handleStoreChange}
+                        className="store-selector"
+                    >
+                        <option value="">Selecciona una Tienda</option>
+                        {stores.map(store => (
+                            <option key={store.slug} value={store.slug}>
+                                {store.nombre}
+                            </option>
+                        ))}
+                    </select>
+                </li>
+            )}
 
+            {/* Punto de Venta: Accesible para Staff y Superusuarios */}
             {user && (user.is_staff || user.is_superuser) && ( 
-                <li onClick={() => setIsOpen(false)}><Link to="/punto-venta">Punto de Venta</Link></li>
+                <li onClick={() => setIsOpen(false)}><Link to="/">Punto de Venta</Link></li>
             )}
             
+            {/* Gestión de Productos, Usuarios, Métricas, Ventas: Solo para Superusuarios */}
             {user && user.is_superuser && ( 
                 <>
                     <li onClick={() => setIsOpen(false)}><Link to="/productos">Gestión de Productos</Link></li>
@@ -87,7 +108,7 @@ const Navbar = () => {
 };
 
 function AppContent() {
-  const { isAuthenticated, loading } = useAuth(); 
+  const { isAuthenticated, loading, selectedStoreSlug } = useAuth(); 
 
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
@@ -98,60 +119,67 @@ function AppContent() {
       <Navbar /> 
       <div className="container" style={{ padding: '20px' }}>
         <Routes>
-          {/* HomePage es siempre accesible */}
-          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<Login />} />
 
-          {/* Ruta de Login dinámica con storeSlug */}
-          <Route path="/login/:storeSlug" element={<Login />} /> {/* <--- ¡CAMBIO CLAVE AQUÍ! */}
+          {!isAuthenticated && <Route path="*" element={<Navigate to="/login" replace />} />}
 
-          {isAuthenticated ? (
+          {isAuthenticated && (
             <>
-              {/* Rutas protegidas existentes */}
-              <Route path="/punto-venta" element={
-                <ProtectedRoute staffOnly={true}>
-                  <PuntoVenta />
-                </ProtectedRoute>
-              } />
+              {/* Si está autenticado pero no ha seleccionado tienda, redirigir a una página de selección o mostrar mensaje */}
+              {!selectedStoreSlug && (
+                <Route path="*" element={
+                  <div style={{ padding: '50px', textAlign: 'center' }}>
+                    <h2>Por favor, selecciona una tienda en la barra de navegación para continuar.</h2>
+                  </div>
+                } />
+              )}
 
-              <Route path="/productos" element={
-                <ProtectedRoute adminOnly={true}>
-                  <Productos />
-                </ProtectedRoute>
-              } />
-              
-              <Route
-                  path="/users"
-                  element={
-                      <ProtectedRoute adminOnly={true}>
-                          <UserManagement />
-                      </ProtectedRoute>
-                  }
-              />
-              
-              <Route
-                  path="/metricas-ventas"
-                  element={
-                      <ProtectedRoute adminOnly={true}>
-                          <MetricasVentas />
-                      </ProtectedRoute>
-                  }
-              />
+              {/* Rutas Protegidas: Solo se renderizan si el usuario está autenticado Y ha seleccionado una tienda */}
+              {selectedStoreSlug && (
+                <>
+                  <Route path="/" element={
+                    <ProtectedRoute staffOnly={true}>
+                      <PuntoVenta />
+                    </ProtectedRoute>
+                  } />
 
-              <Route
-                  path="/ventas"
-                  element={
-                      <ProtectedRoute adminOnly={true}>
-                          <VentasPage />
-                      </ProtectedRoute>
-                  }
-              />
+                  <Route path="/productos" element={
+                    <ProtectedRoute adminOnly={true}>
+                      <Productos />
+                    </ProtectedRoute>
+                  } />
+                  
+                  <Route
+                      path="/users"
+                      element={
+                          <ProtectedRoute adminOnly={true}>
+                              <UserManagement />
+                          </ProtectedRoute>
+                      }
+                  />
+                  
+                  <Route
+                      path="/metricas-ventas"
+                      element={
+                          <ProtectedRoute adminOnly={true}>
+                              <MetricasVentas />
+                          </ProtectedRoute>
+                      }
+                  />
 
-              {/* Redirige a la página principal si está autenticado y la ruta no existe */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route
+                      path="/ventas"
+                      element={
+                          <ProtectedRoute adminOnly={true}>
+                              <VentasPage />
+                          </ProtectedRoute>
+                      }
+                  />
+
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </>
+              )}
             </>
-          ) : (
-            /* Si no está autenticado, cualquier ruta diferente a '/' o '/login/:storeSlug' redirige al login */
-            <Route path="*" element={<Navigate to="/login/bonito-amor" replace />} /> 
           )}
         </Routes>
       </div>

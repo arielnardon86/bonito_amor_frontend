@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Barcode from 'react-barcode';
 import EtiquetasImpresion from './EtiquetasImpresion';
-import { useAuth } from '../AuthContext'; // Importar useAuth
+import { useAuth } from '../AuthContext'; // Importar useAuth para obtener selectedStoreSlug
 
 // Define TALLE_OPTIONS aquí o impórtalo desde un archivo de constantes si lo tienes
 const TALLE_OPTIONS = [
@@ -20,11 +20,11 @@ const TALLE_OPTIONS = [
     { value: 'NUM44', label: '44' },
 ];
 
-// Usar la variable de entorno de Render para la URL base de la API
 const API_BASE_URL = process.env.REACT_APP_API_URL; 
 
 function Productos() {
-  const { selectedStoreSlug } = useAuth(); // Obtener el slug de la tienda seleccionada
+  const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth(); // Obtener selectedStoreSlug y token
+
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,7 +33,7 @@ function Productos() {
   const [descripcion, setDescripcion] = useState('');
   const [codigoBarras, setCodigoBarras] = useState('');
   const [precioCompra, setPrecioCompra] = useState('');
-  const [precioVenta, setPrecioVenta] = useState(''); // Estado para el formulario de añadir
+  const [precioVenta, setPrecioVenta] = useState('');
   const [stock, setStock] = useState('');
   const [talle, setTalle] = useState('UNICA');
 
@@ -43,45 +43,56 @@ function Productos() {
   const [selectedProducts, setSelectedProducts] = useState(new Set());
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
-  // ESTADOS PARA LA EDICIÓN DE STOCK EN LÍNEA
   const [editingStockId, setEditingStockId] = useState(null);
   const [newStockValue, setNewStockValue] = useState('');
 
-  // NUEVOS ESTADOS PARA LA EDICIÓN DE PRECIO EN LÍNEA
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [newPriceValue, setNewPriceValue] = useState('');
 
 
   const fetchProductos = useCallback(async () => {
-    if (!selectedStoreSlug) { // No cargar productos si no hay tienda seleccionada
-        setProductos([]);
+    if (!token || !selectedStoreSlug) { // No cargar si no hay token o tienda seleccionada
         setLoading(false);
         return;
     }
+    setLoading(true);
+    setError(null);
     try {
-      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la URL ***
-      const response = await axios.get(`${API_BASE_URL}/productos/?tienda_slug=${selectedStoreSlug}`);
+      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud ***
+      const response = await axios.get(`${API_BASE_URL}/productos/`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        params: { tienda_slug: selectedStoreSlug }
+      });
       setProductos(response.data.results); 
       setLoading(false);
       setError(null);
     } catch (err) {
-      setError('Error al cargar los productos: ' + err.message);
+      setError('Error al cargar los productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
       setLoading(false);
       console.error('Error fetching products:', err.response || err.message);
     }
-  }, [selectedStoreSlug]); // Añadir selectedStoreSlug como dependencia
+  }, [token, selectedStoreSlug]); // Depende de token y selectedStoreSlug
+
 
   useEffect(() => {
-    fetchProductos();
-  }, [fetchProductos]); // Ahora depende de fetchProductos (que a su vez depende de selectedStoreSlug)
+    if (!authLoading && isAuthenticated && user?.is_superuser && selectedStoreSlug) {
+        fetchProductos();
+    } else if (!authLoading && (!isAuthenticated || !user?.is_superuser)) {
+        setError("Acceso denegado. No tienes permisos para ver/gestionar productos.");
+        setLoading(false);
+    } else if (!authLoading && isAuthenticated && !selectedStoreSlug) {
+        setLoading(false); // Si no hay tienda seleccionada, no hay productos que cargar
+    }
+  }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos]);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensajeError(null);
     setSuccessMessage(null);
 
-    if (!selectedStoreSlug) { // Validar que haya una tienda seleccionada antes de añadir
-        setMensajeError('Por favor, selecciona una tienda antes de añadir productos.');
+    if (!selectedStoreSlug) {
+        setMensajeError("Por favor, selecciona una tienda antes de añadir un producto.");
         return;
     }
 
@@ -110,16 +121,16 @@ function Productos() {
       precio_venta: parseFloat(precioVenta),
       stock: parseInt(stock),
       talle,
-      // La tienda se asigna en el backend a través del slug
     };
 
     try {
-      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la URL para la creación ***
-      const response = await axios.post(`${API_BASE_URL}/productos/?tienda_slug=${selectedStoreSlug}`, nuevoProducto);
+      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud POST ***
+      const response = await axios.post(`${API_BASE_URL}/productos/?tienda_slug=${selectedStoreSlug}`, nuevoProducto, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       console.log('Producto añadido:', response.data);
       setSuccessMessage('Producto añadido con éxito!');
       fetchProductos(); 
-      // Limpia el formulario después de añadir
       setNombre('');
       setDescripcion('');
       setCodigoBarras('');
@@ -133,7 +144,6 @@ function Productos() {
     }
   };
 
-  // --- Funciones para selección y impresión de códigos de barras ---
   const handleSelectProduct = (productId) => {
     setSelectedProducts(prevSelected => {
       const newSelected = new Set(prevSelected);
@@ -169,17 +179,17 @@ function Productos() {
 
   const productosParaImprimir = productos.filter(p => selectedProducts.has(p.id));
 
-  // --- FUNCIONES PARA MODIFICAR Y ELIMINAR PRODUCTOS ---
-
   const handleDeleteProduct = async (productId) => {
-    if (!selectedStoreSlug) { // Validar que haya una tienda seleccionada
-        alert('Por favor, selecciona una tienda para eliminar productos.');
+    if (!selectedStoreSlug) {
+        alert("Por favor, selecciona una tienda antes de eliminar un producto.");
         return;
     }
     if (window.confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción es irreversible.')) {
       try {
-        // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la URL para la eliminación ***
-        await axios.delete(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`);
+        // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud DELETE ***
+        await axios.delete(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         setSuccessMessage('Producto eliminado con éxito!');
         fetchProductos(); 
       } catch (err) {
@@ -189,7 +199,6 @@ function Productos() {
     }
   };
 
-  // --- Funciones para Edición de STOCK ---
   const handleEditStockClick = (productId, currentStock) => {
     setEditingStockId(productId);
     setNewStockValue(currentStock.toString()); 
@@ -199,8 +208,8 @@ function Productos() {
     setMensajeError(null);
     setSuccessMessage(null);
 
-    if (!selectedStoreSlug) { // Validar que haya una tienda seleccionada
-        setMensajeError('Por favor, selecciona una tienda para actualizar el stock.');
+    if (!selectedStoreSlug) {
+        setMensajeError("Por favor, selecciona una tienda antes de actualizar el stock.");
         return;
     }
 
@@ -212,8 +221,10 @@ function Productos() {
     }
 
     try {
-      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la URL para la actualización ***
-      await axios.patch(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`, { stock: stockInt });
+      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud PATCH ***
+      await axios.patch(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`, { stock: stockInt }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       setSuccessMessage('Stock actualizado con éxito!');
       setEditingStockId(null); 
       setNewStockValue(''); 
@@ -229,7 +240,6 @@ function Productos() {
     setNewStockValue('');
   };
 
-  // --- NUEVAS FUNCIONES para Edición de PRECIO ---
   const handleEditPriceClick = (productId, currentPrice) => {
     setEditingPriceId(productId);
     setNewPriceValue(currentPrice.toString()); 
@@ -239,8 +249,8 @@ function Productos() {
     setMensajeError(null);
     setSuccessMessage(null);
 
-    if (!selectedStoreSlug) { // Validar que haya una tienda seleccionada
-        setMensajeError('Por favor, selecciona una tienda para actualizar el precio.');
+    if (!selectedStoreSlug) {
+        setMensajeError("Por favor, selecciona una tienda antes de actualizar el precio.");
         return;
     }
 
@@ -252,8 +262,10 @@ function Productos() {
     }
 
     try {
-      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la URL para la actualización ***
-      await axios.patch(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`, { precio_venta: priceFloat });
+      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud PATCH ***
+      await axios.patch(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`, { precio_venta: priceFloat }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       setSuccessMessage('Precio de venta actualizado con éxito!');
       setEditingPriceId(null); 
       setNewPriceValue(''); 
@@ -270,22 +282,28 @@ function Productos() {
   };
 
 
-  // --- RENDERING ---
-  if (loading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando productos...</div>;
+  if (authLoading || (isAuthenticated && !user)) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando datos de usuario...</div>;
   }
 
-  if (error) {
-    return <div style={{ color: 'red', marginBottom: '10px', padding: '20px', border: '1px solid red' }}>{error}</div>;
+  if (!isAuthenticated || !user.is_superuser) {
+    return <div style={{ color: 'red', marginBottom: '10px', padding: '20px', border: '1px solid red', textAlign: 'center' }}>Acceso denegado. No tienes permisos de administrador para gestionar productos.</div>;
   }
 
-  // Si no hay tienda seleccionada, muestra un mensaje
   if (!selectedStoreSlug) {
     return (
         <div style={{ padding: '50px', textAlign: 'center' }}>
             <h2>Por favor, selecciona una tienda en la barra de navegación para gestionar productos.</h2>
         </div>
     );
+  }
+
+  if (loading) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando productos de {selectedStoreSlug}...</div>;
+  }
+
+  if (error) {
+    return <div style={{ color: 'red', marginBottom: '10px', padding: '20px', border: '1px solid red' }}>{error}</div>;
   }
 
   if (showPrintPreview) {
@@ -304,7 +322,7 @@ function Productos() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: 'auto' }}>
-      <h1>Gestión de Productos ({selectedStoreSlug})</h1> {/* Muestra la tienda seleccionada */}
+      <h1>Gestión de Productos ({selectedStoreSlug})</h1>
 
       {mensajeError && <div style={{ color: 'red', marginBottom: '10px', border: '1px solid red', padding: '10px' }}>{mensajeError}</div>}
       {successMessage && <div style={{ color: 'green', marginBottom: '10px', border: '1px solid green', padding: '10px' }}>{successMessage}</div>}
@@ -350,7 +368,7 @@ function Productos() {
 
       <h2>Lista de Productos Existentes</h2>
       {productos.length === 0 ? (
-        <p>No hay productos disponibles para esta tienda.</p>
+        <p>No hay productos disponibles en esta tienda.</p>
       ) : (
         <>
           <div style={{ marginBottom: '15px' }}>
@@ -412,7 +430,6 @@ function Productos() {
                       <span style={{ color: '#888' }}>Sin código</span>
                     )}
                   </td>
-                  {/* Celda para Precio de Venta con edición en línea */}
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                     {editingPriceId === producto.id ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -440,7 +457,6 @@ function Productos() {
                       </div>
                     )}
                   </td>
-                  {/* Celda para Stock con edición en línea (ya existente) */}
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                     {editingStockId === producto.id ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>

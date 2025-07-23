@@ -1,12 +1,11 @@
 // BONITO_AMOR/frontend/src/components/PuntoVenta.js
-import React, { useState, useEffect, useCallback } from 'react'; // Añadir useCallback
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Barcode from 'react-barcode';
 import EtiquetasImpresion from './EtiquetasImpresion';
-import { useSales } from './SalesContext'; // Asegúrate de que SalesContext exista y funcione correctamente
-import { useAuth } from '../AuthContext'; // Importar useAuth para obtener selectedStoreSlug
+import { useSales } from './SalesContext'; 
+import { useAuth } from '../AuthContext'; // Importar useAuth para obtener selectedStoreSlug y token
 
-// Define TALLE_OPTIONS aquí o impórtalo desde un archivo de constantes si lo tienes
 const TALLE_OPTIONS = [
     { value: 'XS', label: 'Extra Pequeño' },
     { value: 'S', label: 'Pequeño' },
@@ -30,14 +29,11 @@ const PAYMENT_METHODS = [
     { value: 'Tarjeta de crédito', label: 'Tarjeta de crédito' },
 ];
 
-// Usar la variable de entorno de Render para la URL base de la API
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 function PuntoVenta() {
-    // Obtener el slug de la tienda seleccionada del AuthContext
-    const { selectedStoreSlug } = useAuth(); 
+    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth(); // Obtener selectedStoreSlug y token
 
-    // Desestructuración de funciones y estados del contexto de ventas
     const {
         carts,
         activeCart,
@@ -52,62 +48,63 @@ function PuntoVenta() {
         deleteCart
     } = useSales();
 
-    // Estados para la búsqueda y adición de productos al carrito
-    const [searchTerm, setSearchTerm] = useState(''); // Para búsqueda por código de barras
-    const [foundProduct, setFoundProduct] = useState(null); // Producto encontrado por código de barras
-    const [cantidadInput, setCantidadInput] = useState(1); // Cantidad a añadir del producto encontrado
+    const [searchTerm, setSearchTerm] = useState(''); 
+    const [foundProduct, setFoundProduct] = useState(null); 
+    const [cantidadInput, setCantidadInput] = useState(1); 
 
-    // Estados para la impresión de etiquetas
     const [showPrintPreview, setShowPrintPreview] = useState(false);
 
-    // Estados para la lista de productos disponibles
     const [productosDisponibles, setProductosDisponibles] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Estados para la gestión de carritos (modales, alias)
     const [showNewCartModal, setShowNewCartModal] = useState(false);
     const [newCartAliasInput, setNewCartAliasInput] = useState('');
 
-    // Estado para el método de pago de la venta
     const [paymentMethod, setPaymentMethod] = useState('');
 
-    // Estado para el buscador de productos disponibles en la tabla inferior
     const [productSearchTerm, setProductSearchTerm] = useState('');
 
-    // useEffect para cargar los productos disponibles al montar el componente
     const fetchProductos = useCallback(async () => {
-        if (!selectedStoreSlug) { // No cargar productos si no hay tienda seleccionada
-            setProductosDisponibles([]);
+        if (!token || !selectedStoreSlug) { // No cargar si no hay token o tienda seleccionada
             setIsLoading(false);
             return;
         }
-        setIsLoading(true); // Inicia el estado de carga
-        setError(null);     // Limpia errores previos
+        setIsLoading(true); 
+        setError(null);     
         try {
-            // Realiza la solicitud GET a la API de productos, filtrando por tienda
-            const response = await axios.get(`${API_BASE_URL}/productos/?tienda_slug=${selectedStoreSlug}`);
+            // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud ***
+            const response = await axios.get(`${API_BASE_URL}/productos/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug }
+            });
             
-            // Acceder al array 'results' de la respuesta paginada
             const mappedProducts = response.data.results.map(p => ({
                 ...p,
-                precio: parseFloat(p.precio_venta || p.precio || 0)
+                // Asegura que 'precio' sea un número flotante, usando 'precio_venta'
+                precio: parseFloat(p.precio_venta || 0) 
             }));
-            setProductosDisponibles(mappedProducts); // Actualiza el estado con los productos
+            setProductosDisponibles(mappedProducts); 
         } catch (err) {
             console.error("Error al cargar productos:", err.response ? err.response.data : err.message);
             setError("Error al cargar productos. Inténtalo de nuevo más tarde.");
         } finally {
-            setIsLoading(false); // Finaliza el estado de carga
+            setIsLoading(false); 
         }
-    }, [selectedStoreSlug]); // Añadir selectedStoreSlug como dependencia
+    }, [token, selectedStoreSlug]); // Depende de token y selectedStoreSlug
 
     useEffect(() => {
-        fetchProductos(); // Llama a la función para cargar productos
-    }, [fetchProductos]); // Ahora depende de fetchProductos (que a su vez depende de selectedStoreSlug)
+        if (!authLoading && isAuthenticated && (user?.is_staff || user?.is_superuser) && selectedStoreSlug) {
+            fetchProductos();
+        } else if (!authLoading && (!isAuthenticated || !(user?.is_staff || user?.is_superuser))) {
+            setError("Acceso denegado. No tienes permisos para usar el punto de venta.");
+            setIsLoading(false);
+        } else if (!authLoading && isAuthenticated && !selectedStoreSlug) {
+            setIsLoading(false); // Si no hay tienda seleccionada, no hay productos que cargar
+        }
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos]);
 
-    // Manejador para la búsqueda de productos por código de barras
-    const handleSearch = async () => { // Hacer async para poder usar await
+    const handleSearch = async () => {
         if (!searchTerm) {
             alert('Por favor, ingresa un código de barras para buscar.');
             return;
@@ -116,53 +113,54 @@ function PuntoVenta() {
             alert('Por favor, selecciona una tienda antes de buscar productos.');
             return;
         }
+
         try {
-            // Buscar producto por código de barras y tienda
-            const response = await axios.get(`${API_BASE_URL}/productos/buscar_por_barcode/?barcode=${searchTerm}&tienda_slug=${selectedStoreSlug}`);
-            setFoundProduct(response.data);
+            // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a la búsqueda por barcode ***
+            const response = await axios.get(`${API_BASE_URL}/productos/buscar_por_barcode/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { barcode: searchTerm, tienda_slug: selectedStoreSlug }
+            });
+            const product = { ...response.data, precio: parseFloat(response.data.precio_venta || 0) };
+            setFoundProduct(product);
             setCantidadInput(1);
         } catch (err) {
             setFoundProduct(null);
-            console.error("Error al buscar producto por barcode:", err.response ? err.response.data : err.message);
-            alert('Producto no encontrado en esta tienda o error en la búsqueda.');
+            console.error('Error searching product by barcode:', err.response ? err.response.data : err.message);
+            alert('Producto no encontrado en la tienda seleccionada o error en la búsqueda.');
         }
     };
 
-    // Manejador para añadir el producto encontrado (por código de barras) al carrito activo
     const handleAddProductToActiveCart = () => {
         if (!activeCart) {
             alert('Por favor, selecciona o crea un carrito antes de añadir productos.');
             return;
         }
         if (foundProduct && cantidadInput > 0) {
-            // Verifica si hay suficiente stock antes de añadir
             if (foundProduct.stock && cantidadInput > foundProduct.stock) {
                 alert(`No hay suficiente stock. Disponible: ${foundProduct.stock}`);
                 return;
             }
-            addProductToCart(foundProduct, cantidadInput); // Añade el producto al carrito
-            setSearchTerm('');    // Limpia el término de búsqueda
-            setFoundProduct(null); // Limpia el producto encontrado
-            setCantidadInput(1);  // Reinicia la cantidad
+            addProductToCart(foundProduct, cantidadInput); 
+            setSearchTerm('');    
+            setFoundProduct(null); 
+            setCantidadInput(1);  
         } else {
             alert('Por favor, busca un producto válido y especifica una cantidad para añadir al carrito.');
         }
     };
 
-    // Manejador para añadir un producto desde la tabla de productos disponibles al carrito
     const handleAddProductFromTable = (product) => {
         if (!activeCart) {
             alert('Por favor, selecciona o crea un carrito antes de añadir productos.');
             return;
         }
         if (product.stock > 0) {
-            addProductToCart(product, 1); // Añade 1 unidad del producto
+            addProductToCart(product, 1); 
         } else {
             alert('Este producto no tiene stock disponible.');
         }
     };
 
-    // Manejador para procesar la venta actual
     const handleProcessSale = async () => {
         if (!activeCart || activeCart.items.length === 0) {
             alert('El carrito activo está vacío. Agrega productos para procesar la venta.');
@@ -177,59 +175,56 @@ function PuntoVenta() {
             return;
         }
 
-        // Prepara los datos de la venta para enviar a la API
         const ventaData = {
             detalles: activeCart.items.map(item => ({
                 producto: item.product.id,
                 cantidad: item.quantity,
-                precio_unitario_venta: parseFloat(item.product.precio) // Asegura que sea un número flotante
+                precio_unitario_venta: parseFloat(item.product.precio) 
             })),
             metodo_pago: paymentMethod,
+            // La tienda se pasará como query_param en la URL
         };
 
         try {
-            // Realiza la solicitud POST a la API de ventas, incluyendo el slug de la tienda
-            const response = await axios.post(`${API_BASE_URL}/ventas/?tienda_slug=${selectedStoreSlug}`, ventaData);
+            // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud POST ***
+            const response = await axios.post(`${API_BASE_URL}/ventas/?tienda_slug=${selectedStoreSlug}`, ventaData, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             alert('Venta procesada con éxito. ID de Venta: ' + response.data.id);
             console.log('Venta exitosa:', response.data);
-            finalizeCart(activeCartId); // Finaliza el carrito en el contexto
-            setPaymentMethod('');      // Limpia el método de pago
-            fetchProductos(); // Recargar productos disponibles para reflejar cambios de stock
+            finalizeCart(activeCartId); 
+            setPaymentMethod('');      
+            fetchProductos(); // Recargar productos para reflejar cambios de stock
         } catch (error) {
             console.error('Error al procesar la venta:', error.response ? error.response.data : error.message);
             alert('Error al procesar la venta: ' + (error.response ? JSON.stringify(error.response.data) : error.message));
         }
     };
 
-    // Manejador para imprimir el código de barras del producto encontrado
     const handlePrintFoundProduct = () => {
         if (!foundProduct) {
             alert('Primero busca un producto para imprimir su código de barras.');
             return;
         }
-        setShowPrintPreview(true); // Muestra la vista previa de impresión
+        setShowPrintPreview(true); 
     };
 
-    // Manejador para cerrar la vista previa de impresión
     const handleClosePrintPreview = () => {
         setShowPrintPreview(false);
     };
 
-    // Manejador para crear un nuevo carrito con un alias
     const handleCreateNewCartWithAlias = () => {
-        createNewCart(newCartAliasInput.trim()); // Crea un nuevo carrito con el alias
-        setNewCartAliasInput('');             // Limpia el input del alias
-        setShowNewCartModal(false);           // Cierra el modal
+        createNewCart(newCartAliasInput.trim()); 
+        setNewCartAliasInput('');             
+        setShowNewCartModal(false);           
     };
 
-    // Manejador para eliminar el carrito activo
     const handleDeleteActiveCart = () => {
         if (activeCart && window.confirm(`¿Estás seguro de que quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`)) {
-            deleteCart(activeCartId); // Elimina el carrito del contexto
+            deleteCart(activeCartId); 
         }
     };
 
-    // Si showPrintPreview es true, renderiza el componente de impresión de etiquetas
     if (showPrintPreview) {
         return (
             <div style={{ padding: '20px' }}>
@@ -244,12 +239,10 @@ function PuntoVenta() {
         );
     }
 
-    // Manejador para el cambio en el input de búsqueda por código de barras
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
     };
 
-    // Lógica de filtrado para la tabla de productos disponibles (por nombre o talle)
     const filteredProducts = productosDisponibles.filter(product => {
         const lowerCaseSearchTerm = productSearchTerm.toLowerCase();
         return (
@@ -258,21 +251,26 @@ function PuntoVenta() {
         );
     });
 
-    // Si no hay tienda seleccionada, muestra un mensaje
+    if (authLoading || (isAuthenticated && !user)) {
+        return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando datos de usuario...</div>;
+    }
+
+    if (!isAuthenticated || !(user.is_staff || user.is_superuser)) {
+        return <div style={{ color: 'red', marginBottom: '10px', padding: '20px', border: '1px solid red', textAlign: 'center' }}>Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
+    }
+
     if (!selectedStoreSlug) {
         return (
             <div style={{ padding: '50px', textAlign: 'center' }}>
-                <h2>Por favor, selecciona una tienda en la barra de navegación para usar el Punto de Venta.</h2>
+                <h2>Por favor, selecciona una tienda en la barra de navegación para usar el punto de venta.</h2>
             </div>
         );
     }
 
-    // Renderizado principal del componente PuntoVenta
     return (
         <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: 'auto' }}>
-            <h1>Punto de Venta ({selectedStoreSlug})</h1> {/* Muestra la tienda seleccionada */}
+            <h1>Punto de Venta ({selectedStoreSlug})</h1>
 
-            {/* Sección de Gestión de Carritos */}
             <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
                 <h3>Gestión de Ventas Activas:</h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
@@ -317,7 +315,6 @@ function PuntoVenta() {
                 )}
             </div>
 
-            {/* Modal para crear nueva venta */}
             {showNewCartModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
                     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.2)', width: '300px' }}>
@@ -341,7 +338,6 @@ function PuntoVenta() {
                 </div>
             )}
 
-            {/* Sección de Búsqueda de Productos por Código de Barras */}
             <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
                 <h3>Buscar Producto por Código de Barras</h3>
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
@@ -371,7 +367,7 @@ function PuntoVenta() {
                             <input
                                 type="number"
                                 value={cantidadInput}
-                                onChange={(e) => setCantidadInput(parseInt(e.target.value) || 1)}
+                                onChange={(e) => setCantidadInput(parseInt(e.target.value) || 1)} 
                                 min="1"
                                 max={foundProduct.stock || 9999} 
                                 style={{ width: '80px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }}
@@ -384,7 +380,6 @@ function PuntoVenta() {
                 )}
             </div>
 
-            {/* Carrito de Venta Actual */}
             <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#e6ffe6' }}>
                 <h3>Carrito Actual: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
                 {activeCart && activeCart.items.length > 0 ? (
@@ -423,7 +418,6 @@ function PuntoVenta() {
                         </table>
                         <h4 style={{ textAlign: 'right', marginBottom: '15px' }}>Total de Venta: ${activeCart.items.reduce((acc, item) => acc + item.quantity * parseFloat(item.product.precio), 0).toFixed(2)}</h4>
 
-                        {/* Selector de método de pago */}
                         <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <label htmlFor="paymentMethod" style={{ fontWeight: 'bold' }}>Método de Pago:</label>
                             <select
@@ -447,10 +441,8 @@ function PuntoVenta() {
                 )}
             </div>
 
-            {/* Lista de Productos Disponibles */}
             <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
                 <h3>Productos Disponibles</h3>
-                {/* Input de búsqueda para productos disponibles */}
                 <div style={{ marginBottom: '15px' }}>
                     <input
                         type="text"
@@ -484,7 +476,7 @@ function PuntoVenta() {
                                         <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.nombre}</td>
                                         <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.talle}</td>
                                         <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.codigo_barras || 'N/A'}</td>
-                                        <td style={{ padding: '8px', border: '1% solid #ddd' }}>${parseFloat(product.precio).toFixed(2)}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>${parseFloat(product.precio).toFixed(2)}</td>
                                         <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.stock}</td>
                                         <td style={{ padding: '8px', border: '1px solid #ddd' }}>
                                             <button
