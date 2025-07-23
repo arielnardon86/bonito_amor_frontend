@@ -1,105 +1,86 @@
-// Store/frontend/src/components/MetricasVentas.js
+// BONITO_AMOR/frontend/src/components/MetricasVentas.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { useAuth } from '../AuthContext';
-
-// Importaciones de Chart.js
-import { Bar, Pie, Line } from 'react-chartjs-2';
+import { useAuth } from '../AuthContext'; // Importar useAuth para obtener selectedStoreSlug
+import { Line, Bar, Pie } from 'react-chartjs-2'; // Asegúrate de importar Pie si lo usas
 import {
     Chart as ChartJS,
     CategoryScale,
     LinearScale,
-    BarElement,
-    ArcElement,
     PointElement,
     LineElement,
+    BarElement,
     Title,
     Tooltip,
     Legend,
+    ArcElement, // Para gráficos de pastel/donas si los usas
 } from 'chart.js';
 
-// Registrar los componentes de Chart.js que vamos a usar
+// Registrar los componentes de Chart.js que vas a usar
 ChartJS.register(
     CategoryScale,
     LinearScale,
-    BarElement,
-    ArcElement,
     PointElement,
     LineElement,
+    BarElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    ArcElement // Registrar ArcElement si se usa para gráficos de pastel/donas
 );
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 const MetricasVentas = () => {
-    const { user, isAuthenticated, loading } = useAuth();
+    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug } = useAuth(); // Obtener selectedStoreSlug
 
-    const [metricas, setMetricas] = useState(null); // State variable for fetched metrics
-    const [loadingMetrics, setLoadingMetrics] = useState(true);
+    const [metrics, setMetrics] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // --- FILTROS DE FECHA ---
-    const [yearFilter, setYearFilter] = useState('');
-    const [monthFilter, setMonthFilter] = useState('');
-    const [dayFilter, setDayFilter] = useState('');
+    // Filtros
+    const [filterYear, setFilterYear] = useState('');
+    const [filterMonth, setFilterMonth] = useState('');
+    const [filterDay, setFilterDay] = useState('');
+    const [filterSellerId, setFilterSellerId] = useState('');
+    const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
 
-    // --- FILTRO DE VENDEDOR ---
-    const [sellers, setSellers] = useState([]);
-    const [selectedSellerId, setSelectedSellerId] = useState('');
+    const [sellers, setSellers] = useState([]); // Para la lista de vendedores
+    const [paymentMethods, setPaymentMethods] = useState([]); // Para la lista de métodos de pago
 
-    // --- FILTRO DE MÉTODO DE PAGO ---
-    const [paymentMethods, setPaymentMethods] = useState([]);
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
-
-    // Auxiliary function to get the authentication token
-    const getAuthToken = () => {
-        return localStorage.getItem('access_token');
-    };
-
-    // Function to get the list of users (sellers) for the filter
+    // Función para obtener la lista de vendedores
     const fetchSellers = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return; // No cargar si no hay token o tienda seleccionada
         try {
-            const token = getAuthToken(); // Token is retrieved here
-            if (!token) {
-                console.error("No hay token de autenticación para obtener vendedores.");
-                return;
-            }
+            // Incluir tienda_slug en la URL para filtrar vendedores si es necesario,
+            // aunque el backend de users no filtra por tienda por defecto.
+            // Si tu backend de users no filtra por tienda, esta parte no es estrictamente necesaria,
+            // pero la mantenemos para consistencia si decides implementarlo.
             const response = await axios.get(`${API_BASE_URL}/users/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
+                // params: { tienda_slug: selectedStoreSlug } // Descomentar si tu UserViewSet soporta filtro por tienda
             });
-            // Assumes pagination or direct array, accesses .results if it exists
-            setSellers(response.data.results || response.data); 
+            setSellers(response.data.results || response.data);
         } catch (err) {
             console.error("Error fetching sellers:", err.response ? err.response.data : err.message);
         }
-    }, []); // Removed 'token' from dependency array as getAuthToken() is used
+    }, [token, selectedStoreSlug]); // Añadir selectedStoreSlug como dependencia
 
-    // Function to get the list of payment methods from the API
+    // Función para obtener la lista de métodos de pago
     const fetchPaymentMethods = useCallback(async () => {
+        if (!token || !selectedStoreSlug) { // No cargar si no hay token o tienda seleccionada
+            setPaymentMethods([{ value: '', label: 'Todos los Métodos de Pago' }]);
+            return;
+        }
         try {
-            const token = getAuthToken(); // Token is retrieved here
-            if (!token) {
-                console.error("No hay token de autenticación para obtener métodos de pago.");
-                setPaymentMethods([{ value: '', label: 'Todos los Métodos de Pago' }]);
-                return;
-            }
-
-            // Corrected URL to /metodos-pago/
-            const response = await axios.get(`${API_BASE_URL}/metodos-pago/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            // Incluir tienda_slug en la URL para filtrar métodos de pago
+            const response = await axios.get(`${API_BASE_URL}/metodos-pago/?tienda_slug=${selectedStoreSlug}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
-            
             setPaymentMethods([{ value: '', label: 'Todos los Métodos de Pago' }, ...response.data]);
-
         } catch (err) {
             console.error("Error fetching payment methods:", err.response ? err.response.data : err.message);
-            // Fallback if there's an error loading from the API
+            // Fallback si hay un error cargando desde la API
             setPaymentMethods([
                 { value: '', label: 'Todos los Métodos de Pago' },
                 { value: 'Efectivo', label: 'Efectivo' },
@@ -109,83 +90,67 @@ const MetricasVentas = () => {
                 { value: 'Tarjeta de crédito', label: 'Tarjeta de crédito' },
             ]);
         }
-    }, []); // Removed 'token' from dependency array as getAuthToken() is used
+    }, [token, selectedStoreSlug]); // Añadir selectedStoreSlug como dependencia
 
-    // Function to get sales metrics
-    const fetchMetricas = useCallback(async () => {
-        setLoadingMetrics(true);
+    // Función para obtener las métricas de ventas
+    const fetchMetrics = useCallback(async () => {
+        if (!token || !selectedStoreSlug) { // No cargar si no hay token o tienda seleccionada
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
         setError(null);
         try {
-            const token = getAuthToken(); // Token is retrieved here
-            if (!token) {
-                setError("No hay token de autenticación. Por favor, inicia sesión.");
-                setLoadingMetrics(false);
-                return;
-            }
-
-            let url = `${API_BASE_URL}/metricas/metrics/`;
-            const params = new URLSearchParams();
-            if (yearFilter) params.append('year', yearFilter);
-            if (monthFilter) params.append('month', monthFilter);
-            if (dayFilter) params.append('day', dayFilter);
-            // Corrected to 'seller_id'
-            if (selectedSellerId) params.append('seller_id', selectedSellerId); 
-            if (selectedPaymentMethod) params.append('payment_method', selectedPaymentMethod);
-
-            if (params.toString()) {
-                url += `?${params.toString()}`;
-            }
-            console.log("Fetching metrics from:", url);
-
-            const response = await axios.get(url, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const params = {
+                ...(filterYear && { year: filterYear }),
+                ...(filterMonth && { month: filterMonth }),
+                ...(filterDay && { day: filterDay }),
+                ...(filterSellerId && { seller_id: filterSellerId }),
+                ...(filterPaymentMethod && { payment_method: filterPaymentMethod }),
+                tienda_slug: selectedStoreSlug, // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug ***
+            };
+            console.log("Fetching metrics with params:", params);
+            const response = await axios.get(`${API_BASE_URL}/metricas/metrics/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: params,
             });
-            setMetricas(response.data);
+            setMetrics(response.data);
             console.log("Metrics fetched:", response.data);
         } catch (err) {
-            console.error("Error fetching metrics:", err);
-            if (err.response && err.response.status === 404) {
-                setError("Endpoint de métricas no encontrado. Revisa la configuración del backend.");
-            } else if (err.response && err.response.status === 403) {
-                setError("No tienes permisos para ver estas métricas. Asegúrate de ser administrador.");
-            } else if (err.response && err.response.data && err.response.data.detail) {
-                setError(err.response.data.detail);
-            } else {
-                setError("Error al cargar las métricas. Intenta de nuevo.");
-            }
+            console.error('Error fetching metrics:', err.response ? err.response.data : err.message);
+            setError('Error al cargar las métricas: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
         } finally {
-            setLoadingMetrics(false);
+            setLoading(false);
         }
-    }, [yearFilter, monthFilter, dayFilter, selectedSellerId, selectedPaymentMethod]); // Removed 'token' from dependency array as getAuthToken() is used
+    }, [token, selectedStoreSlug, filterYear, filterMonth, filterDay, filterSellerId, filterPaymentMethod]); // Añadir selectedStoreSlug como dependencia
 
-
-    // useEffect to load sellers, payment methods, and metrics on initial render
+    // useEffect para cargar vendedores, métodos de pago y métricas al inicio
     useEffect(() => {
-        if (!loading && isAuthenticated && user?.is_superuser) {
+        if (!authLoading && isAuthenticated && user?.is_superuser && selectedStoreSlug) { // Solo si hay tienda seleccionada
             fetchSellers();
             fetchPaymentMethods();
-            fetchMetricas();
-        } else if (!loading && (!isAuthenticated || !user?.is_superuser)) {
+            fetchMetrics();
+        } else if (!authLoading && (!isAuthenticated || !user?.is_superuser)) {
             setError("Acceso denegado. No tienes permisos para ver estas métricas.");
-            setLoadingMetrics(false);
+            setLoading(false); // Usar setLoading para el estado de carga general
+        } else if (!authLoading && isAuthenticated && !selectedStoreSlug) {
+            setLoading(false); // Si no hay tienda seleccionada, no hay métricas que cargar
         }
-    }, [isAuthenticated, user, loading, fetchMetricas, fetchSellers, fetchPaymentMethods]);
+    }, [authLoading, isAuthenticated, user, selectedStoreSlug, fetchSellers, fetchPaymentMethods, fetchMetrics]);
 
 
-    const handleFilterSubmit = (e) => {
-        e.preventDefault();
-        fetchMetricas();
+    const handleApplyFilters = () => {
+        fetchMetrics(); // Vuelve a cargar las métricas con los filtros aplicados
     };
 
     const handleClearFilters = () => {
-        setYearFilter('');
-        setMonthFilter('');
-        setDayFilter('');
-        setSelectedSellerId('');
-        setSelectedPaymentMethod('');
-        // After clearing, metrics will re-fetch due to filter state changes in the useEffect
+        setFilterYear('');
+        setFilterMonth('');
+        setFilterDay('');
+        setFilterSellerId('');
+        setFilterPaymentMethod('');
+        // fetchMetrics will be called due to filter state changes in the useEffect
     };
 
     // --- OPTIONS GENERATORS FOR DATE SELECTS (Calendar-like) ---
@@ -214,13 +179,12 @@ const MetricasVentas = () => {
     // --- DATA PREPARATION FOR CHARTS ---
 
     // Sales Trend Chart (Line Chart)
-    // Corrected 'metrics' to 'metricas'
     const salesTrendData = {
-        labels: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => item.fecha) || [],
+        labels: metrics?.ventas_agrupadas_por_periodo?.data?.map(item => item.fecha) || [],
         datasets: [
             {
-                label: `Total de Ventas por ${metricas?.ventas_agrupadas_por_periodo?.label || 'Periodo'}`,
-                data: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => item.total_monto) || [],
+                label: `Total de Ventas por ${metrics?.ventas_agrupadas_por_periodo?.label || 'Periodo'}`,
+                data: metrics?.ventas_agrupadas_por_periodo?.data?.map(item => item.total_monto) || [],
                 borderColor: 'rgb(75, 192, 192)',
                 backgroundColor: 'rgba(75, 192, 192, 0.5)',
                 tension: 0.1,
@@ -238,14 +202,14 @@ const MetricasVentas = () => {
             },
             title: {
                 display: true,
-                text: `Tendencia de Ventas por ${metricas?.ventas_agrupadas_por_periodo?.label || 'Periodo'}`, // Corrected 'metrics' to 'metricas'
+                text: `Tendencia de Ventas por ${metrics?.ventas_agrupadas_por_periodo?.label || 'Periodo'}`,
             },
         },
         scales: {
             x: {
                 title: {
                     display: true,
-                    text: metricas?.ventas_agrupadas_por_periodo?.label || 'Periodo', // Corrected 'metrics' to 'metricas'
+                    text: metrics?.ventas_agrupadas_por_periodo?.label || 'Periodo',
                 },
             },
             y: {
@@ -259,19 +223,19 @@ const MetricasVentas = () => {
     };
 
 
-    const productsSoldChartData = metricas && metricas.productos_mas_vendidos ? {
-        labels: metricas.productos_mas_vendidos.map(item => item.producto__nombre),
+    const productsSoldChartData = metrics && metrics.productos_mas_vendidos ? {
+        labels: metrics.productos_mas_vendidos.map(item => item.producto__nombre),
         datasets: [
             {
                 label: 'Cantidad Vendida (Unidades)',
-                data: metricas.productos_mas_vendidos.map(item => item.cantidad_total),
+                data: metrics.productos_mas_vendidos.map(item => item.cantidad_total),
                 backgroundColor: 'rgba(255, 99, 132, 0.5)',
                 borderColor: 'rgb(255, 99, 132)',
                 borderWidth: 1,
             },
             {
                 label: 'Monto Total Vendido',
-                data: metricas.productos_mas_vendidos.map(item => item.monto_total),
+                data: metrics.productos_mas_vendidos.map(item => item.monto_total),
                 backgroundColor: 'rgba(53, 162, 235, 0.5)',
                 borderColor: 'rgb(53, 162, 235)',
                 borderWidth: 1,
@@ -310,19 +274,19 @@ const MetricasVentas = () => {
         },
     };
 
-    const salesByUserChartData = metricas && metricas.ventas_por_usuario ? {
-        labels: metricas.ventas_por_usuario.map(item => item.usuario__username),
+    const salesByUserChartData = metrics && metrics.ventas_por_usuario ? {
+        labels: metrics.ventas_por_usuario.map(item => item.usuario__username),
         datasets: [
             {
                 label: 'Monto Vendido',
-                data: metricas.ventas_por_usuario.map(item => item.monto_total_vendido),
+                data: metrics.ventas_por_usuario.map(item => item.monto_total_vendido),
                 backgroundColor: 'rgba(75, 192, 192, 0.7)',
                 borderColor: 'rgb(75, 192, 192)',
                 borderWidth: 1,
             },
             {
                 label: 'Cantidad de Ventas',
-                data: metricas.ventas_por_usuario.map(item => item.cantidad_ventas),
+                data: metrics.ventas_por_usuario.map(item => item.cantidad_ventas),
                 backgroundColor: 'rgba(201, 203, 207, 0.7)',
                 borderColor: 'rgb(201, 203, 207)',
                 borderWidth: 1,
@@ -354,12 +318,12 @@ const MetricasVentas = () => {
     };
 
     // --- CHART: SALES BY PAYMENT METHOD (Pie Chart) ---
-    const salesByPaymentMethodChartData = metricas && metricas.ventas_por_metodo_pago ? {
-        labels: metricas.ventas_por_metodo_pago.map(item => item.metodo_pago),
+    const salesByPaymentMethodChartData = metrics && metrics.ventas_por_metodo_pago ? {
+        labels: metrics.ventas_por_metodo_pago.map(item => item.metodo_pago),
         datasets: [
             {
                 label: 'Monto Total Vendido',
-                data: metricas.ventas_por_metodo_pago.map(item => item.monto_total),
+                data: metrics.ventas_por_metodo_pago.map(item => item.monto_total),
                 backgroundColor: [
                     'rgba(255, 159, 64, 0.7)',  // Orange
                     'rgba(54, 162, 235, 0.7)',  // Blue
@@ -396,28 +360,43 @@ const MetricasVentas = () => {
     };
 
 
-    if (loading || (isAuthenticated && !user)) {
-        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
+    if (authLoading) { // Usar authLoading para el estado inicial de carga de autenticación
+        return <div style={styles.loadingMessage}>Cargando información de usuario...</div>;
     }
 
-    if (!isAuthenticated || !user.is_superuser) {
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos de administrador.</div>;
+    if (!isAuthenticated) {
+        return <p>Por favor, inicia sesión para ver las métricas.</p>;
+    }
+
+    // Solo permite el acceso a superusuarios para las métricas
+    if (!user || !user.is_superuser) {
+        return <p>No tienes permiso para ver las métricas de ventas.</p>;
+    }
+
+    // Si no hay tienda seleccionada, muestra un mensaje
+    if (!selectedStoreSlug) {
+        return (
+            <div style={{ padding: '50px', textAlign: 'center' }}>
+                <h2>Por favor, selecciona una tienda en la barra de navegación para ver las métricas.</h2>
+            </div>
+        );
     }
 
     return (
         <div style={styles.container}>
-            <h1 style={styles.header}>Métricas de Ventas</h1>
+            <h1>Métricas de Ventas ({selectedStoreSlug})</h1> {/* Muestra la tienda seleccionada */}
 
-            <form onSubmit={handleFilterSubmit} style={styles.formContainer}>
-                <h3 style={styles.subHeader}>Filtros</h3>
+            {/* Controles de Filtro */}
+            <form onSubmit={handleApplyFilters} style={styles.formContainer}>
+                <h3 style={styles.subHeader}>Filtros de Métricas</h3>
                 <div style={styles.filterGroup}>
                     {/* --- SELECT FOR YEAR --- */}
                     <select
-                        value={yearFilter}
+                        value={filterYear}
                         onChange={(e) => {
-                            setYearFilter(e.target.value);
-                            setMonthFilter('');
-                            setDayFilter('');
+                            setFilterYear(e.target.value);
+                            setFilterMonth('');
+                            setFilterDay('');
                         }}
                         style={styles.input}
                     >
@@ -429,13 +408,13 @@ const MetricasVentas = () => {
 
                     {/* --- SELECT FOR MONTH --- */}
                     <select
-                        value={monthFilter}
+                        value={filterMonth}
                         onChange={(e) => {
-                            setMonthFilter(e.target.value);
-                            setDayFilter('');
+                            setFilterMonth(e.target.value);
+                            setFilterDay('');
                         }}
                         style={styles.input}
-                        disabled={!yearFilter}
+                        disabled={!filterYear}
                     >
                         <option value="">Seleccionar Mes</option>
                         {getMonths().map(month => (
@@ -447,21 +426,21 @@ const MetricasVentas = () => {
 
                     {/* --- SELECT FOR DAY --- */}
                     <select
-                        value={dayFilter}
-                        onChange={(e) => setDayFilter(e.target.value)}
+                        value={filterDay}
+                        onChange={(e) => setFilterDay(e.target.value)}
                         style={styles.input}
-                        disabled={!yearFilter || !monthFilter}
+                        disabled={!filterYear || !filterMonth}
                     >
                         <option value="">Seleccionar Día</option>
-                        {getDaysInMonth(yearFilter, monthFilter).map(day => (
+                        {getDaysInMonth(filterYear, filterMonth).map(day => (
                             <option key={day} value={day}>{day}</option>
                         ))}
                     </select>
 
                     {/* --- SELECT FOR SELLER --- */}
                     <select
-                        value={selectedSellerId}
-                        onChange={(e) => setSelectedSellerId(e.target.value)}
+                        value={filterSellerId}
+                        onChange={(e) => setFilterSellerId(e.target.value)}
                         style={styles.input}
                     >
                         <option value="">Todos los Vendedores</option>
@@ -474,8 +453,8 @@ const MetricasVentas = () => {
 
                     {/* --- SELECT FOR PAYMENT METHOD --- */}
                     <select
-                        value={selectedPaymentMethod}
-                        onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                        value={filterPaymentMethod}
+                        onChange={(e) => setFilterPaymentMethod(e.target.value)}
                         style={styles.input}
                     >
                         {paymentMethods.map(method => (
@@ -490,23 +469,23 @@ const MetricasVentas = () => {
                 </div>
             </form>
 
-            {loadingMetrics && <p style={styles.loadingMessage}>Cargando métricas...</p>}
+            {loading && <p style={styles.loadingMessage}>Cargando métricas...</p>}
             {error && <p style={styles.error}>{error}</p>}
 
             {/* Displays message if no metrics after loading and no error */}
-            {!loadingMetrics && !metricas && !error && <p style={styles.noDataMessage}>No hay datos de métricas disponibles para los filtros seleccionados.</p>}
+            {!loading && !metrics && !error && <p style={styles.noDataMessage}>No hay datos de métricas disponibles para los filtros seleccionados.</p>}
 
-            {metricas && (
+            {metrics && (
                 <div style={styles.metricasData}>
                     <h2>Resumen del Período</h2>
                     <div style={styles.summaryGrid}>
                         <div style={styles.summaryItem}>
                             <h3>Total de Ventas</h3>
-                            <p style={styles.summaryValue}>${metricas.total_ventas_periodo ? metricas.total_ventas_periodo.toFixed(2) : '0.00'}</p>
+                            <p style={styles.summaryValue}>${metrics.total_ventas_periodo ? metrics.total_ventas_periodo.toFixed(2) : '0.00'}</p>
                         </div>
                         <div style={styles.summaryItem}>
-                            <h3>Productos Vendidos (Unidades)</h3>
-                            <p style={styles.summaryValue}>{metricas.total_productos_vendidos_periodo || 0}</p>
+                            <h3>Total Productos Vendidos (Unidades)</h3>
+                            <p style={styles.summaryValue}>{metrics.total_productos_vendidos_periodo || 0}</p>
                         </div>
                     </div>
 
@@ -543,7 +522,7 @@ const MetricasVentas = () => {
                     )}
 
                     {/* CHART: SALES BY PAYMENT METHOD (Pie Chart) */}
-                    {metricas.ventas_por_metodo_pago && metricas.ventas_por_metodo_pago.length > 0 ? (
+                    {metrics.ventas_por_metodo_pago && metrics.ventas_por_metodo_pago.length > 0 ? (
                         <div style={styles.chartContainer}>
                             <Pie data={salesByPaymentMethodChartData} options={salesByPaymentMethodChartOptions} />
                         </div>
@@ -563,8 +542,8 @@ const MetricasVentas = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {metricas.ventas_por_usuario && metricas.ventas_por_usuario.length > 0 ? (
-                                metricas.ventas_por_usuario.map((item, index) => (
+                            {metrics.ventas_por_usuario && metrics.ventas_por_usuario.length > 0 ? (
+                                metrics.ventas_por_usuario.map((item, index) => (
                                     <tr key={index}>
                                         <td style={styles.td}>{item.usuario__username}</td>
                                         <td style={styles.td}>${item.monto_total_vendido.toFixed(2)}</td>
@@ -587,8 +566,8 @@ const MetricasVentas = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {metricas.productos_mas_vendidos && metricas.productos_mas_vendidos.length > 0 ? (
-                                metricas.productos_mas_vendidos.map((item, index) => (
+                            {metrics.productos_mas_vendidos && metrics.productos_mas_vendidos.length > 0 ? (
+                                metrics.productos_mas_vendidos.map((item, index) => (
                                     <tr key={index}>
                                         <td style={styles.td}>{item.producto__nombre}</td>
                                         <td style={styles.td}>{item.cantidad_total}</td>
@@ -612,8 +591,8 @@ const MetricasVentas = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {metricas.ventas_por_metodo_pago && metricas.ventas_por_metodo_pago.length > 0 ? (
-                                metricas.ventas_por_metodo_pago.map((item, index) => (
+                            {metrics.ventas_por_metodo_pago && metrics.ventas_por_metodo_pago.length > 0 ? (
+                                metrics.ventas_por_metodo_pago.map((item, index) => (
                                     <tr key={index}>
                                         <td style={styles.td}>{item.metodo_pago}</td>
                                         <td style={styles.td}>${item.monto_total.toFixed(2)}</td>

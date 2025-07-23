@@ -1,9 +1,10 @@
 // BONITO_AMOR/frontend/src/components/PuntoVenta.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Añadir useCallback
 import axios from 'axios';
 import Barcode from 'react-barcode';
 import EtiquetasImpresion from './EtiquetasImpresion';
 import { useSales } from './SalesContext'; // Asegúrate de que SalesContext exista y funcione correctamente
+import { useAuth } from '../AuthContext'; // Importar useAuth para obtener selectedStoreSlug
 
 // Define TALLE_OPTIONS aquí o impórtalo desde un archivo de constantes si lo tienes
 const TALLE_OPTIONS = [
@@ -33,6 +34,9 @@ const PAYMENT_METHODS = [
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 function PuntoVenta() {
+    // Obtener el slug de la tienda seleccionada del AuthContext
+    const { selectedStoreSlug } = useAuth(); 
+
     // Desestructuración de funciones y estados del contexto de ventas
     const {
         carts,
@@ -72,46 +76,55 @@ function PuntoVenta() {
     const [productSearchTerm, setProductSearchTerm] = useState('');
 
     // useEffect para cargar los productos disponibles al montar el componente
+    const fetchProductos = useCallback(async () => {
+        if (!selectedStoreSlug) { // No cargar productos si no hay tienda seleccionada
+            setProductosDisponibles([]);
+            setIsLoading(false);
+            return;
+        }
+        setIsLoading(true); // Inicia el estado de carga
+        setError(null);     // Limpia errores previos
+        try {
+            // Realiza la solicitud GET a la API de productos, filtrando por tienda
+            const response = await axios.get(`${API_BASE_URL}/productos/?tienda_slug=${selectedStoreSlug}`);
+            
+            // Acceder al array 'results' de la respuesta paginada
+            const mappedProducts = response.data.results.map(p => ({
+                ...p,
+                precio: parseFloat(p.precio_venta || p.precio || 0)
+            }));
+            setProductosDisponibles(mappedProducts); // Actualiza el estado con los productos
+        } catch (err) {
+            console.error("Error al cargar productos:", err.response ? err.response.data : err.message);
+            setError("Error al cargar productos. Inténtalo de nuevo más tarde.");
+        } finally {
+            setIsLoading(false); // Finaliza el estado de carga
+        }
+    }, [selectedStoreSlug]); // Añadir selectedStoreSlug como dependencia
+
     useEffect(() => {
-        const fetchProductos = async () => {
-            setIsLoading(true); // Inicia el estado de carga
-            setError(null);     // Limpia errores previos
-            try {
-                // Realiza la solicitud GET a la API de productos
-                const response = await axios.get(`${API_BASE_URL}/productos/`);
-                
-                // *** CORRECCIÓN CLAVE AQUÍ: Acceder al array 'results' de la respuesta paginada ***
-                // Mapea los productos para asegurar que 'precio' sea un número flotante,
-                // usando 'precio_venta' si existe, de lo contrario 'precio', o 0 por defecto.
-                const mappedProducts = response.data.results.map(p => ({
-                    ...p,
-                    precio: parseFloat(p.precio_venta || p.precio || 0)
-                }));
-                setProductosDisponibles(mappedProducts); // Actualiza el estado con los productos
-            } catch (err) {
-                console.error("Error al cargar productos:", err.response ? err.response.data : err.message);
-                setError("Error al cargar productos. Inténtalo de nuevo más tarde.");
-            } finally {
-                setIsLoading(false); // Finaliza el estado de carga
-            }
-        };
         fetchProductos(); // Llama a la función para cargar productos
-    }, []); // El array vacío asegura que se ejecute solo una vez al montar
+    }, [fetchProductos]); // Ahora depende de fetchProductos (que a su vez depende de selectedStoreSlug)
 
     // Manejador para la búsqueda de productos por código de barras
-    const handleSearch = () => {
+    const handleSearch = async () => { // Hacer async para poder usar await
         if (!searchTerm) {
             alert('Por favor, ingresa un código de barras para buscar.');
             return;
         }
-        // Busca el producto en la lista de productos disponibles por su código de barras
-        const product = productosDisponibles.find(p => p.codigo_barras === searchTerm);
-        if (product) {
-            setFoundProduct(product); // Establece el producto encontrado
-            setCantidadInput(1);      // Reinicia la cantidad a 1
-        } else {
-            setFoundProduct(null);    // No se encontró el producto
-            alert('Producto no encontrado o error en la búsqueda.');
+        if (!selectedStoreSlug) {
+            alert('Por favor, selecciona una tienda antes de buscar productos.');
+            return;
+        }
+        try {
+            // Buscar producto por código de barras y tienda
+            const response = await axios.get(`${API_BASE_URL}/productos/buscar_por_barcode/?barcode=${searchTerm}&tienda_slug=${selectedStoreSlug}`);
+            setFoundProduct(response.data);
+            setCantidadInput(1);
+        } catch (err) {
+            setFoundProduct(null);
+            console.error("Error al buscar producto por barcode:", err.response ? err.response.data : err.message);
+            alert('Producto no encontrado en esta tienda o error en la búsqueda.');
         }
     };
 
@@ -159,6 +172,10 @@ function PuntoVenta() {
             alert('Por favor, selecciona un método de pago para la venta.');
             return;
         }
+        if (!selectedStoreSlug) {
+            alert('Por favor, selecciona una tienda antes de procesar la venta.');
+            return;
+        }
 
         // Prepara los datos de la venta para enviar a la API
         const ventaData = {
@@ -171,12 +188,13 @@ function PuntoVenta() {
         };
 
         try {
-            // Realiza la solicitud POST a la API de ventas
-            const response = await axios.post(`${API_BASE_URL}/ventas/`, ventaData);
+            // Realiza la solicitud POST a la API de ventas, incluyendo el slug de la tienda
+            const response = await axios.post(`${API_BASE_URL}/ventas/?tienda_slug=${selectedStoreSlug}`, ventaData);
             alert('Venta procesada con éxito. ID de Venta: ' + response.data.id);
             console.log('Venta exitosa:', response.data);
             finalizeCart(activeCartId); // Finaliza el carrito en el contexto
             setPaymentMethod('');      // Limpia el método de pago
+            fetchProductos(); // Recargar productos disponibles para reflejar cambios de stock
         } catch (error) {
             console.error('Error al procesar la venta:', error.response ? error.response.data : error.message);
             alert('Error al procesar la venta: ' + (error.response ? JSON.stringify(error.response.data) : error.message));
@@ -240,10 +258,19 @@ function PuntoVenta() {
         );
     });
 
+    // Si no hay tienda seleccionada, muestra un mensaje
+    if (!selectedStoreSlug) {
+        return (
+            <div style={{ padding: '50px', textAlign: 'center' }}>
+                <h2>Por favor, selecciona una tienda en la barra de navegación para usar el Punto de Venta.</h2>
+            </div>
+        );
+    }
+
     // Renderizado principal del componente PuntoVenta
     return (
         <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: 'auto' }}>
-            <h1>Punto de Venta</h1>
+            <h1>Punto de Venta ({selectedStoreSlug})</h1> {/* Muestra la tienda seleccionada */}
 
             {/* Sección de Gestión de Carritos */}
             <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
@@ -457,7 +484,7 @@ function PuntoVenta() {
                                         <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.nombre}</td>
                                         <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.talle}</td>
                                         <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.codigo_barras || 'N/A'}</td>
-                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>${parseFloat(product.precio).toFixed(2)}</td>
+                                        <td style={{ padding: '8px', border: '1% solid #ddd' }}>${parseFloat(product.precio).toFixed(2)}</td>
                                         <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.stock}</td>
                                         <td style={{ padding: '8px', border: '1px solid #ddd' }}>
                                             <button

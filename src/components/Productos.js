@@ -1,8 +1,9 @@
 // BONITO_AMOR/frontend/src/components/Productos.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Barcode from 'react-barcode';
 import EtiquetasImpresion from './EtiquetasImpresion';
+import { useAuth } from '../AuthContext'; // Importar useAuth
 
 // Define TALLE_OPTIONS aquí o impórtalo desde un archivo de constantes si lo tienes
 const TALLE_OPTIONS = [
@@ -23,6 +24,7 @@ const TALLE_OPTIONS = [
 const API_BASE_URL = process.env.REACT_APP_API_URL; 
 
 function Productos() {
+  const { selectedStoreSlug } = useAuth(); // Obtener el slug de la tienda seleccionada
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,8 +40,7 @@ function Productos() {
   const [successMessage, setSuccessMessage] = useState(null);
   const [mensajeError, setMensajeError] = useState(null);
 
-  // Estado para productos seleccionados para imprimir, ahora es un objeto { productId: { productData, quantityToPrint } }
-  const [selectedProducts, setSelectedProducts] = useState({}); 
+  const [selectedProducts, setSelectedProducts] = useState(new Set());
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   // ESTADOS PARA LA EDICIÓN DE STOCK EN LÍNEA
@@ -51,10 +52,16 @@ function Productos() {
   const [newPriceValue, setNewPriceValue] = useState('');
 
 
-  const fetchProductos = async () => {
+  const fetchProductos = useCallback(async () => {
+    if (!selectedStoreSlug) { // No cargar productos si no hay tienda seleccionada
+        setProductos([]);
+        setLoading(false);
+        return;
+    }
     try {
-      const response = await axios.get(`${API_BASE_URL}/productos/`);
-      setProductos(response.data.results); // Acceder al array 'results' de la respuesta paginada
+      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la URL ***
+      const response = await axios.get(`${API_BASE_URL}/productos/?tienda_slug=${selectedStoreSlug}`);
+      setProductos(response.data.results); 
       setLoading(false);
       setError(null);
     } catch (err) {
@@ -62,18 +69,22 @@ function Productos() {
       setLoading(false);
       console.error('Error fetching products:', err.response || err.message);
     }
-  };
+  }, [selectedStoreSlug]); // Añadir selectedStoreSlug como dependencia
 
   useEffect(() => {
     fetchProductos();
-  }, []);
+  }, [fetchProductos]); // Ahora depende de fetchProductos (que a su vez depende de selectedStoreSlug)
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensajeError(null);
     setSuccessMessage(null);
 
-    // Validaciones del formulario de añadir producto
+    if (!selectedStoreSlug) { // Validar que haya una tienda seleccionada antes de añadir
+        setMensajeError('Por favor, selecciona una tienda antes de añadir productos.');
+        return;
+    }
+
     if (!nombre || !precioCompra || !precioVenta || !stock || !talle) {
         setMensajeError('Por favor, completa todos los campos requeridos (Nombre, Precios, Stock, Talle).');
         return;
@@ -94,18 +105,20 @@ function Productos() {
     const nuevoProducto = {
       nombre,
       descripcion: descripcion || null,
-      codigo_barras: codigoBarras || null, // Se genera automáticamente si es null o vacío
+      codigo_barras: codigoBarras || null, 
       precio_compra: parseFloat(precioCompra),
       precio_venta: parseFloat(precioVenta),
       stock: parseInt(stock),
       talle,
+      // La tienda se asigna en el backend a través del slug
     };
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/productos/`, nuevoProducto);
+      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la URL para la creación ***
+      const response = await axios.post(`${API_BASE_URL}/productos/?tienda_slug=${selectedStoreSlug}`, nuevoProducto);
       console.log('Producto añadido:', response.data);
       setSuccessMessage('Producto añadido con éxito!');
-      fetchProductos(); // Recargar la lista de productos
+      fetchProductos(); 
       // Limpia el formulario después de añadir
       setNombre('');
       setDescripcion('');
@@ -121,59 +134,30 @@ function Productos() {
   };
 
   // --- Funciones para selección y impresión de códigos de barras ---
-  const handleSelectProduct = (product) => {
+  const handleSelectProduct = (productId) => {
     setSelectedProducts(prevSelected => {
-      const newSelected = { ...prevSelected };
-      if (newSelected[product.id]) {
-        delete newSelected[product.id]; // Deseleccionar si ya estaba seleccionado
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(productId)) {
+        newSelected.delete(productId);
       } else {
-        newSelected[product.id] = { ...product, quantityToPrint: 1 }; // Seleccionar con cantidad 1 por defecto
+        newSelected.add(productId);
       }
       return newSelected;
     });
   };
 
-  const handleQuantityChange = (productId, newQuantity) => {
-    setSelectedProducts(prevSelected => {
-      const updatedSelected = { ...prevSelected };
-      const quantity = parseInt(newQuantity);
-
-      if (updatedSelected[productId]) {
-        // Validar que la cantidad sea un número positivo
-        if (!isNaN(quantity) && quantity > 0) {
-          updatedSelected[productId] = { ...updatedSelected[productId], quantityToPrint: quantity };
-        } else if (newQuantity === '') { // Permitir vaciar el campo temporalmente
-          updatedSelected[productId] = { ...updatedSelected[productId], quantityToPrint: '' };
-        } else {
-          // Opcional: mostrar un error o revertir a la última cantidad válida
-          console.warn('Cantidad inválida:', newQuantity);
-        }
-      }
-      return updatedSelected;
-    });
-  };
-
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      const allProductsMap = {};
-      productos.forEach(p => {
-        allProductsMap[p.id] = { ...p, quantityToPrint: 1 }; // Seleccionar todos con cantidad 1
-      });
-      setSelectedProducts(allProductsMap);
+      const allProductIds = new Set(productos.map(p => p.id));
+      setSelectedProducts(allProductIds);
     } else {
-      setSelectedProducts({}); // Deseleccionar todos
+      setSelectedProducts(new Set());
     }
   };
 
   const handlePrintSelected = () => {
-    if (Object.keys(selectedProducts).length === 0) {
+    if (selectedProducts.size === 0) {
       alert('Por favor, selecciona al menos un producto para imprimir.');
-      return;
-    }
-    // Verificar que todas las cantidades sean válidas antes de imprimir
-    const invalidQuantities = Object.values(selectedProducts).some(p => isNaN(parseInt(p.quantityToPrint)) || parseInt(p.quantityToPrint) <= 0);
-    if (invalidQuantities) {
-      alert('Por favor, asegúrate de que todas las cantidades a imprimir sean números enteros positivos.');
       return;
     }
     setShowPrintPreview(true);
@@ -183,17 +167,21 @@ function Productos() {
     setShowPrintPreview(false);
   };
 
-  // productosParaImprimir ahora es un array de los valores del objeto selectedProducts
-  const productosParaImprimir = Object.values(selectedProducts);
+  const productosParaImprimir = productos.filter(p => selectedProducts.has(p.id));
 
   // --- FUNCIONES PARA MODIFICAR Y ELIMINAR PRODUCTOS ---
 
   const handleDeleteProduct = async (productId) => {
+    if (!selectedStoreSlug) { // Validar que haya una tienda seleccionada
+        alert('Por favor, selecciona una tienda para eliminar productos.');
+        return;
+    }
     if (window.confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción es irreversible.')) {
       try {
-        await axios.delete(`${API_BASE_URL}/productos/${productId}/`);
+        // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la URL para la eliminación ***
+        await axios.delete(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`);
         setSuccessMessage('Producto eliminado con éxito!');
-        fetchProductos(); // Recargar la lista de productos
+        fetchProductos(); 
       } catch (err) {
         setMensajeError('Error al eliminar el producto: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
         console.error('Error deleting product:', err.response || err);
@@ -204,12 +192,17 @@ function Productos() {
   // --- Funciones para Edición de STOCK ---
   const handleEditStockClick = (productId, currentStock) => {
     setEditingStockId(productId);
-    setNewStockValue(currentStock.toString()); // Convertir a string para el input
+    setNewStockValue(currentStock.toString()); 
   };
 
   const handleSaveStock = async (productId) => {
     setMensajeError(null);
     setSuccessMessage(null);
+
+    if (!selectedStoreSlug) { // Validar que haya una tienda seleccionada
+        setMensajeError('Por favor, selecciona una tienda para actualizar el stock.');
+        return;
+    }
 
     const stockInt = parseInt(newStockValue);
 
@@ -219,12 +212,12 @@ function Productos() {
     }
 
     try {
-      // Usamos PATCH para actualizar solo el campo 'stock'
-      await axios.patch(`${API_BASE_URL}/productos/${productId}/`, { stock: stockInt });
+      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la URL para la actualización ***
+      await axios.patch(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`, { stock: stockInt });
       setSuccessMessage('Stock actualizado con éxito!');
-      setEditingStockId(null); // Salir del modo edición
-      setNewStockValue(''); // Limpiar el valor temporal
-      fetchProductos(); // Recargar la lista para mostrar el stock actualizado
+      setEditingStockId(null); 
+      setNewStockValue(''); 
+      fetchProductos(); 
     } catch (err) {
       setMensajeError('Error al actualizar el stock: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
       console.error('Error updating stock:', err.response || err);
@@ -239,12 +232,17 @@ function Productos() {
   // --- NUEVAS FUNCIONES para Edición de PRECIO ---
   const handleEditPriceClick = (productId, currentPrice) => {
     setEditingPriceId(productId);
-    setNewPriceValue(currentPrice.toString()); // Convertir a string para el input
+    setNewPriceValue(currentPrice.toString()); 
   };
 
   const handleSavePrice = async (productId) => {
     setMensajeError(null);
     setSuccessMessage(null);
+
+    if (!selectedStoreSlug) { // Validar que haya una tienda seleccionada
+        setMensajeError('Por favor, selecciona una tienda para actualizar el precio.');
+        return;
+    }
 
     const priceFloat = parseFloat(newPriceValue);
 
@@ -254,12 +252,12 @@ function Productos() {
     }
 
     try {
-      // Usamos PATCH para actualizar solo el campo 'precio_venta'
-      await axios.patch(`${API_BASE_URL}/productos/${productId}/`, { precio_venta: priceFloat });
+      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la URL para la actualización ***
+      await axios.patch(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`, { precio_venta: priceFloat });
       setSuccessMessage('Precio de venta actualizado con éxito!');
-      setEditingPriceId(null); // Salir del modo edición
-      setNewPriceValue(''); // Limpiar el valor temporal
-      fetchProductos(); // Recargar la lista para mostrar el precio actualizado
+      setEditingPriceId(null); 
+      setNewPriceValue(''); 
+      fetchProductos(); 
     } catch (err) {
       setMensajeError('Error al actualizar el precio de venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
       console.error('Error updating price:', err.response || err);
@@ -281,6 +279,15 @@ function Productos() {
     return <div style={{ color: 'red', marginBottom: '10px', padding: '20px', border: '1px solid red' }}>{error}</div>;
   }
 
+  // Si no hay tienda seleccionada, muestra un mensaje
+  if (!selectedStoreSlug) {
+    return (
+        <div style={{ padding: '50px', textAlign: 'center' }}>
+            <h2>Por favor, selecciona una tienda en la barra de navegación para gestionar productos.</h2>
+        </div>
+    );
+  }
+
   if (showPrintPreview) {
     return (
       <div style={{ padding: '20px' }}>
@@ -297,7 +304,7 @@ function Productos() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: 'auto' }}>
-      <h1>Gestión de Productos</h1>
+      <h1>Gestión de Productos ({selectedStoreSlug})</h1> {/* Muestra la tienda seleccionada */}
 
       {mensajeError && <div style={{ color: 'red', marginBottom: '10px', border: '1px solid red', padding: '10px' }}>{mensajeError}</div>}
       {successMessage && <div style={{ color: 'green', marginBottom: '10px', border: '1px solid green', padding: '10px' }}>{successMessage}</div>}
@@ -343,12 +350,12 @@ function Productos() {
 
       <h2>Lista de Productos Existentes</h2>
       {productos.length === 0 ? (
-        <p>No hay productos disponibles.</p>
+        <p>No hay productos disponibles para esta tienda.</p>
       ) : (
         <>
           <div style={{ marginBottom: '15px' }}>
             <button onClick={handlePrintSelected} style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-              Imprimir Códigos de Barras Seleccionados ({Object.keys(selectedProducts).length})
+              Imprimir Códigos de Barras Seleccionados ({selectedProducts.size})
             </button>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', border: '1px solid #ddd' }}>
@@ -358,8 +365,7 @@ function Productos() {
                   <input
                     type="checkbox"
                     onChange={handleSelectAll}
-                    // Marca el checkbox "Seleccionar Todo" si todos los productos están en selectedProducts
-                    checked={Object.keys(selectedProducts).length === productos.length && productos.length > 0}
+                    checked={selectedProducts.size === productos.length && productos.length > 0}
                   />
                 </th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>ID</th>
@@ -367,10 +373,9 @@ function Productos() {
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Talle</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Código</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Imagen Código</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th> {/* Columna de Precio de Venta */}
+                <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th> 
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Stock</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Descripción</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Cantidad a Imprimir</th> {/* Nueva columna */}
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Acciones</th>
               </tr>
             </thead>
@@ -380,8 +385,8 @@ function Productos() {
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                     <input
                       type="checkbox"
-                      checked={!!selectedProducts[producto.id]} // Verifica si el producto está en el objeto
-                      onChange={() => handleSelectProduct(producto)} // Pasa el objeto producto completo
+                      checked={selectedProducts.has(producto.id)}
+                      onChange={() => handleSelectProduct(producto.id)}
                     />
                   </td>
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.id}</td>
@@ -463,20 +468,6 @@ function Productos() {
                     )}
                   </td>
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.descripcion || 'Sin descripción'}</td>
-                  {/* Nueva celda para la cantidad a imprimir */}
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>
-                    {selectedProducts[producto.id] ? (
-                      <input
-                        type="number"
-                        min="1"
-                        value={selectedProducts[producto.id].quantityToPrint}
-                        onChange={(e) => handleQuantityChange(producto.id, e.target.value)}
-                        style={{ width: '60px', padding: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
-                      />
-                    ) : (
-                      <span style={{ color: '#888' }}>-</span>
-                    )}
-                  </td>
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                     <button
                       onClick={() => handleDeleteProduct(producto.id)}
