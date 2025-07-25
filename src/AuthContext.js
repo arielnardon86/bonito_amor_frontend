@@ -79,19 +79,15 @@ export const AuthProvider = ({ children }) => {
             const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
             setUser(userResponse.data);
 
-            // --- CORRECCIÓN CLAVE AQUÍ: Simplificar la lógica de selección de tienda en login ---
             // Si storeSlugFromUrl está presente, úsalo.
-            // De lo contrario, no intentes seleccionar una tienda por defecto aquí.
-            // La lógica de redirección a HomePage para selección de tienda se manejará en AppContent.
+            // De lo contrario, asegúrate de que selectedStoreSlug sea null para que HomePage lo maneje.
             if (storeSlugFromUrl) {
                 selectStore(storeSlugFromUrl);
             } else {
-                // Si no se proporcionó un storeSlug y no hay uno seleccionado,
-                // asegúrate de que selectedStoreSlug sea null para que HomePage lo maneje.
                 setSelectedStoreSlug(null);
                 localStorage.removeItem('selected_store_slug');
             }
-            // --- FIN CORRECCIÓN ---
+            // La lógica de auto-selección de una única tienda se maneja en HomePage o Navbar.
 
             return true; // Indicate success
         } catch (err) {
@@ -135,14 +131,12 @@ export const AuthProvider = ({ children }) => {
             // Fetch stores first. This is crucial for the Navbar and initial store selection logic.
             await fetchStores(); 
 
+            // Solo restaurar la tienda seleccionada si ya estaba en localStorage
             if (stored_store_slug) {
                 setSelectedStoreSlug(stored_store_slug);
-            } else if (stores.length === 1) { // If only one store is available and no store is selected
-                // This block is executed AFTER fetchStores has completed.
-                // It ensures that if there's only one store, it's automatically selected.
-                setSelectedStoreSlug(stores[0].slug);
-                localStorage.setItem('selected_store_slug', stores[0].slug);
             }
+            // Eliminada la lógica de auto-selección de una única tienda aquí.
+            // Esa lógica se manejará en HomePage o Navbar.
 
 
             if (access_token) {
@@ -219,7 +213,7 @@ export const AuthProvider = ({ children }) => {
         }, 1000 * 60);
 
         return () => clearInterval(interval);
-    }, [refreshToken, logout, setAuthToken, fetchStores, stores.length]); // Added stores.length to dependencies for the single store auto-selection logic
+    }, [refreshToken, logout, setAuthToken, fetchStores]); // Removida la dependencia 'stores.length'
 
 
     const authContextValue = {
