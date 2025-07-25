@@ -8,16 +8,13 @@ const AuthContext = createContext(null);
 
 export const useAuth = () => useContext(AuthContext);
 
-// URL base de la API, obtenida de las variables de entorno de React
-const API_BASE_URL = process.env.REACT_APP_API_URL; 
-
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [token, setToken] = useState(localStorage.getItem('access_token'));
-    const [authError, setAuthError] = useState(null); 
+    const [error, setError] = useState(null); // Added error state
+    const [stores, setStores] = useState([]); // Added stores state
     const [selectedStoreSlug, setSelectedStoreSlug] = useState(localStorage.getItem('selected_store_slug') || null);
-    const [stores, setStores] = useState([]); // NUEVO: Estado para almacenar la lista de tiendas
     const navigate = useNavigate();
 
     const setAuthToken = useCallback((tkn) => {
@@ -34,12 +31,10 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        localStorage.removeItem('selected_store_slug'); 
-        setSelectedStoreSlug(null); 
-        setStores([]); // Limpiar tiendas al cerrar sesión
+        localStorage.removeItem('selected_store_slug');
+        setSelectedStoreSlug(null);
         setAuthToken(null);
-        setAuthError(null); 
-        navigate('/login');
+        navigate('/login/bonito-amor'); // Default redirect to Bonito Amor login
     }, [setAuthToken, navigate]);
 
     const refreshToken = useCallback(async () => {
@@ -51,7 +46,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const response = await axios.post(`${API_BASE_URL}/token/refresh/`, {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/refresh/`, {
                 refresh: refresh_token,
             });
             const new_access_token = response.data.access;
@@ -65,38 +60,11 @@ export const AuthProvider = ({ children }) => {
         }
     }, [setAuthToken, logout]);
 
-    // NUEVA FUNCIÓN: Para obtener la lista de tiendas
-    const fetchStores = useCallback(async (currentAccessToken) => {
-        if (!currentAccessToken) {
-            console.log("No token available to fetch stores.");
-            setStores([]);
-            return;
-        }
+    // Modified login function to handle authentication API call
+    const login = useCallback(async (username, password, storeSlugFromUrl) => { // Added storeSlugFromUrl
+        setError(null); // Clear previous errors
         try {
-            const response = await axios.get(`${API_BASE_URL}/tiendas/`, {
-                headers: { 'Authorization': `Bearer ${currentAccessToken}` }
-            });
-            setStores(response.data.results || response.data); // Asume paginación o array directo
-            // Si hay tiendas y no hay una seleccionada, selecciona la primera por defecto
-            if (response.data.results && response.data.results.length > 0 && !localStorage.getItem('selected_store_slug')) {
-                selectStore(response.data.results[0].slug);
-            }
-        } catch (error) {
-            console.error("Error fetching stores:", error.response ? error.response.data : error.message);
-            setStores([]);
-            // No es un error crítico si el usuario no es superusuario, pero lo logueamos
-            if (error.response && error.response.status === 403) {
-                console.warn("User does not have permission to list stores.");
-            } else {
-                setAuthError("Error al cargar las tiendas disponibles.");
-            }
-        }
-    }, []);
-
-    const login = useCallback(async (username, password) => {
-        setAuthError(null); 
-        try {
-            const response = await axios.post(`${API_BASE_URL}/token/`, {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/`, {
                 username,
                 password,
             });
@@ -106,39 +74,49 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('refresh_token', refresh);
             setAuthToken(access);
 
-            const userResponse = await axios.get(`${API_BASE_URL}/users/me/`, {
-                headers: { 'Authorization': `Bearer ${access}` }
-            });
+            // Fetch user details immediately after successful login
+            const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
             setUser(userResponse.data);
 
-            // Después de un login exitoso, intenta cargar las tiendas
-            await fetchStores(access); 
-            return true; 
-        } catch (error) {
-            console.error("Error logging in:", error.response ? error.response.data : error.message);
-            if (error.response && error.response.status === 401) {
-                setAuthError("Credenciales inválidas. Por favor, verifica tu usuario y contraseña.");
-            } else {
-                setAuthError("Error al iniciar sesión. Inténtalo de nuevo más tarde.");
+            // Automatically select the store if storeSlugFromUrl is provided
+            // and the user has access to it (or it's the only store)
+            if (storeSlugFromUrl) {
+                selectStore(storeSlugFromUrl);
+            } else if (stores.length > 0) {
+                // If no specific store was requested, but user has stores, default to the first one
+                selectStore(stores[0].slug);
             }
-            setUser(null);
-            setAuthToken(null);
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            return false; 
-        }
-    }, [setAuthToken, fetchStores]);
 
+            return true; // Indicate success
+        } catch (err) {
+            console.error("Login failed:", err.response ? err.response.data : err.message);
+            const errorMessage = err.response?.data?.detail || "Error de inicio de sesión. Credenciales inválidas.";
+            setError(errorMessage);
+            logout(); // Logout on failed login attempt
+            return false; // Indicate failure
+        }
+    }, [setAuthToken, logout, selectStore, stores]); // Added stores to dependencies
+
+    // Function to fetch stores
+    const fetchStores = useCallback(async () => {
+        try {
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/tiendas/`);
+            setStores(response.data.results || response.data);
+        } catch (err) {
+            console.error("Error fetching stores:", err.response ? err.response.data : err.message);
+        }
+    }, []);
+
+    // Function to set the selected store
     const selectStore = useCallback((slug) => {
         localStorage.setItem('selected_store_slug', slug);
         setSelectedStoreSlug(slug);
         console.log("Tienda seleccionada:", slug);
     }, []);
 
-    const clearAuthError = useCallback(() => {
-        setAuthError(null);
+    const clearError = useCallback(() => {
+        setError(null);
     }, []);
-
 
     useEffect(() => {
         const loadUserAndStores = async () => {
@@ -150,40 +128,53 @@ export const AuthProvider = ({ children }) => {
                 setSelectedStoreSlug(stored_store_slug);
             }
 
+            // Fetch stores first, as login might depend on them
+            await fetchStores();
+
             if (access_token) {
                 try {
                     console.log("AuthContext: Attempting to decode token...");
                     const decodedToken = jwtDecode(access_token);
                     const currentTime = Date.now() / 1000;
 
-                    let currentValidToken = access_token;
-
                     if (decodedToken.exp < currentTime) {
                         console.log("Access token expired. Attempting to refresh...");
-                        currentValidToken = await refreshToken();
-                    }
-
-                    if (currentValidToken) {
-                        setAuthToken(currentValidToken); // Asegurarse de que el token esté en axios defaults
-                        try {
-                            const userResponse = await axios.get(`${API_BASE_URL}/users/me/`);
-                            if (userResponse.data) {
-                                setUser(userResponse.data);
-                                // Después de cargar el usuario, cargar las tiendas
-                                await fetchStores(currentValidToken); 
-                            } else {
-                                console.warn("No user data received from /users/me/. Logging out.");
+                        const new_access_token = await refreshToken();
+                        if (new_access_token) {
+                            try {
+                                const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
+                                if (userResponse.data) {
+                                    setUser(userResponse.data);
+                                    setToken(new_access_token);
+                                } else {
+                                    console.warn("No user data received from /users/me/ after refresh. Logging out.");
+                                    logout();
+                                }
+                            } catch (userError) {
+                                console.error("Error fetching user details after refresh:", userError.response ? userError.response.data : userError.message);
                                 logout();
                             }
-                        } catch (userError) {
-                            console.error("Error fetching user details:", userError.response ? userError.response.data : userError.message);
+                        } else {
                             logout();
                         }
                     } else {
-                        logout();
+                        setAuthToken(access_token);
+                        try {
+                            const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
+                            if (userResponse.data) {
+                                setUser(userResponse.data);
+                                setToken(access_token);
+                            } else {
+                                console.warn("No user data received from /users/me/ with valid token. Logging out.");
+                                logout();
+                            }
+                        } catch (userError) {
+                            console.error("Error fetching user details with valid token:", userError.response ? userError.response.data : userError.message);
+                            logout();
+                        }
                     }
                 } catch (error) {
-                    console.error("Error decoding access token or other issue during loadUserAndStores:", error);
+                    console.error("Error decoding access token or other issue during loadUser:", error);
                     logout();
                 }
             } else {
@@ -224,13 +215,13 @@ export const AuthProvider = ({ children }) => {
         logout,
         loading,
         token,
-        selectedStoreSlug, 
-        selectStore,       
-        stores, // Exponer la lista de tiendas
+        error, // Expose error
+        clearError, // Expose clearError
+        stores, // Expose stores
+        selectedStoreSlug,
+        selectStore,
         isStaff: user ? user.is_staff : false,
         isSuperUser: user ? user.is_superuser : false,
-        error: authError, 
-        clearError: clearAuthError, 
     };
 
     return (

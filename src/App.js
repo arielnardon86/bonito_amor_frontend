@@ -64,8 +64,8 @@ const Navbar = () => {
           </div>
 
           <ul className={isOpen ? "nav-links active" : "nav-links"}>
-            {/* Selector de Tienda: Solo visible si hay tiendas y el usuario está autenticado */}
-            {stores.length > 0 && (
+            {/* Selector de Tienda: Solo visible si hay tiendas, el usuario está autenticado, Y NO HAY UNA TIENDA SELECCIONADA */}
+            {stores.length > 0 && !selectedStoreSlug && ( // <-- CAMBIO AQUÍ
                 <li className="store-select-item">
                     <select
                         value={selectedStoreSlug || ''}
@@ -82,9 +82,16 @@ const Navbar = () => {
                 </li>
             )}
 
+            {/* Mostrar el nombre de la tienda seleccionada si existe */}
+            {selectedStoreSlug && (
+                <li className="store-name-display">
+                    Tienda: <strong>{stores.find(s => s.slug === selectedStoreSlug)?.nombre || selectedStoreSlug.replace(/-/g, ' ').toUpperCase()}</strong>
+                </li>
+            )}
+
             {/* Punto de Venta: Accesible para Staff y Superusuarios */}
             {user && (user.is_staff || user.is_superuser) && ( 
-                <li onClick={() => setIsOpen(false)}><Link to="/">Punto de Venta</Link></li>
+                <li onClick={() => setIsOpen(false)}><Link to="/punto-venta">Punto de Venta</Link></li>
             )}
             
             {/* Gestión de Productos, Usuarios, Métricas, Ventas: Solo para Superusuarios */}
@@ -125,23 +132,21 @@ function AppContent() {
           {/* Ruta de login, ahora puede recibir un storeSlug opcional */}
           <Route path="/login/:storeSlug?" element={<Login />} />
 
-          {/* CAMBIO CLAVE AQUÍ:
-            1. Si el usuario está autenticado Y tiene una tienda seleccionada,
-               la ruta principal '/' debe ir al PuntoVenta.
-            2. Si el usuario NO está autenticado O NO tiene una tienda seleccionada,
-               la ruta principal '/' debe ir a HomePage (selección de tienda).
-            
-            El orden de las rutas es importante. Primero evaluamos las condiciones de autenticación/tienda.
-          */}
-          {isAuthenticated && selectedStoreSlug ? (
-            // Si está autenticado y tiene tienda seleccionada, la ruta principal es PuntoVenta
-            <Route path="/" element={
-              <ProtectedRoute staffOnly={true}>
-                <PuntoVenta />
-              </ProtectedRoute>
-            } />
+          {/* Logic for root path */}
+          {isAuthenticated ? (
+            selectedStoreSlug ? (
+              // If authenticated and store selected, go to PuntoVenta
+              <Route path="/" element={
+                <ProtectedRoute staffOnly={true}>
+                  <PuntoVenta />
+                </ProtectedRoute>
+              } />
+            ) : (
+              // If authenticated but no store selected, go to HomePage to select
+              <Route path="/" element={<HomePage />} />
+            )
           ) : (
-            // De lo contrario, la ruta principal es HomePage (selección de tienda)
+            // If not authenticated, go to HomePage (which will lead to login)
             <Route path="/" element={<HomePage />} />
           )}
 
@@ -190,7 +195,8 @@ function AppContent() {
             </>
           )}
 
-          {/* Si está autenticado pero NO tiene tienda seleccionada, y no está en una ruta protegida */}
+          {/* This block is now redundant due to the root path logic above and catch-all */}
+          {/* If está autenticado pero NO tiene tienda seleccionada, y no está en una ruta protegida */}
           {isAuthenticated && !selectedStoreSlug && (
             <Route path="*" element={
               <div style={{ padding: '50px', textAlign: 'center' }}>

@@ -1,39 +1,45 @@
 // src/components/Login.js
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
-import { useNavigate, useParams } from 'react-router-dom'; // Importa useParams
+import { useNavigate, useParams } from 'react-router-dom';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const { login, isAuthenticated, error, clearError } = useAuth();
+    const { login, isAuthenticated, error, clearError, selectedStoreSlug } = useAuth(); // Removed selectStore here, as login handles it
     const navigate = useNavigate();
-    const { storeSlug } = useParams(); // <--- ¡NUEVO! Captura el storeSlug de la URL
+    const { storeSlug } = useParams();
 
-    // Limpiar errores al montar el componente
     useEffect(() => {
         clearError();
     }, [clearError]);
 
-    // Redirigir si ya está autenticado
     useEffect(() => {
         if (isAuthenticated) {
-            navigate('/'); // Redirige a la página principal después del login
+            // If already authenticated and a store is selected, navigate to PuntoVenta
+            // Otherwise, HomePage will prompt for store selection
+            if (selectedStoreSlug) {
+                navigate('/punto-venta'); // Navigate to Punto de Venta if a store is selected
+            } else {
+                navigate('/'); // Go to HomePage to select store
+            }
         }
-    }, [isAuthenticated, navigate]);
+    }, [isAuthenticated, navigate, selectedStoreSlug]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        // Aquí podrías usar el storeSlug si tu backend lo necesitara para el login
-        // Por ahora, el login es genérico, pero el slug ya está disponible.
-        await login(username, password); 
+        // Pass storeSlug from URL to login function
+        const success = await login(username, password, storeSlug); // Pass storeSlug
+        if (success) {
+            // If login is successful, AuthContext will handle setting selectedStoreSlug
+            // and the useEffect above will handle navigation.
+        }
     };
 
     return (
         <div style={styles.container}>
             <div style={styles.loginBox}>
                 <h2 style={styles.header}>Iniciar Sesión</h2>
-                {/* Muestra el slug de la tienda si está presente */}
                 {storeSlug && <p style={styles.storeName}>Tienda: {storeSlug.replace(/-/g, ' ').toUpperCase()}</p>}
                 {error && <p style={styles.error}>{error}</p>}
                 <form onSubmit={handleSubmit}>
@@ -89,7 +95,7 @@ const styles = {
         color: '#333',
         fontSize: '2em',
     },
-    storeName: { // Nuevo estilo para mostrar el nombre de la tienda
+    storeName: {
         marginBottom: '20px',
         color: '#007bff',
         fontSize: '1.2em',
@@ -135,5 +141,4 @@ const styles = {
         borderRadius: '5px',
     },
 };
-
 export default Login;
