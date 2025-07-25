@@ -12,8 +12,8 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [token, setToken] = useState(localStorage.getItem('access_token'));
-    const [error, setError] = useState(null); // Added error state
-    const [stores, setStores] = useState([]); // Added stores state
+    const [error, setError] = useState(null); 
+    const [stores, setStores] = useState([]); 
     const [selectedStoreSlug, setSelectedStoreSlug] = useState(localStorage.getItem('selected_store_slug') || null);
     const navigate = useNavigate();
 
@@ -34,7 +34,8 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('selected_store_slug');
         setSelectedStoreSlug(null);
         setAuthToken(null);
-        navigate('/login/bonito-amor'); // Default redirect to Bonito Amor login
+        // Redirige al login de Bonito Amor por defecto al cerrar sesión
+        navigate('/login/bonito-amor'); 
     }, [setAuthToken, navigate]);
 
     const refreshToken = useCallback(async () => {
@@ -55,15 +56,22 @@ export const AuthProvider = ({ children }) => {
             return new_access_token;
         } catch (error) {
             console.error("Error refreshing token:", error.response ? error.response.data : error.message);
-            setError(error.response?.data?.detail || "Error al refrescar el token."); // Set error state
+            setError(error.response?.data?.detail || "Error al refrescar el token."); 
             logout();
             return null;
         }
     }, [setAuthToken, logout, setError]);
 
+    // Function to set the selected store
+    const selectStore = useCallback((slug) => {
+        localStorage.setItem('selected_store_slug', slug);
+        setSelectedStoreSlug(slug);
+        console.log("Tienda seleccionada:", slug);
+    }, []);
+
     // Modified login function to handle authentication API call
-    const login = useCallback(async (username, password, storeSlugFromUrl) => { // Added storeSlugFromUrl
-        setError(null); // Clear previous errors
+    const login = useCallback(async (username, password, storeSlugFromUrl) => { 
+        setError(null); 
         try {
             const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/`, {
                 username,
@@ -79,25 +87,26 @@ export const AuthProvider = ({ children }) => {
             const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
             setUser(userResponse.data);
 
-            // Si storeSlugFromUrl está presente, úsalo.
-            // De lo contrario, asegúrate de que selectedStoreSlug sea null para que HomePage lo maneje.
+            // Si storeSlugFromUrl está presente, úsalo para seleccionar la tienda.
+            // La redirección a HomePage para selección de tienda se manejará en AppContent si no hay storeSlugFromUrl.
             if (storeSlugFromUrl) {
                 selectStore(storeSlugFromUrl);
             } else {
+                // Si no se proporcionó un storeSlug y no hay uno seleccionado,
+                // asegúrate de que selectedStoreSlug sea null para que HomePage lo maneje.
                 setSelectedStoreSlug(null);
                 localStorage.removeItem('selected_store_slug');
             }
-            // La lógica de auto-selección de una única tienda se maneja en HomePage o Navbar.
 
-            return true; // Indicate success
+            return true; 
         } catch (err) {
             console.error("Login failed:", err.response ? err.response.data : err.message);
             const errorMessage = err.response?.data?.detail || "Error de inicio de sesión. Credenciales inválidas.";
             setError(errorMessage);
-            logout(); // Logout on failed login attempt
-            return false; // Indicate failure
+            logout(); 
+            return false; 
         }
-    }, [setAuthToken, logout, selectStore, setError]); // Removed 'stores' from dependencies as it's not directly used here for selection
+    }, [setAuthToken, logout, selectStore, setError]); 
 
     // Function to fetch stores
     const fetchStores = useCallback(async () => {
@@ -106,17 +115,10 @@ export const AuthProvider = ({ children }) => {
             setStores(response.data.results || response.data);
         } catch (err) {
             console.error("Error fetching stores:", err.response ? err.response.data : err.message);
-            setError("Error al cargar tiendas."); // Set error state
-            setStores([]); // Ensure stores is always an array, even on error
+            setError("Error al cargar tiendas."); 
+            setStores([]); 
         }
     }, [setError]);
-
-    // Function to set the selected store
-    const selectStore = useCallback((slug) => {
-        localStorage.setItem('selected_store_slug', slug);
-        setSelectedStoreSlug(slug);
-        console.log("Tienda seleccionada:", slug);
-    }, []);
 
     const clearError = useCallback(() => {
         setError(null);
@@ -128,16 +130,14 @@ export const AuthProvider = ({ children }) => {
             const access_token = localStorage.getItem('access_token');
             const stored_store_slug = localStorage.getItem('selected_store_slug');
 
-            // Fetch stores first. This is crucial for the Navbar and initial store selection logic.
+            // Siempre intentar cargar las tiendas al inicio.
             await fetchStores(); 
 
             // Solo restaurar la tienda seleccionada si ya estaba en localStorage
             if (stored_store_slug) {
                 setSelectedStoreSlug(stored_store_slug);
             }
-            // Eliminada la lógica de auto-selección de una única tienda aquí.
-            // Esa lógica se manejará en HomePage o Navbar.
-
+            // No hay auto-selección de tienda única aquí. HomePage o Navbar lo manejarán.
 
             if (access_token) {
                 try {
@@ -149,6 +149,7 @@ export const AuthProvider = ({ children }) => {
                         console.log("Access token expired. Attempting to refresh...");
                         const new_access_token = await refreshToken();
                         if (new_access_token) {
+                            // Si el token se refrescó, volvemos a obtener los datos del usuario
                             try {
                                 const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
                                 if (userResponse.data) {
@@ -166,6 +167,7 @@ export const AuthProvider = ({ children }) => {
                             logout();
                         }
                     } else {
+                        // Si el token es válido, solo configurarlo y obtener los detalles del usuario
                         setAuthToken(access_token);
                         try {
                             const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
@@ -213,7 +215,7 @@ export const AuthProvider = ({ children }) => {
         }, 1000 * 60);
 
         return () => clearInterval(interval);
-    }, [refreshToken, logout, setAuthToken, fetchStores]); // Removida la dependencia 'stores.length'
+    }, [refreshToken, logout, setAuthToken, fetchStores]); 
 
 
     const authContextValue = {
@@ -223,9 +225,9 @@ export const AuthProvider = ({ children }) => {
         logout,
         loading,
         token,
-        error, // Expose error
-        clearError, // Expose clearError
-        stores, // Expose stores
+        error, 
+        clearError, 
+        stores, 
         selectedStoreSlug,
         selectStore,
         isStaff: user ? user.is_staff : false,
