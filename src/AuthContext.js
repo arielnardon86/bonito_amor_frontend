@@ -55,10 +55,11 @@ export const AuthProvider = ({ children }) => {
             return new_access_token;
         } catch (error) {
             console.error("Error refreshing token:", error.response ? error.response.data : error.message);
+            setError(error.response?.data?.detail || "Error al refrescar el token."); // Set error state
             logout();
             return null;
         }
-    }, [setAuthToken, logout]);
+    }, [setAuthToken, logout, setError]);
 
     // Modified login function to handle authentication API call
     const login = useCallback(async (username, password, storeSlugFromUrl) => { // Added storeSlugFromUrl
@@ -78,14 +79,19 @@ export const AuthProvider = ({ children }) => {
             const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
             setUser(userResponse.data);
 
-            // Automatically select the store if storeSlugFromUrl is provided
-            // and the user has access to it (or it's the only store)
+            // --- CORRECCIÓN CLAVE AQUÍ: Simplificar la lógica de selección de tienda en login ---
+            // Si storeSlugFromUrl está presente, úsalo.
+            // De lo contrario, no intentes seleccionar una tienda por defecto aquí.
+            // La lógica de redirección a HomePage para selección de tienda se manejará en AppContent.
             if (storeSlugFromUrl) {
                 selectStore(storeSlugFromUrl);
-            } else if (stores.length > 0) {
-                // If no specific store was requested, but user has stores, default to the first one
-                selectStore(stores[0].slug);
+            } else {
+                // Si no se proporcionó un storeSlug y no hay uno seleccionado,
+                // asegúrate de que selectedStoreSlug sea null para que HomePage lo maneje.
+                setSelectedStoreSlug(null);
+                localStorage.removeItem('selected_store_slug');
             }
+            // --- FIN CORRECCIÓN ---
 
             return true; // Indicate success
         } catch (err) {
@@ -95,7 +101,7 @@ export const AuthProvider = ({ children }) => {
             logout(); // Logout on failed login attempt
             return false; // Indicate failure
         }
-    }, [setAuthToken, logout, selectStore, stores]); // Added stores to dependencies
+    }, [setAuthToken, logout, selectStore, setError]); // Removed 'stores' from dependencies as it's not directly used here for selection
 
     // Function to fetch stores
     const fetchStores = useCallback(async () => {
@@ -104,8 +110,10 @@ export const AuthProvider = ({ children }) => {
             setStores(response.data.results || response.data);
         } catch (err) {
             console.error("Error fetching stores:", err.response ? err.response.data : err.message);
+            setError("Error al cargar tiendas."); // Set error state
+            setStores([]); // Ensure stores is always an array, even on error
         }
-    }, []);
+    }, [setError]);
 
     // Function to set the selected store
     const selectStore = useCallback((slug) => {
@@ -124,12 +132,18 @@ export const AuthProvider = ({ children }) => {
             const access_token = localStorage.getItem('access_token');
             const stored_store_slug = localStorage.getItem('selected_store_slug');
 
+            // Fetch stores first. This is crucial for the Navbar and initial store selection logic.
+            await fetchStores(); 
+
             if (stored_store_slug) {
                 setSelectedStoreSlug(stored_store_slug);
+            } else if (stores.length === 1) { // If only one store is available and no store is selected
+                // This block is executed AFTER fetchStores has completed.
+                // It ensures that if there's only one store, it's automatically selected.
+                setSelectedStoreSlug(stores[0].slug);
+                localStorage.setItem('selected_store_slug', stores[0].slug);
             }
 
-            // Fetch stores first, as login might depend on them
-            await fetchStores();
 
             if (access_token) {
                 try {
@@ -205,7 +219,7 @@ export const AuthProvider = ({ children }) => {
         }, 1000 * 60);
 
         return () => clearInterval(interval);
-    }, [refreshToken, logout, setAuthToken, fetchStores]);
+    }, [refreshToken, logout, setAuthToken, fetchStores, stores.length]); // Added stores.length to dependencies for the single store auto-selection logic
 
 
     const authContextValue = {
