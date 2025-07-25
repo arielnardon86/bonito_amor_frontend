@@ -73,10 +73,13 @@ export const AuthProvider = ({ children }) => {
     const login = useCallback(async (username, password, storeSlugFromUrl) => { 
         setError(null); 
         try {
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/`, {
-                username,
-                password,
-            });
+            const payload = { username, password };
+            if (storeSlugFromUrl) {
+                payload.store_slug = storeSlugFromUrl; // <--- ¡CAMBIO CLAVE AQUÍ! Añade store_slug al payload
+            }
+
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/`, payload); // Envía el payload con store_slug
+
             const { access, refresh } = response.data;
 
             localStorage.setItem('access_token', access);
@@ -88,12 +91,10 @@ export const AuthProvider = ({ children }) => {
             setUser(userResponse.data);
 
             // Si storeSlugFromUrl está presente, úsalo para seleccionar la tienda.
-            // La redirección a HomePage para selección de tienda se manejará en AppContent si no hay storeSlugFromUrl.
             if (storeSlugFromUrl) {
                 selectStore(storeSlugFromUrl);
             } else {
-                // Si no se proporcionó un storeSlug y no hay uno seleccionado,
-                // asegúrate de que selectedStoreSlug sea null para que HomePage lo maneje.
+                // Si no se proporcionó un storeSlug, limpia la selección de tienda
                 setSelectedStoreSlug(null);
                 localStorage.removeItem('selected_store_slug');
             }

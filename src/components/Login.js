@@ -1,144 +1,113 @@
-// src/components/Login.js
-import React, { useState, useEffect } from 'react';
+// BONITO_AMOR/frontend/src/components/Login.js
+import React, { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom'; // Importa useParams
 import { useAuth } from '../AuthContext';
-import { useNavigate, useParams } from 'react-router-dom';
 
-const Login = () => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const { login, isAuthenticated, error, clearError, selectedStoreSlug } = useAuth(); // Removed selectStore here, as login handles it
-    const navigate = useNavigate();
-    const { storeSlug } = useParams();
+function Login() {
+  const { login, error: authError, clearError } = useAuth();
+  const navigate = useNavigate();
+  const { storeSlug } = useParams(); // Obtiene storeSlug de la URL
 
-    useEffect(() => {
-        clearError();
-    }, [clearError]);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  // No se necesita un estado de error local, se usa el error del AuthContext directamente
 
-    useEffect(() => {
-        if (isAuthenticated) {
-            // If already authenticated and a store is selected, navigate to PuntoVenta
-            // Otherwise, HomePage will prompt for store selection
-            if (selectedStoreSlug) {
-                navigate('/punto-venta'); // Navigate to Punto de Venta if a store is selected
-            } else {
-                navigate('/'); // Go to HomePage to select store
-            }
-        }
-    }, [isAuthenticated, navigate, selectedStoreSlug]);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    clearError(); // Limpia cualquier error previo del AuthContext
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        // Pass storeSlug from URL to login function
-        const success = await login(username, password, storeSlug); // Pass storeSlug
-        if (success) {
-            // If login is successful, AuthContext will handle setting selectedStoreSlug
-            // and the useEffect above will handle navigation.
-        }
-    };
+    // Pasa el storeSlug de la URL a la función de login
+    const success = await login(username, password, storeSlug);
+    if (success) {
+      // Si el login es exitoso, navega a la raíz.
+      // AppContent en App.js manejará la redirección basada en selectedStoreSlug.
+      navigate('/'); 
+    }
+  };
 
-    return (
-        <div style={styles.container}>
-            <div style={styles.loginBox}>
-                <h2 style={styles.header}>Iniciar Sesión</h2>
-                {storeSlug && <p style={styles.storeName}>Tienda: {storeSlug.replace(/-/g, ' ').toUpperCase()}</p>}
-                {error && <p style={styles.error}>{error}</p>}
-                <form onSubmit={handleSubmit}>
-                    <div style={styles.inputGroup}>
-                        <label htmlFor="username" style={styles.label}>Usuario:</label>
-                        <input
-                            type="text"
-                            id="username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            style={styles.input}
-                            required
-                        />
-                    </div>
-                    <div style={styles.inputGroup}>
-                        <label htmlFor="password" style={styles.label}>Contraseña:</label>
-                        <input
-                            type="password"
-                            id="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            style={styles.input}
-                            required
-                        />
-                    </div>
-                    <button type="submit" style={styles.button}>Entrar</button>
-                </form>
-            </div>
-        </div>
-    );
-};
+  return (
+    <div style={styles.container}>
+      <h2 style={styles.header}>Iniciar Sesión en {storeSlug ? storeSlug.replace(/-/g, ' ').toUpperCase() : 'Tu Tienda'}</h2> {/* Muestra el nombre de la tienda */}
+      
+      {(authError) && <p style={styles.error}>{authError}</p>} {/* Muestra el error del AuthContext */}
+
+      <form onSubmit={handleSubmit} style={styles.form}>
+        <input
+          type="text"
+          placeholder="Usuario"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+          style={styles.input}
+        />
+        <input
+          type="password"
+          placeholder="Contraseña"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          style={styles.input}
+        />
+        <button type="submit" style={styles.button}>Iniciar Sesión</button>
+      </form>
+    </div>
+  );
+}
 
 const styles = {
     container: {
         display: 'flex',
-        justifyContent: 'center',
+        flexDirection: 'column',
         alignItems: 'center',
-        minHeight: 'calc(100vh - 60px)', // Ajusta para el navbar
+        justifyContent: 'center',
+        minHeight: 'calc(100vh - 60px)',
         backgroundColor: '#f0f2f5',
         fontFamily: 'Arial, sans-serif',
-    },
-    loginBox: {
-        backgroundColor: '#fff',
-        padding: '40px',
-        borderRadius: '10px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-        width: '100%',
-        maxWidth: '400px',
+        padding: '20px',
         textAlign: 'center',
     },
     header: {
-        marginBottom: '25px',
-        color: '#333',
         fontSize: '2em',
+        color: '#333',
+        marginBottom: '30px',
     },
-    storeName: {
-        marginBottom: '20px',
-        color: '#007bff',
-        fontSize: '1.2em',
-        fontWeight: 'bold',
-    },
-    inputGroup: {
-        marginBottom: '15px',
-        textAlign: 'left',
-    },
-    label: {
-        display: 'block',
-        marginBottom: '8px',
-        color: '#555',
-        fontWeight: 'bold',
+    form: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '15px',
+        width: '100%',
+        maxWidth: '350px',
+        padding: '25px',
+        backgroundColor: '#fff',
+        borderRadius: '8px',
+        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
     },
     input: {
-        width: 'calc(100% - 20px)',
-        padding: '10px',
+        padding: '12px',
+        fontSize: '1em',
         border: '1px solid #ddd',
         borderRadius: '5px',
-        fontSize: '1em',
     },
     button: {
+        padding: '12px',
+        fontSize: '1.1em',
         backgroundColor: '#007bff',
         color: 'white',
-        padding: '12px 25px',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        fontSize: '1.1em',
-        marginTop: '20px',
-        width: '100%',
         transition: 'background-color 0.3s ease',
-        '&:hover': {
-            backgroundColor: '#0056b3',
-        },
     },
     error: {
         color: 'red',
-        marginBottom: '15px',
         backgroundColor: '#ffe3e6',
         padding: '10px',
         borderRadius: '5px',
+        marginBottom: '15px',
+        width: '100%',
+        maxWidth: '350px',
+        textAlign: 'center',
     },
 };
+
 export default Login;
