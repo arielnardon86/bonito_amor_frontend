@@ -12,7 +12,7 @@ import { SalesProvider } from './components/SalesContext';
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
-import HomePage from './components/HomePage'; // CAMBIO: Importar HomePage
+import HomePage from './components/HomePage'; // Importar HomePage
 
 import './App.css';
 
@@ -50,7 +50,7 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-logo">
-        {/* Siempre redirige a la raíz (página de selección de tienda) */}
+        {/* Siempre redirige a la raíz (página de selección de tienda si no logueado, o Punto de Venta si sí) */}
         <Link to="/">
           <img src="/bonito-amor-logo.jpg" alt="Bonito Amor Logo" className="app-logo-image" />
         </Link>
@@ -122,74 +122,81 @@ function AppContent() {
       <Navbar /> 
       <div className="container" style={{ padding: '20px' }}>
         <Routes>
-          {/* CAMBIO: Ruta principal ahora usa HomePage */}
-          <Route path="/" element={<HomePage />} />
-
           {/* Ruta de login, ahora puede recibir un storeSlug opcional */}
           <Route path="/login/:storeSlug?" element={<Login />} />
 
-          {/* Redirigir a la página principal (HomePage) si no está autenticado y no está en /login */}
+          {/* CAMBIO CLAVE AQUÍ:
+            1. Si el usuario está autenticado Y tiene una tienda seleccionada,
+               la ruta principal '/' debe ir al PuntoVenta.
+            2. Si el usuario NO está autenticado O NO tiene una tienda seleccionada,
+               la ruta principal '/' debe ir a HomePage (selección de tienda).
+            
+            El orden de las rutas es importante. Primero evaluamos las condiciones de autenticación/tienda.
+          */}
+          {isAuthenticated && selectedStoreSlug ? (
+            // Si está autenticado y tiene tienda seleccionada, la ruta principal es PuntoVenta
+            <Route path="/" element={
+              <ProtectedRoute staffOnly={true}>
+                <PuntoVenta />
+              </ProtectedRoute>
+            } />
+          ) : (
+            // De lo contrario, la ruta principal es HomePage (selección de tienda)
+            <Route path="/" element={<HomePage />} />
+          )}
+
+          {/* Redirigir a la página principal (/) si no está autenticado y no está en /login */}
           {!isAuthenticated && <Route path="*" element={<Navigate to="/" replace />} />}
-
-          {isAuthenticated && (
+          
+          {/* Rutas Protegidas que requieren autenticación y tienda seleccionada */}
+          {isAuthenticated && selectedStoreSlug && (
             <>
-              {/* Si está autenticado pero no ha seleccionado tienda, redirigir a la página de selección de tienda */}
-              {!selectedStoreSlug && (
-                <Route path="*" element={
-                  <div style={{ padding: '50px', textAlign: 'center' }}>
-                    <h2>Por favor, selecciona una tienda en la barra de navegación para continuar.</h2>
-                  </div>
-                } />
-              )}
+              <Route path="/productos" element={
+                <ProtectedRoute adminOnly={true}>
+                  <Productos />
+                </ProtectedRoute>
+              } />
+              
+              <Route
+                  path="/users"
+                  element={
+                      <ProtectedRoute adminOnly={true}>
+                          <UserManagement />
+                      </ProtectedRoute>
+                  }
+              />
+              
+              <Route
+                  path="/metricas-ventas"
+                  element={
+                      <ProtectedRoute adminOnly={true}>
+                          <MetricasVentas />
+                      </ProtectedRoute>
+                  }
+              />
 
-              {/* Rutas Protegidas: Solo se renderizan si el usuario está autenticado Y ha seleccionado una tienda */}
-              {selectedStoreSlug && (
-                <>
-                  {/* La ruta principal '/' ahora es el Punto de Venta si está logueado y con tienda */}
-                  <Route path="/" element={
-                    <ProtectedRoute staffOnly={true}>
-                      <PuntoVenta />
-                    </ProtectedRoute>
-                  } />
+              <Route
+                  path="/ventas"
+                  element={
+                      <ProtectedRoute adminOnly={true}>
+                          <VentasPage />
+                      </ProtectedRoute>
+                  }
+              />
 
-                  <Route path="/productos" element={
-                    <ProtectedRoute adminOnly={true}>
-                      <Productos />
-                    </ProtectedRoute>
-                  } />
-                  
-                  <Route
-                      path="/users"
-                      element={
-                          <ProtectedRoute adminOnly={true}>
-                              <UserManagement />
-                          </ProtectedRoute>
-                      }
-                  />
-                  
-                  <Route
-                      path="/metricas-ventas"
-                      element={
-                          <ProtectedRoute adminOnly={true}>
-                              <MetricasVentas />
-                          </ProtectedRoute>
-                      }
-                  />
-
-                  <Route
-                      path="/ventas"
-                      element={
-                          <ProtectedRoute adminOnly={true}>
-                              <VentasPage />
-                          </ProtectedRoute>
-                      }
-                  />
-
-                  {/* Cualquier otra ruta si está autenticado y con tienda, redirige al Punto de Venta */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </>
-              )}
+              {/* Cualquier otra ruta si está autenticado y con tienda, redirige al Punto de Venta */}
+              {/* Esto captura rutas no definidas o incorrectas y las lleva al inicio de la app logueada */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </>
+          )}
+
+          {/* Si está autenticado pero NO tiene tienda seleccionada, y no está en una ruta protegida */}
+          {isAuthenticated && !selectedStoreSlug && (
+            <Route path="*" element={
+              <div style={{ padding: '50px', textAlign: 'center' }}>
+                <h2>Por favor, selecciona una tienda en la barra de navegación para continuar.</h2>
+              </div>
+            } />
           )}
         </Routes>
       </div>
