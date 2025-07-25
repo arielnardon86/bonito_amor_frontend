@@ -12,6 +12,7 @@ import { SalesProvider } from './components/SalesContext';
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
+import HomePage from './components/HomePage'; // CAMBIO: Importar HomePage
 
 import './App.css';
 
@@ -20,7 +21,7 @@ import { faBars, faTimes } from '@fortawesome/free-solid-svg-icons';
 
 // Componente para la navegación
 const Navbar = () => {
-  const { isAuthenticated, user, logout, stores, selectedStoreSlug, selectStore } = useAuth(); // Obtener stores y selectStore
+  const { isAuthenticated, user, logout, stores, selectedStoreSlug, selectStore } = useAuth(); 
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = () => {
@@ -49,11 +50,13 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-logo">
+        {/* Siempre redirige a la raíz (página de selección de tienda) */}
         <Link to="/">
           <img src="/bonito-amor-logo.jpg" alt="Bonito Amor Logo" className="app-logo-image" />
         </Link>
       </div>
 
+      {/* La barra de navegación solo muestra enlaces si el usuario está autenticado */}
       {isAuthenticated && (
         <>
           <div className="menu-icon" onClick={toggleMenu}>
@@ -61,7 +64,7 @@ const Navbar = () => {
           </div>
 
           <ul className={isOpen ? "nav-links active" : "nav-links"}>
-            {/* Selector de Tienda */}
+            {/* Selector de Tienda: Solo visible si hay tiendas y el usuario está autenticado */}
             {stores.length > 0 && (
                 <li className="store-select-item">
                     <select
@@ -119,13 +122,18 @@ function AppContent() {
       <Navbar /> 
       <div className="container" style={{ padding: '20px' }}>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          {/* CAMBIO: Ruta principal ahora usa HomePage */}
+          <Route path="/" element={<HomePage />} />
 
-          {!isAuthenticated && <Route path="*" element={<Navigate to="/login" replace />} />}
+          {/* Ruta de login, ahora puede recibir un storeSlug opcional */}
+          <Route path="/login/:storeSlug?" element={<Login />} />
+
+          {/* Redirigir a la página principal (HomePage) si no está autenticado y no está en /login */}
+          {!isAuthenticated && <Route path="*" element={<Navigate to="/" replace />} />}
 
           {isAuthenticated && (
             <>
-              {/* Si está autenticado pero no ha seleccionado tienda, redirigir a una página de selección o mostrar mensaje */}
+              {/* Si está autenticado pero no ha seleccionado tienda, redirigir a la página de selección de tienda */}
               {!selectedStoreSlug && (
                 <Route path="*" element={
                   <div style={{ padding: '50px', textAlign: 'center' }}>
@@ -137,6 +145,7 @@ function AppContent() {
               {/* Rutas Protegidas: Solo se renderizan si el usuario está autenticado Y ha seleccionado una tienda */}
               {selectedStoreSlug && (
                 <>
+                  {/* La ruta principal '/' ahora es el Punto de Venta si está logueado y con tienda */}
                   <Route path="/" element={
                     <ProtectedRoute staffOnly={true}>
                       <PuntoVenta />
@@ -176,6 +185,7 @@ function AppContent() {
                       }
                   />
 
+                  {/* Cualquier otra ruta si está autenticado y con tienda, redirige al Punto de Venta */}
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </>
               )}
