@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Barcode from 'react-barcode';
 import EtiquetasImpresion from './EtiquetasImpresion';
-import { useAuth } from '../AuthContext'; // Importar useAuth para obtener selectedStoreSlug
+import { useAuth } from '../AuthContext'; // Importar useAuth para obtener selectedStoreSlug y token
 
 // Define TALLE_OPTIONS aquí o impórtalo desde un archivo de constantes si lo tienes
 const TALLE_OPTIONS = [
@@ -40,7 +40,8 @@ function Productos() {
   const [successMessage, setSuccessMessage] = useState(null);
   const [mensajeError, setMensajeError] = useState(null);
 
-  const [selectedProducts, setSelectedProducts] = useState(new Set());
+  // MODIFICADO: Estado para almacenar los IDs de productos seleccionados y sus cantidades de etiquetas
+  const [selectedProductsForLabels, setSelectedProductsForLabels] = useState({}); // { productId: quantity }
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   const [editingStockId, setEditingStockId] = useState(null);
@@ -58,7 +59,7 @@ function Productos() {
     setLoading(true);
     setError(null);
     try {
-      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud ***
+      // Añadir tienda_slug a los parámetros de la solicitud
       const response = await axios.get(`${API_BASE_URL}/productos/`, {
         headers: { 'Authorization': `Bearer ${token}` },
         params: { tienda_slug: selectedStoreSlug }
@@ -124,7 +125,7 @@ function Productos() {
     };
 
     try {
-      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud POST ***
+      // Añadir tienda_slug a los parámetros de la solicitud POST
       const response = await axios.post(`${API_BASE_URL}/productos/?tienda_slug=${selectedStoreSlug}`, nuevoProducto, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -144,29 +145,42 @@ function Productos() {
     }
   };
 
-  const handleSelectProduct = (productId) => {
-    setSelectedProducts(prevSelected => {
-      const newSelected = new Set(prevSelected);
-      if (newSelected.has(productId)) {
-        newSelected.delete(productId);
+  // MODIFICADO: handleSelectProduct para gestionar cantidades
+  const handleSelectProduct = (productId, isChecked) => {
+    setSelectedProductsForLabels(prevSelected => {
+      const newSelected = { ...prevSelected };
+      if (isChecked) {
+        newSelected[productId] = newSelected[productId] || 1; // Por defecto 1 si se selecciona
       } else {
-        newSelected.add(productId);
+        delete newSelected[productId];
       }
       return newSelected;
     });
   };
 
+  // NUEVO: handleLabelQuantityChange para actualizar la cantidad de etiquetas
+  const handleLabelQuantityChange = (productId, quantity) => {
+    setSelectedProductsForLabels(prevSelected => ({
+      ...prevSelected,
+      [productId]: parseInt(quantity) || 1 // Asegura que sea un número, por defecto 1 si es inválido
+    }));
+  };
+
+  // MODIFICADO: handleSelectAll para gestionar cantidades
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      const allProductIds = new Set(productos.map(p => p.id));
-      setSelectedProducts(allProductIds);
+      const allSelected = {};
+      productos.forEach(p => {
+        allSelected[p.id] = 1; // Cantidad por defecto a 1 para todos
+      });
+      setSelectedProductsForLabels(allSelected);
     } else {
-      setSelectedProducts(new Set());
+      setSelectedProductsForLabels({});
     }
   };
 
   const handlePrintSelected = () => {
-    if (selectedProducts.size === 0) {
+    if (Object.keys(selectedProductsForLabels).length === 0) {
       alert('Por favor, selecciona al menos un producto para imprimir.');
       return;
     }
@@ -177,7 +191,13 @@ function Productos() {
     setShowPrintPreview(false);
   };
 
-  const productosParaImprimir = productos.filter(p => selectedProducts.has(p.id));
+  // MODIFICADO: productosParaImprimir ahora incluye la cantidad de etiquetas
+  const productosParaImprimir = productos
+    .filter(p => selectedProductsForLabels[p.id]) // Filtra solo los seleccionados
+    .map(p => ({
+      ...p,
+      labelQuantity: selectedProductsForLabels[p.id] // Añade la cantidad de etiquetas deseada
+    }));
 
   const handleDeleteProduct = async (productId) => {
     if (!selectedStoreSlug) {
@@ -186,7 +206,7 @@ function Productos() {
     }
     if (window.confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción es irreversible.')) {
       try {
-        // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud DELETE ***
+        // Añadir tienda_slug a los parámetros de la solicitud DELETE
         await axios.delete(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -221,7 +241,7 @@ function Productos() {
     }
 
     try {
-      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud PATCH ***
+      // Añadir tienda_slug a los parámetros de la solicitud PATCH
       await axios.patch(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`, { stock: stockInt }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -262,7 +282,7 @@ function Productos() {
     }
 
     try {
-      // *** CAMBIO CLAVE AQUÍ: Añadir tienda_slug a los parámetros de la solicitud PATCH ***
+      // Añadir tienda_slug a los parámetros de la solicitud PATCH
       await axios.patch(`${API_BASE_URL}/productos/${productId}/?tienda_slug=${selectedStoreSlug}`, { precio_venta: priceFloat }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -373,7 +393,7 @@ function Productos() {
         <>
           <div style={{ marginBottom: '15px' }}>
             <button onClick={handlePrintSelected} style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-              Imprimir Códigos de Barras Seleccionados ({selectedProducts.size})
+              Imprimir Códigos de Barras Seleccionados ({Object.keys(selectedProductsForLabels).length})
             </button>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', border: '1px solid #ddd' }}>
@@ -383,15 +403,16 @@ function Productos() {
                   <input
                     type="checkbox"
                     onChange={handleSelectAll}
-                    checked={selectedProducts.size === productos.length && productos.length > 0}
+                    checked={Object.keys(selectedProductsForLabels).length === productos.length && productos.length > 0}
                   />
                 </th>
+                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Cant. Etiquetas</th> {/* NUEVA COLUMNA */}
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>ID</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Nombre</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Talle</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Código</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Imagen Código</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th> 
+                <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Stock</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Descripción</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Acciones</th>
@@ -403,9 +424,21 @@ function Productos() {
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                     <input
                       type="checkbox"
-                      checked={selectedProducts.has(producto.id)}
-                      onChange={() => handleSelectProduct(producto.id)}
+                      checked={!!selectedProductsForLabels[producto.id]} // Verifica si el ID del producto existe en el mapa
+                      onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
                     />
+                  </td>
+                  {/* NUEVA COLUMNA: Input de cantidad para etiquetas */}
+                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                    {!!selectedProductsForLabels[producto.id] && ( // Solo se muestra si el producto está seleccionado
+                      <input
+                        type="number"
+                        min="1"
+                        value={selectedProductsForLabels[producto.id] || 1}
+                        onChange={(e) => handleLabelQuantityChange(producto.id, e.target.value)}
+                        style={{ width: '60px', padding: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
+                      />
+                    )}
                   </td>
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.id}</td>
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.nombre}</td>
