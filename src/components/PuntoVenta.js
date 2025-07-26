@@ -62,8 +62,10 @@ const PuntoVenta = () => {
             setLoadingData(false);
             return;
         }
+        setLoadingData(true); // Asegúrate de que el estado de carga se active
+        setError(null);       // Limpia cualquier error anterior
         try {
-            // CAMBIO CLAVE: Usar BASE_API_ENDPOINT y añadir /api/productos/
+            // *** ESTA ES LA LÍNEA CRÍTICA QUE DEBE INCLUIR /api/ ***
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { tienda_slug: selectedStoreSlug }
@@ -81,7 +83,7 @@ const PuntoVenta = () => {
     const fetchCategorias = useCallback(async () => {
         if (!token) return;
         try {
-            // CAMBIO CLAVE: Usar BASE_API_ENDPOINT y añadir /api/categorias/
+            // Asegúrate de que esta URL también use /api/
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/categorias/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -94,7 +96,7 @@ const PuntoVenta = () => {
     const fetchMetodosPago = useCallback(async () => {
         if (!token) return;
         try {
-            // CAMBIO CLAVE: Usar BASE_API_ENDPOINT y añadir /api/metodos-pago/
+            // Asegúrate de que esta URL también use /api/
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -139,7 +141,7 @@ const PuntoVenta = () => {
         }
 
         try {
-            // CAMBIO CLAVE: Usar BASE_API_ENDPOINT y añadir /api/productos/buscar_por_barcode/
+            // Asegúrate de que esta URL también use /api/
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
@@ -222,7 +224,7 @@ const PuntoVenta = () => {
                     detalles: detalles,
                 };
 
-                // CAMBIO CLAVE: Usar BASE_API_ENDPOINT y añadir /api/ventas/
+                // Asegúrate de que esta URL también use /api/
                 const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
