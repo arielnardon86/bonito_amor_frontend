@@ -108,8 +108,8 @@ function EtiquetasImpresion({ productosParaImprimir }) {
             {product.codigo_barras ? (
               <Barcode
                 value={String(product.codigo_barras)}
-                format="EAN13"
-                width={1.2} // Ajusta el grosor de las barras
+                format="CODE128" // ¡Cambiado a CODE128 para compatibilidad con UUIDs!
+                width={1.2} // Ajusta el grosor de las barras. Puedes reducirlo (ej. 1.0, 0.8) si el código es muy ancho para 72mm.
                 height={30} // Ajusta la altura del código de barras para ahorrar espacio
                 displayValue={true} // Mostrar el número debajo del código de barras
                 fontSize={9} // Tamaño de la fuente del número
