@@ -1,5 +1,5 @@
 // BONITO_AMOR/frontend/src/App.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, Navigate } from 'react-router-dom';
 
 import Productos from './components/Productos';
@@ -12,7 +12,7 @@ import { SalesProvider } from './components/SalesContext';
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
-import HomePage from './components/HomePage'; 
+import HomePage from './components/HomePage'; // Importar HomePage
 
 import './App.css';
 
@@ -47,21 +47,12 @@ const Navbar = () => {
     selectStore(e.target.value);
   };
 
-  // Lógica para obtener la ruta del logo dinámicamente
-  const getLogoPath = useCallback(() => {
-    if (selectedStoreSlug === 'bonito-amor') {
-      return '/bonito-amor-logo.jpg';
-    } else if (selectedStoreSlug === 'la-pasion-del-hincha-yofre') { // Asumiendo este slug para la otra tienda
-      return '/la-pasion-del-hincha-logo.png'; 
-    }
-    return '/total-stock-logo.png'; // Logo por defecto
-  }, [selectedStoreSlug]);
-
   return (
     <nav className="navbar">
       <div className="navbar-logo">
+        {/* Siempre redirige a la raíz (página de selección de tienda si no logueado, o Punto de Venta si sí) */}
         <Link to="/">
-          <img src={getLogoPath()} alt="Logo" className="app-logo-image" /> {/* CAMBIO: Logo dinámico */}
+          <img src="/total-stock-logo.jpg" alt="Bonito Amor Logo" className="app-logo-image" />
         </Link>
       </div>
 
@@ -74,7 +65,7 @@ const Navbar = () => {
 
           <ul className={isOpen ? "nav-links active" : "nav-links"}>
             {/* Selector de Tienda: Solo visible si hay tiendas, el usuario está autenticado, Y NO HAY UNA TIENDA SELECCIONADA */}
-            {stores.length > 0 && !selectedStoreSlug && ( 
+            {stores.length > 0 && !selectedStoreSlug && ( // <-- CAMBIO AQUÍ
                 <li className="store-select-item">
                     <select
                         value={selectedStoreSlug || ''}
@@ -128,40 +119,6 @@ const Navbar = () => {
 
 function AppContent() {
   const { isAuthenticated, loading, selectedStoreSlug } = useAuth(); 
-
-  // Lógica para cambiar el favicon dinámicamente
-  useEffect(() => {
-    const faviconLink = document.getElementById('favicon'); // Obtener el link del favicon por su ID
-    if (!faviconLink) {
-        // Si no existe, crearlo (aunque ya lo pusimos en index.html)
-        const newLink = document.createElement('link');
-        newLink.id = 'favicon';
-        newLink.rel = 'icon';
-        document.head.appendChild(newLink);
-        faviconLink = newLink;
-    }
-
-    let newFaviconPath = '/default-favicon.ico'; // Favicon por defecto
-
-    if (selectedStoreSlug === 'bonito-amor') {
-      newFaviconPath = '/bonito-amor-favicon.ico';
-    } else if (selectedStoreSlug === 'la-pasion-del-hincha') { // Asumiendo este slug
-      newFaviconPath = '/la-pasion-del-hincha-favicon.ico';
-    }
-
-    faviconLink.href = newFaviconPath;
-    
-    // Opcional: Cambiar el título de la pestaña del navegador
-    let newTitle = "Bonito Amor Stock";
-    if (selectedStoreSlug === 'bonito-amor') {
-        newTitle = "Bonito Amor - Gestión";
-    } else if (selectedStoreSlug === 'la-pasion-del-hincha') {
-        newTitle = "La Pasión del Hincha - Gestión";
-    }
-    document.title = newTitle;
-
-  }, [selectedStoreSlug]); // Dependencia: selectedStoreSlug
-
 
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
@@ -238,7 +195,8 @@ function AppContent() {
             </>
           )}
 
-          {/* Si está autenticado pero NO tiene tienda seleccionada, y no está en una ruta protegida */}
+          {/* This block is now redundant due to the root path logic above and catch-all */}
+          {/* If está autenticado pero NO tiene tienda seleccionada, y no está en una ruta protegida */}
           {isAuthenticated && !selectedStoreSlug && (
             <Route path="*" element={
               <div style={{ padding: '50px', textAlign: 'center' }}>
