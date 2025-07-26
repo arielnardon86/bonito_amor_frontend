@@ -34,8 +34,6 @@ function Productos() {
   const [precioVenta, setPrecioVenta] = useState(''); // Este es el que mapearemos a 'precio' en backend
   const [stock, setStock] = useState('');
   const [talle, setTalle] = useState('UNICA');
-  // Eliminado: const [categoria, setCategoria] = useState(''); // Eliminado
-  // Eliminado: const [categorias, setCategorias] = useState([]); // Eliminado
 
   const [successMessage, setSuccessMessage] = useState(null);
   const [mensajeError, setMensajeError] = useState(null);
@@ -50,8 +48,6 @@ function Productos() {
   const [newPriceValue, setNewPriceValue] = useState('');
 
 
-  // Eliminado: fetchCategorias ya no es necesaria
-
   const fetchProductos = useCallback(async () => {
     if (!token || !selectedStoreSlug) { 
         setLoading(false);
@@ -64,7 +60,6 @@ function Productos() {
         headers: { 'Authorization': `Bearer ${token}` },
         params: { tienda_slug: selectedStoreSlug }
       });
-      // CAMBIO CLAVE AQUÍ: Asegurar que setProductos siempre reciba un array
       setProductos(Array.isArray(response.data.results) ? response.data.results : (Array.isArray(response.data) ? response.data : []));
       setLoading(false);
       setError(null);
@@ -429,7 +424,7 @@ function Productos() {
                       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: '150px' }}>
                           <Barcode
                               value={String(producto.codigo_barras)}
-                              format="EAN13"
+                              format="CODE128" 
                               width={1.2}
                               height={50}
                               displayValue={true}
