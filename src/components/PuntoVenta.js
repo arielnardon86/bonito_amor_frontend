@@ -8,18 +8,15 @@ const API_BASE_URL = process.env.REACT_APP_API_URL;
 // Función para normalizar la URL base, eliminando cualquier /api/ o barra final
 const normalizeApiUrl = (url) => {
     let normalizedUrl = url;
-    // Eliminar cualquier /api/ al final si existe
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
     }
-    // Eliminar barra final si existe
     if (normalizedUrl.endsWith('/')) {
         normalizedUrl = normalizedUrl.slice(0, -1);
     }
     return normalizedUrl;
 };
 
-// La URL base normalizada que usaremos para todas las llamadas
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const PuntoVenta = () => {
@@ -38,16 +35,13 @@ const PuntoVenta = () => {
     const [successMessage, setSuccessMessage] = useState(null);
     const [loadingData, setLoadingData] = useState(true);
 
-    // Estados para el modal de confirmación
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmMessage, setConfirmMessage] = useState('');
     const [confirmAction, setConfirmAction] = useState(() => () => {});
 
-    // Estados para el cuadro de mensaje de alerta personalizado
     const [showAlertMessage, setShowAlertMessage] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
 
-    // Función para mostrar un mensaje de alerta personalizado
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
         setShowAlertMessage(true);
@@ -62,14 +56,17 @@ const PuntoVenta = () => {
             setLoadingData(false);
             return;
         }
-        setLoadingData(true); // Asegúrate de que el estado de carga se active
-        setError(null);       // Limpia cualquier error anterior
+        setLoadingData(true);
+        setError(null);
         try {
-            // *** ESTA ES LA LÍNEA CRÍTICA QUE DEBE INCLUIR /api/ ***
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { tienda_slug: selectedStoreSlug }
             });
+            // *** AÑADE ESTE CONSOLE.LOG ***
+            console.log("Respuesta de productos:", response.data);
+            console.log("Selected Store Slug:", selectedStoreSlug);
+            // ******************************
             setProductos(response.data.results || response.data);
             setError(null);
         } catch (err) {
@@ -83,10 +80,10 @@ const PuntoVenta = () => {
     const fetchCategorias = useCallback(async () => {
         if (!token) return;
         try {
-            // Asegúrate de que esta URL también use /api/
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/categorias/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            console.log("Respuesta de categorías:", response.data); // Añadir log aquí también
             setCategorias(response.data.results || response.data);
         } catch (err) {
             console.error("Error al cargar categorías:", err.response || err.message);
@@ -96,10 +93,10 @@ const PuntoVenta = () => {
     const fetchMetodosPago = useCallback(async () => {
         if (!token) return;
         try {
-            // Asegúrate de que esta URL también use /api/
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            console.log("Respuesta de métodos de pago:", response.data); // Añadir log aquí también
             setMetodosPago(response.data);
             if (response.data.length > 0) {
                 setMetodoPagoSeleccionado(response.data[0].nombre);
@@ -141,14 +138,14 @@ const PuntoVenta = () => {
         }
 
         try {
-            // Asegúrate de que esta URL también use /api/
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
             });
+            console.log("Respuesta de buscar por barcode:", response.data); // Añadir log aquí también
             setProductoSeleccionado(response.data);
-            setCantidadProducto(1); // Resetear cantidad
-            setBusquedaProducto(''); // Limpiar campo de búsqueda
+            setCantidadProducto(1);
+            setBusquedaProducto('');
         } catch (err) {
             console.error("Error al buscar producto:", err.response || err.message);
             setProductoSeleccionado(null);
@@ -210,37 +207,37 @@ const PuntoVenta = () => {
 
         setConfirmMessage(`¿Confirmas la venta por un total de $${totalVenta.toFixed(2)} con ${metodoPagoSeleccionado}?`);
         setConfirmAction(() => async () => {
-            setShowConfirmModal(false); // Cerrar el modal después de confirmar
+            setShowConfirmModal(false);
             try {
                 const detalles = productosEnVenta.map(item => ({
                     producto: item.id,
                     cantidad: item.cantidad,
-                    precio_unitario: item.precio, // Asegúrate de que este campo coincida con tu Serializer
+                    precio_unitario: item.precio,
                 }));
 
                 const ventaData = {
-                    tienda: selectedStoreSlug, // Usar el slug de la tienda
+                    tienda: selectedStoreSlug,
                     metodo_pago: metodoPagoSeleccionado,
                     detalles: detalles,
                 };
 
-                // Asegúrate de que esta URL también use /api/
                 const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+                console.log("Respuesta de venta:", response.data); // Añadir log aquí también
 
                 showCustomAlert(`Venta realizada con éxito! ID: ${response.data.id}`, 'success');
                 setProductosEnVenta([]);
                 setTotalVenta(0);
                 setProductoSeleccionado(null);
                 setCantidadProducto(1);
-                fetchProductos(); // Refrescar stock de productos
+                fetchProductos();
             } catch (err) {
                 console.error("Error al realizar venta:", err.response ? err.response.data : err.message);
                 setError("Error al realizar venta: " + (err.response?.data?.detail || err.message));
             }
         });
-        setShowConfirmModal(true); // Mostrar el modal
+        setShowConfirmModal(true);
     };
 
     if (authLoading || (isAuthenticated && !user)) {
