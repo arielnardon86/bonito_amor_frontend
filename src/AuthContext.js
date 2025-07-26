@@ -89,7 +89,6 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('refresh_token', refresh);
             setAuthToken(access); 
 
-            // Fetch user details immediately after successful login
             console.log("AuthContext: Obteniendo detalles de usuario después del login...");
             const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
             setUser(userResponse.data);
@@ -112,22 +111,18 @@ export const AuthProvider = ({ children }) => {
         }
     }, [setAuthToken, logout, selectStore, setError]); 
 
-    const fetchStores = useCallback(async (currentToken) => {
-        console.log("AuthContext: fetchStores llamado. Token recibido:", currentToken ? currentToken.substring(0, 10) + '...' : 'null');
-        if (!currentToken) { 
-            console.warn("AuthContext: No hay token para fetchStores. Estableciendo tiendas vacías.");
-            setStores([]);
-            return;
-        }
+    // Función para obtener las tiendas
+    // Ya no necesita currentToken como argumento, ya que axios.defaults.headers.common['Authorization']
+    // se configura antes de llamar a esta función en loadUserAndStores.
+    // Además, el backend ahora permite GET no autenticado para tiendas.
+    const fetchStores = useCallback(async () => {
+        console.log("AuthContext: fetchStores llamado.");
         try {
-            const response = await axios.get(`${process.env.REACT_APP_API_URL}/tiendas/`, {
-                headers: { 'Authorization': `Bearer ${currentToken}` }
-            });
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/tiendas/`);
             setStores(response.data.results || response.data);
             console.log("AuthContext: Tiendas cargadas con éxito:", response.data.results || response.data);
         } catch (err) {
             console.error("AuthContext: Error fetching stores:", err.response ? err.response.data : err.message);
-            // Mostrar el detalle del error si está disponible
             const errorMessage = err.response?.data?.detail || "Error al cargar tiendas.";
             setError(errorMessage); 
             setStores([]); 
@@ -149,6 +144,10 @@ export const AuthProvider = ({ children }) => {
                 setSelectedStoreSlug(stored_store_slug);
             }
             
+            // --- CAMBIO CLAVE AQUÍ: Llamar a fetchStores incondicionalmente ---
+            // Primero, intenta cargar las tiendas. Esto debería funcionar ahora que el backend permite GET no autenticado.
+            await fetchStores(); 
+
             if (current_access_token) {
                 try {
                     console.log("AuthContext: Decodificando token de acceso...");
@@ -185,17 +184,13 @@ export const AuthProvider = ({ children }) => {
                         return;
                     }
 
-                    // Ahora, obtener las tiendas, pasando el token confirmado y válido
-                    console.log("AuthContext: Llamando a fetchStores con el token actual.");
-                    await fetchStores(current_access_token);
-
                 } catch (error) {
                     console.error("AuthContext: Error general en loadUserAndStores (decodificación/refresh):", error);
                     logout();
                 }
             } else {
-                console.log("AuthContext: No se encontró token de acceso en localStorage. No se cargarán tiendas.");
-                setStores([]); 
+                console.log("AuthContext: No se encontró token de acceso en localStorage. Las tiendas ya se intentaron cargar de forma no autenticada.");
+                setUser(null); // Asegurarse de que el usuario sea null si no hay token
             }
             setLoading(false);
             console.log("AuthContext: loadUserAndStores finalizado. Loading es ahora false.");
