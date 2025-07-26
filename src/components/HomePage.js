@@ -1,60 +1,31 @@
 // BONITO_AMOR/frontend/src/components/HomePage.js
 import React, { useState, useEffect } from 'react'; 
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; 
-import { useAuth } from '../AuthContext'; // Importar useAuth para el estado de autenticación
-
-const API_BASE_URL = process.env.REACT_APP_API_URL; 
+// axios ya no se necesita directamente para fetchStores aquí
+import { useAuth } from '../AuthContext'; // Importar useAuth para el estado de autenticación y tiendas
 
 const HomePage = () => {
     const navigate = useNavigate();
     // Obtener la lista de tiendas, la tienda seleccionada, la función para seleccionarla,
     // y el estado de autenticación/carga del AuthContext
-    const { stores: authStores, selectedStoreSlug: authSelectedStoreSlug, selectStore, isAuthenticated, loading: authLoading } = useAuth();
+    const { 
+        stores, // Usar directamente las tiendas del AuthContext
+        selectedStoreSlug: authSelectedStoreSlug, 
+        selectStore, 
+        isAuthenticated, 
+        loading: authLoading,
+        error: authError // También podemos usar el error del AuthContext
+    } = useAuth();
 
-    // Usamos estados locales para las tiendas y la carga inicial de la API,
-    // aunque 'authStores' y 'authSelectedStoreSlug' del contexto son la fuente de verdad.
-    // Esto es para manejar la carga inicial de las tiendas antes de que el AuthContext se inicialice completamente.
-    const [localStores, setLocalStores] = useState([]); 
-    const [loadingLocalStores, setLoadingLocalStores] = useState(true); 
-    const [error, setError] = useState(null); 
-    
     // Estado local para el valor del selector de tienda
     const [selectedStoreSlugLocal, setSelectedStoreSlugLocal] = useState(''); 
-
-    // Efecto para cargar las tiendas desde la API (solo si el AuthContext aún no las ha cargado)
+    
+    // Sincronizar el estado local del selector con el del contexto
     useEffect(() => {
-        const fetchStores = async () => {
-            // Si el AuthContext ya tiene tiendas, las usamos y no volvemos a cargar
-            if (authStores && authStores.length > 0) {
-                setLocalStores(authStores);
-                setLoadingLocalStores(false);
-                return;
-            }
-
-            try {
-                const response = await axios.get(`${API_BASE_URL}/tiendas/`);
-                const fetchedStores = response.data.results || response.data;
-                setLocalStores(fetchedStores); 
-                setLoadingLocalStores(false);
-                setError(null);
-            } catch (err) {
-                console.error("Error fetching stores:", err.response ? err.response.data : err.message);
-                setError("No se pudieron cargar las tiendas. Intenta de nuevo más tarde.");
-                setLoadingLocalStores(false);
-            }
-        };
-
-        // Solo carga si no estamos en medio de la carga de autenticación
-        // y si las tiendas no han sido cargadas ya por el AuthContext
-        if (!authLoading && (!authStores || authStores.length === 0)) {
-            fetchStores();
-        } else if (!authLoading && authStores && authStores.length > 0) {
-            // Si el AuthContext ya las cargó, las usamos
-            setLocalStores(authStores);
-            setLoadingLocalStores(false);
+        if (authSelectedStoreSlug) {
+            setSelectedStoreSlugLocal(authSelectedStoreSlug);
         }
-    }, [authLoading, authStores]); // Depende de authLoading y authStores
+    }, [authSelectedStoreSlug]);
 
     // Efecto para redirigir si el usuario ya está autenticado y tiene una tienda seleccionada
     useEffect(() => {
@@ -63,14 +34,6 @@ const HomePage = () => {
             navigate('/'); // Redirige a la página principal (Punto de Venta)
         }
     }, [isAuthenticated, authSelectedStoreSlug, authLoading, navigate]);
-
-    // Sincronizar el estado local del selector con el del contexto
-    useEffect(() => {
-        if (authSelectedStoreSlug) {
-            setSelectedStoreSlugLocal(authSelectedStoreSlug);
-        }
-    }, [authSelectedStoreSlug]);
-
 
     const handleStoreSelect = (event) => {
         const slug = event.target.value;
@@ -137,19 +100,20 @@ const HomePage = () => {
         }
     };
 
-    // Si el AuthContext está cargando, o si las tiendas locales están cargando, muestra mensaje de carga
-    if (authLoading || loadingLocalStores) {
+    // Si el AuthContext está cargando, muestra mensaje de carga
+    if (authLoading) {
         return (
             <div style={styles.container}>
-                <p style={styles.loadingMessage}>Cargando tiendas...</p>
+                <p style={styles.loadingMessage}>Cargando tiendas y estado de autenticación...</p>
             </div>
         );
     }
 
-    if (error) {
+    // Si hay un error en el AuthContext (ej. al cargar tiendas), lo mostramos
+    if (authError) {
         return (
             <div style={styles.container}>
-                <p style={styles.errorMessage}>{error}</p>
+                <p style={styles.errorMessage}>Error: {authError}</p>
             </div>
         );
     }
@@ -163,11 +127,11 @@ const HomePage = () => {
                 <select 
                     style={styles.select} 
                     onChange={handleStoreSelect} 
-                    value={selectedStoreSlugLocal} // Usar el estado local para el valor del select
+                    value={selectedStoreSlugLocal} 
                 >
                     <option value="">-- Seleccionar Tienda --</option>
-                    {localStores.map((store) => (
-                        <option key={store.id} value={store.slug}>
+                    {stores.map((store) => ( // Usar directamente 'stores' del AuthContext
+                        <option key={store.id} value={store.nombre}> {/* Usar store.nombre como slug */}
                             {store.nombre}
                         </option>
                     ))}
