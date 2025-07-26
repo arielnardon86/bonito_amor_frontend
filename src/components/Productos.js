@@ -30,12 +30,12 @@ function Productos() {
   const [error, setError] = useState(null);
 
   const [nombre, setNombre] = useState('');
-  // Eliminado: const [descripcion, setDescripcion] = useState('');
   const [codigoBarras, setCodigoBarras] = useState('');
-  // Eliminado: const [precioCompra, setPrecioCompra] = useState('');
   const [precioVenta, setPrecioVenta] = useState(''); // Este es el que mapearemos a 'precio' en backend
   const [stock, setStock] = useState('');
   const [talle, setTalle] = useState('UNICA');
+  // Eliminado: const [categoria, setCategoria] = useState('');
+  // Eliminado: const [categorias, setCategorias] = useState([]);
 
   const [successMessage, setSuccessMessage] = useState(null);
   const [mensajeError, setMensajeError] = useState(null);
@@ -45,10 +45,14 @@ function Productos() {
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   const [editingStockId, setEditingStockId] = useState(null);
-  const [newStockValue, setNewStockValue] = '';
+  const [newStockValue, setNewStockValue] = useState(''); // Inicializa con string vacío
 
   const [editingPriceId, setEditingPriceId] = null;
-  const [newPriceValue, setNewPriceValue] = '';
+  const [newPriceValue, setNewPriceValue] = useState(''); // Inicializa con string vacío
+
+
+  // Eliminado: Función para cargar categorías (ya no es necesaria)
+  // const fetchCategorias = useCallback(async () => { /* ... */ }, [token]);
 
 
   const fetchProductos = useCallback(async () => {
@@ -78,6 +82,7 @@ function Productos() {
   useEffect(() => {
     // Solo cargar productos si el usuario está autenticado, es superusuario O staff Y hay una tienda seleccionada.
     if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
+        // Eliminado: fetchCategorias(); // Ya no se cargan categorías
         fetchProductos();
     } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_staff))) {
         setError("Acceso denegado. No tienes permisos para ver/gestionar productos.");
@@ -85,7 +90,7 @@ function Productos() {
     } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
         setLoading(false); // Si no hay tienda seleccionada, no hay productos que cargar
     }
-  }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos]);
+  }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos]); // Eliminado fetchCategorias de dependencias
 
 
   const handleSubmit = async (e) => {
@@ -99,7 +104,7 @@ function Productos() {
     }
 
     // Validar nombre, precioVenta, stock y talle.
-    if (!nombre || precioVenta === '' || stock === '' || !talle) { 
+    if (!nombre || precioVenta === '' || stock === '' || !talle) { // Eliminado 'categoria' de la validación
         setMensajeError('Por favor, completa todos los campos requeridos (Nombre, Precio Venta, Stock, Talle).');
         return;
     }
@@ -119,11 +124,11 @@ function Productos() {
 
     const nuevoProducto = {
       nombre,
-      // Eliminado: descripcion: descripcion || null,
       codigo_barras: codigoBarras || null, 
       precio: parsedPrecioVenta, // Este es el campo 'precio' que el backend espera
       stock: parsedStock,                 
       talle,
+      // Eliminado: categoria: categoria, // Ya no se envía la categoría
       // NO enviar 'tienda' ni 'tienda_slug' aquí. El backend lo asignará.
     };
 
@@ -136,12 +141,11 @@ function Productos() {
       setSuccessMessage('Producto añadido con éxito!');
       fetchProductos(); 
       setNombre('');
-      // Eliminado: setDescripcion('');
       setCodigoBarras('');
-      // Eliminado: setPrecioCompra('');
       setPrecioVenta('');
       setStock('');
       setTalle('UNICA');
+      // Eliminado: setCategoria(''); // Limpiar la categoría seleccionada
     } catch (err) {
       setMensajeError('Error al añadir el producto: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
       console.error('Error adding product:', err.response || err);
@@ -359,7 +363,6 @@ function Productos() {
           <label style={{ display: 'block', marginBottom: '5px' }}>Nombre:</label>
           <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} required style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
         </div>
-        {/* Eliminado: Campo de Descripción */}
         <div style={{ marginBottom: '10px' }}>
           <label style={{ display: 'block', marginBottom: '5px' }}>Código de Barras (Opcional - se genera automáticamente si está vacío):</label>
           <input type="text" value={codigoBarras} onChange={(e) => setCodigoBarras(e.target.value)} style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
@@ -372,7 +375,6 @@ function Productos() {
             ))}
           </select>
         </div>
-        {/* Eliminado: Campo de Precio Compra */}
         <div style={{ marginBottom: '10px' }}>
           <label style={{ display: 'block', marginBottom: '5px' }}>Precio Venta:</label>
           <input type="number" step="0.01" value={precioVenta} onChange={(e) => setPrecioVenta(e.target.value)} required style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
@@ -381,6 +383,7 @@ function Productos() {
           <label style={{ display: 'block', marginBottom: '5px' }}>Stock:</label>
           <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} required style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
         </div>
+        {/* Eliminado: Campo de Categoría */}
         <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px' }}>
           Añadir Producto
         </button>
@@ -414,7 +417,6 @@ function Productos() {
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Imagen Código</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Stock</th>
-                {/* Eliminado: <th style={{ padding: '12px', border: '1px solid #ddd' }}>Descripción</th> */}
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Acciones</th>
               </tr>
             </thead>
@@ -516,7 +518,6 @@ function Productos() {
                       </div>
                     )}
                   </td>
-                  {/* Eliminado: <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.descripcion || 'Sin descripción'}</td> */}
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                     <button
                       onClick={() => handleDeleteProduct(producto.id)}
