@@ -3,9 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Barcode from 'react-barcode';
 import EtiquetasImpresion from './EtiquetasImpresion';
-import { useAuth } from '../AuthContext'; // Importar useAuth para obtener selectedStoreSlug y token
+import { useAuth } from '../AuthContext';
 
-// Define TALLE_OPTIONS aquí o impórtalo desde un archivo de constantes si lo tienes
 const TALLE_OPTIONS = [
     { value: 'XS', label: 'Extra Pequeño' },
     { value: 'S', label: 'Pequeño' },
@@ -47,16 +46,13 @@ function Productos() {
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [newPriceValue, setNewPriceValue] = useState('');
 
-  // Estados para el modal de confirmación
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState(() => () => {});
 
-  // Estados para el cuadro de mensaje de alerta personalizado
   const [showAlertMessage, setShowAlertMessage] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
 
-  // Función para mostrar un mensaje de alerta personalizado
   const showCustomAlert = (message, type = 'success') => {
       setAlertMessage(message);
       setShowAlertMessage(true);
@@ -75,7 +71,7 @@ function Productos() {
     setLoading(true);
     setError(null);
     try {
-      // CAMBIO CLAVE: Añadir /api/
+      // CAMBIO CLAVE: Asegurar /api/productos/
       const response = await axios.get(`${API_BASE_URL}/api/productos/`, {
         headers: { 'Authorization': `Bearer ${token}` },
         params: { tienda_slug: selectedStoreSlug }
@@ -140,7 +136,7 @@ function Productos() {
     };
 
     try {
-      // CAMBIO CLAVE: Añadir /api/
+      // CAMBIO CLAVE: Asegurar /api/productos/
       const response = await axios.post(`${API_BASE_URL}/api/productos/`, nuevoProducto, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -191,7 +187,7 @@ function Productos() {
 
   const handlePrintSelected = () => {
     if (Object.keys(selectedProductsForLabels).length === 0) {
-      showCustomAlert('Por favor, selecciona al menos un producto para imprimir.', 'error'); // Usar alerta personalizada
+      showCustomAlert('Por favor, selecciona al menos un producto para imprimir.', 'error');
       return;
     }
     setShowPrintPreview(true);
@@ -211,15 +207,15 @@ function Productos() {
 
   const handleDeleteProduct = async (productId) => {
     if (!selectedStoreSlug) {
-        showCustomAlert("Por favor, selecciona una tienda antes de eliminar un producto.", 'error'); // Usar alerta personalizada
+        showCustomAlert("Por favor, selecciona una tienda antes de eliminar un producto.", 'error');
         return;
     }
 
     setConfirmMessage('¿Estás seguro de que quieres eliminar este producto? Esta acción es irreversible.');
     setConfirmAction(() => async () => {
-        setShowConfirmModal(false); // Cerrar el modal después de confirmar
+        setShowConfirmModal(false);
         try {
-            // CAMBIO CLAVE: Añadir /api/
+            // CAMBIO CLAVE: Asegurar /api/productos/
             await axios.delete(`${API_BASE_URL}/api/productos/${productId}/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -230,7 +226,7 @@ function Productos() {
             console.error('Error deleting product:', err.response || err);
         }
     });
-    setShowConfirmModal(true); // Mostrar el modal
+    setShowConfirmModal(true);
   };
 
   const handleEditStockClick = (productId, currentStock) => {
@@ -255,7 +251,7 @@ function Productos() {
     }
 
     try {
-      // CAMBIO CLAVE: Añadir /api/
+      // CAMBIO CLAVE: Asegurar /api/productos/
       await axios.patch(`${API_BASE_URL}/api/productos/${productId}/`, { stock: stockInt }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -296,7 +292,7 @@ function Productos() {
     }
 
     try {
-      // CAMBIO CLAVE: Añadir /api/
+      // CAMBIO CLAVE: Asegurar /api/productos/
       await axios.patch(`${API_BASE_URL}/api/productos/${productId}/`, { precio: priceFloat }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -558,7 +554,6 @@ function Productos() {
   );
 }
 
-// Estilos CSS para el componente
 const styles = {
     container: {
         padding: '20px',
@@ -797,7 +792,6 @@ const styles = {
     printButtonHover: {
         backgroundColor: '#218838',
     },
-    // Estilos para el modal de confirmación
     modalOverlay: {
         position: 'fixed',
         top: 0,
@@ -860,18 +854,17 @@ const styles = {
         backgroundColor: '#5a6268',
         transform: 'scale(1.02)',
     },
-    // Estilos para el cuadro de mensaje de alerta
     alertBox: {
         position: 'fixed',
         top: '20px',
         right: '20px',
-        backgroundColor: '#28a745', // Color verde para éxito
+        backgroundColor: '#28a745',
         color: 'white',
         padding: '15px 25px',
         borderRadius: '8px',
         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
         zIndex: 1001,
-        opacity: 0, // Inicialmente oculto
+        opacity: 0,
         animation: 'fadeInOut 3s forwards',
     },
 };
