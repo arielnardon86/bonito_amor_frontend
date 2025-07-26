@@ -156,7 +156,7 @@ const HomePage = () => {
 
     return (
         <div style={styles.container}>
-            <h1 style={styles.header}>Bienvenido a tu Plataforma de Gestión de Tiendas</h1>
+            <h1 style={styles.header}>Bienvenido a Total Stock</h1>
             <h2 style={styles.subHeader}>Elige tu tienda:</h2>
 
             <div style={styles.selectContainer}>

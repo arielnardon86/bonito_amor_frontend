@@ -52,7 +52,7 @@ const Navbar = () => {
       <div className="navbar-logo">
         {/* Siempre redirige a la raíz (página de selección de tienda si no logueado, o Punto de Venta si sí) */}
         <Link to="/">
-          <img src="/total-stock-logo.jpg" alt="Bonito Amor Logo" className="app-logo-image" />
+          <img src="/total-stock-logo.jpg" alt="Total Stock Logo" className="app-logo-image" />
         </Link>
       </div>
 
