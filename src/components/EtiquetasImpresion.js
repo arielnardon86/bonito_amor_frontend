@@ -100,14 +100,18 @@ function EtiquetasImpresion({ productosParaImprimir }) {
     const quantity = product.labelQuantity || 1; // Asegura al menos 1 etiqueta
 
     for (let i = 0; i < quantity; i++) {
+      // Depuración: Verifica el valor de codigo_barras
+      console.log("Valor para código de barras:", product.codigo_barras);
+
       labelsToRender.push(
         <div key={`${product.id}-${i}`} className="label">
           <p style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '1mm' }}>{product.nombre}</p>
           {product.talle && <p style={{ fontSize: '9px', marginBottom: '1mm', color: '#555' }}>Talle: {product.talle}</p>}
           <div className="barcode-wrapper">
+            {/* Asegúrate de que product.codigo_barras no sea null/undefined antes de usarlo */}
             {product.codigo_barras ? (
               <Barcode
-                value={String(product.codigo_barras)}
+                value={String(product.codigo_barras)} // Asegura que el valor sea una cadena
                 format="CODE128" // ¡Cambiado a CODE128 para compatibilidad con UUIDs!
                 width={1.2} // Ajusta el grosor de las barras. Puedes reducirlo (ej. 1.0, 0.8) si el código es muy ancho para 72mm.
                 height={30} // Ajusta la altura del código de barras para ahorrar espacio
