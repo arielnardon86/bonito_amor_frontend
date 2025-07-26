@@ -21,6 +21,24 @@ const TALLE_OPTIONS = [
 
 const API_BASE_URL = process.env.REACT_APP_API_URL; 
 
+// Función para normalizar la URL base, eliminando cualquier /api/ o barra final
+const normalizeApiUrl = (url) => {
+    let normalizedUrl = url;
+    // Eliminar cualquier /api/ al final si existe
+    if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
+        normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
+    }
+    // Eliminar barra final si existe
+    if (normalizedUrl.endsWith('/')) {
+        normalizedUrl = normalizedUrl.slice(0, -1);
+    }
+    return normalizedUrl;
+};
+
+// La URL base normalizada que usaremos para todas las llamadas
+const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
+
+
 function Productos() {
   const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
 
@@ -44,7 +62,7 @@ function Productos() {
   const [newStockValue, setNewStockValue] = useState('');
 
   const [editingPriceId, setEditingPriceId] = useState(null);
-  const [newPriceValue, setNewPriceValue] = useState('');
+  const [newPriceValue, setNewPriceValue] = '';
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -71,8 +89,8 @@ function Productos() {
     setLoading(true);
     setError(null);
     try {
-      // CAMBIO CLAVE: Asegurar /api/productos/
-      const response = await axios.get(`${API_BASE_URL}/api/productos/`, {
+      // Usar BASE_API_ENDPOINT y añadir /api/productos/
+      const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
         headers: { 'Authorization': `Bearer ${token}` },
         params: { tienda_slug: selectedStoreSlug }
       });
@@ -132,12 +150,12 @@ function Productos() {
       precio: parsedPrecioVenta, 
       stock: parsedStock,                 
       talle,
-      tienda: selectedStoreSlug // Asegúrate de enviar la tienda
+      tienda: selectedStoreSlug
     };
 
     try {
-      // CAMBIO CLAVE: Asegurar /api/productos/
-      const response = await axios.post(`${API_BASE_URL}/api/productos/`, nuevoProducto, {
+      // Usar BASE_API_ENDPOINT y añadir /api/productos/
+      const response = await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, nuevoProducto, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       console.log('Producto añadido:', response.data);
@@ -215,8 +233,8 @@ function Productos() {
     setConfirmAction(() => async () => {
         setShowConfirmModal(false);
         try {
-            // CAMBIO CLAVE: Asegurar /api/productos/
-            await axios.delete(`${API_BASE_URL}/api/productos/${productId}/`, {
+            // Usar BASE_API_ENDPOINT y añadir /api/productos/
+            await axios.delete(`${BASE_API_ENDPOINT}/api/productos/${productId}/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setSuccessMessage('Producto eliminado con éxito!');
@@ -251,8 +269,8 @@ function Productos() {
     }
 
     try {
-      // CAMBIO CLAVE: Asegurar /api/productos/
-      await axios.patch(`${API_BASE_URL}/api/productos/${productId}/`, { stock: stockInt }, {
+      // Usar BASE_API_ENDPOINT y añadir /api/productos/
+      await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${productId}/`, { stock: stockInt }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setSuccessMessage('Stock actualizado con éxito!');
@@ -292,8 +310,8 @@ function Productos() {
     }
 
     try {
-      // CAMBIO CLAVE: Asegurar /api/productos/
-      await axios.patch(`${API_BASE_URL}/api/productos/${productId}/`, { precio: priceFloat }, {
+      // Usar BASE_API_ENDPOINT y añadir /api/productos/
+      await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${productId}/`, { precio: priceFloat }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setSuccessMessage('Precio de venta actualizado con éxito!');
