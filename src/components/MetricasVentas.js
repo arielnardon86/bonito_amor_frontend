@@ -66,7 +66,7 @@ const MetricasVentas = () => {
         }
         try {
             // Realizar la solicitud GET a la API de usuarios
-            const response = await axios.get(`${API_BASE_URL}/users/`, {
+            const response = await axios.get(`${API_BASE_URL}/api/users/`, { // Asegúrate de que la URL sea correcta
                 headers: { 'Authorization': `Bearer ${token}` } // Enviar el token en los headers
             });
             // Asumir que la respuesta puede ser paginada (.results) o un array directo
@@ -78,22 +78,32 @@ const MetricasVentas = () => {
 
     // Función para obtener la lista de métodos de pago
     const fetchPaymentMethods = useCallback(async () => {
-        // No realizar la llamada si no hay token o no hay tienda seleccionada
-        if (!token || !selectedStoreSlug) {
-            setPaymentMethods([{ value: '', label: 'Todos los Métodos de Pago' }]); // Establecer un valor por defecto
+        // No realizar la llamada si no hay token disponible
+        if (!token) {
+            console.error("No hay token de autenticación para obtener métodos de pago.");
+            // Establecer un valor por defecto si no hay token
+            setPaymentMethods([{ value: '', label: 'Todos los Métodos de Pago' }]);
             return;
         }
         try {
-            // Realizar la solicitud GET a la API de métodos de pago, filtrando por tienda
-            const response = await axios.get(`${API_BASE_URL}/metodos-pago/?tienda_slug=${selectedStoreSlug}`, {
+            // CAMBIO CLAVE: URL corregida a /api/metodos-pago/ y sin filtro de tienda aquí
+            const response = await axios.get(`${API_BASE_URL}/api/metodos-pago/`, {
                 headers: { 'Authorization': `Bearer ${token}` } // Enviar el token en los headers
             });
+            
+            // CAMBIO CLAVE: Mapear los datos para que tengan 'value' y 'label'
+            const mappedMethods = response.data.map(method => ({
+                value: method.nombre, // Usar el nombre como valor para el filtro
+                label: method.nombre  // Usar el nombre como etiqueta visible
+            }));
+            
             // Añadir una opción "Todos" al inicio de la lista de métodos de pago
-            setPaymentMethods([{ value: '', label: 'Todos los Métodos de Pago' }, ...response.data]);
+            setPaymentMethods([{ value: '', label: 'Todos los Métodos de Pago' }, ...mappedMethods]);
 
         } catch (err) {
             console.error("Error fetching payment methods:", err.response ? err.response.data : err.message);
             // Fallback si hay un error al cargar desde la API
+            setError("Error al cargar los métodos de pago. Usando opciones por defecto.");
             setPaymentMethods([
                 { value: '', label: 'Todos los Métodos de Pago' },
                 { value: 'Efectivo', label: 'Efectivo' },
@@ -103,7 +113,7 @@ const MetricasVentas = () => {
                 { value: 'Tarjeta de crédito', label: 'Tarjeta de crédito' },
             ]);
         }
-    }, [token, selectedStoreSlug]); // Dependencias: token, selectedStoreSlug
+    }, [token]); // Dependencia: token (selectedStoreSlug ya no es necesario aquí)
 
     // Función para obtener las métricas de ventas
     const fetchMetricas = useCallback(async () => {
@@ -125,7 +135,7 @@ const MetricasVentas = () => {
             params.append('tienda_slug', selectedStoreSlug); // Añadir el slug de la tienda seleccionada
 
             // Construir la URL completa con los parámetros
-            const url = `${API_BASE_URL}/metricas/metrics/?${params.toString()}`;
+            const url = `${API_BASE_URL}/api/metricas/metrics/?${params.toString()}`;
             console.log("Fetching metrics from:", url);
 
             // Realizar la solicitud GET a la API de métricas
@@ -156,7 +166,7 @@ const MetricasVentas = () => {
         // Solo cargar si la autenticación ha terminado, el usuario está autenticado, es superusuario y hay una tienda seleccionada
         if (!authLoading && isAuthenticated && user?.is_superuser && selectedStoreSlug) {
             fetchSellers();
-            fetchPaymentMethods();
+            fetchPaymentMethods(); // Llamar a fetchPaymentMethods aquí
             fetchMetricas();
         } else if (!authLoading && (!isAuthenticated || !user?.is_superuser)) {
             // Si no está autenticado o no es superusuario, mostrar mensaje de acceso denegado
