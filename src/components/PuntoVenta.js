@@ -25,14 +25,13 @@ const PuntoVenta = () => {
     const [productos, setProductos] = useState([]); // Lista de todos los productos disponibles
     const [categorias, setCategorias] = useState([]);
     const [metodosPago, setMetodosPago] = useState([]);
-    const [productosEnVenta, setProductosEnVenta] = useState([]); // Productos añadidos a la venta actual
+    const [productosEnVenta, setProductosEnVenta] = useState([]); // Productos añadidos a la venta actual (el carrito)
     const [totalVenta, setTotalVenta] = useState(0);
     const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
     const [busquedaProducto, setBusquedaProducto] = useState('');
     const [productoSeleccionado, setProductoSeleccionado] = useState(null); // Producto seleccionado por búsqueda
     const [cantidadProducto, setCantidadProducto] = useState(1);
     const [error, setError] = useState(null);
-    const [successMessage, setSuccessMessage] = useState(null);
     const [loadingData, setLoadingData] = useState(true);
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -41,19 +40,25 @@ const PuntoVenta = () => {
 
     const [showAlertMessage, setShowAlertMessage] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
+    const [alertType, setAlertType] = useState('success'); // 'success', 'error', 'info'
+
+    // Pagination for 'Productos en Carrito' table
+    const [currentPageCart, setCurrentPageCart] = useState(1);
+    const itemsPerPageCart = 10;
+
+    // Pagination for 'Productos Disponibles' section
+    const [currentPageAvailable, setCurrentPageAvailable] = useState(1);
+    const itemsPerPageAvailable = 10;
 
     // Función para mostrar alertas personalizadas en la UI
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
+        setAlertType(type);
         setShowAlertMessage(true);
-        // Opcional: cambiar el color de fondo de la alerta según el tipo
-        // const alertBox = document.querySelector('.alertBox');
-        // if (alertBox) {
-        //     alertBox.style.backgroundColor = type === 'error' ? '#dc3545' : '#28a745';
-        // }
         setTimeout(() => {
             setShowAlertMessage(false);
             setAlertMessage('');
+            setAlertType('success'); // Reset to default
         }, 3000);
     };
 
@@ -111,6 +116,7 @@ const PuntoVenta = () => {
             }
         } catch (err) {
             console.error("Error al cargar métodos de pago:", err.response || err.message);
+            showCustomAlert("Error al cargar métodos de pago.", 'error');
         }
     }, [token]);
 
@@ -135,7 +141,14 @@ const PuntoVenta = () => {
     useEffect(() => {
         const calcularTotal = productosEnVenta.reduce((acc, item) => acc + (parseFloat(item.precio) * item.cantidad), 0);
         setTotalVenta(calcularTotal);
-    }, [productosEnVenta]);
+        // Reset current page if items are removed and current page is out of bounds for cart
+        const totalPagesCart = Math.ceil(productosEnVenta.length / itemsPerPageCart);
+        if (currentPageCart > totalPagesCart && totalPagesCart > 0) {
+            setCurrentPageCart(totalPagesCart);
+        } else if (productosEnVenta.length === 0) {
+            setCurrentPageCart(1);
+        }
+    }, [productosEnVenta, currentPageCart]);
 
     // Manejar la búsqueda de un producto por código de barras/nombre
     const handleBuscarProducto = async (e) => {
@@ -225,6 +238,32 @@ const PuntoVenta = () => {
         showCustomAlert(`${productToAdd.nombre} añadido a la venta.`, 'success');
     };
 
+    // Aumentar cantidad de un producto en el carrito
+    const handleIncreaseQuantity = (id) => {
+        setProductosEnVenta(prevItems => prevItems.map(item => {
+            if (item.id === id) {
+                const productInStock = productos.find(p => p.id === id); // Find original product to check stock
+                if (productInStock && item.cantidad < productInStock.stock) {
+                    return { ...item, cantidad: item.cantidad + 1 };
+                } else {
+                    showCustomAlert(`No hay más stock disponible para ${item.nombre}.`, 'error');
+                }
+            }
+            return item;
+        }));
+    };
+
+    // Disminuir cantidad de un producto en el carrito
+    const handleDecreaseQuantity = (id) => {
+        setProductosEnVenta(prevItems => prevItems.map(item => {
+            if (item.id === id && item.cantidad > 1) {
+                return { ...item, cantidad: item.cantidad - 1 };
+            }
+            return item;
+        }));
+    };
+
+
     // Eliminar un producto de la lista de venta
     const handleEliminarProductoDeVenta = (id) => {
         setProductosEnVenta(productosEnVenta.filter(item => item.id !== id));
@@ -282,6 +321,23 @@ const PuntoVenta = () => {
         setShowConfirmModal(true);
     };
 
+    // Get current products for 'Productos en Carrito' pagination
+    const indexOfLastItemCart = currentPageCart * itemsPerPageCart;
+    const indexOfFirstItemCart = indexOfLastItemCart - itemsPerPageCart;
+    const currentProductsInCart = productosEnVenta.slice(indexOfFirstItemCart, indexOfLastItemCart);
+    const totalPagesCart = Math.ceil(productosEnVenta.length / itemsPerPageCart);
+
+    const paginateCart = (pageNumber) => setCurrentPageCart(pageNumber);
+
+    // Get current products for 'Productos Disponibles' pagination
+    const indexOfLastItemAvailable = currentPageAvailable * itemsPerPageAvailable;
+    const indexOfFirstItemAvailable = indexOfLastItemAvailable - itemsPerPageAvailable;
+    const currentAvailableProducts = productos.slice(indexOfFirstItemAvailable, indexOfLastItemAvailable);
+    const totalPagesAvailable = Math.ceil(productos.length / itemsPerPageAvailable);
+
+    const paginateAvailable = (pageNumber) => setCurrentPageAvailable(pageNumber);
+
+
     // Renderizado condicional basado en el estado de carga y autenticación
     if (authLoading || (isAuthenticated && !user)) {
         return <p style={styles.loadingMessage}>Cargando datos de usuario...</p>;
@@ -303,15 +359,18 @@ const PuntoVenta = () => {
         return <p style={styles.loadingMessage}>Cargando datos del punto de venta...</p>;
     }
 
+    // Debugging for payment methods
+    console.log("Estado de métodos de pago:", { metodosPago, metodoPagoSeleccionado });
+
     return (
         <div style={styles.container}>
             <h1>Punto de Venta ({selectedStoreSlug})</h1>
 
             {error && <p style={styles.errorMessage}>{error}</p>}
-            {/* {successMessage && <p style={styles.successMessage}>{successMessage}</p>} */} {/* Usamos showCustomAlert ahora */}
 
             {/* Sección de Búsqueda y Añadir Producto */}
             <div style={styles.searchAddSection}>
+                <h3>Buscar y Añadir Producto</h3>
                 <form onSubmit={handleBuscarProducto} style={styles.searchForm}>
                     <input
                         type="text"
@@ -325,7 +384,7 @@ const PuntoVenta = () => {
 
                 {productoSeleccionado && (
                     <div style={styles.selectedProductCard}>
-                        <h3>Producto Seleccionado:</h3>
+                        <h4>Producto Seleccionado:</h4>
                         <p><strong>Nombre:</strong> {productoSeleccionado.nombre}</p>
                         <p><strong>Precio:</strong> ${parseFloat(productoSeleccionado.precio).toFixed(2)}</p>
                         <p><strong>Stock Disponible:</strong> {productoSeleccionado.stock}</p>
@@ -345,67 +404,6 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Nueva Sección: Productos Disponibles */}
-            <div style={styles.availableProductsSection}>
-                <h2>Productos Disponibles</h2>
-                {productos.length === 0 ? (
-                    <p style={styles.noDataMessage}>No hay productos disponibles en esta tienda.</p>
-                ) : (
-                    <div style={styles.productListGrid}>
-                        {productos.map(p => (
-                            <div key={p.id} style={styles.productCard}>
-                                <h3>{p.nombre}</h3>
-                                <p>Talle: {p.talle}</p>
-                                <p>Precio: ${parseFloat(p.precio).toFixed(2)}</p>
-                                <p>Stock: {p.stock}</p>
-                                <button
-                                    onClick={() => handleAgregarProducto(p, 1)}
-                                    style={styles.addToSaleButton}
-                                    disabled={p.stock <= 0} // Deshabilitar si no hay stock
-                                >
-                                    {p.stock > 0 ? 'Añadir (1)' : 'Sin Stock'}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Sección de Productos en Venta */}
-            <div style={styles.saleListSection}>
-                <h2>Productos en Venta</h2>
-                {productosEnVenta.length === 0 ? (
-                    <p style={styles.noDataMessage}>No hay productos en la venta actual.</p>
-                ) : (
-                    <table style={styles.table}>
-                        <thead>
-                            <tr style={styles.tableHeaderRow}>
-                                <th style={styles.th}>Producto</th>
-                                <th style={styles.th}>Talle</th>
-                                <th style={styles.th}>Cantidad</th>
-                                <th style={styles.th}>Precio Unitario</th>
-                                <th style={styles.th}>Subtotal</th>
-                                <th style={styles.th}>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {productosEnVenta.map(item => (
-                                <tr key={item.id} style={styles.tableRow}>
-                                    <td style={styles.td}>{item.nombre}</td>
-                                    <td style={styles.td}>{item.talle}</td>
-                                    <td style={styles.td}>{item.cantidad}</td>
-                                    <td style={styles.td}>${parseFloat(item.precio).toFixed(2)}</td>
-                                    <td style={styles.td}>${(parseFloat(item.precio) * item.cantidad).toFixed(2)}</td>
-                                    <td style={styles.td}>
-                                        <button onClick={() => handleEliminarProductoDeVenta(item.id)} style={styles.deleteItemButton}>Eliminar</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
-
             {/* Sección de Resumen de Venta */}
             <div style={styles.summarySection}>
                 <h2>Resumen de Venta</h2>
@@ -418,12 +416,141 @@ const PuntoVenta = () => {
                         onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
                         style={styles.paymentMethodSelect}
                     >
-                        {metodosPago.map(metodo => (
-                            <option key={metodo.id} value={metodo.nombre}>{metodo.nombre}</option>
-                        ))}
+                        {metodosPago.length > 0 ? (
+                            metodosPago.map(metodo => (
+                                <option key={metodo.id} value={metodo.nombre}>{metodo.nombre}</option>
+                            ))
+                        ) : (
+                            <option value="">Cargando métodos de pago...</option>
+                        )}
                     </select>
                 </div>
                 <button onClick={handleRealizarVenta} style={styles.completeSaleButton}>Realizar Venta</button>
+            </div>
+
+            {/* Sección de Productos en Venta (el carrito) */}
+            <div style={styles.saleListSection}>
+                <h2>Productos en Carrito</h2>
+                {productosEnVenta.length === 0 ? (
+                    <p style={styles.noDataMessage}>No hay productos en la venta actual.</p>
+                ) : (
+                    <>
+                        <table style={styles.table}>
+                            <thead>
+                                <tr style={styles.tableHeaderRow}>
+                                    <th style={styles.th}>Producto</th>
+                                    <th style={styles.th}>Talle</th>
+                                    <th style={styles.th}>Cantidad</th>
+                                    <th style={styles.th}>Precio Unitario</th>
+                                    <th style={styles.th}>Subtotal</th>
+                                    <th style={styles.th}>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentProductsInCart.map(item => (
+                                    <tr key={item.id} style={styles.tableRow}>
+                                        <td style={styles.td}>{item.nombre}</td>
+                                        <td style={styles.td}>{item.talle}</td>
+                                        <td style={styles.td}>
+                                            <div style={styles.quantityControlButtons}>
+                                                <button onClick={() => handleDecreaseQuantity(item.id)} style={styles.quantityButton}>-</button>
+                                                <span>{item.cantidad}</span>
+                                                <button onClick={() => handleIncreaseQuantity(item.id)} style={styles.quantityButton}>+</button>
+                                            </div>
+                                        </td>
+                                        <td style={styles.td}>${parseFloat(item.precio).toFixed(2)}</td>
+                                        <td style={styles.td}>${(parseFloat(item.precio) * item.cantidad).toFixed(2)}</td>
+                                        <td style={styles.td}>
+                                            <button onClick={() => handleEliminarProductoDeVenta(item.id)} style={styles.deleteItemButton}>Eliminar</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {totalPagesCart > 1 && (
+                            <div style={styles.paginationControls}>
+                                <button
+                                    onClick={() => paginateCart(currentPageCart - 1)}
+                                    disabled={currentPageCart === 1}
+                                    style={styles.paginationButton}
+                                >
+                                    Anterior
+                                </button>
+                                {Array.from({ length: totalPagesCart }, (_, i) => (
+                                    <button
+                                        key={i + 1}
+                                        onClick={() => paginateCart(i + 1)}
+                                        style={currentPageCart === i + 1 ? { ...styles.paginationButton, ...styles.paginationButtonActive } : styles.paginationButton}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => paginateCart(currentPageCart + 1)}
+                                    disabled={currentPageCart === totalPagesCart}
+                                    style={styles.paginationButton}
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+
+            {/* Nueva Sección: Productos Disponibles */}
+            <div style={styles.availableProductsSection}>
+                <h2>Productos Disponibles</h2>
+                {productos.length === 0 ? (
+                    <p style={styles.noDataMessage}>No hay productos disponibles en esta tienda.</p>
+                ) : (
+                    <>
+                        <div style={styles.productListGrid}>
+                            {currentAvailableProducts.map(p => (
+                                <div key={p.id} style={styles.productCard}>
+                                    <h3>{p.nombre}</h3>
+                                    <p>Talle: {p.talle}</p>
+                                    <p>Precio: ${parseFloat(p.precio).toFixed(2)}</p>
+                                    <p>Stock: {p.stock}</p>
+                                    <button
+                                        onClick={() => handleAgregarProducto(p, 1)}
+                                        style={p.stock <= 0 ? { ...styles.addToSaleButton, ...styles.addToSaleButtonDisabled } : styles.addToSaleButton}
+                                        disabled={p.stock <= 0} // Deshabilitar si no hay stock
+                                    >
+                                        {p.stock > 0 ? 'Añadir (1)' : 'Sin Stock'}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        {totalPagesAvailable > 1 && (
+                            <div style={styles.paginationControls}>
+                                <button
+                                    onClick={() => paginateAvailable(currentPageAvailable - 1)}
+                                    disabled={currentPageAvailable === 1}
+                                    style={styles.paginationButton}
+                                >
+                                    Anterior
+                                </button>
+                                {Array.from({ length: totalPagesAvailable }, (_, i) => (
+                                    <button
+                                        key={i + 1}
+                                        onClick={() => paginateAvailable(i + 1)}
+                                        style={currentPageAvailable === i + 1 ? { ...styles.paginationButton, ...styles.paginationButtonActive } : styles.paginationButton}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => paginateAvailable(currentPageAvailable + 1)}
+                                    disabled={currentPageAvailable === totalPagesAvailable}
+                                    style={styles.paginationButton}
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
 
             {/* Modal de Confirmación */}
@@ -441,7 +568,7 @@ const PuntoVenta = () => {
 
             {/* Cuadro de Mensaje de Alerta */}
             {showAlertMessage && (
-                <div style={styles.alertBox}>
+                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
                     <p>{alertMessage}</p>
                 </div>
             )}
@@ -478,14 +605,6 @@ const styles = {
     errorMessage: {
         color: 'red',
         backgroundColor: '#ffe3e6',
-        padding: '10px',
-        borderRadius: '5px',
-        marginBottom: '15px',
-        textAlign: 'center',
-    },
-    successMessage: { // Este estilo ya no se usa directamente para el mensaje de éxito, sino para el alertBox
-        color: 'green',
-        backgroundColor: '#e6ffe6',
         padding: '10px',
         borderRadius: '5px',
         marginBottom: '15px',
@@ -624,12 +743,53 @@ const styles = {
         borderRadius: '4px',
         cursor: 'pointer',
     },
+    quantityControlButtons: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '5px',
+    },
+    quantityButton: {
+        width: '30px',
+        height: '30px',
+        borderRadius: '50%',
+        border: '1px solid #007bff',
+        backgroundColor: '#007bff',
+        color: 'white',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'background-color 0.2s ease',
+    },
+    paginationControls: {
+        display: 'flex',
+        justifyContent: 'center',
+        marginTop: '20px',
+        gap: '10px',
+    },
+    paginationButton: {
+        padding: '8px 15px',
+        border: '1px solid #007bff',
+        borderRadius: '5px',
+        backgroundColor: 'white',
+        color: '#007bff',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s ease, color 0.2s ease',
+    },
+    paginationButtonActive: {
+        backgroundColor: '#007bff',
+        color: 'white',
+    },
     summarySection: {
         border: '1px solid #e0e0e0',
         padding: '20px',
         borderRadius: '8px',
         backgroundColor: '#f9f9f9',
         textAlign: 'right',
+        marginBottom: '30px',
     },
     totalText: {
         fontSize: '1.8em',
@@ -726,7 +886,7 @@ const styles = {
         position: 'fixed',
         top: '20px',
         right: '20px',
-        backgroundColor: '#28a745', // Default success color
+        // backgroundColor is set dynamically based on alertType
         color: 'white',
         padding: '15px 25px',
         borderRadius: '8px',
