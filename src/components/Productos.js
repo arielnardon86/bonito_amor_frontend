@@ -30,10 +30,10 @@ function Productos() {
   const [error, setError] = useState(null);
 
   const [nombre, setNombre] = useState('');
-  const [descripcion, setDescripcion] = useState('');
+  // Eliminado: const [descripcion, setDescripcion] = useState('');
   const [codigoBarras, setCodigoBarras] = useState('');
-  const [precioCompra, setPrecioCompra] = useState('');
-  const [precioVenta, setPrecioVenta] = useState('');
+  // Eliminado: const [precioCompra, setPrecioCompra] = useState('');
+  const [precioVenta, setPrecioVenta] = useState(''); // Este es el que mapearemos a 'precio' en backend
   const [stock, setStock] = useState('');
   const [talle, setTalle] = useState('UNICA');
 
@@ -45,10 +45,10 @@ function Productos() {
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   const [editingStockId, setEditingStockId] = useState(null);
-  const [newStockValue, setNewStockValue] = useState('');
+  const [newStockValue, setNewStockValue] = '';
 
-  const [editingPriceId, setEditingPriceId] = useState(null);
-  const [newPriceValue, setNewPriceValue] = useState('');
+  const [editingPriceId, setEditingPriceId] = null;
+  const [newPriceValue, setNewPriceValue] = '';
 
 
   const fetchProductos = useCallback(async () => {
@@ -76,9 +76,7 @@ function Productos() {
 
 
   useEffect(() => {
-    // Solo cargar productos si el usuario está autenticado, es superusuario Y hay una tienda seleccionada.
-    // O si es staff y tiene tienda seleccionada (si los permisos lo permiten para staff)
-    // Asumiendo que solo superusuarios pueden gestionar productos por el momento, según tu código anterior.
+    // Solo cargar productos si el usuario está autenticado, es superusuario O staff Y hay una tienda seleccionada.
     if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
         fetchProductos();
     } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_staff))) {
@@ -100,20 +98,16 @@ function Productos() {
         return;
     }
 
-    if (!nombre || precioCompra === '' || precioVenta === '' || stock === '' || !talle) { // Usar '' para chequear si están vacíos
-        setMensajeError('Por favor, completa todos los campos requeridos (Nombre, Precios, Stock, Talle).');
+    // Validar nombre, precioVenta, stock y talle.
+    if (!nombre || precioVenta === '' || stock === '' || !talle) { 
+        setMensajeError('Por favor, completa todos los campos requeridos (Nombre, Precio Venta, Stock, Talle).');
         return;
     }
     
     // Convertir y validar precios y stock
-    const parsedPrecioCompra = parseFloat(precioCompra);
     const parsedPrecioVenta = parseFloat(precioVenta);
     const parsedStock = parseInt(stock, 10);
 
-    if (isNaN(parsedPrecioCompra) || parsedPrecioCompra < 0) {
-        setMensajeError('El precio de compra debe ser un número válido y no negativo.');
-        return;
-    }
     if (isNaN(parsedPrecioVenta) || parsedPrecioVenta < 0) {
         setMensajeError('El precio de venta debe ser un número válido y no negativo.');
         return;
@@ -125,11 +119,10 @@ function Productos() {
 
     const nuevoProducto = {
       nombre,
-      descripcion: descripcion || null,
+      // Eliminado: descripcion: descripcion || null,
       codigo_barras: codigoBarras || null, 
-      precio_compra: parsedPrecioCompra, // Asegura que sea número
-      precio_venta: parsedPrecioVenta,   // Asegura que sea número
-      stock: parsedStock,                 // Asegura que sea número
+      precio: parsedPrecioVenta, // Este es el campo 'precio' que el backend espera
+      stock: parsedStock,                 
       talle,
       // NO enviar 'tienda' ni 'tienda_slug' aquí. El backend lo asignará.
     };
@@ -143,9 +136,9 @@ function Productos() {
       setSuccessMessage('Producto añadido con éxito!');
       fetchProductos(); 
       setNombre('');
-      setDescripcion('');
+      // Eliminado: setDescripcion('');
       setCodigoBarras('');
-      setPrecioCompra('');
+      // Eliminado: setPrecioCompra('');
       setPrecioVenta('');
       setStock('');
       setTalle('UNICA');
@@ -198,6 +191,7 @@ function Productos() {
   };
 
   const handleClosePrintPreview = () => {
+    setSelectedProductsForLabels({}); // Limpiar selección al cerrar
     setShowPrintPreview(false);
   };
 
@@ -272,6 +266,7 @@ function Productos() {
 
   const handleEditPriceClick = (productId, currentPrice) => {
     setEditingPriceId(productId);
+    // CAMBIO CLAVE: Usar producto.precio para la edición, no producto.precio_venta
     setNewPriceValue(currentPrice.toString()); 
   };
 
@@ -292,8 +287,8 @@ function Productos() {
     }
 
     try {
-      // Eliminar tienda_slug de los parámetros de la URL para PATCH
-      await axios.patch(`${API_BASE_URL}/productos/${productId}/`, { precio_venta: priceFloat }, {
+      // CAMBIO CLAVE: Enviar 'precio' al backend, no 'precio_venta'
+      await axios.patch(`${API_BASE_URL}/productos/${productId}/`, { precio: priceFloat }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setSuccessMessage('Precio de venta actualizado con éxito!');
@@ -364,10 +359,7 @@ function Productos() {
           <label style={{ display: 'block', marginBottom: '5px' }}>Nombre:</label>
           <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} required style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Descripción:</label>
-          <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
-        </div>
+        {/* Eliminado: Campo de Descripción */}
         <div style={{ marginBottom: '10px' }}>
           <label style={{ display: 'block', marginBottom: '5px' }}>Código de Barras (Opcional - se genera automáticamente si está vacío):</label>
           <input type="text" value={codigoBarras} onChange={(e) => setCodigoBarras(e.target.value)} style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
@@ -380,10 +372,7 @@ function Productos() {
             ))}
           </select>
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Precio Compra:</label>
-          <input type="number" step="0.01" value={precioCompra} onChange={(e) => setPrecioCompra(e.target.value)} required style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
-        </div>
+        {/* Eliminado: Campo de Precio Compra */}
         <div style={{ marginBottom: '10px' }}>
           <label style={{ display: 'block', marginBottom: '5px' }}>Precio Venta:</label>
           <input type="number" step="0.01" value={precioVenta} onChange={(e) => setPrecioVenta(e.target.value)} required style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
@@ -425,7 +414,7 @@ function Productos() {
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Imagen Código</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th>
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Stock</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Descripción</th>
+                {/* Eliminado: <th style={{ padding: '12px', border: '1px solid #ddd' }}>Descripción</th> */}
                 <th style={{ padding: '12px', border: '1px solid #ddd' }}>Acciones</th>
               </tr>
             </thead>
@@ -494,8 +483,8 @@ function Productos() {
                       </div>
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <span>${parseFloat(producto.precio_venta).toFixed(2)}</span>
-                        <button onClick={() => handleEditPriceClick(producto.id, producto.precio_venta)} style={{ padding: '5px 8px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                        <span>${parseFloat(producto.precio).toFixed(2)}</span> 
+                        <button onClick={() => handleEditPriceClick(producto.id, producto.precio)} style={{ padding: '5px 8px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
                           Editar
                         </button>
                       </div>
@@ -527,7 +516,7 @@ function Productos() {
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.descripcion || 'Sin descripción'}</td>
+                  {/* Eliminado: <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.descripcion || 'Sin descripción'}</td> */}
                   <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                     <button
                       onClick={() => handleDeleteProduct(producto.id)}
