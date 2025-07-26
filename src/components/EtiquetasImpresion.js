@@ -100,19 +100,24 @@ function EtiquetasImpresion({ productosParaImprimir }) {
     const quantity = product.labelQuantity || 1; // Asegura al menos 1 etiqueta
 
     for (let i = 0; i < quantity; i++) {
-      // Depuración: Verifica el valor de codigo_barras
       console.log("Valor para código de barras:", product.codigo_barras);
 
-      // --- INICIO DEL CAMBIO ---
-      // Asegurarse de que el precio sea un número válido antes de formatear
       let displayPrice = '0.00'; // Valor por defecto
-      if (product.precio_venta !== null && product.precio_venta !== undefined) {
-        const parsedPrice = parseFloat(product.precio_venta);
+
+      // *** CAMBIO CLAVE AQUÍ: Usar product.precio en lugar de product.precio_venta ***
+      if (product.precio !== null && product.precio !== undefined) {
+        // Convertir a string y reemplazar comas por puntos para asegurar un parseo correcto
+        const priceString = String(product.precio).replace(',', '.');
+        const parsedPrice = parseFloat(priceString);
+
         if (!isNaN(parsedPrice)) {
           displayPrice = parsedPrice.toFixed(2);
+        } else {
+          console.warn(`Error: parseFloat resultó en NaN para el precio del producto ${product.id}. Valor original:`, product.precio);
         }
+      } else {
+        console.warn(`precio es null o undefined para el producto ${product.id}.`);
       }
-      // --- FIN DEL CAMBIO ---
 
       labelsToRender.push(
         <div key={`${product.id}-${i}`} className="label">
