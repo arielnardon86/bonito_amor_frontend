@@ -50,7 +50,8 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/refresh/`, {
+            // CAMBIO CLAVE: Añadir /api/
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/token/refresh/`, {
                 refresh: refresh_token,
             });
             const new_access_token = response.data.access;
@@ -81,7 +82,8 @@ export const AuthProvider = ({ children }) => {
                 payload.store_slug = storeSlugFromUrl; 
             }
 
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/token/`, payload); 
+            // CAMBIO CLAVE: Añadir /api/
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/token/`, payload); 
 
             const { access, refresh } = response.data;
 
@@ -90,7 +92,8 @@ export const AuthProvider = ({ children }) => {
             setAuthToken(access); 
 
             console.log("AuthContext: Obteniendo detalles de usuario después del login...");
-            const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
+            // CAMBIO CLAVE: Añadir /api/
+            const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/me/`);
             setUser(userResponse.data);
             console.log("AuthContext: Detalles de usuario obtenidos:", userResponse.data);
 
@@ -111,14 +114,11 @@ export const AuthProvider = ({ children }) => {
         }
     }, [setAuthToken, logout, selectStore, setError]); 
 
-    // Función para obtener las tiendas
-    // Ya no necesita currentToken como argumento, ya que axios.defaults.headers.common['Authorization']
-    // se configura antes de llamar a esta función en loadUserAndStores.
-    // Además, el backend ahora permite GET no autenticado para tiendas.
     const fetchStores = useCallback(async () => {
         console.log("AuthContext: fetchStores llamado.");
         try {
-            const response = await axios.get(`${process.env.REACT_APP_API_URL}/tiendas/`);
+            // CAMBIO CLAVE: Añadir /api/
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tiendas/`);
             setStores(response.data.results || response.data);
             console.log("AuthContext: Tiendas cargadas con éxito:", response.data.results || response.data);
         } catch (err) {
@@ -144,8 +144,7 @@ export const AuthProvider = ({ children }) => {
                 setSelectedStoreSlug(stored_store_slug);
             }
             
-            // --- CAMBIO CLAVE AQUÍ: Llamar a fetchStores incondicionalmente ---
-            // Primero, intenta cargar las tiendas. Esto debería funcionar ahora que el backend permite GET no autenticado.
+            // fetchStores se llama aquí, y ahora su URL interna es correcta
             await fetchStores(); 
 
             if (current_access_token) {
@@ -167,7 +166,8 @@ export const AuthProvider = ({ children }) => {
                     console.log("AuthContext: Token de acceso válido o refrescado. Obteniendo detalles de usuario...");
 
                     try {
-                        const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/users/me/`);
+                        // CAMBIO CLAVE: Añadir /api/
+                        const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/me/`);
                         if (userResponse.data) {
                             setUser(userResponse.data);
                             console.log("AuthContext: Usuario establecido:", userResponse.data);
@@ -190,7 +190,7 @@ export const AuthProvider = ({ children }) => {
                 }
             } else {
                 console.log("AuthContext: No se encontró token de acceso en localStorage. Las tiendas ya se intentaron cargar de forma no autenticada.");
-                setUser(null); // Asegurarse de que el usuario sea null si no hay token
+                setUser(null);
             }
             setLoading(false);
             console.log("AuthContext: loadUserAndStores finalizado. Loading es ahora false.");
