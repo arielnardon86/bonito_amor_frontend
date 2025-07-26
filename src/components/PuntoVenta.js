@@ -1,103 +1,189 @@
-// BONITO_AMOR/frontend/src/pages/PuntoVenta.js
-import React, { useState, useEffect, useContext } from 'react';
+// BONITO_AMOR/frontend/src/components/PuntoVenta.js
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { AuthContext } from '../context/AuthContext'; // Asumiendo que tienes un AuthContext
-import { useNavigate } from 'react-router-dom'; // Para redireccionar después de la venta
+import Barcode from 'react-barcode';
+import EtiquetasImpresion from './EtiquetasImpresion';
+import { useSales } from './SalesContext'; // Asegúrate de que SalesContext exista y funcione correctamente
+import { useAuth } from '../AuthContext'; // Importar useAuth para obtener selectedStoreSlug y el objeto user
 
-// Importa otros componentes que uses en PuntoVenta.js (ej. ProductList, CartDisplay, etc.)
-// import ProductList from '../components/ProductList'; 
-// import CartDisplay from '../components/CartDisplay';
+// Define TALLE_OPTIONS aquí o impórtalo desde un archivo de constantes si lo tienes
+const TALLE_OPTIONS = [
+    { value: 'XS', label: 'Extra Pequeño' },
+    { value: 'S', label: 'Pequeño' },
+    { value: 'M', label: 'Mediano' },
+    { value: 'L', label: 'Grande' },
+    { value: 'XL', label: 'Extra Grande' },
+    { value: 'UNICA', label: 'Talla Única' },
+    { value: 'NUM36', label: '36' },
+    { value: 'NUM38', label: '38' },
+    { value: 'NUM40', label: '40' },
+    { value: 'NUM42', label: '42' },
+    { value: 'NUM44', label: '44' },
+];
+
+const PAYMENT_METHODS = [
+    { value: '', label: 'Seleccione un método de pago' },
+    { value: 'Efectivo', label: 'Efectivo' },
+    { value: 'Transferencia', label: 'Transferencia' },
+    { value: 'QR', label: 'QR' },
+    { value: 'Tarjeta de débito', label: 'Tarjeta de débito' },
+    { value: 'Tarjeta de crédito', label: 'Tarjeta de crédito' },
+];
+
+// Usar la variable de entorno de Render para la URL base de la API
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 function PuntoVenta() {
-    const { user, authToken } = useContext(AuthContext); // Obtener usuario y token del contexto
-    const navigate = useNavigate(); // Hook para navegación
+    // Obtener el token, el slug de la tienda seleccionada y el objeto user del contexto de autenticación
+    const { token, selectedStoreSlug, isAuthenticated, loading: authLoading, user } = useAuth(); // Añadido 'user' aquí
 
-    // Estados para el carrito, método de pago, etc.
-    const [cartItems, setCartItems] = useState([]); // Ejemplo: [{ id: 'uuid-producto-1', nombre: 'Producto A', quantity: 2, precio: 10.00 }]
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Efectivo');
-    const [productosDisponibles, setProductosDisponibles] = useState([]); // Para la lista de productos
-    const [searchTerm, setSearchTerm] = useState(''); // Para la búsqueda de productos
-    const [loading, setLoading] = useState(false);
+    // Desestructuración de funciones y estados del contexto de ventas
+    const {
+        carts,
+        activeCart,
+        activeCartId,
+        createNewCart,
+        selectCart,
+        updateCartAlias,
+        addProductToCart,
+        removeProductFromCart,
+        decrementProductQuantity,
+        finalizeCart,
+        deleteCart
+    } = useSales();
+
+    // Estados para la búsqueda y adición de productos al carrito
+    const [searchTerm, setSearchTerm] = useState(''); // Para búsqueda por código de barras
+    const [foundProduct, setFoundProduct] = useState(null); // Producto encontrado por código de barras
+    const [cantidadInput, setCantidadInput] = useState(1); // Cantidad a añadir del producto encontrado
+
+    // Estados para la impresión de etiquetas
+    const [showPrintPreview, setShowPrintPreview] = useState(false);
+
+    // Estados para la lista de productos disponibles
+    const [productosDisponibles, setProductosDisponibles] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Efecto para cargar productos disponibles (puedes ajustar esto según tu lógica)
+    // Estados para la gestión de carritos (modales, alias)
+    const [showNewCartModal, setShowNewCartModal] = useState(false);
+    const [newCartAliasInput, setNewCartAliasInput] = useState('');
+
+    // Estado para el método de pago de la venta
+    const [paymentMethod, setPaymentMethod] = useState('');
+
+    // Estado para el buscador de productos disponibles en la tabla inferior
+    const [productSearchTerm, setProductSearchTerm] = useState('');
+
+    // useEffect para cargar los productos disponibles al montar el componente
+    const fetchProductos = useCallback(async () => {
+        if (!token || !selectedStoreSlug) {
+            setIsLoading(false);
+            return;
+        }
+        setIsLoading(true); // Inicia el estado de carga
+        setError(null);     // Limpia errores previos
+        try {
+            // Realiza la solicitud GET a la API de productos, filtrando por tienda
+            const response = await axios.get(`${API_BASE_URL}/productos/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug }
+            });
+            
+            // Accede al array 'results' de la respuesta paginada
+            const mappedProducts = response.data.results.map(p => ({
+                ...p,
+                // Asegúrate de que el precio sea un número flotante para cálculos en el frontend
+                precio: parseFloat(p.precio || 0) 
+            }));
+            setProductosDisponibles(mappedProducts); // Actualiza el estado con los productos
+        } catch (err) {
+            console.error("Error al cargar productos:", err.response ? err.response.data : err.message);
+            setError("Error al cargar productos. Inténtalo de nuevo más tarde.");
+        } finally {
+            setIsLoading(false); // Finaliza el estado de carga
+        }
+    }, [token, selectedStoreSlug]); // Dependencias: token y selectedStoreSlug
+
     useEffect(() => {
-        const fetchProducts = async () => {
-            if (!authToken) {
-                // Si no hay token, no se pueden cargar productos
+        if (!authLoading && isAuthenticated && selectedStoreSlug) {
+            fetchProductos();
+        } else if (!authLoading && isAuthenticated && !selectedStoreSlug) {
+            setIsLoading(false); // No cargar productos si no hay tienda seleccionada
+        }
+    }, [isAuthenticated, authLoading, selectedStoreSlug, fetchProductos]);
+
+    // Manejador para la búsqueda de productos por código de barras
+    const handleSearch = async () => {
+        if (!searchTerm) {
+            alert('Por favor, ingresa un código de barras para buscar.');
+            return;
+        }
+        if (!selectedStoreSlug) {
+            alert('Por favor, selecciona una tienda antes de buscar productos.');
+            return;
+        }
+
+        try {
+            const response = await axios.get(`${API_BASE_URL}/productos/buscar_por_barcode/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { barcode: searchTerm, tienda_slug: selectedStoreSlug }
+            });
+            setFoundProduct(response.data);
+            setCantidadInput(1);
+        } catch (err) {
+            console.error("Error buscando producto por código de barras:", err.response ? err.response.data : err.message);
+            setFoundProduct(null);
+            alert('Producto no encontrado en esta tienda o error en la búsqueda.');
+        }
+    };
+
+    // Manejador para añadir el producto encontrado (por código de barras) al carrito activo
+    const handleAddProductToActiveCart = () => {
+        if (!activeCart) {
+            alert('Por favor, selecciona o crea un carrito antes de añadir productos.');
+            return;
+        }
+        if (foundProduct && cantidadInput > 0) {
+            // Verifica si hay suficiente stock antes de añadir
+            if (foundProduct.stock && cantidadInput > foundProduct.stock) {
+                alert(`No hay suficiente stock. Disponible: ${foundProduct.stock}`);
                 return;
             }
-            setLoading(true);
-            setError(null);
-            try {
-                const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/productos/`, {
-                    headers: {
-                        Authorization: `Bearer ${authToken}`,
-                    },
-                    params: { search: searchTerm } // Si tienes funcionalidad de búsqueda
-                });
-                setProductosDisponibles(response.data.results); // Asumiendo paginación de DRF
-            } catch (err) {
-                console.error("Error al cargar productos:", err);
-                setError("Error al cargar productos.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchProducts();
-    }, [authToken, searchTerm]); // Recargar si el token o el término de búsqueda cambian
-
-    // Función para añadir productos al carrito
-    const addToCart = (productToAdd) => {
-        setCartItems(prevItems => {
-            const existingItem = prevItems.find(item => item.id === productToAdd.id);
-            if (existingItem) {
-                return prevItems.map(item =>
-                    item.id === productToAdd.id ? { ...item, quantity: item.quantity + 1 } : item
-                );
-            } else {
-                return [...prevItems, { ...productToAdd, quantity: 1 }];
-            }
-        });
+            addProductToCart(foundProduct, cantidadInput); // Añade el producto al carrito
+            setSearchTerm('');    // Limpia el término de búsqueda
+            setFoundProduct(null); // Limpia el producto encontrado
+            setCantidadInput(1);  // Reinicia la cantidad
+        } else {
+            alert('Por favor, busca un producto válido y especifica una cantidad para añadir al carrito.');
+        }
     };
 
-    // Función para quitar productos del carrito
-    const removeFromCart = (productId) => {
-        setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
-    };
-
-    // Función para actualizar la cantidad de un producto en el carrito
-    const updateCartItemQuantity = (productId, newQuantity) => {
-        setCartItems(prevItems => {
-            if (newQuantity <= 0) {
-                return prevItems.filter(item => item.id !== productId);
-            }
-            return prevItems.map(item =>
-                item.id === productId ? { ...item, quantity: newQuantity } : item
-            );
-        });
-    };
-
-    // Función para calcular el total del carrito
-    const calculateCartTotal = () => {
-        return cartItems.reduce((total, item) => total + (parseFloat(item.precio) * item.quantity), 0).toFixed(2);
+    // Manejador para añadir un producto desde la tabla de productos disponibles al carrito
+    const handleAddProductFromTable = (product) => {
+        if (!activeCart) {
+            alert('Por favor, selecciona o crea un carrito antes de añadir productos.');
+            return;
+        }
+        if (product.stock > 0) {
+            addProductToCart(product, 1); // Añade 1 unidad del producto
+        } else {
+            alert('Este producto no tiene stock disponible.');
+        }
     };
 
     // --- FUNCIÓN CLAVE: Procesar Venta ---
     const handleProcessSale = async () => {
-        if (cartItems.length === 0) {
-            alert('El carrito está vacío. Agregue productos antes de procesar la venta.');
+        if (!activeCart || activeCart.items.length === 0) {
+            alert('El carrito activo está vacío. Agrega productos para procesar la venta.');
             return;
         }
-
-        // 1. Preparar la lista de productos para el backend
-        const productosData = cartItems.map(item => ({
-            producto_id: item.id, // Asegúrate de que 'item.id' es el UUID del producto
-            cantidad: item.quantity,
-        }));
-
-        // 2. Obtener el ID de la tienda del usuario autenticado
+        if (!paymentMethod) {
+            alert('Por favor, selecciona un método de pago para la venta.');
+            return;
+        }
+        
+        // Obtener el ID de la tienda del usuario autenticado
         // El backend espera un UUID para 'tienda'
         const tiendaId = user?.tienda_id; 
 
@@ -107,147 +193,352 @@ function PuntoVenta() {
             return;
         }
 
+        // 1. Preparar la lista de productos para el backend (campo 'productos')
+        const productosData = activeCart.items.map(item => ({
+            producto_id: item.product.id, // Asegúrate de que 'item.product.id' es el UUID del producto
+            cantidad: item.quantity,
+            // El backend calcula precio_unitario, no es necesario enviarlo aquí.
+        }));
+
         try {
             const saleData = {
-                metodo_pago: selectedPaymentMethod,
-                productos: productosData, // La lista de productos preparada
-                tienda: tiendaId,         // El ID de la tienda del usuario
+                metodo_pago: paymentMethod,
+                productos: productosData, // Renombrado de 'detalles' a 'productos'
+                tienda: tiendaId,         // Enviado explícitamente el ID de la tienda
             };
 
             console.log('Datos enviados al backend para la venta:', saleData); // Debugging
 
             const response = await axios.post(
-                `${process.env.REACT_APP_API_URL}/api/ventas/`,
+                `${API_BASE_URL}/ventas/`, // Ya no se usa tienda_slug en la URL para POST
                 saleData,
                 {
                     headers: {
-                        Authorization: `Bearer ${authToken}`, // Usar el token del contexto
+                        Authorization: `Bearer ${token}`, // Usar el token del contexto
                         'Content-Type': 'application/json', // Asegurar el tipo de contenido
                     },
                 }
             );
             console.log('Venta procesada con éxito:', response.data);
-            alert('Venta procesada con éxito!');
-            setCartItems([]); // Limpiar el carrito después de una venta exitosa
-            // Opcional: Redirigir a una página de confirmación o historial de ventas
-            // navigate('/ventas/confirmacion'); 
-
+            alert('Venta procesada con éxito. ID de Venta: ' + response.data.id);
+            finalizeCart(activeCartId); // Finaliza el carrito en el contexto
+            setPaymentMethod('');      // Limpia el método de pago
+            fetchProductos(); // Refrescar productos para reflejar cambios de stock
         } catch (error) {
             console.error('Error al procesar la venta:', error.response ? error.response.data : error.message);
-            alert(`Error al procesar la venta: ${JSON.stringify(error.response ? error.response.data : error.message)}`);
+            alert('Error al procesar la venta: ' + (error.response ? JSON.stringify(error.response.data) : error.message));
         }
     };
 
-    // Si el usuario no está autenticado, redirigir o mostrar un mensaje
-    if (!authToken) {
+    // Manejador para imprimir el código de barras del producto encontrado
+    const handlePrintFoundProduct = () => {
+        if (!foundProduct) {
+            alert('Primero busca un producto para imprimir su código de barras.');
+            return;
+        }
+        // Asegúrate de que foundProduct tenga la estructura esperada por EtiquetasImpresion
+        // EtiquetasImpresion espera un array de objetos con una propiedad 'product'
+        setShowPrintPreview(true); // Muestra la vista previa de impresión
+    };
+
+    // Manejador para cerrar la vista previa de impresión
+    const handleClosePrintPreview = () => {
+        setShowPrintPreview(false);
+    };
+
+    // Manejador para crear un nuevo carrito con un alias
+    const handleCreateNewCartWithAlias = () => {
+        createNewCart(newCartAliasInput.trim()); // Crea un nuevo carrito con el alias
+        setNewCartAliasInput('');             // Limpia el input del alias
+        setShowNewCartModal(false);           // Cierra el modal
+    };
+
+    // Manejador para eliminar el carrito activo
+    const handleDeleteActiveCart = () => {
+        if (activeCart && window.confirm(`¿Estás seguro de que quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`)) {
+            deleteCart(activeCartId); // Elimina el carrito del contexto
+        }
+    };
+
+    // Si showPrintPreview es true, renderiza el componente de impresión de etiquetas
+    if (showPrintPreview) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <p className="text-xl text-gray-700">Por favor, inicie sesión para acceder al punto de venta.</p>
+            <div style={{ padding: '20px' }}>
+                <button onClick={handleClosePrintPreview} style={{ marginBottom: '10px', padding: '10px 20px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                    Volver a Punto de Venta
+                </button>
+                <button onClick={() => window.print()} style={{ marginLeft: '10px', marginBottom: '10px', padding: '10px 20px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                    Imprimir Etiquetas
+                </button>
+                {/* Pasar el producto encontrado en el formato esperado por EtiquetasImpresion */}
+                <EtiquetasImpresion productosParaImprimir={[{ product: foundProduct, quantity: 1 }]} /> 
             </div>
         );
     }
 
-    return (
-        <div className="min-h-screen bg-gray-100 p-4">
-            <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">Punto de Venta</h1>
+    // Manejador para el cambio en el input de búsqueda por código de barras
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
 
-            <div className="flex flex-col md:flex-row gap-6">
-                {/* Sección de búsqueda y lista de productos */}
-                <div className="flex-1 bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-2xl font-semibold mb-4 text-gray-700">Productos</h2>
-                    <input
-                        type="text"
-                        placeholder="Buscar producto..."
-                        className="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    {loading && <p className="text-center text-gray-500">Cargando productos...</p>}
-                    {error && <p className="text-center text-red-500">{error}</p>}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-                        {productosDisponibles.map(product => (
-                            <div key={product.id} className="border p-4 rounded-lg shadow-sm bg-gray-50 flex flex-col justify-between">
-                                <div>
-                                    <h3 className="font-bold text-gray-800">{product.nombre}</h3>
-                                    <p className="text-gray-600 text-sm">Talle: {product.talle}</p>
-                                    <p className="text-green-600 font-semibold">${parseFloat(product.precio).toFixed(2)}</p>
-                                    <p className="text-gray-500 text-xs">Stock: {product.stock}</p>
-                                </div>
-                                <button
-                                    onClick={() => addToCart(product)}
-                                    className="mt-3 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out"
-                                >
-                                    Agregar al Carrito
-                                </button>
-                            </div>
-                        ))}
-                    </div>
+    // Lógica de filtrado para la tabla de productos disponibles (por nombre o talle)
+    const filteredProducts = productosDisponibles.filter(product => {
+        const lowerCaseSearchTerm = productSearchTerm.toLowerCase();
+        return (
+            product.nombre.toLowerCase().includes(lowerCaseSearchTerm) ||
+            (product.talle && product.talle.toLowerCase().includes(lowerCaseSearchTerm))
+        );
+    });
+
+    // Renderizado condicional si no hay tienda seleccionada
+    if (!selectedStoreSlug) {
+        return (
+            <div style={{ padding: '50px', textAlign: 'center' }}>
+                <h2>Por favor, selecciona una tienda en la barra de navegación para usar el Punto de Venta.</h2>
+            </div>
+        );
+    }
+
+    // Renderizado principal del componente PuntoVenta
+    return (
+        <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: 'auto' }}>
+            <h1>Punto de Venta ({selectedStoreSlug})</h1>
+
+            {/* Sección de Gestión de Carritos */}
+            <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
+                <h3>Gestión de Ventas Activas:</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
+                  {carts.map((cart, index) => (
+                    <button
+                      key={cart.id}
+                      onClick={() => selectCart(cart.id)}
+                      style={{
+                        padding: '8px 15px',
+                        backgroundColor: cart.id === activeCartId ? '#007bff' : '#f0f0f0',
+                        color: cart.id === activeCartId ? 'white' : '#333',
+                        border: '1px solid #ccc',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontWeight: cart.id === activeCartId ? 'bold' : 'normal',
+                      }}
+                    >
+                      {cart.alias || `Venta ${index + 1}`}
+                    </button>
+                  ))}
+                  <button onClick={() => setShowNewCartModal(true)} style={{ padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                    + Nueva Venta
+                  </button>
                 </div>
 
-                {/* Sección del carrito y resumen de venta */}
-                <div className="flex-1 bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-2xl font-semibold mb-4 text-gray-700">Carrito de Compras</h2>
-                    {cartItems.length === 0 ? (
-                        <p className="text-gray-500">El carrito está vacío.</p>
-                    ) : (
-                        <div className="max-h-80 overflow-y-auto mb-4">
-                            {cartItems.map(item => (
-                                <div key={item.id} className="flex justify-between items-center border-b pb-2 mb-2">
-                                    <div>
-                                        <p className="font-medium text-gray-800">{item.nombre} ({item.talle})</p>
-                                        <p className="text-sm text-gray-600">${parseFloat(item.precio).toFixed(2)} x {item.quantity}</p>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <button
-                                            onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
-                                            className="bg-red-400 hover:bg-red-500 text-white px-2 py-1 rounded-md text-sm mr-1"
-                                        >
-                                            -
-                                        </button>
-                                        <span className="font-bold">{item.quantity}</span>
-                                        <button
-                                            onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-                                            className="bg-green-400 hover:bg-green-500 text-white px-2 py-1 rounded-md text-sm ml-1"
-                                        >
-                                            +
-                                        </button>
-                                        <button
-                                            onClick={() => removeFromCart(item.id)}
-                                            className="ml-2 bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded-md text-sm"
-                                        >
-                                            X
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                {activeCart && (
+                    <div style={{ marginTop: '15px' }}>
+                        <h4 style={{ marginBottom: '10px' }}>Venta Activa: {activeCart.alias || activeCart.name}</h4>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                            <input
+                                type="text"
+                                placeholder="Nuevo Alias (opcional)"
+                                value={activeCart.alias || ''}
+                                onChange={(e) => updateCartAlias(activeCartId, e.target.value)}
+                                style={{ flexGrow: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                            />
+                            <button onClick={handleDeleteActiveCart} style={{ padding: '8px 15px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                                Eliminar Venta
+                            </button>
                         </div>
-                    )}
+                    </div>
+                )}
+            </div>
 
-                    <div className="mt-4 pt-4 border-t border-gray-300">
-                        <p className="text-xl font-bold text-gray-800">Total: ${calculateCartTotal()}</p>
-                        
-                        <div className="mt-4">
-                            <label htmlFor="paymentMethod" className="block text-gray-700 text-sm font-bold mb-2">Método de Pago:</label>
+            {/* Modal para crear nueva venta */}
+            {showNewCartModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.2)', width: '300px' }}>
+                        <h3>Crear Nueva Venta</h3>
+                        <input
+                            type="text"
+                            placeholder="Alias para la venta (ej: Cliente A)"
+                            value={newCartAliasInput}
+                            onChange={(e) => setNewCartAliasInput(e.target.value)}
+                            style={{ width: 'calc(100% - 16px)', padding: '8px', marginBottom: '15px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button onClick={() => setShowNewCartModal(false)} style={{ padding: '8px 15px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                                Cancelar
+                            </button>
+                            <button onClick={handleCreateNewCartWithAlias} style={{ padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                                Crear Venta
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sección de Búsqueda de Productos por Código de Barras */}
+            <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
+                <h3>Buscar Producto por Código de Barras</h3>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                    <input
+                        type="text"
+                        placeholder="Ingresa código de barras" 
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        onKeyPress={(e) => { if (e.key === 'Enter') handleSearch(); }}
+                        style={{ flexGrow: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <button onClick={handleSearch} style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                        Buscar
+                    </button>
+                    {foundProduct && (
+                        <button onClick={handlePrintFoundProduct} style={{ padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                            Imprimir Etiqueta
+                        </button>
+                    )}
+                </div>
+                {foundProduct && (
+                    <div style={{ border: '1px dashed #007bff', padding: '10px', borderRadius: '5px', backgroundColor: '#e7f0ff' }}>
+                        <p><strong>Producto Encontrado:</strong> {foundProduct.nombre} ({foundProduct.talle}) - ${parseFloat(foundProduct.precio).toFixed(2)}</p>
+                        <p>Stock Disponible: {foundProduct.stock}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <label>Cantidad:</label>
+                            <input
+                                type="number"
+                                value={cantidadInput}
+                                onChange={(e) => setCantidadInput(parseInt(e.target.value) || 1)} 
+                                min="1"
+                                max={foundProduct.stock || 9999} 
+                                style={{ width: '80px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }}
+                            />
+                            <button onClick={handleAddProductToActiveCart} style={{ padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                                Añadir al Carrito
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Carrito de Venta Actual */}
+            <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#e6ffe6' }}>
+                <h3>Carrito Actual: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
+                {activeCart && activeCart.items.length > 0 ? (
+                    <>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginBottom: '15px', border: '1px solid #ddd' }}>
+                            <thead>
+                                <tr style={{ backgroundColor: '#ccffcc' }}>
+                                    <th style={{ padding: '8px', border: '1px solid #ddd' }}>Producto</th>
+                                    <th style={{ padding: '8px', border: '1px solid #ddd' }}>Talle</th>
+                                    <th style={{ padding: '8px', border: '1px solid #ddd' }}>Cantidad</th>
+                                    <th style={{ padding: '8px', border: '1px solid #ddd' }}>P. Unitario</th>
+                                    <th style={{ padding: '8px', border: '1px solid #ddd' }}>Subtotal</th>
+                                    <th style={{ padding: '8px', border: '1px solid #ddd' }}>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {activeCart.items.map((item) => (
+                                    <tr key={item.product.id}>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>{item.product.nombre}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>{item.product.talle}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                            <button onClick={() => decrementProductQuantity(activeCartId, item.product.id)} style={{ padding: '3px 8px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '3px', cursor: 'pointer', marginRight: '5px' }}>-</button>
+                                            {item.quantity}
+                                            <button onClick={() => addProductToCart(item.product, 1)} style={{ padding: '3px 8px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', marginLeft: '5px' }}>+</button>
+                                        </td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>${parseFloat(item.product.precio).toFixed(2)}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                            <button onClick={() => removeProductFromCart(activeCartId, item.product.id)} style={{ padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                                                Quitar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <h4 style={{ textAlign: 'right', marginBottom: '15px' }}>Total de Venta: ${activeCart.items.reduce((acc, item) => acc + item.quantity * parseFloat(item.product.precio), 0).toFixed(2)}</h4>
+
+                        {/* Selector de método de pago */}
+                        <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <label htmlFor="paymentMethod" style={{ fontWeight: 'bold' }}>Método de Pago:</label>
                             <select
                                 id="paymentMethod"
-                                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                value={selectedPaymentMethod}
-                                onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                                value={paymentMethod}
+                                onChange={(e) => setPaymentMethod(e.target.value)}
+                                style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', flexGrow: 1 }}
                             >
-                                <option value="Efectivo">Efectivo</option>
-                                <option value="Tarjeta">Tarjeta</option>
-                                <option value="Transferencia">Transferencia</option>
+                                {PAYMENT_METHODS.map(option => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
                             </select>
                         </div>
 
-                        <button
-                            onClick={handleProcessSale}
-                            className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-md text-lg transition duration-300 ease-in-out"
-                        >
+                        <button onClick={handleProcessSale} style={{ width: '100%', padding: '15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>
                             Procesar Venta
                         </button>
-                    </div>
+                    </>
+                ) : (
+                    <p>El carrito activo está vacío. Busca y añade productos.</p>
+                )}
+            </div>
+
+            {/* Lista de Productos Disponibles */}
+            <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
+                <h3>Productos Disponibles</h3>
+                {/* Input de búsqueda para productos disponibles */}
+                <div style={{ marginBottom: '15px' }}>
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre o talle..."
+                        value={productSearchTerm}
+                        onChange={(e) => setProductSearchTerm(e.target.value)}
+                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
                 </div>
+
+                {isLoading ? (
+                    <p>Cargando productos...</p>
+                ) : error ? (
+                    <p style={{ color: 'red' }}>{error}</p>
+                ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', border: '1px solid #ddd' }}>
+                        <thead>
+                            <tr style={{ backgroundColor: '#f2f2f2' }}>
+                                <th style={{ padding: '8px', border: '1px solid #ddd' }}>Nombre</th>
+                                <th style={{ padding: '8px', border: '1px solid #ddd' }}>Talle</th>
+                                <th style={{ padding: '8px', border: '1px solid #ddd' }}>Código</th>
+                                <th style={{ padding: '8px', border: '1px solid #ddd' }}>Precio</th>
+                                <th style={{ padding: '8px', border: '1px solid #ddd' }}>Stock</th>
+                                <th style={{ padding: '8px', border: '1px solid #ddd' }}>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredProducts.length > 0 ? (
+                                filteredProducts.map(product => (
+                                    <tr key={product.id}>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.nombre}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.talle}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.codigo_barras || 'N/A'}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>${parseFloat(product.precio).toFixed(2)}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>{product.stock}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                            <button
+                                                onClick={() => handleAddProductFromTable(product)}
+                                                disabled={product.stock === 0}
+                                                style={{ padding: '5px 10px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '3px', cursor: product.stock === 0 ? 'not-allowed' : 'pointer' }}
+                                            >
+                                                {product.stock === 0 ? 'Sin Stock' : 'Añadir'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" style={{ padding: '8px', textAlign: 'center', color: '#555' }}>
+                                        No se encontraron productos con el filtro aplicado.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                )}
             </div>
         </div>
     );
