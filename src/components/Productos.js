@@ -23,7 +23,7 @@ const TALLE_OPTIONS = [
 const API_BASE_URL = process.env.REACT_APP_API_URL; 
 
 function Productos() {
-  const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth(); // Obtener selectedStoreSlug y token
+  const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
 
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,14 +31,14 @@ function Productos() {
 
   const [nombre, setNombre] = useState('');
   const [codigoBarras, setCodigoBarras] = useState('');
-  const [precioVenta, setPrecioVenta] = useState(''); // Este es el que mapearemos a 'precio' en backend
+  const [precioVenta, setPrecioVenta] = useState('');
   const [stock, setStock] = useState('');
   const [talle, setTalle] = useState('UNICA');
 
   const [successMessage, setSuccessMessage] = useState(null);
   const [mensajeError, setMensajeError] = useState(null);
 
-  const [selectedProductsForLabels, setSelectedProductsForLabels] = useState({}); // { productId: quantity }
+  const [selectedProductsForLabels, setSelectedProductsForLabels] = useState({});
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   const [editingStockId, setEditingStockId] = useState(null);
@@ -46,6 +46,25 @@ function Productos() {
 
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [newPriceValue, setNewPriceValue] = useState('');
+
+  // Estados para el modal de confirmación
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState(() => () => {});
+
+  // Estados para el cuadro de mensaje de alerta personalizado
+  const [showAlertMessage, setShowAlertMessage] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+
+  // Función para mostrar un mensaje de alerta personalizado
+  const showCustomAlert = (message, type = 'success') => {
+      setAlertMessage(message);
+      setShowAlertMessage(true);
+      setTimeout(() => {
+          setShowAlertMessage(false);
+          setAlertMessage('');
+      }, 3000);
+  };
 
 
   const fetchProductos = useCallback(async () => {
@@ -56,7 +75,8 @@ function Productos() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_BASE_URL}/productos/`, {
+      // CAMBIO CLAVE: Añadir /api/
+      const response = await axios.get(`${API_BASE_URL}/api/productos/`, {
         headers: { 'Authorization': `Bearer ${token}` },
         params: { tienda_slug: selectedStoreSlug }
       });
@@ -116,10 +136,12 @@ function Productos() {
       precio: parsedPrecioVenta, 
       stock: parsedStock,                 
       talle,
+      tienda: selectedStoreSlug // Asegúrate de enviar la tienda
     };
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/productos/`, nuevoProducto, {
+      // CAMBIO CLAVE: Añadir /api/
+      const response = await axios.post(`${API_BASE_URL}/api/productos/`, nuevoProducto, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       console.log('Producto añadido:', response.data);
@@ -169,7 +191,7 @@ function Productos() {
 
   const handlePrintSelected = () => {
     if (Object.keys(selectedProductsForLabels).length === 0) {
-      alert('Por favor, selecciona al menos un producto para imprimir.');
+      showCustomAlert('Por favor, selecciona al menos un producto para imprimir.', 'error'); // Usar alerta personalizada
       return;
     }
     setShowPrintPreview(true);
@@ -189,21 +211,26 @@ function Productos() {
 
   const handleDeleteProduct = async (productId) => {
     if (!selectedStoreSlug) {
-        alert("Por favor, selecciona una tienda antes de eliminar un producto.");
+        showCustomAlert("Por favor, selecciona una tienda antes de eliminar un producto.", 'error'); // Usar alerta personalizada
         return;
     }
-    if (window.confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción es irreversible.')) {
-      try {
-        await axios.delete(`${API_BASE_URL}/productos/${productId}/`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        setSuccessMessage('Producto eliminado con éxito!');
-        fetchProductos(); 
-      } catch (err) {
-        setMensajeError('Error al eliminar el producto: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
-        console.error('Error deleting product:', err.response || err);
-      }
-    }
+
+    setConfirmMessage('¿Estás seguro de que quieres eliminar este producto? Esta acción es irreversible.');
+    setConfirmAction(() => async () => {
+        setShowConfirmModal(false); // Cerrar el modal después de confirmar
+        try {
+            // CAMBIO CLAVE: Añadir /api/
+            await axios.delete(`${API_BASE_URL}/api/productos/${productId}/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setSuccessMessage('Producto eliminado con éxito!');
+            fetchProductos(); 
+        } catch (err) {
+            setMensajeError('Error al eliminar el producto: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
+            console.error('Error deleting product:', err.response || err);
+        }
+    });
+    setShowConfirmModal(true); // Mostrar el modal
   };
 
   const handleEditStockClick = (productId, currentStock) => {
@@ -228,7 +255,8 @@ function Productos() {
     }
 
     try {
-      await axios.patch(`${API_BASE_URL}/productos/${productId}/`, { stock: stockInt }, {
+      // CAMBIO CLAVE: Añadir /api/
+      await axios.patch(`${API_BASE_URL}/api/productos/${productId}/`, { stock: stockInt }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setSuccessMessage('Stock actualizado con éxito!');
@@ -268,7 +296,8 @@ function Productos() {
     }
 
     try {
-      await axios.patch(`${API_BASE_URL}/productos/${productId}/`, { precio: priceFloat }, {
+      // CAMBIO CLAVE: Añadir /api/
+      await axios.patch(`${API_BASE_URL}/api/productos/${productId}/`, { precio: priceFloat }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setSuccessMessage('Precio de venta actualizado con éxito!');
@@ -288,36 +317,36 @@ function Productos() {
 
 
   if (authLoading || (isAuthenticated && !user)) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando datos de usuario...</div>;
+    return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
   }
 
   if (!isAuthenticated || !(user.is_superuser || user.is_staff)) { 
-    return <div style={{ color: 'red', marginBottom: '10px', padding: '20px', border: '1px solid red', textAlign: 'center' }}>Acceso denegado. No tienes permisos para ver/gestionar productos.</div>;
+    return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para ver/gestionar productos.</div>;
   }
 
   if (!selectedStoreSlug) {
     return (
-        <div style={{ padding: '50px', textAlign: 'center' }}>
+        <div style={styles.noStoreSelectedMessage}>
             <h2>Por favor, selecciona una tienda en la barra de navegación para gestionar productos.</h2>
         </div>
     );
   }
 
   if (loading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando productos de {selectedStoreSlug}...</div>;
+    return <div style={styles.loadingMessage}>Cargando productos de {selectedStoreSlug}...</div>;
   }
 
   if (error) {
-    return <div style={{ color: 'red', marginBottom: '10px', padding: '20px', border: '1px solid red' }}>{error}</div>;
+    return <div style={styles.errorMessage}>{error}</div>;
   }
 
   if (showPrintPreview) {
     return (
-      <div style={{ padding: '20px' }}>
-        <button onClick={handleClosePrintPreview} style={{ marginBottom: '10px', padding: '10px 20px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+      <div style={styles.printPreviewContainer}>
+        <button onClick={handleClosePrintPreview} style={styles.backButton}>
           Volver a Gestión de Productos
         </button>
-        <button onClick={() => window.print()} style={{ marginLeft: '10px', marginBottom: '10px', padding: '10px 20px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+        <button onClick={() => window.print()} style={styles.printButton}>
           Imprimir Etiquetas
         </button>
         <EtiquetasImpresion productosParaImprimir={productosParaImprimir} />
@@ -326,102 +355,102 @@ function Productos() {
   }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: 'auto' }}>
+    <div style={styles.container}>
       <h1>Gestión de Productos ({selectedStoreSlug})</h1>
 
-      {mensajeError && <div style={{ color: 'red', marginBottom: '10px', border: '1px solid red', padding: '10px' }}>{mensajeError}</div>}
-      {successMessage && <div style={{ color: 'green', marginBottom: '10px', border: '1px solid green', padding: '10px' }}>{successMessage}</div>}
+      {mensajeError && <div style={styles.errorMessage}>{mensajeError}</div>}
+      {successMessage && <div style={styles.successMessage}>{successMessage}</div>}
 
       <h2>Añadir Nuevo Producto</h2>
-      <form onSubmit={handleSubmit} style={{ marginBottom: '30px', border: '1px solid #ccc', padding: '20px', borderRadius: '5px', backgroundColor: '#f9f9f9' }}>
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Nombre:</label>
-          <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} required style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
+      <form onSubmit={handleSubmit} style={styles.formContainer}>
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Nombre:</label>
+          <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} required style={styles.input} />
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Código de Barras (Opcional - se genera automáticamente si está vacío):</label>
-          <input type="text" value={codigoBarras} onChange={(e) => setCodigoBarras(e.target.value)} style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Código de Barras (Opcional - se genera automáticamente si está vacío):</label>
+          <input type="text" value={codigoBarras} onChange={(e) => setCodigoBarras(e.target.value)} style={styles.input} />
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Talle:</label>
-          <select value={talle} onChange={(e) => setTalle(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}>
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Talle:</label>
+          <select value={talle} onChange={(e) => setTalle(e.target.value)} required style={styles.input}>
             {TALLE_OPTIONS.map(option => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Precio Venta:</label>
-          <input type="number" step="0.01" value={precioVenta} onChange={(e) => setPrecioVenta(e.target.value)} required style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Precio Venta:</label>
+          <input type="number" step="0.01" value={precioVenta} onChange={(e) => setPrecioVenta(e.target.value)} required style={styles.input} />
         </div>
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Stock:</label>
-          <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} required style={{ width: 'calc(100% - 12px)', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} />
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Stock:</label>
+          <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} required style={styles.input} />
         </div>
-        <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px' }}>
+        <button type="submit" style={styles.submitButton}>
           Añadir Producto
         </button>
       </form>
 
       <h2>Lista de Productos Existentes</h2>
       {productos.length === 0 ? (
-        <p>No hay productos disponibles en esta tienda.</p>
+        <p style={styles.noDataMessage}>No hay productos disponibles en esta tienda.</p>
       ) : (
         <>
-          <div style={{ marginBottom: '15px' }}>
-            <button onClick={handlePrintSelected} style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+          <div style={styles.tableActions}>
+            <button onClick={handlePrintSelected} style={styles.printSelectedButton}>
               Imprimir Códigos de Barras Seleccionados ({Object.keys(selectedProductsForLabels).length})
             </button>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', border: '1px solid #ddd' }}>
+          <table style={styles.table}>
             <thead>
-              <tr style={{ backgroundColor: '#f2f2f2' }}>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>
+              <tr style={styles.tableHeaderRow}>
+                <th style={styles.th}>
                   <input
                     type="checkbox"
                     onChange={handleSelectAll}
                     checked={Object.keys(selectedProductsForLabels).length === productos.length && productos.length > 0}
                   />
                 </th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Cant. Etiquetas</th> 
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>ID</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Nombre</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Talle</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Código</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Imagen Código</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>P. Venta</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Stock</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd' }}>Acciones</th>
+                <th style={styles.th}>Cant. Etiquetas</th> 
+                <th style={styles.th}>ID</th>
+                <th style={styles.th}>Nombre</th>
+                <th style={styles.th}>Talle</th>
+                <th style={styles.th}>Código</th>
+                <th style={styles.th}>Imagen Código</th>
+                <th style={styles.th}>P. Venta</th>
+                <th style={styles.th}>Stock</th>
+                <th style={styles.th}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {productos.map(producto => (
                 <tr key={producto.id}>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                  <td style={styles.td}>
                     <input
                       type="checkbox"
                       checked={!!selectedProductsForLabels[producto.id]} 
                       onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
                     />
                   </td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                  <td style={styles.td}>
                     {!!selectedProductsForLabels[producto.id] && ( 
                       <input
                         type="number"
                         min="1"
                         value={selectedProductsForLabels[producto.id] || 1}
                         onChange={(e) => handleLabelQuantityChange(producto.id, e.target.value)}
-                        style={{ width: '60px', padding: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
+                        style={styles.quantityInput}
                       />
                     )}
                   </td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.id}</td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.nombre}</td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.talle || 'N/A'}</td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>{producto.codigo_barras || 'N/A'}</td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                  <td style={styles.td}>{producto.id}</td>
+                  <td style={styles.td}>{producto.nombre}</td>
+                  <td style={styles.td}>{producto.talle || 'N/A'}</td>
+                  <td style={styles.td}>{producto.codigo_barras || 'N/A'}</td>
+                  <td style={styles.td}>
                     {producto.codigo_barras ? (
-                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: '150px' }}>
+                      <div style={styles.barcodeContainer}>
                           <Barcode
                               value={String(producto.codigo_barras)}
                               format="CODE128" 
@@ -435,66 +464,66 @@ function Productos() {
                           />
                       </div>
                     ) : (
-                      <span style={{ color: '#888' }}>Sin código</span>
+                      <span style={styles.noBarcodeText}>Sin código</span>
                     )}
                   </td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                  <td style={styles.td}>
                     {editingPriceId === producto.id ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={styles.editControls}>
                         <input
                           type="number"
                           step="0.01"
                           value={newPriceValue}
                           onChange={(e) => setNewPriceValue(e.target.value)}
                           min="0"
-                          style={{ width: '80px', padding: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
+                          style={styles.editInput}
                         />
-                        <button onClick={() => handleSavePrice(producto.id)} style={{ padding: '5px 8px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                        <button onClick={() => handleSavePrice(producto.id)} style={styles.saveButton}>
                           Guardar
                         </button>
-                        <button onClick={handleCancelEditPrice} style={{ padding: '5px 8px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                        <button onClick={handleCancelEditPrice} style={styles.cancelButton}>
                           Cancelar
                         </button>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={styles.displayControls}>
                         <span>${parseFloat(producto.precio).toFixed(2)}</span> 
-                        <button onClick={() => handleEditPriceClick(producto.id, producto.precio)} style={{ padding: '5px 8px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                        <button onClick={() => handleEditPriceClick(producto.id, producto.precio)} style={styles.editButton}>
                           Editar
                         </button>
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                  <td style={styles.td}>
                     {editingStockId === producto.id ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={styles.editControls}>
                         <input
                           type="number"
                           value={newStockValue}
                           onChange={(e) => setNewStockValue(e.target.value)}
                           min="0"
-                          style={{ width: '60px', padding: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
+                          style={styles.editInput}
                         />
-                        <button onClick={() => handleSaveStock(producto.id)} style={{ padding: '5px 8px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                        <button onClick={() => handleSaveStock(producto.id)} style={styles.saveButton}>
                           Guardar
                         </button>
-                        <button onClick={handleCancelEditStock} style={{ padding: '5px 8px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                        <button onClick={handleCancelEditStock} style={styles.cancelButton}>
                           Cancelar
                         </button>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={styles.displayControls}>
                         <span>{producto.stock}</span>
-                        <button onClick={() => handleEditStockClick(producto.id, producto.stock)} style={{ padding: '5px 8px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                        <button onClick={() => handleEditStockClick(producto.id, producto.stock)} style={styles.editButton}>
                           Editar
                         </button>
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                  <td style={styles.td}>
                     <button
                       onClick={() => handleDeleteProduct(producto.id)}
-                      style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                      style={styles.deleteButton}
                     >
                       Eliminar
                     </button>
@@ -505,8 +534,346 @@ function Productos() {
           </table>
         </>
       )}
+
+      {/* Modal de Confirmación */}
+      {showConfirmModal && (
+          <div style={styles.modalOverlay}>
+              <div style={styles.modalContent}>
+                  <p style={styles.modalMessage}>{confirmMessage}</p>
+                  <div style={styles.modalActions}>
+                      <button onClick={confirmAction} style={styles.modalConfirmButton}>Sí</button>
+                      <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>No</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Cuadro de Mensaje de Alerta */}
+      {showAlertMessage && (
+          <div style={styles.alertBox}>
+              <p>{alertMessage}</p>
+          </div>
+      )}
     </div>
   );
 }
+
+// Estilos CSS para el componente
+const styles = {
+    container: {
+        padding: '20px',
+        fontFamily: 'Arial, sans-serif',
+        maxWidth: '1200px',
+        margin: 'auto',
+        backgroundColor: '#fff',
+        borderRadius: '8px',
+        boxShadow: '0 0 10px rgba(0,0,0,0.1)',
+    },
+    loadingMessage: {
+        padding: '20px',
+        textAlign: 'center',
+        color: '#555',
+    },
+    accessDeniedMessage: {
+        color: 'red',
+        marginBottom: '10px',
+        padding: '20px',
+        border: '1px solid red',
+        textAlign: 'center',
+        borderRadius: '5px',
+        backgroundColor: '#ffe3e6',
+    },
+    noStoreSelectedMessage: {
+        padding: '50px',
+        textAlign: 'center',
+        color: '#777',
+    },
+    errorMessage: {
+        color: 'red',
+        marginBottom: '10px',
+        border: '1px solid red',
+        padding: '10px',
+        borderRadius: '5px',
+        backgroundColor: '#ffe3e6',
+    },
+    successMessage: {
+        color: 'green',
+        marginBottom: '10px',
+        border: '1px solid green',
+        padding: '10px',
+        borderRadius: '5px',
+        backgroundColor: '#e6ffe6',
+    },
+    formContainer: {
+        marginBottom: '30px',
+        border: '1px solid #e0e0e0',
+        padding: '20px',
+        borderRadius: '8px',
+        backgroundColor: '#f9f9f9',
+    },
+    formGroup: {
+        marginBottom: '15px',
+    },
+    label: {
+        display: 'block',
+        marginBottom: '5px',
+        fontWeight: 'bold',
+        color: '#555',
+    },
+    input: {
+        width: '100%',
+        padding: '10px',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+        boxSizing: 'border-box',
+    },
+    submitButton: {
+        padding: '10px 20px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '16px',
+        transition: 'background-color 0.3s ease',
+    },
+    submitButtonHover: {
+        backgroundColor: '#0056b3',
+    },
+    noDataMessage: {
+        textAlign: 'center',
+        marginTop: '20px',
+        color: '#777',
+        fontStyle: 'italic',
+    },
+    tableActions: {
+        marginBottom: '15px',
+        display: 'flex',
+        justifyContent: 'flex-start',
+    },
+    printSelectedButton: {
+        padding: '10px 20px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '16px',
+        transition: 'background-color 0.3s ease',
+    },
+    printSelectedButtonHover: {
+        backgroundColor: '#0056b3',
+    },
+    table: {
+        width: '100%',
+        borderCollapse: 'collapse',
+        textAlign: 'left',
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+    },
+    tableHeaderRow: {
+        backgroundColor: '#f2f2f2',
+    },
+    th: {
+        padding: '12px',
+        border: '1px solid #ddd',
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    td: {
+        padding: '12px',
+        border: '1px solid #ddd',
+        verticalAlign: 'middle',
+    },
+    quantityInput: {
+        width: '60px',
+        padding: '5px',
+        border: '1px solid #ccc',
+        borderRadius: '3px',
+    },
+    barcodeContainer: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minWidth: '150px',
+    },
+    noBarcodeText: {
+        color: '#888',
+        fontStyle: 'italic',
+    },
+    editControls: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+    },
+    editInput: {
+        width: '80px',
+        padding: '5px',
+        border: '1px solid #ccc',
+        borderRadius: '3px',
+    },
+    saveButton: {
+        padding: '5px 8px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    saveButtonHover: {
+        backgroundColor: '#218838',
+    },
+    cancelButton: {
+        padding: '5px 8px',
+        backgroundColor: '#6c757d',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    cancelButtonHover: {
+        backgroundColor: '#5a6268',
+    },
+    displayControls: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+    },
+    editButton: {
+        padding: '5px 8px',
+        backgroundColor: '#ffc107',
+        color: 'black',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    editButtonHover: {
+        backgroundColor: '#e0a800',
+    },
+    deleteButton: {
+        padding: '8px 12px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    deleteButtonHover: {
+        backgroundColor: '#c82333',
+    },
+    printPreviewContainer: {
+        padding: '20px',
+    },
+    backButton: {
+        marginBottom: '10px',
+        padding: '10px 20px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    backButtonHover: {
+        backgroundColor: '#c82333',
+    },
+    printButton: {
+        marginLeft: '10px',
+        marginBottom: '10px',
+        padding: '10px 20px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    printButtonHover: {
+        backgroundColor: '#218838',
+    },
+    // Estilos para el modal de confirmación
+    modalOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        padding: '30px',
+        borderRadius: '10px',
+        boxShadow: '0 5px 15px rgba(0, 0, 0, 0.3)',
+        textAlign: 'center',
+        maxWidth: '450px',
+        width: '90%',
+        animation: 'fadeIn 0.3s ease-out',
+    },
+    modalMessage: {
+        fontSize: '1.1em',
+        marginBottom: '25px',
+        color: '#333',
+    },
+    modalActions: {
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '20px',
+    },
+    modalConfirmButton: {
+        backgroundColor: '#dc3545',
+        color: 'white',
+        padding: '12px 25px',
+        border: 'none',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease, transform 0.2s ease',
+    },
+    modalConfirmButtonHover: {
+        backgroundColor: '#c82333',
+        transform: 'scale(1.02)',
+    },
+    modalCancelButton: {
+        backgroundColor: '#6c757d',
+        color: 'white',
+        padding: '12px 25px',
+        border: 'none',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease, transform 0.2s ease',
+    },
+    modalCancelButtonHover: {
+        backgroundColor: '#5a6268',
+        transform: 'scale(1.02)',
+    },
+    // Estilos para el cuadro de mensaje de alerta
+    alertBox: {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        backgroundColor: '#28a745', // Color verde para éxito
+        color: 'white',
+        padding: '15px 25px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+        zIndex: 1001,
+        opacity: 0, // Inicialmente oculto
+        animation: 'fadeInOut 3s forwards',
+    },
+};
 
 export default Productos;
