@@ -103,6 +103,17 @@ function EtiquetasImpresion({ productosParaImprimir }) {
       // Depuración: Verifica el valor de codigo_barras
       console.log("Valor para código de barras:", product.codigo_barras);
 
+      // --- INICIO DEL CAMBIO ---
+      // Asegurarse de que el precio sea un número válido antes de formatear
+      let displayPrice = '0.00'; // Valor por defecto
+      if (product.precio_venta !== null && product.precio_venta !== undefined) {
+        const parsedPrice = parseFloat(product.precio_venta);
+        if (!isNaN(parsedPrice)) {
+          displayPrice = parsedPrice.toFixed(2);
+        }
+      }
+      // --- FIN DEL CAMBIO ---
+
       labelsToRender.push(
         <div key={`${product.id}-${i}`} className="label">
           <p style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '1mm' }}>{product.nombre}</p>
@@ -125,7 +136,8 @@ function EtiquetasImpresion({ productosParaImprimir }) {
               <span style={{ fontSize: '8px', color: '#888' }}>Sin código</span>
             )}
           </div>
-          <p className="price" style={{ marginTop: '1mm', fontSize: '13px', fontWeight: 'bold' }}>${parseFloat(product.precio_venta).toFixed(2)}</p>
+          {/* Usar la variable displayPrice que ya está validada y formateada */}
+          <p className="price" style={{ marginTop: '1mm', fontSize: '13px', fontWeight: 'bold' }}>${displayPrice}</p>
         </div>
       );
     }
