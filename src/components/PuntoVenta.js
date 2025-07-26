@@ -22,14 +22,14 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const PuntoVenta = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
 
-    const [productos, setProductos] = useState([]);
+    const [productos, setProductos] = useState([]); // Lista de todos los productos disponibles
     const [categorias, setCategorias] = useState([]);
     const [metodosPago, setMetodosPago] = useState([]);
-    const [productosEnVenta, setProductosEnVenta] = useState([]);
+    const [productosEnVenta, setProductosEnVenta] = useState([]); // Productos añadidos a la venta actual
     const [totalVenta, setTotalVenta] = useState(0);
     const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
     const [busquedaProducto, setBusquedaProducto] = useState('');
-    const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+    const [productoSeleccionado, setProductoSeleccionado] = useState(null); // Producto seleccionado por búsqueda
     const [cantidadProducto, setCantidadProducto] = useState(1);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
@@ -42,15 +42,22 @@ const PuntoVenta = () => {
     const [showAlertMessage, setShowAlertMessage] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
 
+    // Función para mostrar alertas personalizadas en la UI
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
         setShowAlertMessage(true);
+        // Opcional: cambiar el color de fondo de la alerta según el tipo
+        // const alertBox = document.querySelector('.alertBox');
+        // if (alertBox) {
+        //     alertBox.style.backgroundColor = type === 'error' ? '#dc3545' : '#28a745';
+        // }
         setTimeout(() => {
             setShowAlertMessage(false);
             setAlertMessage('');
         }, 3000);
     };
 
+    // Cargar todos los productos disponibles para la tienda seleccionada
     const fetchProductos = useCallback(async () => {
         if (!token || !selectedStoreSlug) {
             setLoadingData(false);
@@ -63,10 +70,9 @@ const PuntoVenta = () => {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { tienda_slug: selectedStoreSlug }
             });
-            // *** AÑADE ESTE CONSOLE.LOG ***
             console.log("Respuesta de productos:", response.data);
             console.log("Selected Store Slug:", selectedStoreSlug);
-            // ******************************
+            // Asegúrate de que siempre sea un array, incluso si el backend no devuelve 'results'
             setProductos(response.data.results || response.data);
             setError(null);
         } catch (err) {
@@ -77,26 +83,28 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug]);
 
+    // Cargar categorías
     const fetchCategorias = useCallback(async () => {
         if (!token) return;
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/categorias/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            console.log("Respuesta de categorías:", response.data); // Añadir log aquí también
+            console.log("Respuesta de categorías:", response.data);
             setCategorias(response.data.results || response.data);
         } catch (err) {
             console.error("Error al cargar categorías:", err.response || err.message);
         }
     }, [token]);
 
+    // Cargar métodos de pago
     const fetchMetodosPago = useCallback(async () => {
         if (!token) return;
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            console.log("Respuesta de métodos de pago:", response.data); // Añadir log aquí también
+            console.log("Respuesta de métodos de pago:", response.data);
             setMetodosPago(response.data);
             if (response.data.length > 0) {
                 setMetodoPagoSeleccionado(response.data[0].nombre);
@@ -106,6 +114,7 @@ const PuntoVenta = () => {
         }
     }, [token]);
 
+    // Efecto para cargar datos iniciales cuando el usuario está autenticado y la tienda seleccionada
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
             setLoadingData(true);
@@ -117,14 +126,18 @@ const PuntoVenta = () => {
             setLoadingData(false);
         } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
             setLoadingData(false);
+            // Si no hay tienda seleccionada, limpiar productos para evitar mostrar datos de una tienda anterior
+            setProductos([]);
         }
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos, fetchCategorias, fetchMetodosPago]);
 
+    // Efecto para recalcular el total de la venta cuando los productos en venta cambian
     useEffect(() => {
-        const calcularTotal = productosEnVenta.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
+        const calcularTotal = productosEnVenta.reduce((acc, item) => acc + (parseFloat(item.precio) * item.cantidad), 0);
         setTotalVenta(calcularTotal);
     }, [productosEnVenta]);
 
+    // Manejar la búsqueda de un producto por código de barras/nombre
     const handleBuscarProducto = async (e) => {
         e.preventDefault();
         setError(null);
@@ -138,11 +151,31 @@ const PuntoVenta = () => {
         }
 
         try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
-            });
-            console.log("Respuesta de buscar por barcode:", response.data); // Añadir log aquí también
+            // Intenta buscar por barcode primero
+            let response;
+            try {
+                response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
+                });
+            } catch (barcodeErr) {
+                // Si falla la búsqueda por barcode, intenta buscar por nombre
+                console.warn("No se encontró por barcode, intentando por nombre...", barcodeErr);
+                response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    params: { search: busquedaProducto, tienda_slug: selectedStoreSlug }
+                });
+                // Si la búsqueda por nombre devuelve una lista, toma el primer resultado
+                if (response.data.results && response.data.results.length > 0) {
+                    response.data = response.data.results[0];
+                } else if (response.data.length > 0) { // Si no usa 'results' y es un array
+                    response.data = response.data[0];
+                } else {
+                    throw new Error("Producto no encontrado por nombre.");
+                }
+            }
+
+            console.log("Respuesta de búsqueda de producto:", response.data);
             setProductoSeleccionado(response.data);
             setCantidadProducto(1);
             setBusquedaProducto('');
@@ -153,44 +186,52 @@ const PuntoVenta = () => {
         }
     };
 
-    const handleAgregarProducto = () => {
-        if (!productoSeleccionado) {
+    // Función para añadir un producto a la lista de venta, ya sea desde la búsqueda o desde la lista de disponibles
+    const handleAgregarProducto = (productToAdd, quantity = 1) => {
+        if (!productToAdd) {
             showCustomAlert("No hay producto seleccionado para añadir.", 'error');
             return;
         }
-        if (cantidadProducto <= 0) {
+        if (quantity <= 0) {
             showCustomAlert("La cantidad debe ser mayor a 0.", 'error');
             return;
         }
-        if (cantidadProducto > productoSeleccionado.stock) {
-            showCustomAlert(`No hay suficiente stock. Stock disponible: ${productoSeleccionado.stock}.`, 'error');
+        if (quantity > productToAdd.stock) {
+            showCustomAlert(`No hay suficiente stock. Stock disponible: ${productToAdd.stock}.`, 'error');
             return;
         }
 
-        const productoExistenteIndex = productosEnVenta.findIndex(item => item.id === productoSeleccionado.id);
+        const productoExistenteIndex = productosEnVenta.findIndex(item => item.id === productToAdd.id);
 
         if (productoExistenteIndex > -1) {
             const nuevosProductosEnVenta = [...productosEnVenta];
-            const nuevaCantidad = nuevosProductosEnVenta[productoExistenteIndex].cantidad + cantidadProducto;
+            const nuevaCantidad = nuevosProductosEnVenta[productoExistenteIndex].cantidad + quantity;
 
-            if (nuevaCantidad > productoSeleccionado.stock) {
-                showCustomAlert(`No se puede añadir más. La cantidad total excede el stock disponible (${productoSeleccionado.stock}).`, 'error');
+            if (nuevaCantidad > productToAdd.stock) {
+                showCustomAlert(`No se puede añadir más. La cantidad total excede el stock disponible (${productToAdd.stock}).`, 'error');
                 return;
             }
             nuevosProductosEnVenta[productoExistenteIndex].cantidad = nuevaCantidad;
             setProductosEnVenta(nuevosProductosEnVenta);
         } else {
-            setProductosEnVenta([...productosEnVenta, { ...productoSeleccionado, cantidad: cantidadProducto }]);
+            setProductosEnVenta([...productosEnVenta, { ...productToAdd, cantidad: quantity }]);
         }
-        setProductoSeleccionado(null);
-        setCantidadProducto(1);
-        setBusquedaProducto('');
+        // Limpiar producto seleccionado solo si viene de la búsqueda
+        if (productToAdd.id === productoSeleccionado?.id) {
+            setProductoSeleccionado(null);
+            setCantidadProducto(1);
+            setBusquedaProducto('');
+        }
+        showCustomAlert(`${productToAdd.nombre} añadido a la venta.`, 'success');
     };
 
+    // Eliminar un producto de la lista de venta
     const handleEliminarProductoDeVenta = (id) => {
         setProductosEnVenta(productosEnVenta.filter(item => item.id !== id));
+        showCustomAlert("Producto eliminado de la venta.", 'info');
     };
 
+    // Realizar la venta
     const handleRealizarVenta = async () => {
         if (productosEnVenta.length === 0) {
             showCustomAlert("No hay productos en la venta.", 'error');
@@ -212,7 +253,7 @@ const PuntoVenta = () => {
                 const detalles = productosEnVenta.map(item => ({
                     producto: item.id,
                     cantidad: item.cantidad,
-                    precio_unitario: item.precio,
+                    precio_unitario: parseFloat(item.precio), // Asegúrate de que el precio sea un número
                 }));
 
                 const ventaData = {
@@ -224,22 +265,24 @@ const PuntoVenta = () => {
                 const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                console.log("Respuesta de venta:", response.data); // Añadir log aquí también
+                console.log("Respuesta de venta:", response.data);
 
                 showCustomAlert(`Venta realizada con éxito! ID: ${response.data.id}`, 'success');
                 setProductosEnVenta([]);
                 setTotalVenta(0);
                 setProductoSeleccionado(null);
                 setCantidadProducto(1);
-                fetchProductos();
+                fetchProductos(); // Recargar productos para actualizar stock
             } catch (err) {
                 console.error("Error al realizar venta:", err.response ? err.response.data : err.message);
                 setError("Error al realizar venta: " + (err.response?.data?.detail || err.message));
+                showCustomAlert("Error al realizar venta.", 'error');
             }
         });
         setShowConfirmModal(true);
     };
 
+    // Renderizado condicional basado en el estado de carga y autenticación
     if (authLoading || (isAuthenticated && !user)) {
         return <p style={styles.loadingMessage}>Cargando datos de usuario...</p>;
     }
@@ -265,7 +308,7 @@ const PuntoVenta = () => {
             <h1>Punto de Venta ({selectedStoreSlug})</h1>
 
             {error && <p style={styles.errorMessage}>{error}</p>}
-            {successMessage && <p style={styles.successMessage}>{successMessage}</p>}
+            {/* {successMessage && <p style={styles.successMessage}>{successMessage}</p>} */} {/* Usamos showCustomAlert ahora */}
 
             {/* Sección de Búsqueda y Añadir Producto */}
             <div style={styles.searchAddSection}>
@@ -284,7 +327,7 @@ const PuntoVenta = () => {
                     <div style={styles.selectedProductCard}>
                         <h3>Producto Seleccionado:</h3>
                         <p><strong>Nombre:</strong> {productoSeleccionado.nombre}</p>
-                        <p><strong>Precio:</strong> ${productoSeleccionado.precio.toFixed(2)}</p>
+                        <p><strong>Precio:</strong> ${parseFloat(productoSeleccionado.precio).toFixed(2)}</p>
                         <p><strong>Stock Disponible:</strong> {productoSeleccionado.stock}</p>
                         <div style={styles.quantityControls}>
                             <label>Cantidad:</label>
@@ -296,13 +339,39 @@ const PuntoVenta = () => {
                                 max={productoSeleccionado.stock}
                                 style={styles.quantityInput}
                             />
-                            <button onClick={handleAgregarProducto} style={styles.addButton}>Añadir a Venta</button>
+                            <button onClick={() => handleAgregarProducto(productoSeleccionado, cantidadProducto)} style={styles.addButton}>Añadir a Venta</button>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Lista de Productos en Venta */}
+            {/* Nueva Sección: Productos Disponibles */}
+            <div style={styles.availableProductsSection}>
+                <h2>Productos Disponibles</h2>
+                {productos.length === 0 ? (
+                    <p style={styles.noDataMessage}>No hay productos disponibles en esta tienda.</p>
+                ) : (
+                    <div style={styles.productListGrid}>
+                        {productos.map(p => (
+                            <div key={p.id} style={styles.productCard}>
+                                <h3>{p.nombre}</h3>
+                                <p>Talle: {p.talle}</p>
+                                <p>Precio: ${parseFloat(p.precio).toFixed(2)}</p>
+                                <p>Stock: {p.stock}</p>
+                                <button
+                                    onClick={() => handleAgregarProducto(p, 1)}
+                                    style={styles.addToSaleButton}
+                                    disabled={p.stock <= 0} // Deshabilitar si no hay stock
+                                >
+                                    {p.stock > 0 ? 'Añadir (1)' : 'Sin Stock'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Sección de Productos en Venta */}
             <div style={styles.saleListSection}>
                 <h2>Productos en Venta</h2>
                 {productosEnVenta.length === 0 ? (
@@ -325,8 +394,8 @@ const PuntoVenta = () => {
                                     <td style={styles.td}>{item.nombre}</td>
                                     <td style={styles.td}>{item.talle}</td>
                                     <td style={styles.td}>{item.cantidad}</td>
-                                    <td style={styles.td}>${item.precio.toFixed(2)}</td>
-                                    <td style={styles.td}>${(item.precio * item.cantidad).toFixed(2)}</td>
+                                    <td style={styles.td}>${parseFloat(item.precio).toFixed(2)}</td>
+                                    <td style={styles.td}>${(parseFloat(item.precio) * item.cantidad).toFixed(2)}</td>
                                     <td style={styles.td}>
                                         <button onClick={() => handleEliminarProductoDeVenta(item.id)} style={styles.deleteItemButton}>Eliminar</button>
                                     </td>
@@ -414,7 +483,7 @@ const styles = {
         marginBottom: '15px',
         textAlign: 'center',
     },
-    successMessage: {
+    successMessage: { // Este estilo ya no se usa directamente para el mensaje de éxito, sino para el alertBox
         color: 'green',
         backgroundColor: '#e6ffe6',
         padding: '10px',
@@ -474,6 +543,44 @@ const styles = {
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
+    },
+    availableProductsSection: {
+        marginBottom: '30px',
+        border: '1px solid #e0e0e0',
+        padding: '20px',
+        borderRadius: '8px',
+        backgroundColor: '#f9f9f9',
+    },
+    productListGrid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+        gap: '20px',
+        marginTop: '15px',
+    },
+    productCard: {
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        padding: '15px',
+        textAlign: 'center',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+        backgroundColor: '#fff',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+    },
+    addToSaleButton: {
+        marginTop: '10px',
+        padding: '8px 15px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s ease',
+    },
+    addToSaleButtonDisabled: {
+        backgroundColor: '#ccc',
+        cursor: 'not-allowed',
     },
     saleListSection: {
         marginBottom: '30px',
@@ -619,7 +726,7 @@ const styles = {
         position: 'fixed',
         top: '20px',
         right: '20px',
-        backgroundColor: '#28a745',
+        backgroundColor: '#28a745', // Default success color
         color: 'white',
         padding: '15px 25px',
         borderRadius: '8px',
@@ -627,6 +734,18 @@ const styles = {
         zIndex: 1001,
         opacity: 0,
         animation: 'fadeInOut 3s forwards',
+    },
+    // Keyframes for alert animation
+    '@keyframes fadeInOut': {
+        '0%': { opacity: 0, transform: 'translateY(-20px)' },
+        '10%': { opacity: 1, transform: 'translateY(0)' },
+        '90%': { opacity: 1, transform: 'translateY(0)' },
+        '100%': { opacity: 0, transform: 'translateY(-20px)' },
+    },
+    // Keyframes for modal animation
+    '@keyframes fadeIn': {
+        '0%': { opacity: 0, transform: 'scale(0.9)' },
+        '100%': { opacity: 1, transform: 'scale(1)' },
     },
 };
 
