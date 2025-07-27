@@ -248,7 +248,7 @@ const PuntoVenta = () => {
     const handleIncreaseQuantity = (id) => {
         setProductosEnVenta(prevItems => prevItems.map(item => {
             if (item.id === id) {
-                const productInStock = productos.find(p => p.id === id);
+                const productInStock = productos.find(p => p.id === id); // Find original product to check stock
                 if (productInStock && item.cantidad < productInStock.stock) {
                     return { ...item, cantidad: item.cantidad + 1 };
                 } else {
@@ -295,14 +295,14 @@ const PuntoVenta = () => {
             setShowConfirmModal(false);
             try {
                 const detalles = productosEnVenta.map(item => ({
-                    producto: item.id,
+                    producto: item.id, // ID del producto
                     cantidad: item.cantidad,
                     precio_unitario: parseFloat(item.precio),
                 }));
 
                 const ventaData = {
-                    tienda: selectedStoreSlug,
-                    metodo_pago: metodoPagoSeleccionado,
+                    tienda_slug: selectedStoreSlug, // Enviar el slug de la tienda
+                    metodo_pago_nombre: metodoPagoSeleccionado, // Enviar el nombre del método de pago
                     detalles: detalles,
                 };
 
