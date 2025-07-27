@@ -5,7 +5,7 @@ import { useAuth } from '../AuthContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
-// Função para normalizar a URL base, eliminando qualquer /api/ ou barra final
+// Función para normalizar la URL base, eliminando cualquier /api/ o barra final
 const normalizeApiUrl = (url) => {
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
@@ -22,14 +22,14 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const PuntoVenta = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
 
-    const [productos, setProductos] = useState([]); // Lista de todos os produtos disponíveis
+    const [productos, setProductos] = useState([]); // Lista de todos los productos disponibles
     const [categorias, setCategorias] = useState([]);
     const [metodosPago, setMetodosPago] = useState([]);
-    const [productosEnVenta, setProductosEnVenta] = useState([]); // Produtos adicionados à venda atual (o carrinho)
+    const [productosEnVenta, setProductosEnVenta] = useState([]); // Productos añadidos a la venta actual (el carrito)
     const [totalVenta, setTotalVenta] = useState(0);
     const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
     const [busquedaProducto, setBusquedaProducto] = useState('');
-    const [productoSeleccionado, setProductoSeleccionado] = useState(null); // Produto selecionado por pesquisa
+    const [productoSeleccionado, setProductoSeleccionado] = useState(null); // Producto seleccionado por búsqueda
     const [cantidadProducto, setCantidadProducto] = useState(1);
     const [error, setError] = useState(null);
     const [loadingData, setLoadingData] = useState(true);
@@ -42,15 +42,15 @@ const PuntoVenta = () => {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success'); // 'success', 'error', 'info'
 
-    // Paginação para a tabela 'Produtos no Carrinho'
+    // Paginación para la tabla 'Productos en el Carrito'
     const [currentPageCart, setCurrentPageCart] = useState(1);
     const itemsPerPageCart = 10;
 
-    // Paginação para a seção 'Produtos Disponíveis'
+    // Paginación para la sección 'Productos Disponibles'
     const [currentPageAvailable, setCurrentPageAvailable] = useState(1);
     const itemsPerPageAvailable = 10;
 
-    // Função para exibir alertas personalizados na UI
+    // Función para mostrar alertas personalizadas en la UI
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
         setAlertType(type);
@@ -58,11 +58,11 @@ const PuntoVenta = () => {
         setTimeout(() => {
             setShowAlertMessage(false);
             setAlertMessage('');
-            setAlertType('success'); // Redefinir para o padrão
+            setAlertType('success'); // Reiniciar a predeterminado
         }, 3000);
     };
 
-    // Carregar todos os produtos disponíveis para a loja selecionada
+    // Cargar todos los productos disponibles para la tienda seleccionada
     const fetchProductos = useCallback(async () => {
         if (!token || !selectedStoreSlug) {
             setLoadingData(false);
@@ -75,72 +75,72 @@ const PuntoVenta = () => {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { tienda_slug: selectedStoreSlug }
             });
-            console.log("Resposta de produtos:", response.data);
-            console.log("Selected Store Slug:", selectedStoreSlug);
+            console.log("Respuesta de productos:", response.data);
+            console.log("Slug de tienda seleccionado:", selectedStoreSlug);
             setProductos(response.data.results || response.data);
             setError(null);
         } catch (err) {
-            console.error("Erro ao carregar produtos:", err.response || err.message);
-            setError("Erro ao carregar produtos: " + (err.response?.data?.detail || err.message));
+            console.error("Error al cargar productos:", err.response || err.message);
+            setError("Error al cargar productos: " + (err.response?.data?.detail || err.message));
         } finally {
             setLoadingData(false);
         }
     }, [token, selectedStoreSlug]);
 
-    // Carregar categorias
+    // Cargar categorías
     const fetchCategorias = useCallback(async () => {
-        console.log("fetchCategorias: Chamado.");
+        console.log("fetchCategorias: Llamado.");
         if (!token) {
-            console.log("fetchCategorias: Token não presente, retornando.");
+            console.log("fetchCategorias: Token no presente, regresando.");
             return;
         }
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/categorias/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            console.log("Resposta de categorias:", response.data);
+            console.log("Respuesta de categorías:", response.data);
             setCategorias(response.data.results || response.data);
         } catch (err) {
-            console.error("Erro ao carregar categorias:", err.response ? err.response.data : err.message);
+            console.error("Error al cargar categorías:", err.response ? err.response.data : err.message);
         }
     }, [token]);
 
-    // Carregar métodos de pagamento
+    // Cargar métodos de pago
     const fetchMetodosPago = useCallback(async () => {
-        console.log("fetchMetodosPago: Chamado.");
-        console.log("fetchMetodosPago: Token atual:", token ? token.substring(0, 10) + '...' : 'null');
+        console.log("fetchMetodosPago: Llamado.");
+        console.log("fetchMetodosPago: Token actual:", token ? token.substring(0, 10) + '...' : 'null');
         if (!token) {
-            console.log("fetchMetodosPago: Token não presente, retornando.");
+            console.log("fetchMetodosPago: Token no presente, regresando.");
             return;
         }
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            console.log("fetchMetodosPago: Resposta da API de métodos de pagamento:", response.data);
+            console.log("fetchMetodosPago: Respuesta de la API de métodos de pago:", response.data);
             setMetodosPago(response.data);
             if (response.data.length > 0) {
                 setMetodoPagoSeleccionado(response.data[0].nombre);
-                console.log("fetchMetodosPago: Método de pagamento selecionado:", response.data[0].nombre);
+                console.log("fetchMetodosPago: Método de pago seleccionado:", response.data[0].nombre);
             } else {
-                console.log("fetchMetodosPago: Nenhuma forma de pagamento retornada.");
+                console.log("fetchMetodosPago: Ninguna forma de pago devuelta.");
             }
         } catch (err) {
-            console.error("fetchMetodosPago: Erro ao carregar métodos de pagamento:", err.response ? err.response.data : err.message);
-            showCustomAlert("Erro ao carregar métodos de pagamento.", 'error');
+            console.error("fetchMetodosPago: Error al cargar métodos de pago:", err.response ? err.response.data : err.message);
+            showCustomAlert("Error al cargar métodos de pago.", 'error');
         }
     }, [token]);
 
-    // Efeito para carregar dados iniciais quando o usuário está autenticado e a loja selecionada
+    // Efecto para cargar datos iniciales cuando el usuario está autenticado y la tienda seleccionada
     useEffect(() => {
-        console.log("useEffect principal: Estado de autenticação e loja:", { isAuthenticated, user, selectedStoreSlug, authLoading });
+        console.log("useEffect principal: Estado de autenticación y tienda:", { isAuthenticated, user, selectedStoreSlug, authLoading });
         if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
             setLoadingData(true);
             fetchProductos();
             fetchCategorias();
             fetchMetodosPago();
         } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_staff))) {
-            setError("Acesso negado. Não tens permissões para usar o ponto de venda.");
+            setError("Acceso denegado. No tienes permisos para usar el punto de venta.");
             setLoadingData(false);
         } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
             setLoadingData(false);
@@ -148,7 +148,7 @@ const PuntoVenta = () => {
         }
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos, fetchCategorias, fetchMetodosPago]);
 
-    // Efeito para recalcular o total da venda quando os produtos em venda mudam
+    // Efecto para recalcular el total de la venta cuando los productos en venta cambian
     useEffect(() => {
         const calcularTotal = productosEnVenta.reduce((acc, item) => acc + (parseFloat(item.precio) * item.cantidad), 0);
         setTotalVenta(calcularTotal);
@@ -160,16 +160,16 @@ const PuntoVenta = () => {
         }
     }, [productosEnVenta, currentPageCart]);
 
-    // Lidar com a pesquisa de um produto por código de barras/nome
+    // Manejar la búsqueda de un producto por código de barras/nombre
     const handleBuscarProducto = async (e) => {
         e.preventDefault();
         setError(null);
         if (!busquedaProducto) {
-            showCustomAlert("Por favor, introduza um nome ou código de barras para pesquisar.", 'error');
+            showCustomAlert("Por favor, introduce un nombre o código de barras para buscar.", 'error');
             return;
         }
         if (!selectedStoreSlug) {
-            showCustomAlert("Por favor, selecione uma loja antes de pesquisar produtos.", 'error');
+            showCustomAlert("Por favor, selecciona una tienda antes de buscar productos.", 'error');
             return;
         }
 
@@ -181,7 +181,7 @@ const PuntoVenta = () => {
                     params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
                 });
             } catch (barcodeErr) {
-                console.warn("Não encontrado por código de barras, tentando por nome...", barcodeErr);
+                console.warn("No encontrado por código de barras, intentando por nombre...", barcodeErr);
                 response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                     params: { search: busquedaProducto, tienda_slug: selectedStoreSlug }
@@ -191,33 +191,33 @@ const PuntoVenta = () => {
                 } else if (response.data.length > 0) {
                     response.data = response.data[0];
                 } else {
-                    throw new Error("Produto não encontrado por nome.");
+                    throw new Error("Producto no encontrado por nombre.");
                 }
             }
 
-            console.log("Resposta de pesquisa de produto:", response.data);
+            console.log("Respuesta de búsqueda de producto:", response.data);
             setProductoSeleccionado(response.data);
             setCantidadProducto(1);
             setBusquedaProducto('');
         } catch (err) {
-            console.error("Erro ao pesquisar produto:", err.response ? err.response.data : err.message);
+            console.error("Error al buscar producto:", err.response ? err.response.data : err.message);
             setProductoSeleccionado(null);
-            showCustomAlert("Produto não encontrado ou erro na pesquisa: " + (err.response?.data?.error || err.message), 'error');
+            showCustomAlert("Producto no encontrado o error en la búsqueda: " + (err.response?.data?.error || err.message), 'error');
         }
     };
 
-    // Função para adicionar um produto à lista de venda, seja da pesquisa ou da lista de disponíveis
+    // Función para añadir un producto a la lista de venta, ya sea de la búsqueda o de la lista de disponibles
     const handleAgregarProducto = (productToAdd, quantity = 1) => {
         if (!productToAdd) {
-            showCustomAlert("Nenhum produto selecionado para adicionar.", 'error');
+            showCustomAlert("Ningún producto seleccionado para añadir.", 'error');
             return;
         }
         if (quantity <= 0) {
-            showCustomAlert("A quantidade deve ser maior que 0.", 'error');
+            showCustomAlert("La cantidad debe ser mayor que 0.", 'error');
             return;
         }
         if (quantity > productToAdd.stock) {
-            showCustomAlert(`Não há stock suficiente. Stock disponível: ${productToAdd.stock}.`, 'error');
+            showCustomAlert(`No hay suficiente stock. Stock disponible: ${productToAdd.stock}.`, 'error');
             return;
         }
 
@@ -228,7 +228,7 @@ const PuntoVenta = () => {
             const nuevaCantidad = nuevosProductosEnVenta[productoExistenteIndex].cantidad + quantity;
 
             if (nuevaCantidad > productToAdd.stock) {
-                showCustomAlert(`Não é possível adicionar mais. A quantidade total excede o stock disponível (${productToAdd.stock}).`, 'error');
+                showCustomAlert(`No se puede añadir más. La cantidad total excede el stock disponible (${productToAdd.stock}).`, 'error');
                 return;
             }
             nuevosProductosEnVenta[productoExistenteIndex].cantidad = nuevaCantidad;
@@ -241,10 +241,10 @@ const PuntoVenta = () => {
             setCantidadProducto(1);
             setBusquedaProducto('');
         }
-        showCustomAlert(`${productToAdd.nombre} adicionado à venda.`, 'success');
+        showCustomAlert(`${productToAdd.nombre} añadido a la venta.`, 'success');
     };
 
-    // Aumentar quantidade de um produto no carrinho
+    // Aumentar cantidad de un producto en el carrito
     const handleIncreaseQuantity = (id) => {
         setProductosEnVenta(prevItems => prevItems.map(item => {
             if (item.id === id) {
@@ -252,14 +252,14 @@ const PuntoVenta = () => {
                 if (productInStock && item.cantidad < productInStock.stock) {
                     return { ...item, cantidad: item.cantidad + 1 };
                 } else {
-                    showCustomAlert(`Não há mais stock disponível para ${item.nombre}.`, 'error');
+                    showCustomAlert(`No hay más stock disponible para ${item.nombre}.`, 'error');
                 }
             }
             return item;
         }));
     };
 
-    // Diminuir quantidade de um produto no carrinho
+    // Disminuir cantidad de un producto en el carrito
     const handleDecreaseQuantity = (id) => {
         setProductosEnVenta(prevItems => prevItems.map(item => {
             if (item.id === id && item.cantidad > 1) {
@@ -269,28 +269,28 @@ const PuntoVenta = () => {
         }));
     };
 
-    // Eliminar um produto da lista de venda
+    // Eliminar un producto de la lista de venta
     const handleEliminarProductoDeVenta = (id) => {
         setProductosEnVenta(productosEnVenta.filter(item => item.id !== id));
-        showCustomAlert("Produto removido da venda.", 'info');
+        showCustomAlert("Producto eliminado de la venta.", 'info');
     };
 
-    // Realizar a venda
+    // Realizar la venta
     const handleRealizarVenta = async () => {
         if (productosEnVenta.length === 0) {
-            showCustomAlert("Nenhum produto no carrinho.", 'error');
+            showCustomAlert("Ningún producto en el carrito.", 'error');
             return;
         }
         if (!metodoPagoSeleccionado) {
-            showCustomAlert("Por favor, selecione um método de pagamento.", 'error');
+            showCustomAlert("Por favor, selecciona un método de pago.", 'error');
             return;
         }
         if (!selectedStoreSlug) {
-            showCustomAlert("Por favor, selecione uma loja para registar a venda.", 'error');
+            showCustomAlert("Por favor, selecciona una tienda para registrar la venta.", 'error');
             return;
         }
 
-        setConfirmMessage(`Confirma a venda por um total de $${totalVenta.toFixed(2)} com ${metodoPagoSeleccionado}?`);
+        setConfirmMessage(`¿Confirma la venta por un total de $${totalVenta.toFixed(2)} con ${metodoPagoSeleccionado}?`);
         setConfirmAction(() => async () => {
             setShowConfirmModal(false);
             try {
@@ -309,24 +309,24 @@ const PuntoVenta = () => {
                 const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                console.log("Resposta de venda:", response.data);
+                console.log("Respuesta de venta:", response.data);
 
-                showCustomAlert(`Venda realizada com sucesso! ID: ${response.data.id}`, 'success');
+                showCustomAlert(`¡Venta realizada con éxito! ID: ${response.data.id}`, 'success');
                 setProductosEnVenta([]);
                 setTotalVenta(0);
                 setProductoSeleccionado(null);
                 setCantidadProducto(1);
-                fetchProductos(); // Recarregar produtos para atualizar stock
+                fetchProductos(); // Recargar productos para actualizar stock
             } catch (err) {
-                console.error("Erro ao realizar venda:", err.response ? err.response.data : err.message);
-                setError("Erro ao realizar venda: " + (err.response?.data?.detail || err.message));
-                showCustomAlert("Erro ao realizar venda.", 'error');
+                console.error("Error al realizar venta:", err.response ? err.response.data : err.message);
+                setError("Error al realizar venta: " + (err.response?.data?.detail || err.message));
+                showCustomAlert("Error al realizar venta.", 'error');
             }
         });
         setShowConfirmModal(true);
     };
 
-    // Obter produtos atuais para paginação do carrinho
+    // Obtener productos actuales para paginación del carrito
     const indexOfLastItemCart = currentPageCart * itemsPerPageCart;
     const indexOfFirstItemCart = indexOfLastItemCart - itemsPerPageCart;
     const currentProductsInCart = productosEnVenta.slice(indexOfFirstItemCart, indexOfLastItemCart);
@@ -334,7 +334,7 @@ const PuntoVenta = () => {
 
     const paginateCart = (pageNumber) => setCurrentPageCart(pageNumber);
 
-    // Obter produtos atuais para paginação de produtos disponíveis
+    // Obtener productos actuales para paginación de productos disponibles
     const indexOfLastItemAvailable = currentPageAvailable * itemsPerPageAvailable;
     const indexOfFirstItemAvailable = indexOfLastItemAvailable - itemsPerPageAvailable;
     const currentAvailableProducts = productos.slice(indexOfFirstItemAvailable, indexOfLastItemAvailable);
@@ -343,58 +343,58 @@ const PuntoVenta = () => {
     const paginateAvailable = (pageNumber) => setCurrentPageAvailable(pageNumber);
 
 
-    // Renderização condicional baseada no estado de carregamento e autenticação
+    // Renderización condicional basada en el estado de carga y autenticación
     if (authLoading || (isAuthenticated && !user)) {
-        return <p style={styles.loadingMessage}>A carregar dados do utilizador...</p>;
+        return <p style={styles.loadingMessage}>Cargando datos del usuario...</p>;
     }
 
     if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
-        return <p style={styles.accessDeniedMessage}>Acesso negado. Não tem permissões para usar o ponto de venda.</p>;
+        return <p style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para usar el punto de venta.</p>;
     }
 
     if (!selectedStoreSlug) {
         return (
             <div style={styles.noStoreSelectedMessage}>
-                <h2>Por favor, selecione uma loja na barra de navegação para usar o ponto de venda.</h2>
+                <h2>Por favor, selecciona una tienda en la barra de navegación para usar el punto de venta.</h2>
             </div>
         );
     }
 
     if (loadingData) {
-        return <p style={styles.loadingMessage}>A carregar dados do ponto de venda...</p>;
+        return <p style={styles.loadingMessage}>Cargando datos del punto de venta...</p>;
     }
 
-    // Depuração para métodos de pagamento
-    console.log("Estado de métodos de pagamento (antes do render):", { metodosPago, metodoPagoSeleccionado });
+    // Depuración para métodos de pago
+    console.log("Estado de métodos de pago (antes del render):", { metodosPago, metodoPagoSeleccionado });
 
     return (
         <div style={styles.container}>
-            <h1>Ponto de Venda ({selectedStoreSlug})</h1>
+            <h1>Punto de Venta ({selectedStoreSlug})</h1>
 
             {error && <p style={styles.errorMessage}>{error}</p>}
 
-            {/* Seção de Pesquisa e Adicionar Produto */}
+            {/* Sección de Búsqueda y Añadir Producto */}
             <div style={styles.searchAddSection}>
-                <h3>Pesquisar e Adicionar Produto</h3>
+                <h3>Buscar y Añadir Producto</h3>
                 <form onSubmit={handleBuscarProducto} style={styles.searchForm}>
                     <input
                         type="text"
                         value={busquedaProducto}
                         onChange={(e) => setBusquedaProducto(e.target.value)}
-                        placeholder="Pesquisar produto por nome ou código de barras"
+                        placeholder="Buscar producto por nombre o código de barras"
                         style={styles.searchInput}
                     />
-                    <button type="submit" style={styles.searchButton}>Pesquisar</button>
+                    <button type="submit" style={styles.searchButton}>Buscar</button>
                 </form>
 
                 {productoSeleccionado && (
                     <div style={styles.selectedProductCard}>
-                        <h4>Produto Selecionado:</h4>
-                        <p><strong>Nome:</strong> {productoSeleccionado.nombre}</p>
-                        <p><strong>Preço:</strong> ${parseFloat(productoSeleccionado.precio).toFixed(2)}</p>
-                        <p><strong>Stock Disponível:</strong> {productoSeleccionado.stock}</p>
+                        <h4>Producto Seleccionado:</h4>
+                        <p><strong>Nombre:</strong> {productoSeleccionado.nombre}</p>
+                        <p><strong>Precio:</strong> ${parseFloat(productoSeleccionado.precio).toFixed(2)}</p>
+                        <p><strong>Stock Disponible:</strong> {productoSeleccionado.stock}</p>
                         <div style={styles.quantityControls}>
-                            <label>Quantidade:</label>
+                            <label>Cantidad:</label>
                             <input
                                 type="number"
                                 value={cantidadProducto}
@@ -403,18 +403,18 @@ const PuntoVenta = () => {
                                 max={productoSeleccionado.stock}
                                 style={styles.quantityInput}
                             />
-                            <button onClick={() => handleAgregarProducto(productoSeleccionado, cantidadProducto)} style={styles.addButton}>Adicionar à Venda</button>
+                            <button onClick={() => handleAgregarProducto(productoSeleccionado, cantidadProducto)} style={styles.addButton}>Añadir a la Venta</button>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Seção de Resumo de Venda */}
+            {/* Sección de Resumen de Venta */}
             <div style={styles.summarySection}>
-                <h2>Resumo de Venda</h2>
+                <h2>Resumen de Venta</h2>
                 <p style={styles.totalText}>Total: ${totalVenta.toFixed(2)}</p>
                 <div style={styles.paymentMethodControls}>
-                    <label htmlFor="metodoPago">Método de Pagamento:</label>
+                    <label htmlFor="metodoPago">Método de Pago:</label>
                     <select
                         id="metodoPago"
                         value={metodoPagoSeleccionado}
@@ -426,29 +426,29 @@ const PuntoVenta = () => {
                                 <option key={metodo.id} value={metodo.nombre}>{metodo.nombre}</option>
                             ))
                         ) : (
-                            <option value="">A carregar métodos de pagamento...</option>
+                            <option value="">Cargando métodos de pago...</option>
                         )}
                     </select>
                 </div>
-                <button onClick={handleRealizarVenta} style={styles.completeSaleButton}>Realizar Venda</button>
+                <button onClick={handleRealizarVenta} style={styles.completeSaleButton}>Realizar Venta</button>
             </div>
 
-            {/* Seção de Produtos em Venda (o carrinho) */}
+            {/* Sección de Productos en Venta (el carrito) */}
             <div style={styles.saleListSection}>
-                <h2>Produtos no Carrinho</h2>
+                <h2>Productos en el Carrito</h2>
                 {productosEnVenta.length === 0 ? (
-                    <p style={styles.noDataMessage}>Nenhum produto na venda atual.</p>
+                    <p style={styles.noDataMessage}>Ningún producto en la venta actual.</p>
                 ) : (
                     <>
                         <table style={styles.table}>
                             <thead>
                                 <tr style={styles.tableHeaderRow}>
-                                    <th style={styles.th}>Produto</th>
-                                    <th style={styles.th}>Tamanho</th>
-                                    <th style={styles.th}>Quantidade</th>
-                                    <th style={styles.th}>Preço Unitário</th>
+                                    <th style={styles.th}>Producto</th>
+                                    <th style={styles.th}>Talla</th>
+                                    <th style={styles.th}>Cantidad</th>
+                                    <th style={styles.th}>Precio Unitario</th>
                                     <th style={styles.th}>Subtotal</th>
-                                    <th style={styles.th}>Ações</th>
+                                    <th style={styles.th}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -466,7 +466,7 @@ const PuntoVenta = () => {
                                         <td style={styles.td}>${parseFloat(item.precio).toFixed(2)}</td>
                                         <td style={styles.td}>${(parseFloat(item.precio) * item.cantidad).toFixed(2)}</td>
                                         <td style={styles.td}>
-                                            <button onClick={() => handleEliminarProductoDeVenta(item.id)} style={styles.deleteItemButton}>Remover</button>
+                                            <button onClick={() => handleEliminarProductoDeVenta(item.id)} style={styles.deleteItemButton}>Eliminar</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -495,7 +495,7 @@ const PuntoVenta = () => {
                                     disabled={currentPageCart === totalPagesCart}
                                     style={styles.paginationButton}
                                 >
-                                    Próximo
+                                    Siguiente
                                 </button>
                             </div>
                         )}
@@ -503,26 +503,26 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Nova Seção: Produtos Disponíveis */}
+            {/* Nueva Sección: Productos Disponibles */}
             <div style={styles.availableProductsSection}>
-                <h2>Produtos Disponíveis</h2>
+                <h2>Productos Disponibles</h2>
                 {productos.length === 0 ? (
-                    <p style={styles.noDataMessage}>Nenhum produto disponível nesta loja.</p>
+                    <p style={styles.noDataMessage}>Ningún producto disponible en esta tienda.</p>
                 ) : (
                     <>
                         <div style={styles.productListGrid}>
                             {currentAvailableProducts.map(p => (
                                 <div key={p.id} style={styles.productCard}>
                                     <h3>{p.nombre}</h3>
-                                    <p>Tamanho: {p.talle}</p>
-                                    <p>Preço: ${parseFloat(p.precio).toFixed(2)}</p>
+                                    <p>Talla: {p.talle}</p>
+                                    <p>Precio: ${parseFloat(p.precio).toFixed(2)}</p>
                                     <p>Stock: {p.stock}</p>
                                     <button
                                         onClick={() => handleAgregarProducto(p, 1)}
                                         style={p.stock <= 0 ? { ...styles.addToSaleButton, ...styles.addToSaleButtonDisabled } : styles.addToSaleButton}
                                         disabled={p.stock <= 0}
                                     >
-                                        {p.stock > 0 ? 'Adicionar (1)' : 'Sem Stock'}
+                                        {p.stock > 0 ? 'Añadir (1)' : 'Sin Stock'}
                                     </button>
                                 </div>
                             ))}
@@ -550,7 +550,7 @@ const PuntoVenta = () => {
                                     disabled={currentPageAvailable === totalPagesAvailable}
                                     style={styles.paginationButton}
                                 >
-                                    Próximo
+                                    Siguiente
                                 </button>
                             </div>
                         )}
@@ -558,20 +558,20 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Modal de Confirmação */}
+            {/* Modal de Confirmación */}
             {showConfirmModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
                         <p style={styles.modalMessage}>{confirmMessage}</p>
                         <div style={styles.modalActions}>
-                            <button onClick={confirmAction} style={styles.modalConfirmButton}>Sim</button>
-                            <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>Não</button>
+                            <button onClick={confirmAction} style={styles.modalConfirmButton}>Sí</button>
+                            <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>No</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Caixa de Mensagem de Alerta */}
+            {/* Caja de Mensaje de Alerta */}
             {showAlertMessage && (
                 <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
                     <p>{alertMessage}</p>
