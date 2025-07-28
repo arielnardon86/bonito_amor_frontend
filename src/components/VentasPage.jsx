@@ -215,7 +215,7 @@ const VentasPage = () => {
         setShowConfirmModal(true);
     };
 
-    // NUEVA FUNCIÓN: Para anular un producto específico dentro de una venta (anula 1 unidad por defecto)
+    // FUNCIÓN ACTUALIZADA: Para anular un producto específico dentro de una venta (con prompt para cantidad)
     const handleAnularDetalleVenta = async (ventaId, detalleId, cantidadActual) => {
         if (!user || !user.is_superuser) {
             showCustomAlert('No tienes permisos para anular productos de ventas.', 'error');
@@ -231,9 +231,20 @@ const VentasPage = () => {
             return;
         }
 
-        const cantidadAAnular = 1; // Anular siempre 1 unidad
+        // Volver a pedir la cantidad a anular
+        const cantidadInput = prompt(`¿Cuántas unidades deseas anular de este producto (máximo ${cantidadActual})?`);
+        if (cantidadInput === null || cantidadInput.trim() === '') {
+            return; // El usuario canceló o no ingresó nada
+        }
 
-        setConfirmMessage(`¿Estás seguro de que quieres anular 1 unidad de este producto en la venta ${ventaId}?`);
+        const cantidadAAnular = parseInt(cantidadInput, 10);
+
+        if (isNaN(cantidadAAnular) || cantidadAAnular <= 0 || cantidadAAnular > cantidadActual) {
+            showCustomAlert(`Por favor, ingresa una cantidad válida entre 1 y ${cantidadActual}.`, 'error');
+            return;
+        }
+
+        setConfirmMessage(`¿Estás seguro de que quieres anular ${cantidadAAnular} unidades de este producto en la venta ${ventaId}?`);
         setConfirmAction(() => async () => {
             setShowConfirmModal(false);
             try {
@@ -248,7 +259,7 @@ const VentasPage = () => {
                     }
                 );
                 console.log("Respuesta de anulación de detalle:", response.data);
-                showCustomAlert(`Se anuló 1 unidad del producto en la venta ${ventaId}.`, 'success');
+                showCustomAlert(`Se anularon ${cantidadAAnular} unidades del producto en la venta ${ventaId}.`, 'success');
                 fetchVentas(currentPageNumber); // Recargar la página actual
             } catch (err) {
                 console.error('Error al anular detalle de venta:', err.response ? err.response.data : err.message);
@@ -434,7 +445,7 @@ const VentasPage = () => {
                                                                                 onClick={() => handleAnularDetalleVenta(venta.id, detalle.id, detalle.cantidad)}
                                                                                 style={styles.anularItemButton}
                                                                             >
-                                                                                Anular 1 Ud.
+                                                                                Anular Item
                                                                             </button>
                                                                         ) : (
                                                                             <span style={styles.anuladaItemText}>Anulado/Sin Stock</span>
