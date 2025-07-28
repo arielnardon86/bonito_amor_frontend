@@ -181,9 +181,8 @@ const MetricasVentas = () => {
         },
     };
 
-    // Preparar datos para los gráficos y tablas, con comprobaciones de seguridad
-    // Asegúrate de que `metricas` no sea null antes de acceder a sus propiedades
-    const ventasPorPeriodoData = {
+    // --- Mover la preparación de datos de los gráficos y tablas aquí, antes del return ---
+    const barChartData = {
         labels: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => {
             // Ajustar el formato de la etiqueta según el 'label' del backend
             if (metricas.ventas_agrupadas_por_periodo.label === "Día") {
@@ -234,6 +233,7 @@ const MetricasVentas = () => {
     const topProductsData = metricas?.productos_mas_vendidos || [];
     const salesByUserTableData = metricas?.ventas_por_usuario || [];
     const salesByPaymentMethodTableData = metricas?.ventas_por_metodo_pago || [];
+    // --- Fin de la preparación de datos de los gráficos y tablas ---
 
 
     if (authLoading || (isAuthenticated && !user)) {
@@ -307,7 +307,7 @@ const MetricasVentas = () => {
             <div style={styles.summaryGrid}>
                 <div style={styles.summaryItem}>
                     <h3>Total Ventas</h3>
-                    <p style={styles.summaryValue}>${metricas.total_ventas_periodo.toFixed(2)}</p>
+                    <p style={styles.summaryValue}>${parseFloat(metricas.total_ventas_periodo).toFixed(2)}</p>
                 </div>
                 <div style={styles.summaryItem}>
                     <h3>Total Productos Vendidos</h3>
@@ -331,7 +331,7 @@ const MetricasVentas = () => {
                 <div style={styles.chartContainer}>
                     <h3>Ventas por {metricas.ventas_agrupadas_por_periodo.label}</h3>
                     {barChartData.labels.length > 0 ? (
-                        <Bar data={barChartData} options={commonChartOptions} />
+                        <Bar data={barChartData} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { ...commonChartOptions.plugins.title, text: `Ventas Agrupadas por ${metricas.ventas_agrupadas_por_periodo.label}` } } }} />
                     ) : (
                         <p style={styles.noDataMessage}>No hay datos de ventas para el período seleccionado.</p>
                     )}
@@ -339,7 +339,7 @@ const MetricasVentas = () => {
                 <div style={styles.chartContainer}>
                     <h3>Ventas por Método de Pago</h3>
                     {pieChartData.labels.length > 0 ? (
-                        <Pie data={pieChartData} options={commonChartOptions} />
+                        <Pie data={pieChartData} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { ...commonChartOptions.plugins.title, text: 'Ventas por Método de Pago' } } }} />
                     ) : (
                         <p style={styles.noDataMessage}>No hay datos de ventas por método de pago.</p>
                     )}
