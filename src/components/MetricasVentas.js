@@ -119,7 +119,8 @@ const MetricasVentas = () => {
             if (sellerIdFilter) params.seller_id = sellerIdFilter;
             if (paymentMethodFilter) params.payment_method = paymentMethodFilter;
 
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metricas-ventas/`, {
+            // --- CAMBIO CLAVE AQUÍ: Corregir la URL del endpoint ---
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metricas/`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 },
@@ -536,6 +537,7 @@ const styles = {
         marginBottom: '30px',
         height: '400px', // Altura fija para los gráficos
         display: 'flex',
+        flexDirection: 'column', // Para centrar el contenido verticalmente
         justifyContent: 'center',
         alignItems: 'center',
     },
