@@ -194,7 +194,6 @@ const VentasPage = () => {
             setShowConfirmModal(false);
             try {
                 console.log(`Anulando venta completa ${ventaId} para tienda ${selectedStoreSlug}.`);
-                // La URL corregida para la acción 'anular'
                 const response = await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular/?tienda_slug=${selectedStoreSlug}`, {}, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -216,7 +215,7 @@ const VentasPage = () => {
         setShowConfirmModal(true);
     };
 
-    // NUEVA FUNCIÓN: Para anular un producto específico dentro de una venta
+    // NUEVA FUNCIÓN: Para anular un producto específico dentro de una venta (anula 1 unidad por defecto)
     const handleAnularDetalleVenta = async (ventaId, detalleId, cantidadActual) => {
         if (!user || !user.is_superuser) {
             showCustomAlert('No tienes permisos para anular productos de ventas.', 'error');
@@ -227,24 +226,18 @@ const VentasPage = () => {
             return;
         }
 
-        // Solicitar la cantidad a anular
-        const cantidadInput = prompt(`¿Cuántas unidades deseas anular de este producto (máximo ${cantidadActual})?`);
-        if (cantidadInput === null || cantidadInput.trim() === '') {
-            return; // El usuario canceló o no ingresó nada
-        }
-
-        const cantidadAAnular = parseInt(cantidadInput, 10);
-
-        if (isNaN(cantidadAAnular) || cantidadAAnular <= 0 || cantidadAAnular > cantidadActual) {
-            showCustomAlert(`Por favor, ingresa una cantidad válida entre 1 y ${cantidadActual}.`, 'error');
+        if (cantidadActual <= 0) {
+            showCustomAlert('No hay unidades para anular en este detalle.', 'error');
             return;
         }
 
-        setConfirmMessage(`¿Estás seguro de que quieres anular ${cantidadAAnular} unidades de este producto en la venta ${ventaId}?`);
+        const cantidadAAnular = 1; // Anular siempre 1 unidad
+
+        setConfirmMessage(`¿Estás seguro de que quieres anular 1 unidad de este producto en la venta ${ventaId}?`);
         setConfirmAction(() => async () => {
             setShowConfirmModal(false);
             try {
-                console.log(`Anulando ${cantidadAAnular} unidades del detalle ${detalleId} en venta ${ventaId}.`);
+                console.log(`Anulando ${cantidadAAnular} unidad(es) del detalle ${detalleId} en venta ${ventaId}.`);
                 const response = await axios.patch(
                     `${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/?tienda_slug=${selectedStoreSlug}`,
                     { detalle_id: detalleId, cantidad_a_anular: cantidadAAnular },
@@ -255,7 +248,7 @@ const VentasPage = () => {
                     }
                 );
                 console.log("Respuesta de anulación de detalle:", response.data);
-                showCustomAlert(`Se anularon ${cantidadAAnular} unidades del producto en la venta ${ventaId}.`, 'success');
+                showCustomAlert(`Se anuló 1 unidad del producto en la venta ${ventaId}.`, 'success');
                 fetchVentas(currentPageNumber); // Recargar la página actual
             } catch (err) {
                 console.error('Error al anular detalle de venta:', err.response ? err.response.data : err.message);
@@ -441,7 +434,7 @@ const VentasPage = () => {
                                                                                 onClick={() => handleAnularDetalleVenta(venta.id, detalle.id, detalle.cantidad)}
                                                                                 style={styles.anularItemButton}
                                                                             >
-                                                                                Anular Item
+                                                                                Anular 1 Ud.
                                                                             </button>
                                                                         ) : (
                                                                             <span style={styles.anuladaItemText}>Anulado/Sin Stock</span>
