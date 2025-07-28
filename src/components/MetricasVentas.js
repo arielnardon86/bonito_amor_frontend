@@ -115,7 +115,6 @@ const MetricasVentas = () => {
             params.day = dateObj.getDate().toString();
         } else {
             // Si no hay fecha seleccionada, asegúrate de que no se envíen los parámetros de día, mes, año
-            // Esto es importante para que el backend use su lógica de agrupación por defecto (ej. por año)
             delete params.year;
             delete params.month;
             delete params.day;
@@ -124,11 +123,11 @@ const MetricasVentas = () => {
         if (sellerFilter) params.seller_id = sellerFilter;
         if (paymentMethodFilter) params.payment_method = paymentMethodFilter;
 
-        // --- CORRECCIÓN CLAVE AQUÍ: La URL debe ser /api/metricas/ ---
-        console.log("Fetching metrics from:", `${BASE_API_ENDPOINT}/api/metricas/`, params);
+        // --- CORRECCIÓN CLAVE AQUÍ: La URL debe ser /api/metricas/metrics/ ---
+        console.log("Fetching metrics from:", `${BASE_API_ENDPOINT}/api/metricas/metrics/`, params);
 
         try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metricas/`, {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metricas/metrics/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: params,
             });
@@ -184,7 +183,7 @@ const MetricasVentas = () => {
 
     // Preparar datos para los gráficos y tablas, con comprobaciones de seguridad
     // Asegúrate de que `metricas` no sea null antes de acceder a sus propiedades
-    const barChartData = {
+    const ventasPorPeriodoData = {
         labels: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => {
             // Ajustar el formato de la etiqueta según el 'label' del backend
             if (metricas.ventas_agrupadas_por_periodo.label === "Día") {
@@ -197,7 +196,7 @@ const MetricasVentas = () => {
         }) || [],
         datasets: [
             {
-                label: 'Monto Total',
+                label: 'Monto Total Vendido',
                 data: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => parseFloat(item.total_monto)) || [],
                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
                 borderColor: 'rgba(75, 192, 192, 1)',
