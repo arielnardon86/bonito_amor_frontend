@@ -58,16 +58,15 @@ const MetricasVentas = () => {
     // Estado para almacenar mensajes de error
     const [error, setError] = useState(null);
 
-    // Nuevo estado para el filtro de fecha (YYYY-MM-DD)
+    // Nuevo estado para el filtro de fecha con calendario (YYYY-MM-DD)
     const [dateFilter, setDateFilter] = useState('');
-    // Estados para los filtros existentes
-    const [sellerIdFilter, setSellerIdFilter] = useState('');
+
+    // Estados para los filtros existentes (sin cambios)
+    const [sellerFilter, setSellerFilter] = useState('');
     const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
 
-    // Estado para almacenar la lista de métodos de pago disponibles
-    const [paymentMethods, setPaymentMethods] = useState([]);
-    // Estado para almacenar la lista de vendedores disponibles
     const [availableSellers, setAvailableSellers] = useState([]);
+    const [availablePaymentMethods, setAvailablePaymentMethods] = useState([]);
 
     // Función para obtener la lista de usuarios (vendedores)
     const fetchUsers = useCallback(async () => {
@@ -89,175 +88,87 @@ const MetricasVentas = () => {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
-            setPaymentMethods(response.data);
+            setAvailablePaymentMethods(response.data.results || response.data);
         } catch (err) {
             console.error("Error al cargar métodos de pago:", err.response ? err.response.data : err.message);
         }
     }, [token]);
 
-    const fetchMetricas = useCallback(async () => {
+    // Función para obtener las métricas de ventas
+    const fetchMetricasVentas = useCallback(async () => {
         if (!token || !selectedStoreSlug) {
             setLoadingMetrics(false);
             return;
         }
-
         setLoadingMetrics(true);
         setError(null);
+
+        const params = {
+            tienda_slug: selectedStoreSlug,
+        };
+
+        // Lógica para el filtro de fecha con calendario
+        if (dateFilter) {
+            const dateObj = new Date(dateFilter);
+            params.year = dateObj.getFullYear();
+            params.month = (dateObj.getMonth() + 1).toString(); // Meses son 0-index en JS, 1-index en Django
+            params.day = dateObj.getDate().toString();
+        } else {
+            // Si no hay fecha seleccionada, asegúrate de que no se envíen los parámetros de día, mes, año
+            // Esto es importante para que el backend use su lógica de agrupación por defecto (ej. por año)
+            delete params.year;
+            delete params.month;
+            delete params.day;
+        }
+
+        if (sellerFilter) params.seller_id = sellerFilter;
+        if (paymentMethodFilter) params.payment_method = paymentMethodFilter;
+
+        // --- CORRECCIÓN CLAVE AQUÍ: La URL debe ser /api/metricas/ ---
+        console.log("Fetching metrics from:", `${BASE_API_ENDPOINT}/api/metricas/`, params);
+
         try {
-            const params = {
-                tienda_slug: selectedStoreSlug,
-            };
-
-            // Parsear la fecha del filtro
-            if (dateFilter) {
-                const dateObj = new Date(dateFilter);
-                params.year = dateObj.getFullYear();
-                params.month = (dateObj.getMonth() + 1).toString(); // Meses son 0-index en JS, 1-index en Django
-                params.day = dateObj.getDate().toString();
-            }
-
-            if (sellerIdFilter) params.seller_id = sellerIdFilter;
-            if (paymentMethodFilter) params.payment_method = paymentMethodFilter;
-
-            // --- CAMBIO CLAVE AQUÍ: Corregir la URL del endpoint ---
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/metricas/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
+                headers: { 'Authorization': `Bearer ${token}` },
                 params: params,
             });
+            console.log("Metrics fetched:", response.data);
             setMetricas(response.data);
+            setError(null); // Limpiar errores previos
         } catch (err) {
-            console.error('Error al obtener métricas:', err.response ? err.response.data : err.message);
-            setError('No se pudieron cargar las métricas. Verifica tu conexión o permisos.');
-            setMetricas(null);
+            console.error("Error fetching metrics:", err.response ? err.response.data : err.message);
+            setError('Error al cargar las métricas: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
         } finally {
             setLoadingMetrics(false);
         }
-    }, [token, selectedStoreSlug, dateFilter, sellerIdFilter, paymentMethodFilter]);
+    }, [token, selectedStoreSlug, dateFilter, sellerFilter, paymentMethodFilter]); // Dependencias actualizadas
 
+    // Efecto para cargar métricas y opciones de filtro cuando cambian las dependencias
     useEffect(() => {
-        if (!authLoading && isAuthenticated && selectedStoreSlug) {
+        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
             fetchUsers();
             fetchPaymentMethods();
-            fetchMetricas();
-        } else if (!authLoading && (!isAuthenticated || !selectedStoreSlug)) {
+            fetchMetricasVentas();
+        } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_staff))) {
+            setError("Acceso denegado. No tienes permisos para ver las métricas de ventas.");
             setLoadingMetrics(false);
+        } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
+            setLoadingMetrics(false);
+            setMetricas(null); // Limpiar métricas si no hay tienda seleccionada
         }
-    }, [token, isAuthenticated, authLoading, selectedStoreSlug, fetchMetricas, fetchUsers, fetchPaymentMethods]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchMetricasVentas, fetchUsers, fetchPaymentMethods]);
 
-    const handleApplyFilters = () => {
-        fetchMetricas();
-    };
-
-    if (authLoading) {
-        return <p style={styles.loadingMessage}>Cargando información de usuario...</p>;
-    }
-
-    if (!isAuthenticated) {
-        return <p style={styles.noDataMessage}>Por favor, inicia sesión para ver las métricas de ventas.</p>;
-    }
-
-    if (!user || (!user.is_staff && !user.is_superuser)) {
-        return <p style={styles.noDataMessage}>No tienes permiso para ver las métricas de ventas.</p>;
-    }
-
-    if (!selectedStoreSlug) {
-        return (
-            <div style={{ padding: '50px', textAlign: 'center' }}>
-                <h2>Por favor, selecciona una tienda en la barra de navegación para ver las métricas de ventas.</h2>
-            </div>
-        );
-    }
-
-    // Datos para los gráficos
-    const ventasPorPeriodoData = {
-        labels: metricas?.ventas_agrupadas_por_periodo?.data.map(item => {
-            if (metricas.ventas_agrupadas_por_periodo.label === "Día") {
-                return new Date(item.fecha).toLocaleDateString();
-            } else if (metricas.ventas_agrupadas_por_periodo.label === "Mes") {
-                return `${item.fecha}/${item.year}`; // Formato Mes/Año
-            }
-            return item.fecha; // Para Año
-        }) || [],
-        datasets: [
-            {
-                label: 'Monto Total Vendido',
-                data: metricas?.ventas_agrupadas_por_periodo?.data.map(item => parseFloat(item.total_monto)) || [],
-                backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-            },
-        ],
-    };
-
-    const productosMasVendidosData = {
-        labels: metricas?.productos_mas_vendidos.map(p => `${p.producto__nombre} (${p.producto__talle})`) || [],
-        datasets: [
-            {
-                label: 'Cantidad Vendida',
-                data: metricas?.productos_mas_vendidos.map(p => p.cantidad_total) || [],
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.6)',
-                    'rgba(54, 162, 235, 0.6)',
-                    'rgba(255, 206, 86, 0.6)',
-                    'rgba(75, 192, 192, 0.6)',
-                    'rgba(153, 102, 255, 0.6)',
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(153, 102, 255, 1)',
-                ],
-                borderWidth: 1,
-            },
-        ],
-    };
-
-    const ventasPorUsuarioData = {
-        labels: metricas?.ventas_por_usuario.map(u => u.usuario__username) || [],
-        datasets: [
-            {
-                label: 'Monto Total Vendido',
-                data: metricas?.ventas_por_usuario.map(u => parseFloat(u.monto_total_vendido)) || [],
-                backgroundColor: 'rgba(153, 102, 255, 0.6)',
-                borderColor: 'rgba(153, 102, 255, 1)',
-                borderWidth: 1,
-            },
-        ],
-    };
-
-    const ventasPorMetodoPagoData = {
-        labels: metricas?.ventas_por_metodo_pago.map(m => m.metodo_pago || 'Desconocido') || [],
-        datasets: [
-            {
-                label: 'Monto Total',
-                data: metricas?.ventas_por_metodo_pago.map(m => parseFloat(m.monto_total)) || [],
-                backgroundColor: [
-                    'rgba(255, 159, 64, 0.6)',
-                    'rgba(255, 99, 132, 0.6)',
-                    'rgba(54, 162, 235, 0.6)',
-                    'rgba(75, 192, 192, 0.6)',
-                ],
-                borderColor: [
-                    'rgba(255, 159, 64, 1)',
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(75, 192, 192, 1)',
-                ],
-                borderWidth: 1,
-            },
-        ],
-    };
-
-    const chartOptions = {
+    // Opciones comunes para los gráficos
+    const commonChartOptions = {
         responsive: true,
-        maintainAspectRatio: false, // Permite que el gráfico se ajuste al contenedor
+        maintainAspectRatio: false,
         plugins: {
             legend: {
                 position: 'top',
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
             },
             title: {
                 display: true,
@@ -271,128 +182,215 @@ const MetricasVentas = () => {
         },
     };
 
+    // Preparar datos para los gráficos y tablas, con comprobaciones de seguridad
+    // Asegúrate de que `metricas` no sea null antes de acceder a sus propiedades
+    const barChartData = {
+        labels: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => {
+            // Ajustar el formato de la etiqueta según el 'label' del backend
+            if (metricas.ventas_agrupadas_por_periodo.label === "Día") {
+                return new Date(item.fecha).toLocaleDateString();
+            } else if (metricas.ventas_agrupadas_por_periodo.label === "Mes") {
+                // Asumiendo que 'fecha' es el número de mes y 'year' es el año
+                return `${item.fecha}/${item.year}`;
+            }
+            return item.fecha; // Para 'Año'
+        }) || [],
+        datasets: [
+            {
+                label: 'Monto Total',
+                data: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => parseFloat(item.total_monto)) || [],
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+            },
+        ],
+    };
+
+    const pieChartData = {
+        labels: metricas?.ventas_por_metodo_pago?.map(item => item.metodo_pago || 'Desconocido') || [],
+        datasets: [
+            {
+                data: metricas?.ventas_por_metodo_pago?.map(item => parseFloat(item.monto_total)) || [],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(255, 159, 64, 0.6)',
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)',
+                ],
+                borderWidth: 1,
+            },
+        ],
+    };
+
+    const topProductsData = metricas?.productos_mas_vendidos || [];
+    const salesByUserTableData = metricas?.ventas_por_usuario || [];
+    const salesByPaymentMethodTableData = metricas?.ventas_por_metodo_pago || [];
+
+
+    if (authLoading || (isAuthenticated && !user)) {
+        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
+    }
+
+    if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para ver las métricas de ventas.</div>;
+    }
+
+    if (!selectedStoreSlug) {
+        return (
+            <div style={styles.noStoreSelectedMessage}>
+                <h2>Por favor, selecciona una tienda en la barra de navegación para ver las métricas de ventas.</h2>
+            </div>
+        );
+    }
+
+    if (loadingMetrics) {
+        return <div style={styles.loadingMessage}>Cargando métricas de {selectedStoreSlug}...</div>;
+    }
+
+    if (error) {
+        return <div style={styles.errorMessage}>{error}</div>;
+    }
+
+    // Si metricas es null después de cargar y no hay error, significa que no hay datos.
+    if (!metricas) {
+        return <div style={styles.noDataMessage}>No hay datos de métricas disponibles para los filtros seleccionados.</div>;
+    }
+
     return (
         <div style={styles.container}>
-            <h1 style={styles.header}>Métricas de Ventas ({selectedStoreSlug})</h1>
+            <h1>Métricas de Ventas ({selectedStoreSlug})</h1>
 
-            <div style={styles.filterContainer}>
-                <h3>Filtros de Métricas</h3>
-                <div style={styles.filterGrid}>
-                    <div>
-                        <label htmlFor="dateFilter">Fecha:</label>
-                        <input
-                            type="date"
-                            id="dateFilter"
-                            value={dateFilter}
-                            onChange={(e) => setDateFilter(e.target.value)}
-                            style={styles.input}
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="sellerIdFilter">Vendedor:</label>
-                        <select
-                            id="sellerIdFilter"
-                            value={sellerIdFilter}
-                            onChange={(e) => setSellerIdFilter(e.target.value)}
-                            style={styles.input}
-                        >
-                            <option value="">Todos</option>
-                            {availableSellers.map(seller => (
-                                <option key={seller.id} value={seller.id}>{seller.username}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="paymentMethodFilter">Método de Pago:</label>
-                        <select
-                            id="paymentMethodFilter"
-                            value={paymentMethodFilter}
-                            onChange={(e) => setPaymentMethodFilter(e.target.value)}
-                            style={styles.input}
-                        >
-                            <option value="">Todos</option>
-                            {paymentMethods.map(method => (
-                                <option key={method.id} value={method.id}>{method.nombre}</option>
-                            ))}
-                        </select>
-                    </div>
+            {/* Sección de Filtros */}
+            <div style={styles.filterSection}>
+                <h3>Filtros</h3>
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Fecha:</label>
+                    <input
+                        type="date"
+                        id="dateFilter"
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                        style={styles.filterSelect} // Usar filterSelect para mantener el estilo consistente
+                    />
                 </div>
-                <button onClick={handleApplyFilters} style={styles.primaryButton}>
-                    Aplicar Filtros
-                </button>
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Vendedor:</label>
+                    <select value={sellerFilter} onChange={(e) => setSellerFilter(e.target.value)} style={styles.filterSelect}>
+                        <option value="">Todos</option>
+                        {availableSellers.map(seller => (
+                            <option key={seller.id} value={seller.id}>{seller.username}</option>
+                        ))}
+                    </select>
+                </div>
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Método de Pago:</label>
+                    <select value={paymentMethodFilter} onChange={(e) => setPaymentMethodFilter(e.target.value)} style={styles.filterSelect}>
+                        <option value="">Todos</option>
+                        {availablePaymentMethods.map(method => (
+                            <option key={method.id} value={method.nombre}>{method.nombre}</option>
+                        ))}
+                    </select>
+                </div>
+                <button onClick={fetchMetricasVentas} style={styles.applyFiltersButton}>Aplicar Filtros</button>
             </div>
 
-            {loadingMetrics && <p style={styles.loadingMessage}>Cargando métricas...</p>}
-            {error && <p style={styles.errorMessage}>{error}</p>}
+            {/* Resumen de Métricas */}
+            <div style={styles.summaryGrid}>
+                <div style={styles.summaryItem}>
+                    <h3>Total Ventas</h3>
+                    <p style={styles.summaryValue}>${metricas.total_ventas_periodo.toFixed(2)}</p>
+                </div>
+                <div style={styles.summaryItem}>
+                    <h3>Total Productos Vendidos</h3>
+                    <p style={styles.summaryValue}>{metricas.total_productos_vendidos_periodo}</p>
+                </div>
+            </div>
 
-            {!loadingMetrics && !metricas && !error && (
-                <p style={styles.noDataMessage}>No se pudieron cargar las métricas o no hay datos disponibles.</p>
-            )}
+            {/* Explicación de los gráficos */}
+            <div style={styles.chartExplanation}>
+                <p>
+                    Los gráficos a continuación muestran un análisis detallado de las ventas.
+                    El gráfico de barras "Ventas por {metricas.ventas_agrupadas_por_periodo.label}"
+                    presenta el monto total de ventas agrupado por el período seleccionado (año, mes o día).
+                    El gráfico de pastel "Ventas por Método de Pago" desglosa el monto total de ventas
+                    según el método de pago utilizado.
+                </p>
+            </div>
 
-            {!loadingMetrics && metricas && (
-                <>
-                    <div style={styles.summaryGrid}>
-                        <div style={styles.summaryItem}>
-                            <h3>Total Ventas (Período)</h3>
-                            <p style={styles.summaryValue}>${parseFloat(metricas.total_ventas_periodo).toFixed(2)}</p>
-                        </div>
-                        <div style={styles.summaryItem}>
-                            <h3>Total Productos Vendidos</h3>
-                            <p style={styles.summaryValue}>{metricas.total_productos_vendidos_periodo}</p>
-                        </div>
-                    </div>
+            {/* Gráficos */}
+            <div style={styles.chartsContainer}>
+                <div style={styles.chartContainer}>
+                    <h3>Ventas por {metricas.ventas_agrupadas_por_periodo.label}</h3>
+                    {barChartData.labels.length > 0 ? (
+                        <Bar data={barChartData} options={commonChartOptions} />
+                    ) : (
+                        <p style={styles.noDataMessage}>No hay datos de ventas para el período seleccionado.</p>
+                    )}
+                </div>
+                <div style={styles.chartContainer}>
+                    <h3>Ventas por Método de Pago</h3>
+                    {pieChartData.labels.length > 0 ? (
+                        <Pie data={pieChartData} options={commonChartOptions} />
+                    ) : (
+                        <p style={styles.noDataMessage}>No hay datos de ventas por método de pago.</p>
+                    )}
+                </div>
+            </div>
 
-                    <div style={styles.chartExplanation}>
-                        <p>
-                            Estos gráficos muestran un resumen visual de las métricas de ventas, permitiéndote identificar tendencias y patrones clave.
-                        </p>
-                    </div>
-
-                    <div style={styles.chartContainer}>
-                        {ventasPorPeriodoData.labels.length > 0 ? (
-                            <Bar options={{ ...chartOptions, plugins: { ...chartOptions.plugins, title: { ...chartOptions.plugins.title, text: `Ventas Agrupadas por ${metricas.ventas_agrupadas_por_periodo.label}` } } }} data={ventasPorPeriodoData} />
-                        ) : (
-                            <p style={styles.noDataMessage}>No hay datos para el gráfico de Ventas Agrupadas por Período.</p>
-                        )}
-                    </div>
-
-                    <div style={styles.chartContainer}>
-                        {productosMasVendidosData.labels.length > 0 ? (
-                            <Pie options={{ ...chartOptions, plugins: { ...chartOptions.plugins, title: { ...chartOptions.plugins.title, text: 'Top 5 Productos Más Vendidos' } } }} data={productosMasVendidosData} />
-                        ) : (
-                            <p style={styles.noDataMessage}>No hay datos para el gráfico de Top 5 Productos Más Vendidos.</p>
-                        )}
-                    </div>
-
-                    <div style={styles.chartContainer}>
-                        {ventasPorUsuarioData.labels.length > 0 ? (
-                            <Bar options={{ ...chartOptions, plugins: { ...chartOptions.plugins, title: { ...chartOptions.plugins.title, text: 'Ventas por Vendedor' } } }} data={ventasPorUsuarioData} />
-                        ) : (
-                            <p style={styles.noDataMessage}>No hay datos para el gráfico de Ventas por Vendedor.</p>
-                        )}
-                    </div>
-
-                    <div style={styles.chartContainer}>
-                        {ventasPorMetodoPagoData.labels.length > 0 ? (
-                            <Pie options={{ ...chartOptions, plugins: { ...chartOptions.plugins, title: { ...chartOptions.plugins.title, text: 'Ventas por Método de Pago' } } }} data={ventasPorMetodoPagoData} />
-                        ) : (
-                            <p style={styles.noDataMessage}>No hay datos para el gráfico de Ventas por Método de Pago.</p>
-                        )}
-                    </div>
-
-                    <h2 style={styles.subHeader}>Detalle de Ventas por Usuario</h2>
-                    {metricas.ventas_por_usuario && metricas.ventas_por_usuario.length > 0 ? (
+            {/* Tablas de Detalle */}
+            <div style={styles.tablesContainer}>
+                <div style={styles.tableContainer}>
+                    <h3>Productos Más Vendidos</h3>
+                    {topProductsData.length > 0 ? (
                         <table style={styles.table}>
                             <thead>
-                                <tr style={styles.tableHeaderRow}>
+                                <tr>
+                                    <th style={styles.th}>Producto</th>
+                                    <th style={styles.th}>Talle</th>
+                                    <th style={styles.th}>Cantidad Total</th>
+                                    <th style={styles.th}>Monto Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {topProductsData.map((item, index) => (
+                                    <tr key={index}>
+                                        <td style={styles.td}>{item.producto__nombre}</td>
+                                        <td style={styles.td}>{item.producto__talle}</td>
+                                        <td style={styles.td}>{item.cantidad_total}</td>
+                                        <td style={styles.td}>${item.monto_total.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p style={styles.noDataMessage}>No hay datos de productos más vendidos.</p>
+                    )}
+                </div>
+
+                <div style={styles.tableContainer}>
+                    <h3>Ventas por Vendedor</h3>
+                    {salesByUserTableData.length > 0 ? (
+                        <table style={styles.table}>
+                            <thead>
+                                <tr>
                                     <th style={styles.th}>Vendedor</th>
                                     <th style={styles.th}>Monto Total Vendido</th>
                                     <th style={styles.th}>Cantidad de Ventas</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {metricas.ventas_por_usuario.map((item, index) => (
-                                    <tr key={index} style={styles.tableRow}>
+                                {salesByUserTableData.map((item, index) => (
+                                    <tr key={index}>
                                         <td style={styles.td}>{item.usuario__username}</td>
                                         <td style={styles.td}>${parseFloat(item.monto_total_vendido).toFixed(2)}</td>
                                         <td style={styles.td}>{item.cantidad_ventas}</td>
@@ -401,23 +399,25 @@ const MetricasVentas = () => {
                             </tbody>
                         </table>
                     ) : (
-                        <p style={styles.noDataMessage}>No hay datos de ventas por usuario.</p>
+                        <p style={styles.noDataMessage}>No hay datos de ventas por vendedor.</p>
                     )}
+                </div>
 
-                    <h2 style={styles.subHeader}>Detalle de Ventas por Método de Pago</h2>
-                    {metricas.ventas_por_metodo_pago && metricas.ventas_por_metodo_pago.length > 0 ? (
+                <div style={styles.tableContainer}>
+                    <h3>Ventas por Método de Pago (Tabla)</h3>
+                    {salesByPaymentMethodTableData.length > 0 ? (
                         <table style={styles.table}>
                             <thead>
-                                <tr style={styles.tableHeaderRow}>
+                                <tr>
                                     <th style={styles.th}>Método de Pago</th>
                                     <th style={styles.th}>Monto Total</th>
                                     <th style={styles.th}>Cantidad de Ventas</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {metricas.ventas_por_metodo_pago.map((item, index) => (
-                                    <tr key={index} style={styles.tableRow}>
-                                        <td style={styles.td}>{item.metodo_pago || 'Desconocido'}</td>
+                                {salesByPaymentMethodTableData.map((item, index) => (
+                                    <tr key={index}>
+                                        <td style={styles.td}>{item.metodo_pago}</td>
                                         <td style={styles.td}>${parseFloat(item.monto_total).toFixed(2)}</td>
                                         <td style={styles.td}>{item.cantidad_ventas}</td>
                                     </tr>
@@ -427,93 +427,97 @@ const MetricasVentas = () => {
                     ) : (
                         <p style={styles.noDataMessage}>No hay datos de ventas por método de pago.</p>
                     )}
-                </>
-            )}
+                </div>
+            </div>
         </div>
     );
 };
 
-// Estilos CSS
 const styles = {
     container: {
         padding: '20px',
+        fontFamily: 'Inter, sans-serif',
         maxWidth: '1200px',
-        margin: '20px auto',
-        backgroundColor: '#fff',
+        margin: 'auto',
+        backgroundColor: '#f8f9fa',
         borderRadius: '8px',
-        boxShadow: '0 0 10px rgba(0,0,0,0.1)',
-        fontFamily: 'Arial, sans-serif',
-    },
-    header: {
-        textAlign: 'center',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         color: '#333',
-        marginBottom: '30px',
     },
-    subHeader: {
-        marginTop: '40px',
+    loadingMessage: {
+        padding: '20px',
+        textAlign: 'center',
+        color: '#555',
+        fontSize: '1.1em',
+    },
+    accessDeniedMessage: {
+        color: '#dc3545',
+        marginBottom: '10px',
+        padding: '20px',
+        border: '1px solid #dc3545',
+        textAlign: 'center',
+        borderRadius: '8px',
+        backgroundColor: '#ffe3e6',
+        fontWeight: 'bold',
+    },
+    noStoreSelectedMessage: {
+        padding: '50px',
+        textAlign: 'center',
+        color: '#777',
+        fontSize: '1.2em',
+    },
+    errorMessage: {
+        color: '#dc3545',
         marginBottom: '20px',
-        color: '#444',
-        borderBottom: '1px solid #eee',
-        paddingBottom: '10px',
+        border: '1px solid #dc3545',
+        padding: '15px',
+        borderRadius: '8px',
+        backgroundColor: '#ffe3e6',
+        textAlign: 'center',
+        fontWeight: 'bold',
     },
-    filterContainer: {
-        marginBottom: '30px',
-        border: '1px solid #e0e0e0',
+    filterSection: {
+        backgroundColor: '#ffffff',
         padding: '20px',
         borderRadius: '8px',
-        backgroundColor: '#f9f9f9',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+        marginBottom: '30px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '15px',
+        alignItems: 'flex-end',
     },
-    filterGrid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '20px',
-        marginBottom: '20px',
+    filterGroup: {
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: '150px',
     },
-    input: {
-        width: '100%',
-        padding: '10px',
+    filterLabel: {
+        marginBottom: '5px',
+        fontWeight: 'bold',
+        color: '#555',
+        fontSize: '0.9em',
+    },
+    filterSelect: {
+        padding: '8px',
         border: '1px solid #ccc',
         borderRadius: '4px',
-        boxSizing: 'border-box',
+        backgroundColor: '#fefefe',
     },
-    primaryButton: {
+    applyFiltersButton: {
         padding: '10px 20px',
         backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        fontSize: '16px',
+        fontSize: '1em',
         transition: 'background-color 0.3s ease',
-        marginTop: '10px',
-    },
-    primaryButtonHover: {
-        backgroundColor: '#0056b3',
-    },
-    loadingMessage: {
-        textAlign: 'center',
-        marginTop: '50px',
-        color: '#555',
-    },
-    errorMessage: {
-        color: 'red',
-        backgroundColor: '#ffe3e6',
-        padding: '15px',
-        borderRadius: '5px',
-        marginBottom: '20px',
-        textAlign: 'center',
-    },
-    noDataMessage: {
-        textAlign: 'center',
-        marginTop: '20px',
-        color: '#777',
-        fontStyle: 'italic',
-        marginBottom: '20px',
     },
     summaryGrid: {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '30px',
+        gap: '20px',
         marginBottom: '30px',
     },
     summaryItem: {
@@ -524,22 +528,29 @@ const styles = {
         boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
     },
     summaryValue: {
-        fontSize: '2em',
+        fontSize: '2.2em',
         fontWeight: 'bold',
         color: '#28a745',
         margin: '10px 0 0',
     },
     chartContainer: {
-        backgroundColor: '#fdfdfd',
+        backgroundColor: '#ffffff',
         padding: '20px',
         borderRadius: '8px',
         boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
         marginBottom: '30px',
         height: '400px', // Altura fija para los gráficos
         display: 'flex',
-        flexDirection: 'column', // Para centrar el contenido verticalmente
+        flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    noDataMessage: {
+        textAlign: 'center',
+        color: '#777',
+        fontStyle: 'italic',
+        marginBottom: '20px',
+        fontSize: '1em',
     },
     chartExplanation: {
         backgroundColor: '#e6f7ff',
@@ -551,32 +562,42 @@ const styles = {
         fontSize: '0.95em',
         lineHeight: '1.4',
     },
+    chartsContainer: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
+        gap: '30px',
+        marginBottom: '30px',
+    },
+    tablesContainer: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gap: '30px',
+    },
+    tableContainer: {
+        backgroundColor: '#ffffff',
+        padding: '20px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+    },
     table: {
         width: '100%',
         borderCollapse: 'collapse',
-        marginTop: '20px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        borderRadius: '8px',
-        overflow: 'hidden',
-    },
-    tableHeaderRow: {
-        backgroundColor: '#f2f2f2',
+        marginTop: '15px',
     },
     th: {
-        border: '1px solid #ddd',
-        padding: '12px',
+        padding: '12px 8px',
+        borderBottom: '1px solid #ddd',
         textAlign: 'left',
+        backgroundColor: '#f2f2f2',
         fontWeight: 'bold',
-        color: '#333',
-    },
-    tableRow: {
-        backgroundColor: 'inherit',
-        transition: 'background-color 0.2s ease',
+        fontSize: '0.9em',
+        color: '#555',
     },
     td: {
-        border: '1px solid #ddd',
-        padding: '10px',
-        verticalAlign: 'top',
+        padding: '10px 8px',
+        borderBottom: '1px solid #eee',
+        textAlign: 'left',
+        fontSize: '0.9em',
     },
 };
 
