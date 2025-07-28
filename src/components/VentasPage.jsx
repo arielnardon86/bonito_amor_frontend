@@ -47,6 +47,7 @@ const VentasPage = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmMessage, setConfirmMessage] = useState('');
     const [confirmAction, setConfirmAction] = useState(() => () => {});
+    const [confirmType, setConfirmType] = useState('full'); // 'full' o 'partial'
 
     // Estados para el cuadro de mensaje de alerta personalizado
     const [showAlertMessage, setShowAlertMessage] = useState(false);
@@ -72,7 +73,6 @@ const VentasPage = () => {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
-            // Asegúrate de que la respuesta tenga la estructura esperada (results o un array directo)
             setAvailableSellers(response.data.results || response.data);
         } catch (err) {
             console.error("Error al cargar vendedores:", err.response ? err.response.data : err.message);
@@ -110,7 +110,6 @@ const VentasPage = () => {
                     params.fecha_venta__day = dateObj.getDate().toString().padStart(2, '0');
                 }
 
-                // CAMBIO CLAVE: Volver a enviar el ID del usuario como 'usuario'
                 if (filterSellerId) params.usuario = filterSellerId;
                 if (filterAnulada !== '') params.anulada = filterAnulada;
             }
@@ -163,7 +162,7 @@ const VentasPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [token, selectedStoreSlug, filterDate, filterSellerId, filterAnulada]); // availableSellers ya no es una dependencia crítica para el envío de parámetros, solo para la visualización del select
+    }, [token, selectedStoreSlug, filterDate, filterSellerId, filterAnulada]);
 
     useEffect(() => {
         if (!authLoading && isAuthenticated && selectedStoreSlug) {
@@ -179,6 +178,7 @@ const VentasPage = () => {
         setExpandedSaleId(null); // Colapsar detalles al aplicar filtros
     };
 
+    // Función para anular una venta completa
     const handleAnularVenta = async (ventaId) => {
         if (!user || !user.is_superuser) {
             showCustomAlert('No tienes permisos para anular ventas.', 'error');
@@ -189,21 +189,22 @@ const VentasPage = () => {
             return;
         }
 
-        setConfirmMessage(`¿Estás seguro de que quieres anular la venta ${ventaId}? Esta acción revertirá el stock.`);
+        setConfirmMessage(`¿Estás seguro de que quieres anular la venta ${ventaId} completamente? Esta acción revertirá el stock de todos los productos.`);
         setConfirmAction(() => async () => {
             setShowConfirmModal(false);
             try {
-                console.log(`Anulando venta ${ventaId} para tienda ${selectedStoreSlug}.`);
+                console.log(`Anulando venta completa ${ventaId} para tienda ${selectedStoreSlug}.`);
+                // La URL corregida para la acción 'anular'
                 const response = await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular/?tienda_slug=${selectedStoreSlug}`, {}, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                     },
                 });
-                console.log("Respuesta de anulación de venta:", response.data);
+                console.log("Respuesta de anulación de venta completa:", response.data);
                 showCustomAlert(`Venta ${ventaId} anulada exitosamente.`, 'success');
                 fetchVentas(currentPageNumber); // Recargar la página actual
             } catch (err) {
-                console.error('Error al anular venta:', err.response ? err.response.data : err.message);
+                console.error('Error al anular venta completa:', err.response ? err.response.data : err.message);
                 if (err.response && err.response.data && err.response.data.detail) {
                     showCustomAlert(`Error al anular venta: ${err.response.data.detail}`, 'error');
                 } else {
@@ -211,8 +212,67 @@ const VentasPage = () => {
                 }
             }
         });
+        setConfirmType('full');
         setShowConfirmModal(true);
     };
+
+    // NUEVA FUNCIÓN: Para anular un producto específico dentro de una venta
+    const handleAnularDetalleVenta = async (ventaId, detalleId, cantidadActual) => {
+        if (!user || !user.is_superuser) {
+            showCustomAlert('No tienes permisos para anular productos de ventas.', 'error');
+            return;
+        }
+        if (!selectedStoreSlug) {
+            showCustomAlert('Por favor, selecciona una tienda antes de anular productos.', 'error');
+            return;
+        }
+
+        // Solicitar la cantidad a anular
+        const cantidadInput = prompt(`¿Cuántas unidades deseas anular de este producto (máximo ${cantidadActual})?`);
+        if (cantidadInput === null || cantidadInput.trim() === '') {
+            return; // El usuario canceló o no ingresó nada
+        }
+
+        const cantidadAAnular = parseInt(cantidadInput, 10);
+
+        if (isNaN(cantidadAAnular) || cantidadAAnular <= 0 || cantidadAAnular > cantidadActual) {
+            showCustomAlert(`Por favor, ingresa una cantidad válida entre 1 y ${cantidadActual}.`, 'error');
+            return;
+        }
+
+        setConfirmMessage(`¿Estás seguro de que quieres anular ${cantidadAAnular} unidades de este producto en la venta ${ventaId}?`);
+        setConfirmAction(() => async () => {
+            setShowConfirmModal(false);
+            try {
+                console.log(`Anulando ${cantidadAAnular} unidades del detalle ${detalleId} en venta ${ventaId}.`);
+                const response = await axios.patch(
+                    `${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/?tienda_slug=${selectedStoreSlug}`,
+                    { detalle_id: detalleId, cantidad_a_anular: cantidadAAnular },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    }
+                );
+                console.log("Respuesta de anulación de detalle:", response.data);
+                showCustomAlert(`Se anularon ${cantidadAAnular} unidades del producto en la venta ${ventaId}.`, 'success');
+                fetchVentas(currentPageNumber); // Recargar la página actual
+            } catch (err) {
+                console.error('Error al anular detalle de venta:', err.response ? err.response.data : err.message);
+                if (err.response && err.response.data && err.response.data.detail) {
+                    showCustomAlert(`Error al anular detalle: ${err.response.data.detail}`, 'error');
+                } else if (err.response && err.response.data && err.response.data.error) {
+                    showCustomAlert(`Error al anular detalle: ${err.response.data.error}`, 'error');
+                }
+                else {
+                    showCustomAlert('Error al anular detalle de venta. Inténtalo de nuevo.', 'error');
+                }
+            }
+        });
+        setConfirmType('partial');
+        setShowConfirmModal(true);
+    };
+
 
     const handleToggleDetails = (ventaId) => {
         setExpandedSaleId(prevId => (prevId === ventaId ? null : ventaId));
@@ -317,7 +377,7 @@ const VentasPage = () => {
                                         <td style={styles.td}>{venta.id}</td>
                                         <td style={styles.td}>{new Date(venta.fecha_venta).toLocaleString()}</td>
                                         <td style={styles.td}>${parseFloat(venta.total || 0).toFixed(2)}</td>
-                                        <td style={styles.td}>{venta.usuario?.username || 'N/A'}</td> {/* Acceso seguro */}
+                                        <td style={styles.td}>{venta.usuario?.username || 'N/A'}</td>
                                         <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
                                         <td style={styles.td}>
                                             <span style={{ color: venta.anulada ? 'red' : 'green', fontWeight: 'bold' }}>
@@ -339,7 +399,7 @@ const VentasPage = () => {
                                                         onClick={() => handleAnularVenta(venta.id)}
                                                         style={styles.anularButton}
                                                     >
-                                                        Anular
+                                                        Anular Venta
                                                     </button>
                                                 ) : (
                                                     <button
@@ -364,6 +424,7 @@ const VentasPage = () => {
                                                             <th style={styles.detailTh}>Cantidad</th>
                                                             <th style={styles.detailTh}>P. Unitario</th>
                                                             <th style={styles.detailTh}>Subtotal</th>
+                                                            {user && user.is_superuser && <th style={styles.detailTh}>Acciones</th>}
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -373,6 +434,20 @@ const VentasPage = () => {
                                                                 <td style={styles.detailTd}>{detalle.cantidad}</td>
                                                                 <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario || 0).toFixed(2)}</td>
                                                                 <td style={styles.detailTd}>${(parseFloat(detalle.cantidad || 0) * parseFloat(detalle.precio_unitario || 0)).toFixed(2)}</td>
+                                                                {user && user.is_superuser && (
+                                                                    <td style={styles.detailTd}>
+                                                                        {detalle.cantidad > 0 && !venta.anulada ? (
+                                                                            <button
+                                                                                onClick={() => handleAnularDetalleVenta(venta.id, detalle.id, detalle.cantidad)}
+                                                                                style={styles.anularItemButton}
+                                                                            >
+                                                                                Anular Item
+                                                                            </button>
+                                                                        ) : (
+                                                                            <span style={styles.anuladaItemText}>Anulado/Sin Stock</span>
+                                                                        )}
+                                                                    </td>
+                                                                )}
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -429,7 +504,7 @@ const VentasPage = () => {
     );
 };
 
-// Estilos CSS para el componente (sin cambios significativos, solo ajustes menores para los nuevos inputs)
+// Estilos CSS para el componente
 const styles = {
     container: {
         padding: '20px',
@@ -561,6 +636,21 @@ const styles = {
         borderRadius: '5px',
         cursor: 'not-allowed',
         fontSize: '0.9em',
+    },
+    anularItemButton: {
+        backgroundColor: '#ffc107', // Color amarillo para anular item
+        color: '#333',
+        border: 'none',
+        padding: '6px 10px',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '0.85em',
+        transition: 'background-color 0.3s ease',
+    },
+    anuladaItemText: {
+        color: '#6c757d',
+        fontSize: '0.85em',
+        fontStyle: 'italic',
     },
     detailRow: {
         backgroundColor: '#f8f9fa',
