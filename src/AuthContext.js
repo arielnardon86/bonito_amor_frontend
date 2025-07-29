@@ -50,7 +50,6 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            // CAMBIO CLAVE: Añadir /api/
             const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/token/refresh/`, {
                 refresh: refresh_token,
             });
@@ -78,11 +77,11 @@ export const AuthProvider = ({ children }) => {
         console.log("AuthContext: Intentando login para usuario:", username, "Tienda:", storeSlugFromUrl);
         try {
             const payload = { username, password };
-            if (storeSlugFromUrl) {
-                payload.store_slug = storeSlugFromUrl; 
-            }
+            // No enviar store_slug en la petición de token, ya que la validación se hará después
+            // if (storeSlugFromUrl) {
+            //     payload.store_slug = storeSlugFromUrl; 
+            // }
 
-            // CAMBIO CLAVE: Añadir /api/
             const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/token/`, payload); 
 
             const { access, refresh } = response.data;
@@ -92,17 +91,38 @@ export const AuthProvider = ({ children }) => {
             setAuthToken(access); 
 
             console.log("AuthContext: Obteniendo detalles de usuario después del login...");
-            // CAMBIO CLAVE: Añadir /api/
             const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/me/`);
-            setUser(userResponse.data);
-            console.log("AuthContext: Detalles de usuario obtenidos:", userResponse.data);
+            const fetchedUser = userResponse.data;
+            setUser(fetchedUser);
+            console.log("AuthContext: Detalles de usuario obtenidos:", fetchedUser);
 
+            // --- INICIO DE LA VALIDACIÓN DE TIENDA ---
             if (storeSlugFromUrl) {
-                selectStore(storeSlugFromUrl);
+                // Si el usuario es superusuario, puede acceder a cualquier tienda
+                if (fetchedUser.is_superuser) {
+                    selectStore(storeSlugFromUrl);
+                } else if (fetchedUser.tienda && fetchedUser.tienda.nombre === storeSlugFromUrl) {
+                    // Si el usuario tiene una tienda asignada y coincide con la URL
+                    selectStore(storeSlugFromUrl);
+                } else {
+                    // Si el usuario no tiene tienda asignada, o no coincide con la URL,
+                    // y no es superusuario, el login a esa tienda falla.
+                    setError(`Acceso denegado a la tienda '${storeSlugFromUrl}'. Tu usuario no está asociado a esta tienda.`);
+                    logout(); // Cerrar sesión si la tienda no coincide
+                    return false; 
+                }
             } else {
-                setSelectedStoreSlug(null);
-                localStorage.removeItem('selected_store_slug');
+                // Si no se especificó una tienda en la URL, y el usuario tiene una asignada,
+                // seleccionamos su tienda por defecto.
+                if (fetchedUser.tienda) {
+                    selectStore(fetchedUser.tienda.nombre);
+                } else {
+                    // Si no hay tienda en la URL ni asignada al usuario, no hay tienda seleccionada.
+                    setSelectedStoreSlug(null);
+                    localStorage.removeItem('selected_store_slug');
+                }
             }
+            // --- FIN DE LA VALIDACIÓN DE TIENDA ---
 
             return true; 
         } catch (err) {
@@ -117,7 +137,6 @@ export const AuthProvider = ({ children }) => {
     const fetchStores = useCallback(async () => {
         console.log("AuthContext: fetchStores llamado.");
         try {
-            // CAMBIO CLAVE: Añadir /api/
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tiendas/`);
             setStores(response.data.results || response.data);
             console.log("AuthContext: Tiendas cargadas con éxito:", response.data.results || response.data);
@@ -144,7 +163,6 @@ export const AuthProvider = ({ children }) => {
                 setSelectedStoreSlug(stored_store_slug);
             }
             
-            // fetchStores se llama aquí, y ahora su URL interna es correcta
             await fetchStores(); 
 
             if (current_access_token) {
@@ -166,17 +184,33 @@ export const AuthProvider = ({ children }) => {
                     console.log("AuthContext: Token de acceso válido o refrescado. Obteniendo detalles de usuario...");
 
                     try {
-                        // CAMBIO CLAVE: Añadir /api/
                         const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/me/`);
-                        if (userResponse.data) {
-                            setUser(userResponse.data);
-                            console.log("AuthContext: Usuario establecido:", userResponse.data);
-                        } else {
-                            console.warn("AuthContext: No se recibieron datos de usuario de /users/me/. Cerrando sesión.");
-                            logout();
-                            setLoading(false);
-                            return;
+                        const fetchedUser = userResponse.data;
+                        setUser(fetchedUser);
+                        console.log("AuthContext: Usuario establecido:", fetchedUser);
+
+                        // Validar que la tienda seleccionada (si existe) coincida con la del usuario
+                        if (stored_store_slug) {
+                            if (fetchedUser.is_superuser) {
+                                // Superusuarios pueden mantener cualquier tienda seleccionada
+                                selectStore(stored_store_slug);
+                            } else if (fetchedUser.tienda && fetchedUser.tienda.nombre === stored_store_slug) {
+                                // Usuario normal: la tienda debe coincidir
+                                selectStore(stored_store_slug);
+                            } else {
+                                // La tienda almacenada no coincide con la del usuario, o el usuario no tiene tienda.
+                                // Deseleccionar la tienda y mostrar un mensaje.
+                                console.warn(`AuthContext: La tienda previamente seleccionada '${stored_store_slug}' no coincide con la tienda del usuario o el usuario no tiene tienda. Deseleccionando.`);
+                                setSelectedStoreSlug(null);
+                                localStorage.removeItem('selected_store_slug');
+                                // Podrías añadir un setError aquí si quieres notificar al usuario en la UI
+                            }
+                        } else if (fetchedUser.tienda) {
+                            // Si no había tienda seleccionada, pero el usuario tiene una, la seleccionamos
+                            selectStore(fetchedUser.tienda.nombre);
                         }
+
+
                     } catch (userError) {
                         console.error("AuthContext: Error al obtener detalles de usuario:", userError.response ? userError.response.data : userError.message);
                         logout();
@@ -216,7 +250,8 @@ export const AuthProvider = ({ children }) => {
         }, 1000 * 60); 
 
         return () => clearInterval(interval);
-    }, [refreshToken, logout, setAuthToken, fetchStores]); 
+    }, [refreshToken, logout, setAuthToken, fetchStores, selectStore]); // Añadir selectStore a las dependencias
+
 
     const authContextValue = {
         user,
