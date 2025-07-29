@@ -44,10 +44,10 @@ const UserManagement = () => {
         setLoadingUsers(true);
         setError('');
         try {
-            // CORRECCIÓN CLAVE AQUÍ: Añadir /api/
+            // El backend ya filtra por la tienda del usuario autenticado
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }
             });
             setUsers(response.data.results); 
@@ -90,10 +90,9 @@ const UserManagement = () => {
         }
 
         try {
-            // CORRECCIÓN CLAVE AQUÍ: Añadir /api/
             await axios.post(`${BASE_API_ENDPOINT}/api/users/`, newUser, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }
             });
             setNewUser({ // Resetear formulario
@@ -131,10 +130,9 @@ const UserManagement = () => {
         if (window.confirm('¿Estás seguro de que quieres eliminar este usuario?')) {
             setError('');
             try {
-                // CORRECCIÓN CLAVE AQUÍ: Añadir /api/
                 await axios.delete(`${BASE_API_ENDPOINT}/api/users/${userId}/`, {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
                 fetchUsers(); // Refrescar la lista
@@ -185,10 +183,9 @@ const UserManagement = () => {
                 delete dataToSend.password2; // Eliminar también password2 si no se cambia la password
             }
 
-            // CORRECCIÓN CLAVE AQUÍ: Añadir /api/
             await axios.patch(`${BASE_API_ENDPOINT}/api/users/${editingUser.id}/`, dataToSend, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }
             });
             setEditingUser(null); // Cerrar formulario de edición
@@ -203,7 +200,7 @@ const UserManagement = () => {
     };
 
     // Manejo de carga y permisos iniciales
-    if (loading || (isAuthenticated && !user)) {
+    if (loading || (isAuthenticated && !user)) { // Añadido user check para evitar errores si user es null
         return <div style={{ textAlign: 'center', marginTop: '50px' }}>Cargando datos de usuario...</div>;
     }
 

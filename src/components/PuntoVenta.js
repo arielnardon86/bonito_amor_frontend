@@ -124,13 +124,14 @@ const PuntoVenta = () => {
             }
         };
 
-        if (!authLoading && isAuthenticated && selectedStoreSlug) {
+        // Permite acceso si es staff O superusuario
+        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
             fetchData();
-        } else if (!authLoading && (!isAuthenticated || !selectedStoreSlug)) {
+        } else if (!authLoading && (!isAuthenticated || !user || (!(user.is_superuser || user.is_staff)))) {
             setLoadingProducts(false);
             setError("Por favor, inicia sesión y selecciona una tienda para gestionar el punto de venta.");
         }
-    }, [token, selectedStoreSlug, authLoading, isAuthenticated]);
+    }, [token, selectedStoreSlug, authLoading, isAuthenticated, user]); // Añadir 'user' a las dependencias
 
     // Manejar la búsqueda de producto por código de barras (botón buscar)
     const handleBuscarProducto = async () => {
@@ -307,10 +308,11 @@ const PuntoVenta = () => {
         }
     };
 
-    if (authLoading) {
+    if (authLoading || (isAuthenticated && !user)) { // Añadido user check para evitar errores si user es null
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
+    // Permitir acceso si es staff O superusuario
     if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
         return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
     }

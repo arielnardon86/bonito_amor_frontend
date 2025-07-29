@@ -97,7 +97,6 @@ function Productos() {
         params: { tienda_slug: selectedStoreSlug }
       });
       
-      // --- CAMBIO CLAVE AQUÍ: Lógica más robusta para manejar la respuesta ---
       let productsData = [];
       if (response.data) {
           if (Array.isArray(response.data.results)) {
@@ -118,12 +117,13 @@ function Productos() {
 
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
+    // Solo permitir acceso si es superusuario
+    if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
         fetchProductos();
-    } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_staff))) {
-        setError("Acceso denegado. No tienes permisos para ver/gestionar productos.");
+    } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
+        setError("Acceso denegado. Solo los superusuarios pueden ver/gestionar productos.");
         setLoading(false);
-    } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
+    } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
         setLoading(false); 
     }
   }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos]); 
@@ -342,12 +342,13 @@ function Productos() {
   };
 
 
-  if (authLoading || (isAuthenticated && !user)) {
+  if (authLoading || (isAuthenticated && !user)) { // Añadido user check para evitar errores si user es null
     return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
   }
 
-  if (!isAuthenticated || !(user.is_superuser || user.is_staff)) { 
-    return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para ver/gestionar productos.</div>;
+  // Solo permitir acceso si es superusuario
+  if (!isAuthenticated || !user.is_superuser) { 
+    return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar productos.</div>;
   }
 
   if (!selectedStoreSlug) {
@@ -443,7 +444,6 @@ function Productos() {
                 <th style={styles.th}>Nombre</th>
                 <th style={styles.th}>Talle</th>
                 <th style={styles.th}>Código</th>
-                {/* <th style={styles.th}>Imagen Código</th>  <--- Esta columna ha sido eliminada */}
                 <th style={styles.th}>P. Venta</th>
                 <th style={styles.th}>Stock</th>
                 <th style={styles.th}>Acciones</th>
@@ -474,7 +474,6 @@ function Productos() {
                   <td style={styles.td}>{producto.nombre}</td>
                   <td style={styles.td}>{producto.talle || 'N/A'}</td>
                   <td style={styles.td}>{producto.codigo_barras || 'N/A'}</td>
-                  {/* La celda de la imagen del código de barras ha sido eliminada */}
                   <td style={styles.td}>
                     {editingPriceId === producto.id ? (
                       <div style={styles.editControls}>

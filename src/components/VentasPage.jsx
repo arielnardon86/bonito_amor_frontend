@@ -5,7 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 
 // URL base de la API, obtenida de las variables de entorno de React
-const API_BASE_URL = process.env.REACT_APP_API_URL;
+const API_BASE_URL = process.env.REACT_APP_API_URL; 
 
 // Función para normalizar la URL base, eliminando cualquier /api/ o barra final
 const normalizeApiUrl = (url) => {
@@ -22,8 +22,8 @@ const normalizeApiUrl = (url) => {
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const VentasPage = () => {
-    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug } = useAuth();
-
+    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug } = useAuth(); 
+    
     const [ventas, setVentas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -34,30 +34,29 @@ const VentasPage = () => {
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterAnulada, setFilterAnulada] = useState('');
 
-    // Estado para almacenar la lista de vendedores disponibles
-    const [availableSellers, setAvailableSellers] = useState([]);
-
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
     const [currentPageNumber, setCurrentPageNumber] = useState(1);
 
-    const [expandedSaleId, setExpandedSaleId] = useState(null);
+    const [expandedSaleId, setExpandedSaleId] = useState(null); 
 
     // Estados para el modal de confirmación
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmMessage, setConfirmMessage] = useState('');
     const [confirmAction, setConfirmAction] = useState(() => () => {});
-    const [confirmType, setConfirmType] = useState('full'); // 'full' o 'partial'
 
     // Estados para el cuadro de mensaje de alerta personalizado
     const [showAlertMessage, setShowAlertMessage] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success'); // 'success', 'error', 'info'
 
-    // Función para mostrar un mensaje de alerta personalizado
+    // Estado para almacenar la lista de vendedores disponibles
+    const [sellers, setSellers] = useState([]);
+
+
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
-        setAlertType(type);
+        setAlertType(type); // Establecer el tipo de alerta
         setShowAlertMessage(true);
         setTimeout(() => {
             setShowAlertMessage(false);
@@ -66,232 +65,124 @@ const VentasPage = () => {
         }, 3000);
     };
 
-    // Función para obtener la lista de usuarios (vendedores)
-    const fetchUsers = useCallback(async () => {
-        if (!token) return;
-        try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-            setAvailableSellers(response.data.results || response.data);
-        } catch (err) {
-            console.error("Error al cargar vendedores:", err.response ? err.response.data : err.message);
-        }
-    }, [token]);
-
-
-    const fetchVentas = useCallback(async (pageUrlOrNumber = 1) => {
+    const fetchVentas = useCallback(async (pageUrl = null) => {
         if (!token || !selectedStoreSlug) {
-            console.log("fetchVentas: No hay token o tienda seleccionada, omitiendo la carga.");
             setLoading(false);
             return;
         }
-
         setLoading(true);
         setError(null);
         try {
-            let url = '';
-            let params = {};
+            const url = pageUrl || `${BASE_API_ENDPOINT}/api/ventas/`;
+            const params = {
+                tienda: selectedStoreSlug, // Siempre filtrar por la tienda seleccionada
+            };
 
-            if (typeof pageUrlOrNumber === 'string') {
-                url = pageUrlOrNumber; // Si se pasa una URL de paginación completa
-            } else {
-                url = `${BASE_API_ENDPOINT}/api/ventas/`; // URL base para la API de ventas
-                params = {
-                    page: pageUrlOrNumber,
-                    tienda_slug: selectedStoreSlug,
-                };
-
-                // Parsear la fecha del filtro
-                if (filterDate) {
-                    const dateObj = new Date(filterDate);
-                    params.fecha_venta__year = dateObj.getFullYear();
-                    params.fecha_venta__month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-                    params.fecha_venta__day = dateObj.getDate().toString().padStart(2, '0');
-                }
-
-                if (filterSellerId) params.usuario = filterSellerId;
-                if (filterAnulada !== '') params.anulada = filterAnulada;
+            // Añadir filtros si están presentes
+            if (filterDate) {
+                params.fecha_venta__exact__date = filterDate;
             }
-
-            console.log("fetchVentas: Llamada a la API:", url);
-            console.log("fetchVentas: Parámetros:", typeof pageUrlOrNumber === 'string' ? {} : params);
+            if (filterSellerId) {
+                params.usuario = filterSellerId;
+            }
+            if (filterAnulada !== '') { // El valor puede ser 'true' o 'false'
+                params.anulada = filterAnulada;
+            }
 
             const response = await axios.get(url, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-                params: typeof pageUrlOrNumber === 'string' ? {} : params,
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: params
             });
-
-            console.log("fetchVentas: Datos de respuesta raw:", response.data);
-
-            if (response.data && Array.isArray(response.data.results)) {
-                setVentas(response.data.results);
-                setNextPageUrl(response.data.next);
-                setPrevPageUrl(response.data.previous);
-                if (typeof pageUrlOrNumber === 'number') {
-                    setCurrentPageNumber(pageUrlOrNumber);
-                } else {
-                    const urlParams = new URLSearchParams(new URL(url).search);
-                    setCurrentPageNumber(parseInt(urlParams.get('page')) || 1);
-                }
-                console.log("fetchVentas: Datos tratados como resultados paginados.");
-            } else if (Array.isArray(response.data)) {
-                setVentas(response.data);
-                setNextPageUrl(null);
-                setPrevPageUrl(null);
-                setCurrentPageNumber(1);
-                console.log("fetchVentas: Datos tratados como array directo (no se detectó paginación).");
+            setVentas(response.data.results || response.data);
+            setNextPageUrl(response.data.next);
+            setPrevPageUrl(response.data.previous);
+            // Calcular el número de página actual
+            if (pageUrl) {
+                const urlParams = new URLSearchParams(pageUrl.split('?')[1]);
+                setCurrentPageNumber(parseInt(urlParams.get('page')) || 1);
             } else {
-                console.error("fetchVentas: Formato de datos de respuesta inesperado:", response.data);
-                setError('Formato de datos de ventas inesperado del servidor.');
-                setVentas([]);
-                setNextPageUrl(null);
-                setPrevPageUrl(null);
                 setCurrentPageNumber(1);
             }
-
         } catch (err) {
-            console.error('Error al obtener ventas:', err.response ? err.response.data : err.message);
-            setError('No se pudieron cargar las ventas. Verifica tu conexión o permisos.');
-            setVentas([]);
-            setNextPageUrl(null);
-            setPrevPageUrl(null);
-            setCurrentPageNumber(1);
+            setError('Error al cargar las ventas: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            console.error('Error fetching ventas:', err.response || err.message);
         } finally {
             setLoading(false);
         }
     }, [token, selectedStoreSlug, filterDate, filterSellerId, filterAnulada]);
 
+    const fetchSellers = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            // Obtener solo usuarios de la tienda seleccionada
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda: selectedStoreSlug } // Filtrar vendedores por la tienda
+            });
+            setSellers(response.data.results || response.data);
+        } catch (err) {
+            console.error('Error fetching sellers:', err.response ? err.response.data : err.message);
+        }
+    }, [token, selectedStoreSlug]);
+
     useEffect(() => {
-        if (!authLoading && isAuthenticated && selectedStoreSlug) {
-            fetchUsers(); // Cargar vendedores al inicio
-            fetchVentas(1);
-        } else if (!authLoading && (!isAuthenticated || !selectedStoreSlug)) {
+        // CAMBIO CLAVE AQUÍ: Solo permitir acceso si es superusuario
+        if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
+            fetchVentas();
+            fetchSellers();
+        } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
+            setError("Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.");
             setLoading(false);
+        } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
+            setLoading(false); 
         }
-    }, [token, isAuthenticated, authLoading, selectedStoreSlug, fetchVentas, fetchUsers]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchVentas, fetchSellers]);
 
-    const handleApplyFilters = () => {
-        fetchVentas(1); // Siempre ir a la primera página al aplicar filtros
-        setExpandedSaleId(null); // Colapsar detalles al aplicar filtros
-    };
 
-    // Función para anular una venta completa
     const handleAnularVenta = async (ventaId) => {
-        if (!user || !user.is_superuser) {
-            showCustomAlert('No tienes permisos para anular ventas.', 'error');
-            return;
-        }
-        if (!selectedStoreSlug) {
-            showCustomAlert('Por favor, selecciona una tienda antes de anular ventas.', 'error');
-            return;
-        }
-
-        setConfirmMessage(`¿Estás seguro de que quieres anular la venta ${ventaId} completamente? Esta acción revertirá el stock de todos los productos.`);
+        setConfirmMessage('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.');
         setConfirmAction(() => async () => {
-            setShowConfirmModal(false);
+            setShowConfirmModal(false); // Cerrar modal de confirmación
             try {
-                console.log(`Anulando venta completa ${ventaId} para tienda ${selectedStoreSlug}.`);
-                const response = await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular/?tienda_slug=${selectedStoreSlug}`, {}, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    },
+                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular/`, {}, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-                console.log("Respuesta de anulación de venta completa:", response.data);
-                showCustomAlert(`Venta ${ventaId} anulada exitosamente.`, 'success');
-                fetchVentas(currentPageNumber); // Recargar la página actual
+                showCustomAlert('Venta anulada con éxito!', 'success');
+                fetchVentas(); // Recargar ventas
             } catch (err) {
-                console.error('Error al anular venta completa:', err.response ? err.response.data : err.message);
-                if (err.response && err.response.data && err.response.data.detail) {
-                    showCustomAlert(`Error al anular venta: ${err.response.data.detail}`, 'error');
-                } else {
-                    showCustomAlert('Error al anular venta. Inténtalo de nuevo.', 'error');
-                }
+                showCustomAlert('Error al anular la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
+                console.error('Error anulando venta:', err.response || err);
             }
         });
-        setConfirmType('full');
         setShowConfirmModal(true);
     };
 
-    // FUNCIÓN ACTUALIZADA: Para anular un producto específico dentro de una venta (con prompt para cantidad)
-    const handleAnularDetalleVenta = async (ventaId, detalleId, cantidadActual) => {
-        if (!user || !user.is_superuser) {
-            showCustomAlert('No tienes permisos para anular productos de ventas.', 'error');
-            return;
-        }
-        if (!selectedStoreSlug) {
-            showCustomAlert('Por favor, selecciona una tienda antes de anular productos.', 'error');
-            return;
-        }
-
-        if (cantidadActual <= 0) {
-            showCustomAlert('No hay unidades para anular en este detalle.', 'error');
-            return;
-        }
-
-        // Volver a pedir la cantidad a anular
-        const cantidadInput = prompt(`¿Cuántas unidades deseas anular de este producto (máximo ${cantidadActual})?`);
-        if (cantidadInput === null || cantidadInput.trim() === '') {
-            return; // El usuario canceló o no ingresó nada
-        }
-
-        const cantidadAAnular = parseInt(cantidadInput, 10);
-
-        if (isNaN(cantidadAAnular) || cantidadAAnular <= 0 || cantidadAAnular > cantidadActual) {
-            showCustomAlert(`Por favor, ingresa una cantidad válida entre 1 y ${cantidadActual}.`, 'error');
-            return;
-        }
-
-        setConfirmMessage(`¿Estás seguro de que quieres anular ${cantidadAAnular} unidades de este producto en la venta ${ventaId}?`);
+    const handleAnularDetalleVenta = async (ventaId, detalleId) => {
+        setConfirmMessage('¿Estás seguro de que quieres ANULAR este producto de la venta? Esto revertirá el stock del producto.');
         setConfirmAction(() => async () => {
-            setShowConfirmModal(false);
+            setShowConfirmModal(false); // Cerrar modal de confirmación
             try {
-                console.log(`Anulando ${cantidadAAnular} unidad(es) del detalle ${detalleId} en venta ${ventaId}.`);
-                const response = await axios.patch(
-                    `${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/?tienda_slug=${selectedStoreSlug}`,
-                    { detalle_id: detalleId, cantidad_a_anular: cantidadAAnular },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                        },
-                    }
-                );
-                console.log("Respuesta de anulación de detalle:", response.data);
-                showCustomAlert(`Se anularon ${cantidadAAnular} unidades del producto en la venta ${ventaId}.`, 'success');
-                fetchVentas(currentPageNumber); // Recargar la página actual
+                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/`, { detalle_id: detalleId }, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                showCustomAlert('Producto de la venta anulado con éxito!', 'success');
+                fetchVentas(); // Recargar ventas
             } catch (err) {
-                console.error('Error al anular detalle de venta:', err.response ? err.response.data : err.message);
-                if (err.response && err.response.data && err.response.data.detail) {
-                    showCustomAlert(`Error al anular detalle: ${err.response.data.detail}`, 'error');
-                } else if (err.response && err.response.data && err.response.data.error) {
-                    showCustomAlert(`Error al anular detalle: ${err.response.data.error}`, 'error');
-                }
-                else {
-                    showCustomAlert('Error al anular detalle de venta. Inténtalo de nuevo.', 'error');
-                }
+                showCustomAlert('Error al anular el detalle de la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
+                console.error('Error anulando detalle de venta:', err.response || err);
             }
         });
-        setConfirmType('partial');
         setShowConfirmModal(true);
     };
 
 
-    const handleToggleDetails = (ventaId) => {
-        setExpandedSaleId(prevId => (prevId === ventaId ? null : ventaId));
-    };
-
-    if (authLoading) {
-        return <p style={styles.loadingMessage}>Cargando información de usuario...</p>;
+    if (authLoading || (isAuthenticated && !user)) { // Añadido user check para evitar errores si user es null
+        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    if (!isAuthenticated) {
-        return <p style={styles.accessDeniedMessage}>Por favor, inicia sesión para ver las ventas.</p>;
-    }
-
-    if (!user || (!user.is_staff && !user.is_superuser)) {
-        return <p style={styles.accessDeniedMessage}>No tienes permiso para ver el listado de ventas.</p>;
+    // CAMBIO CLAVE AQUÍ: Solo permitir acceso si es superusuario
+    if (!isAuthenticated || !user.is_superuser) { 
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.</div>;
     }
 
     if (!selectedStoreSlug) {
@@ -302,62 +193,67 @@ const VentasPage = () => {
         );
     }
 
+    if (loading) {
+        return <div style={styles.loadingMessage}>Cargando ventas de {selectedStoreSlug}...</div>;
+    }
+
+    if (error) {
+        return <div style={styles.errorMessage}>{error}</div>;
+    }
+
     return (
         <div style={styles.container}>
-            <h1>Gestión de Ventas ({selectedStoreSlug})</h1>
+            <h1>Listado de Ventas ({selectedStoreSlug})</h1>
 
-            <div style={styles.filterContainer}>
-                <h3>Filtros de Búsqueda</h3>
-                <div style={styles.filterGrid}>
-                    <div>
-                        <label htmlFor="filterDate">Fecha:</label>
-                        <input
-                            type="date"
-                            id="filterDate"
-                            value={filterDate}
-                            onChange={(e) => setFilterDate(e.target.value)}
-                            style={styles.input}
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="filterSellerId">Vendedor:</label>
-                        <select
-                            id="filterSellerId"
-                            value={filterSellerId}
-                            onChange={(e) => setFilterSellerId(e.target.value)}
-                            style={styles.input}
-                        >
-                            <option value="">Todos</option>
-                            {availableSellers.map(seller => (
-                                <option key={seller.id} value={seller.id}>{seller.username}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="filterAnulada">Estado Anulación:</label>
-                        <select
-                            id="filterAnulada"
-                            value={filterAnulada}
-                            onChange={(e) => setFilterAnulada(e.target.value)}
-                            style={styles.input}
-                        >
-                            <option value="">Todas</option>
-                            <option value="false">Activas</option>
-                            <option value="true">Anuladas</option>
-                        </select>
-                    </div>
+            {/* Filtros */}
+            <div style={styles.filtersContainer}>
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Fecha:</label>
+                    <input
+                        type="date"
+                        value={filterDate}
+                        onChange={(e) => setFilterDate(e.target.value)}
+                        style={styles.filterInput}
+                    />
                 </div>
-                <button onClick={handleApplyFilters} style={styles.primaryButton}>
-                    Aplicar Filtros
-                </button>
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Vendedor:</label>
+                    <select
+                        value={filterSellerId}
+                        onChange={(e) => setFilterSellerId(e.target.value)}
+                        style={styles.filterInput}
+                    >
+                        <option value="">Todos</option>
+                        {sellers.map(seller => (
+                            <option key={seller.id} value={seller.id}>{seller.username} ({seller.first_name} {seller.last_name})</option>
+                        ))}
+                    </select>
+                </div>
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Anulada:</label>
+                    <select
+                        value={filterAnulada}
+                        onChange={(e) => setFilterAnulada(e.target.value)}
+                        style={styles.filterInput}
+                    >
+                        <option value="">Todas</option>
+                        <option value="false">No Anuladas</option>
+                        <option value="true">Anuladas</option>
+                    </select>
+                </div>
+                <button onClick={() => fetchVentas()} style={styles.filterButton}>Aplicar Filtros</button>
+                <button onClick={() => {
+                    setFilterDate('');
+                    setFilterSellerId('');
+                    setFilterAnulada('');
+                    fetchVentas(null); // Recargar sin filtros
+                }} style={{...styles.filterButton, backgroundColor: '#6c757d'}}>Limpiar Filtros</button>
             </div>
 
-            {loading && <p style={styles.loadingMessage}>Cargando ventas...</p>}
-            {error && <p style={styles.errorMessage}>{error}</p>}
 
-            {!loading && ventas.length === 0 && !error && <p style={styles.noDataMessage}>No se encontraron ventas con los filtros aplicados.</p>}
-
-            {!loading && ventas.length > 0 && (
+            {ventas.length === 0 ? (
+                <p style={styles.noDataMessage}>No hay ventas disponibles para esta tienda con los filtros aplicados.</p>
+            ) : (
                 <>
                     <table style={styles.table}>
                         <thead>
@@ -367,93 +263,76 @@ const VentasPage = () => {
                                 <th style={styles.th}>Total</th>
                                 <th style={styles.th}>Vendedor</th>
                                 <th style={styles.th}>Método Pago</th>
-                                <th style={styles.th}>Estado</th>
-                                <th style={styles.th}>Detalles</th>
-                                {user && user.is_superuser && (
-                                    <th style={styles.th}>Acciones</th>
-                                )}
+                                <th style={styles.th}>Anulada</th>
+                                <th style={styles.th}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {ventas.map((venta) => (
+                            {ventas.map(venta => (
                                 <React.Fragment key={venta.id}>
-                                    <tr style={{ ...styles.tableRow, ...(expandedSaleId === venta.id && styles.expandedRow) }}>
+                                    <tr>
                                         <td style={styles.td}>{venta.id}</td>
                                         <td style={styles.td}>{new Date(venta.fecha_venta).toLocaleString()}</td>
-                                        <td style={styles.td}>${parseFloat(venta.total || 0).toFixed(2)}</td>
-                                        <td style={styles.td}>{venta.usuario?.username || 'N/A'}</td>
+                                        <td style={styles.td}>${parseFloat(venta.total).toFixed(2)}</td>
+                                        <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
                                         <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
-                                        <td style={styles.td}>
-                                            <span style={{ color: venta.anulada ? 'red' : 'green', fontWeight: 'bold' }}>
-                                                {venta.anulada ? 'ANULADA' : 'ACTIVA'}
-                                            </span>
-                                        </td>
+                                        <td style={styles.td}>{venta.anulada ? 'Sí' : 'No'}</td>
                                         <td style={styles.td}>
                                             <button
-                                                onClick={() => handleToggleDetails(venta.id)}
-                                                style={styles.detailsButton}
+                                                onClick={() => setExpandedSaleId(expandedSaleId === venta.id ? null : venta.id)}
+                                                style={styles.detailButton}
                                             >
-                                                {expandedSaleId === venta.id ? 'Ocultar' : 'Ver'} Detalles
+                                                {expandedSaleId === venta.id ? 'Ocultar Detalles' : 'Ver Detalles'}
                                             </button>
+                                            {!venta.anulada && (
+                                                <button
+                                                    onClick={() => handleAnularVenta(venta.id)}
+                                                    style={{ ...styles.anularButton, marginLeft: '10px' }}
+                                                >
+                                                    Anular Venta
+                                                </button>
+                                            )}
                                         </td>
-                                        {user && user.is_superuser && (
-                                            <td style={styles.td}>
-                                                {!venta.anulada ? (
-                                                    <button
-                                                        onClick={() => handleAnularVenta(venta.id)}
-                                                        style={styles.anularButton}
-                                                    >
-                                                        Anular Venta
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        disabled
-                                                        style={styles.anuladaButton}
-                                                    >
-                                                        Anulada
-                                                    </button>
-                                                )}
-                                            </td>
-                                        )}
                                     </tr>
-                                    {/* Fila expandible para mostrar los detalles */}
-                                    {expandedSaleId === venta.id && venta.detalles && venta.detalles.length > 0 && (
-                                        <tr style={styles.detailRow}>
-                                            <td colSpan={user && user.is_superuser ? 8 : 7} style={styles.detailCell}>
-                                                <h4>Detalles de la Venta #{venta.id}</h4>
+                                    {expandedSaleId === venta.id && venta.detalles && (
+                                        <tr>
+                                            <td colSpan="7" style={styles.detailRow}>
+                                                <h4 style={styles.detailHeader}>Detalles de la Venta {venta.id}</h4>
                                                 <table style={styles.detailTable}>
                                                     <thead>
-                                                        <tr style={styles.detailTableHeaderRow}>
+                                                        <tr>
                                                             <th style={styles.detailTh}>Producto</th>
                                                             <th style={styles.detailTh}>Cantidad</th>
-                                                            <th style={styles.detailTh}>P. Unitario</th>
+                                                            <th style={styles.detailTh}>Precio Unitario</th>
                                                             <th style={styles.detailTh}>Subtotal</th>
-                                                            {user && user.is_superuser && <th style={styles.detailTh}>Acciones</th>}
+                                                            <th style={styles.detailTh}>Acciones Detalle</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {venta.detalles.map((detalle) => (
-                                                            <tr key={detalle.id}>
-                                                                <td style={styles.detailTd}>{detalle.producto_nombre || 'N/A'}</td>
-                                                                <td style={styles.detailTd}>{detalle.cantidad}</td>
-                                                                <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario || 0).toFixed(2)}</td>
-                                                                <td style={styles.detailTd}>${(parseFloat(detalle.cantidad || 0) * parseFloat(detalle.precio_unitario || 0)).toFixed(2)}</td>
-                                                                {user && user.is_superuser && (
+                                                        {venta.detalles.length > 0 ? (
+                                                            venta.detalles.map(detalle => (
+                                                                <tr key={detalle.id}>
+                                                                    <td style={styles.detailTd}>{detalle.producto_nombre}</td>
+                                                                    <td style={styles.detailTd}>{detalle.cantidad}</td>
+                                                                    <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario_venta).toFixed(2)}</td>
+                                                                    <td style={styles.detailTd}>${parseFloat(detalle.subtotal).toFixed(2)}</td>
                                                                     <td style={styles.detailTd}>
-                                                                        {detalle.cantidad > 0 && !venta.anulada ? (
+                                                                        {!venta.anulada && ( // Solo permitir anular detalle si la venta no está anulada
                                                                             <button
-                                                                                onClick={() => handleAnularDetalleVenta(venta.id, detalle.id, detalle.cantidad)}
-                                                                                style={styles.anularItemButton}
+                                                                                onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
+                                                                                style={styles.anularDetalleButton}
                                                                             >
-                                                                                Anular Item
+                                                                                Anular Detalle
                                                                             </button>
-                                                                        ) : (
-                                                                            <span style={styles.anuladaItemText}>Anulado/Sin Stock</span>
                                                                         )}
                                                                     </td>
-                                                                )}
+                                                                </tr>
+                                                            ))
+                                                        ) : (
+                                                            <tr>
+                                                                <td colSpan="5" style={styles.noDataMessage}>No hay detalles para esta venta.</td>
                                                             </tr>
-                                                        ))}
+                                                        )}
                                                     </tbody>
                                                 </table>
                                             </td>
@@ -464,21 +343,13 @@ const VentasPage = () => {
                         </tbody>
                     </table>
 
-                    {/* Controles de Paginación */}
+                    {/* Paginación */}
                     <div style={styles.paginationContainer}>
-                        <button
-                            onClick={() => fetchVentas(prevPageUrl)}
-                            disabled={!prevPageUrl}
-                            style={styles.paginationButton}
-                        >
+                        <button onClick={() => fetchVentas(prevPageUrl)} disabled={!prevPageUrl} style={styles.paginationButton}>
                             Anterior
                         </button>
                         <span style={styles.pageNumber}>Página {currentPageNumber}</span>
-                        <button
-                            onClick={() => fetchVentas(nextPageUrl)}
-                            disabled={!nextPageUrl}
-                            style={styles.paginationButton}
-                        >
+                        <button onClick={() => fetchVentas(nextPageUrl)} disabled={!nextPageUrl} style={styles.paginationButton}>
                             Siguiente
                         </button>
                     </div>
@@ -508,67 +379,89 @@ const VentasPage = () => {
     );
 };
 
-// Estilos CSS para el componente
 const styles = {
     container: {
         padding: '20px',
+        fontFamily: 'Arial, sans-serif',
         maxWidth: '1200px',
-        margin: '20px auto',
+        margin: 'auto',
         backgroundColor: '#fff',
         borderRadius: '8px',
         boxShadow: '0 0 10px rgba(0,0,0,0.1)',
-        fontFamily: 'Arial, sans-serif',
     },
-    header: {
+    loadingMessage: {
+        padding: '20px',
         textAlign: 'center',
-        color: '#333',
-        marginBottom: '20px',
+        color: '#555',
     },
-    filterContainer: {
+    accessDeniedMessage: {
+        color: 'red',
+        marginBottom: '10px',
+        padding: '20px',
+        border: '1px solid red',
+        textAlign: 'center',
+        borderRadius: '5px',
+        backgroundColor: '#ffe3e6',
+    },
+    noStoreSelectedMessage: {
+        padding: '50px',
+        textAlign: 'center',
+        color: '#777',
+    },
+    errorMessage: {
+        color: 'red',
+        marginBottom: '10px',
+        border: '1px solid red',
+        padding: '10px',
+        borderRadius: '5px',
+        backgroundColor: '#ffe3e6',
+    },
+    successMessage: {
+        color: 'green',
+        marginBottom: '10px',
+        border: '1px solid green',
+        padding: '10px',
+        borderRadius: '5px',
+        backgroundColor: '#e6ffe6',
+    },
+    filtersContainer: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '15px',
         marginBottom: '20px',
-        border: '1px solid #e0e0e0',
         padding: '15px',
+        border: '1px solid #e0e0e0',
         borderRadius: '8px',
         backgroundColor: '#f9f9f9',
+        alignItems: 'flex-end',
     },
-    filterGrid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '15px',
-        marginBottom: '15px',
+    filterGroup: {
+        display: 'flex',
+        flexDirection: 'column',
     },
-    input: {
-        width: '100%',
-        padding: '10px',
+    filterLabel: {
+        marginBottom: '5px',
+        fontWeight: 'bold',
+        color: '#555',
+    },
+    filterInput: {
+        padding: '8px',
         border: '1px solid #ccc',
         borderRadius: '4px',
-        boxSizing: 'border-box',
+        minWidth: '150px',
     },
-    primaryButton: {
-        padding: '10px 20px',
+    filterButton: {
+        padding: '10px 15px',
         backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        fontSize: '16px',
+        fontSize: '14px',
         transition: 'background-color 0.3s ease',
     },
-    primaryButtonHover: {
+    filterButtonHover: {
         backgroundColor: '#0056b3',
-    },
-    loadingMessage: {
-        textAlign: 'center',
-        marginTop: '20px',
-        color: '#555',
-    },
-    errorMessage: {
-        color: 'red',
-        backgroundColor: '#ffe3e6',
-        padding: '10px',
-        borderRadius: '5px',
-        marginBottom: '15px',
-        textAlign: 'center',
     },
     noDataMessage: {
         textAlign: 'center',
@@ -579,52 +472,45 @@ const styles = {
     table: {
         width: '100%',
         borderCollapse: 'collapse',
-        marginTop: '20px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        textAlign: 'left',
+        border: '1px solid #ddd',
         borderRadius: '8px',
         overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
     },
     tableHeaderRow: {
         backgroundColor: '#f2f2f2',
     },
     th: {
-        border: '1px solid #ddd',
         padding: '12px',
-        textAlign: 'left',
+        border: '1px solid #ddd',
         fontWeight: 'bold',
         color: '#333',
     },
-    tableRow: {
-        backgroundColor: 'inherit',
-        transition: 'background-color 0.2s ease',
-    },
-    expandedRow: {
-        backgroundColor: '#e0f7fa',
-    },
     td: {
+        padding: '12px',
         border: '1px solid #ddd',
-        padding: '10px',
-        verticalAlign: 'top',
+        verticalAlign: 'middle',
     },
-    detailsButton: {
+    detailButton: {
+        padding: '6px 10px',
         backgroundColor: '#17a2b8',
         color: 'white',
         border: 'none',
-        padding: '8px 12px',
-        borderRadius: '5px',
+        borderRadius: '4px',
         cursor: 'pointer',
         fontSize: '0.9em',
         transition: 'background-color 0.3s ease',
     },
-    detailsButtonHover: {
+    detailButtonHover: {
         backgroundColor: '#138496',
     },
     anularButton: {
+        padding: '6px 10px',
         backgroundColor: '#dc3545',
         color: 'white',
         border: 'none',
-        padding: '8px 12px',
-        borderRadius: '5px',
+        borderRadius: '4px',
         cursor: 'pointer',
         fontSize: '0.9em',
         transition: 'background-color 0.3s ease',
@@ -632,65 +518,54 @@ const styles = {
     anularButtonHover: {
         backgroundColor: '#c82333',
     },
-    anuladaButton: {
-        backgroundColor: '#6c757d',
-        color: 'white',
-        border: 'none',
-        padding: '8px 12px',
-        borderRadius: '5px',
-        cursor: 'not-allowed',
-        fontSize: '0.9em',
-    },
-    anularItemButton: {
-        backgroundColor: '#ffc107', // Color amarillo para anular item
-        color: '#333',
-        border: 'none',
-        padding: '6px 10px',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '0.85em',
-        transition: 'background-color 0.3s ease',
-    },
-    anuladaItemText: {
-        color: '#6c757d',
-        fontSize: '0.85em',
-        fontStyle: 'italic',
-    },
     detailRow: {
-        backgroundColor: '#f8f9fa',
-    },
-    detailCell: {
-        border: '1px solid #ddd',
+        backgroundColor: '#fdfdfd',
         padding: '15px',
+        borderTop: '2px solid #eee',
+    },
+    detailHeader: {
+        marginTop: '0',
+        marginBottom: '10px',
+        color: '#333',
     },
     detailTable: {
         width: '100%',
         borderCollapse: 'collapse',
         marginTop: '10px',
     },
-    detailTableHeaderRow: {
-        backgroundColor: '#e9ecef',
-    },
     detailTh: {
-        border: '1px solid #ddd',
-        padding: '8px',
+        backgroundColor: '#e9ecef',
+        padding: '10px',
         textAlign: 'left',
-        fontWeight: 'bold',
-        color: '#555',
+        borderBottom: '1px solid #dee2e6',
     },
     detailTd: {
-        border: '1px solid #eee',
-        padding: '8px',
+        padding: '10px',
+        borderBottom: '1px solid #dee2e6',
+    },
+    anularDetalleButton: {
+        padding: '5px 8px',
+        backgroundColor: '#ffc107',
+        color: 'black',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        fontSize: '0.8em',
+        transition: 'background-color 0.3s ease',
+    },
+    anularDetalleButtonHover: {
+        backgroundColor: '#e0a800',
     },
     paginationContainer: {
-        marginTop: '20px',
         display: 'flex',
         justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '20px',
         gap: '10px',
     },
     paginationButton: {
-        padding: '10px 15px',
-        backgroundColor: '#6c757d',
+        padding: '8px 15px',
+        backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
@@ -698,13 +573,14 @@ const styles = {
         fontSize: '1em',
         transition: 'background-color 0.3s ease',
     },
-    paginationButtonHover: {
-        backgroundColor: '#5a6268',
+    paginationButtonDisabled: {
+        backgroundColor: '#cccccc',
+        cursor: 'not-allowed',
     },
     pageNumber: {
-        alignSelf: 'center',
-        fontSize: '1.1em',
-        color: '#333',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        color: '#555',
     },
     modalOverlay: {
         position: 'fixed',
@@ -772,6 +648,7 @@ const styles = {
         position: 'fixed',
         top: '20px',
         right: '20px',
+        backgroundColor: '#28a745', // Default to success green
         color: 'white',
         padding: '15px 25px',
         borderRadius: '8px',
