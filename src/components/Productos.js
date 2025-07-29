@@ -61,7 +61,7 @@ function Productos() {
   const [editingStockId, setEditingStockId] = useState(null);
   const [newStockValue, setNewStockValue] = '';
 
-  const [editingPriceId, setEditingPriceId] = null;
+  const [editingPriceId, setEditingPriceId] = useState(null);
   const [newPriceValue, setNewPriceValue] = useState(''); // Inicializar como cadena vacía
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -92,12 +92,21 @@ function Productos() {
     setLoading(true);
     setError(null);
     try {
-      // Usar BASE_API_ENDPOINT y añadir /api/productos/
       const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
         headers: { 'Authorization': `Bearer ${token}` },
         params: { tienda_slug: selectedStoreSlug }
       });
-      setProductos(Array.isArray(response.data.results) ? response.data.results : (Array.isArray(response.data) ? response.data : []));
+      
+      // --- CAMBIO CLAVE AQUÍ: Lógica más robusta para manejar la respuesta ---
+      let productsData = [];
+      if (response.data) {
+          if (Array.isArray(response.data.results)) {
+              productsData = response.data.results;
+          } else if (Array.isArray(response.data)) {
+              productsData = response.data;
+          }
+      }
+      setProductos(productsData);
       setLoading(false);
       setError(null);
     } catch (err) {
@@ -375,8 +384,8 @@ function Productos() {
     <div style={styles.container}>
       <h1>Gestión de Productos ({selectedStoreSlug})</h1>
 
-      {mensajeError && <div style={styles.errorMessage}>{mensajeError}</div>}
-      {successMessage && <div style={styles.successMessage}>{successMessage}</div>}
+      {mensajeError && <div style={{...styles.errorMessage, backgroundColor: '#ffe3e6'}}>{mensajeError}</div>}
+      {successMessage && <div style={{...styles.successMessage, backgroundColor: '#e6ffe6'}}>{successMessage}</div>}
 
       <h2>Añadir Nuevo Producto</h2>
       <form onSubmit={handleSubmit} style={styles.formContainer}>
@@ -434,7 +443,7 @@ function Productos() {
                 <th style={styles.th}>Nombre</th>
                 <th style={styles.th}>Talle</th>
                 <th style={styles.th}>Código</th>
-                {/* <th style={styles.th}>Imagen Código</th> -- ELIMINADA */}
+                {/* <th style={styles.th}>Imagen Código</th>  <--- Esta columna ha sido eliminada */}
                 <th style={styles.th}>P. Venta</th>
                 <th style={styles.th}>Stock</th>
                 <th style={styles.th}>Acciones</th>
@@ -465,25 +474,7 @@ function Productos() {
                   <td style={styles.td}>{producto.nombre}</td>
                   <td style={styles.td}>{producto.talle || 'N/A'}</td>
                   <td style={styles.td}>{producto.codigo_barras || 'N/A'}</td>
-                  {/* <td style={styles.td}> -- ELIMINADA
-                    {producto.codigo_barras ? (
-                      <div style={styles.barcodeContainer}>
-                          <Barcode
-                              value={String(producto.codigo_barras)}
-                              format="CODE128" 
-                              width={1.2}
-                              height={50}
-                              displayValue={true}
-                              fontSize={11}
-                              textMargin={3}
-                              background="#ffffff"
-                              lineColor="#000000"
-                          />
-                      </div>
-                    ) : (
-                      <span style={styles.noBarcodeText}>Sin código</span>
-                    )}
-                  </td> */}
+                  {/* La celda de la imagen del código de barras ha sido eliminada */}
                   <td style={styles.td}>
                     {editingPriceId === producto.id ? (
                       <div style={styles.editControls}>
@@ -709,13 +700,13 @@ const styles = {
         border: '1px solid #ccc',
         borderRadius: '3px',
     },
-    barcodeContainer: {
+    barcodeContainer: { // Este estilo ya no se usa directamente en la tabla, pero se mantiene si EtiquetasImpresion lo usa
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         minWidth: '150px',
     },
-    noBarcodeText: {
+    noBarcodeText: { // Este estilo ya no se usa directamente en la tabla
         color: '#888',
         fontStyle: 'italic',
     },
