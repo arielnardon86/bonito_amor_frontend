@@ -74,6 +74,10 @@ const PuntoVenta = () => {
     const [showNewCartModal, setShowNewCartModal] = useState(false);
     const [newCartAliasInput, setNewCartAliasInput] = useState('');
 
+    // --- NUEVOS ESTADOS PARA LA PAGINACIÓN DE PRODUCTOS DISPONIBLES ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const [productsPerPage] = useState(10); // 10 productos por página
+
     // Función para mostrar un mensaje de alerta personalizado
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
@@ -281,6 +285,27 @@ const PuntoVenta = () => {
             (product.talle && product.talle.toLowerCase().includes(searchTermLower))
         );
     });
+
+    // --- Lógica de paginación para productos disponibles ---
+    const indexOfLastProduct = currentPage * productsPerPage;
+    const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+    const currentProducts = filteredProductosDisponibles.slice(indexOfFirstProduct, indexOfLastProduct);
+
+    const totalPages = Math.ceil(filteredProductosDisponibles.length / productsPerPage);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+    const nextPage = () => {
+        if (currentPage < totalPages) {
+            setCurrentPage(currentPage + 1);
+        }
+    };
+
+    const prevPage = () => {
+        if (currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+        }
+    };
 
     if (authLoading) {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
@@ -491,46 +516,61 @@ const PuntoVenta = () => {
                 ) : error ? (
                     <p style={styles.errorMessage}>{error}</p>
                 ) : (
-                    <table style={styles.table}>
-                        <thead>
-                            <tr style={styles.tableHeaderRow}>
-                                <th style={styles.th}>Nombre</th>
-                                <th style={styles.th}>Talle</th>
-                                <th style={styles.th}>Código</th>
-                                <th style={styles.th}>Precio</th>
-                                <th style={styles.th}>Stock</th>
-                                <th style={styles.th}>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredProductosDisponibles.length > 0 ? (
-                                filteredProductosDisponibles.map(product => (
-                                    <tr key={product.id} style={styles.tableRow}>
-                                        <td style={styles.td}>{product.nombre}</td>
-                                        <td style={styles.td}>{product.talle}</td>
-                                        <td style={styles.td}>{product.codigo_barras || 'N/A'}</td>
-                                        <td style={styles.td}>${parseFloat(product.precio).toFixed(2)}</td>
-                                        <td style={styles.td}>{product.stock}</td>
-                                        <td style={styles.td}>
-                                            <button
-                                                onClick={() => handleAddProductoEnVenta(product, 1)}
-                                                disabled={product.stock === 0}
-                                                style={product.stock === 0 ? styles.disabledButton : styles.addButton}
-                                            >
-                                                {product.stock === 0 ? 'Sin Stock' : 'Añadir'}
-                                            </button>
+                    <>
+                        <table style={styles.table}>
+                            <thead>
+                                <tr style={styles.tableHeaderRow}>
+                                    <th style={styles.th}>Nombre</th>
+                                    <th style={styles.th}>Talle</th>
+                                    <th style={styles.th}>Código</th>
+                                    <th style={styles.th}>Precio</th>
+                                    <th style={styles.th}>Stock</th>
+                                    <th style={styles.th}>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentProducts.length > 0 ? (
+                                    currentProducts.map(product => (
+                                        <tr key={product.id} style={styles.tableRow}>
+                                            <td style={styles.td}>{product.nombre}</td>
+                                            <td style={styles.td}>{product.talle}</td>
+                                            <td style={styles.td}>{product.codigo_barras || 'N/A'}</td>
+                                            <td style={styles.td}>${parseFloat(product.precio).toFixed(2)}</td>
+                                            <td style={styles.td}>{product.stock}</td>
+                                            <td style={styles.td}>
+                                                <button
+                                                    onClick={() => handleAddProductoEnVenta(product, 1)}
+                                                    disabled={product.stock === 0}
+                                                    style={product.stock === 0 ? styles.disabledButton : styles.addButton}
+                                                >
+                                                    {product.stock === 0 ? 'Sin Stock' : 'Añadir'}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="6" style={styles.noDataMessage}>
+                                            No se encontraron productos con el filtro aplicado.
                                         </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="6" style={styles.noDataMessage}>
-                                        No se encontraron productos con el filtro aplicado.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                )}
+                            </tbody>
+                        </table>
+
+                        {/* Controles de Paginación para Productos Disponibles */}
+                        {totalPages > 1 && (
+                            <div style={styles.paginationContainer}>
+                                <button onClick={prevPage} disabled={currentPage === 1} style={styles.paginationButton}>
+                                    Anterior
+                                </button>
+                                <span style={styles.pageNumber}>Página {currentPage} de {totalPages}</span>
+                                <button onClick={nextPage} disabled={currentPage === totalPages} style={styles.paginationButton}>
+                                    Siguiente
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
@@ -929,6 +969,28 @@ const styles = {
         '10%': { opacity: 1, transform: 'translateY(0)' },
         '90%': { opacity: 1, transform: 'translateY(0)' },
         '100%': { opacity: 0, transform: 'translateY(-20px)' },
+    },
+    paginationContainer: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '20px',
+        gap: '10px',
+    },
+    paginationButton: {
+        padding: '8px 15px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '0.9em',
+        transition: 'background-color 0.3s ease',
+    },
+    pageNumber: {
+        fontSize: '1em',
+        color: '#555',
+        fontWeight: 'bold',
     },
 };
 
