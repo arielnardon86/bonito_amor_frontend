@@ -80,7 +80,7 @@ const VentasPage = () => {
 
             // Añadir filtros si están presentes
             if (filterDate) {
-                params.fecha_venta__exact__date = filterDate;
+                params.fecha_venta__date = filterDate; // CORRECCIÓN: Usar __date
             }
             if (filterSellerId) {
                 params.usuario = filterSellerId;
@@ -126,7 +126,7 @@ const VentasPage = () => {
     }, [token, selectedStoreSlug]);
 
     useEffect(() => {
-        // CAMBIO CLAVE AQUÍ: Solo permitir acceso si es superusuario
+        // Solo permitir acceso si es superusuario
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
             fetchVentas();
             fetchSellers();
@@ -180,7 +180,7 @@ const VentasPage = () => {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    // CAMBIO CLAVE AQUÍ: Solo permitir acceso si es superusuario
+    // Solo permitir acceso si es superusuario
     if (!isAuthenticated || !user.is_superuser) { 
         return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.</div>;
     }

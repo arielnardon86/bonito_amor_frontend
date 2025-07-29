@@ -58,8 +58,8 @@ const MetricasVentas = () => {
     // Estado para almacenar mensajes de error
     const [error, setError] = useState(null);
 
-    // Nuevo estado para el filtro de fecha con calendario (YYYY-MM-DD)
-    const [dateFilter, setDateFilter] = useState('');
+    // CAMBIO: Nuevo estado para el filtro de período (day, week, month, year)
+    const [periodFilter, setPeriodFilter] = useState('week'); // Default a 'week'
 
     // Estados para los filtros existentes (sin cambios)
     const [sellerFilter, setSellerFilter] = useState('');
@@ -70,16 +70,17 @@ const MetricasVentas = () => {
 
     // Función para obtener la lista de usuarios (vendedores)
     const fetchUsers = useCallback(async () => {
-        if (!token) return;
+        if (!token || !selectedStoreSlug) return; // Añadir selectedStoreSlug para filtrar vendedores por tienda
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda: selectedStoreSlug } // Filtrar vendedores por la tienda seleccionada
             });
             setAvailableSellers(response.data.results || response.data);
         } catch (err) {
             console.error("Error al cargar vendedores:", err.response ? err.response.data : err.message);
         }
-    }, [token]);
+    }, [token, selectedStoreSlug]);
 
     // Función para obtener los métodos de pago
     const fetchPaymentMethods = useCallback(async () => {
@@ -105,25 +106,12 @@ const MetricasVentas = () => {
 
         const params = {
             tienda_slug: selectedStoreSlug,
+            period: periodFilter, // CAMBIO: Usar periodFilter
         };
-
-        // Lógica para el filtro de fecha con calendario
-        if (dateFilter) {
-            const dateObj = new Date(dateFilter);
-            params.year = dateObj.getFullYear();
-            params.month = (dateObj.getMonth() + 1).toString(); // Meses son 0-index en JS, 1-index en Django
-            params.day = dateObj.getDate().toString();
-        } else {
-            // Si no hay fecha seleccionada, asegúrate de que no se envíen los parámetros de día, mes, año
-            delete params.year;
-            delete params.month;
-            delete params.day;
-        }
 
         if (sellerFilter) params.seller_id = sellerFilter;
         if (paymentMethodFilter) params.payment_method = paymentMethodFilter;
 
-        // --- CORRECCIÓN CLAVE AQUÍ: La URL debe ser /api/metricas/metrics/ ---
         console.log("Fetching metrics from:", `${BASE_API_ENDPOINT}/api/metricas/metrics/`, params);
 
         try {
@@ -140,18 +128,19 @@ const MetricasVentas = () => {
         } finally {
             setLoadingMetrics(false);
         }
-    }, [token, selectedStoreSlug, dateFilter, sellerFilter, paymentMethodFilter]); // Dependencias actualizadas
+    }, [token, selectedStoreSlug, periodFilter, sellerFilter, paymentMethodFilter]); // Dependencias actualizadas
 
     // Efecto para cargar métricas y opciones de filtro cuando cambian las dependencias
     useEffect(() => {
-        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
+        // Solo permitir acceso si es superusuario (según la lógica de permisos actual)
+        if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
             fetchUsers();
             fetchPaymentMethods();
             fetchMetricasVentas();
-        } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_staff))) {
-            setError("Acceso denegado. No tienes permisos para ver las métricas de ventas.");
+        } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
+            setError("Acceso denegado. Solo los superusuarios pueden ver las métricas de ventas.");
             setLoadingMetrics(false);
-        } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
+        } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoadingMetrics(false);
             setMetricas(null); // Limpiar métricas si no hay tienda seleccionada
         }
@@ -182,21 +171,28 @@ const MetricasVentas = () => {
     };
 
     // --- Mover la preparación de datos de los gráficos y tablas aquí, antes del return ---
+    // Asegurarse de que metricas y sus propiedades existan antes de acceder a ellas
     const barChartData = {
         labels: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => {
             // Ajustar el formato de la etiqueta según el 'label' del backend
-            if (metricas.ventas_agrupadas_por_periodo.label === "Día") {
-                return new Date(item.fecha).toLocaleDateString();
-            } else if (metricas.ventas_agrupadas_por_periodo.label === "Mes") {
-                // Asumiendo que 'fecha' es el número de mes y 'year' es el año
-                return `${item.fecha}/${item.year}`;
+            const label = metricas.ventas_agrupadas_por_periodo.label;
+            if (label === "Últimas 24 Horas") {
+                return `${item.periodo}h`; // 'periodo' es la hora del día
+            } else if (label === "Última Semana") {
+                const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                return daysOfWeek[item.periodo - 1]; // 'periodo' es el día de la semana (1=domingo, 7=sábado)
+            } else if (label === "Últimos 30 Días") {
+                return `Día ${item.periodo}`; // 'periodo' es el día del mes
+            } else if (label === "Últimos 365 Días") {
+                const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                return months[item.periodo - 1]; // 'periodo' es el número de mes
             }
-            return item.fecha; // Para 'Año'
+            return String(item.periodo); // Fallback
         }) || [],
         datasets: [
             {
                 label: 'Monto Total Vendido',
-                data: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => parseFloat(item.total_monto)) || [],
+                data: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => parseFloat(item.total_ventas)) || [], // CAMBIO: usar total_ventas
                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
                 borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 1,
@@ -205,7 +201,7 @@ const MetricasVentas = () => {
     };
 
     const pieChartData = {
-        labels: metricas?.ventas_por_metodo_pago?.map(item => item.metodo_pago || 'Desconocido') || [],
+        labels: metricas?.ventas_por_metodo_pago?.map(item => item.metodo_pago || 'Desconocido') || [], // CAMBIO: usar item.metodo_pago directamente
         datasets: [
             {
                 data: metricas?.ventas_por_metodo_pago?.map(item => parseFloat(item.monto_total)) || [],
@@ -236,12 +232,13 @@ const MetricasVentas = () => {
     // --- Fin de la preparación de datos de los gráficos y tablas ---
 
 
-    if (authLoading || (isAuthenticated && !user)) {
+    if (authLoading || (isAuthenticated && !user)) { // Añadido user check para evitar errores si user es null
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para ver las métricas de ventas.</div>;
+    // Solo permitir acceso si es superusuario
+    if (!isAuthenticated || !user.is_superuser) {
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver las métricas de ventas.</div>;
     }
 
     if (!selectedStoreSlug) {
@@ -273,14 +270,17 @@ const MetricasVentas = () => {
             <div style={styles.filterSection}>
                 <h3>Filtros</h3>
                 <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Fecha:</label>
-                    <input
-                        type="date"
-                        id="dateFilter"
-                        value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        style={styles.filterSelect} // Usar filterSelect para mantener el estilo consistente
-                    />
+                    <label style={styles.filterLabel}>Período:</label>
+                    <select
+                        value={periodFilter}
+                        onChange={(e) => setPeriodFilter(e.target.value)}
+                        style={styles.filterSelect}
+                    >
+                        <option value="day">Últimas 24 Horas</option>
+                        <option value="week">Última Semana</option>
+                        <option value="month">Últimos 30 Días</option>
+                        <option value="year">Últimos 365 Días</option>
+                    </select>
                 </div>
                 <div style={styles.filterGroup}>
                     <label style={styles.filterLabel}>Vendedor:</label>
@@ -355,18 +355,14 @@ const MetricasVentas = () => {
                             <thead>
                                 <tr>
                                     <th style={styles.th}>Producto</th>
-                                    <th style={styles.th}>Talle</th>
-                                    <th style={styles.th}>Cantidad Total</th>
-                                    <th style={styles.th}>Monto Total</th>
+                                    <th style={styles.th}>Cantidad Total</th> {/* CAMBIO: Eliminar Talle y Monto Total */}
                                 </tr>
                             </thead>
                             <tbody>
                                 {topProductsData.map((item, index) => (
                                     <tr key={index}>
                                         <td style={styles.td}>{item.producto__nombre}</td>
-                                        <td style={styles.td}>{item.producto__talle}</td>
                                         <td style={styles.td}>{item.cantidad_total}</td>
-                                        <td style={styles.td}>${item.monto_total.toFixed(2)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -416,7 +412,7 @@ const MetricasVentas = () => {
                             <tbody>
                                 {salesByPaymentMethodTableData.map((item, index) => (
                                     <tr key={index}>
-                                        <td style={styles.td}>{item.metodo_pago}</td>
+                                        <td style={styles.td}>{item.metodo_pago}</td> {/* CAMBIO: Acceder directamente a metodo_pago */}
                                         <td style={styles.td}>${parseFloat(item.monto_total).toFixed(2)}</td>
                                         <td style={styles.td}>{item.cantidad_ventas}</td>
                                     </tr>
