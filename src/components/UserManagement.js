@@ -1,8 +1,23 @@
-// Store/frontend/src/components/UserManagement.js
+// BONITO_AMOR/frontend/src/components/UserManagement.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
+
+// Función para normalizar la URL base, eliminando cualquier /api/ o barra final
+const normalizeApiUrl = (url) => {
+    let normalizedUrl = url;
+    if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
+        normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
+    }
+    if (normalizedUrl.endsWith('/')) {
+        normalizedUrl = normalizedUrl.slice(0, -1);
+    }
+    return normalizedUrl;
+};
+
+const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL);
+
 
 const UserManagement = () => {
     const { user, isAuthenticated, loading } = useAuth();
@@ -29,20 +44,20 @@ const UserManagement = () => {
         setLoadingUsers(true);
         setError('');
         try {
-            // CORRECCIÓN CLAVE AQUÍ: Acceder a response.data.results
-            const response = await axios.get(`${process.env.REACT_APP_API_URL}/users/`, {
+            // CORRECCIÓN CLAVE AQUÍ: Añadir /api/
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
                 }
             });
-            setUsers(response.data.results); // <-- ¡CORRECCIÓN!
+            setUsers(response.data.results); 
         } catch (err) {
             console.error('Error fetching users:', err.response ? err.response.data : err.message);
             setError('Error al cargar usuarios. Asegúrate de tener permisos de administrador.');
         } finally {
             setLoadingUsers(false);
         }
-    }, []); // No tiene dependencias externas aquí porque los permisos se manejan en el useEffect principal
+    }, []); 
 
 
     useEffect(() => {
@@ -75,7 +90,8 @@ const UserManagement = () => {
         }
 
         try {
-            await axios.post(`${process.env.REACT_APP_API_URL}/users/`, newUser, {
+            // CORRECCIÓN CLAVE AQUÍ: Añadir /api/
+            await axios.post(`${BASE_API_ENDPOINT}/api/users/`, newUser, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
                 }
@@ -108,10 +124,15 @@ const UserManagement = () => {
             return;
         }
 
+        // Reemplazar window.confirm con un modal de confirmación personalizado
+        // (Asumo que ya tienes implementado un modal de confirmación similar a VentasPage)
+        // Por ahora, mantendré window.confirm para no introducir más complejidad si no tienes el modal genérico.
+        // Si tienes un modal, usa showConfirmModal y setConfirmAction aquí.
         if (window.confirm('¿Estás seguro de que quieres eliminar este usuario?')) {
             setError('');
             try {
-                await axios.delete(`${process.env.REACT_APP_API_URL}/users/${userId}/`, {
+                // CORRECCIÓN CLAVE AQUÍ: Añadir /api/
+                await axios.delete(`${BASE_API_ENDPOINT}/api/users/${userId}/`, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
                     }
@@ -164,7 +185,8 @@ const UserManagement = () => {
                 delete dataToSend.password2; // Eliminar también password2 si no se cambia la password
             }
 
-            await axios.patch(`${process.env.REACT_APP_API_URL}/users/${editingUser.id}/`, dataToSend, {
+            // CORRECCIÓN CLAVE AQUÍ: Añadir /api/
+            await axios.patch(`${BASE_API_ENDPOINT}/api/users/${editingUser.id}/`, dataToSend, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Asegurarse de enviar el token
                 }
