@@ -2,6 +2,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
+import { useSales } from './SalesContext'; // Importar el contexto de ventas
+
+const TALLE_OPTIONS = [
+    { value: 'XS', label: 'Extra Pequeño' },
+    { value: 'S', label: 'Pequeño' },
+    { value: 'M', label: 'Mediano' },
+    { value: 'L', label: 'Grande' },
+    { value: 'XL', label: 'Extra Grande' },
+    { value: 'UNICA', label: 'Talla Única' },
+    { value: 'NUM36', label: '36' },
+    { value: 'NUM38', label: '38' },
+    { value: 'NUM40', label: '40' },
+    { value: 'NUM42', label: '42' },
+    { value: 'NUM44', label: '44' },
+];
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
@@ -21,36 +36,45 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const PuntoVenta = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
+    // Usar el contexto de ventas para gestionar los carritos
+    const {
+        carts,
+        activeCart,
+        activeCartId,
+        createNewCart,
+        selectCart,
+        updateCartAlias,
+        addProductToCart,
+        removeProductFromCart,
+        decrementProductQuantity,
+        finalizeCart,
+        deleteCart
+    } = useSales();
 
     const [productos, setProductos] = useState([]); // Lista de todos los productos disponibles
-    const [categorias, setCategorias] = useState([]);
-    const [metodosPago, setMetodosPago] = useState([]);
-    const [productosEnVenta, setProductosEnVenta] = useState([]); // Productos añadidos a la venta actual (el carrito)
-    const [totalVenta, setTotalVenta] = useState(0);
-    const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
-    const [busquedaProducto, setBusquedaProducto] = useState('');
-    const [productoSeleccionado, setProductoSeleccionado] = useState(null); // Producto seleccionado por búsqueda
-    const [cantidadProducto, setCantidadProducto] = useState(1);
-    const [error, setError] = useState(null);
-    const [loadingData, setLoadingData] = useState(true);
+    const [metodosPago, setMetodosPago] = useState([]); // Lista de métodos de pago disponibles
+    const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState(''); // Método de pago seleccionado para la venta
+    const [busquedaProducto, setBusquedaProducto] = useState(''); // Para búsqueda por nombre/código de barras en la lista de productos
+    const [productoSeleccionado, setProductoSeleccionado] = useState(null); // Producto seleccionado por búsqueda de código de barras
 
+    const [loadingProducts, setLoadingProducts] = useState(true);
+    const [error, setError] = useState(null);
+
+    // Estados para el modal de confirmación
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmMessage, setConfirmMessage] = useState('');
     const [confirmAction, setConfirmAction] = useState(() => () => {});
 
+    // Estados para el cuadro de mensaje de alerta personalizado
     const [showAlertMessage, setShowAlertMessage] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success'); // 'success', 'error', 'info'
 
-    // Paginación para la tabla 'Productos en el Carrito'
-    const [currentPageCart, setCurrentPageCart] = useState(1);
-    const itemsPerPageCart = 10;
+    // Estados para el modal de creación de nueva venta
+    const [showNewCartModal, setShowNewCartModal] = useState(false);
+    const [newCartAliasInput, setNewCartAliasInput] = useState('');
 
-    // Paginación para la sección 'Productos Disponibles'
-    const [currentPageAvailable, setCurrentPageAvailable] = useState(1);
-    const itemsPerPageAvailable = 10;
-
-    // Función para mostrar alertas personalizadas en la UI
+    // Función para mostrar un mensaje de alerta personalizado
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
         setAlertType(type);
@@ -62,294 +86,208 @@ const PuntoVenta = () => {
         }, 3000);
     };
 
-    // Cargar todos los productos disponibles para la tienda seleccionada
-    const fetchProductos = useCallback(async () => {
-        if (!token || !selectedStoreSlug) {
-            setLoadingData(false);
-            return;
-        }
-        setLoadingData(true);
-        setError(null);
-        try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { tienda_slug: selectedStoreSlug }
-            });
-            console.log("Respuesta de productos:", response.data);
-            console.log("Slug de tienda seleccionado:", selectedStoreSlug);
-            setProductos(response.data.results || response.data);
-            setError(null);
-        } catch (err) {
-            console.error("Error al cargar productos:", err.response || err.message);
-            setError("Error al cargar productos: " + (err.response?.data?.detail || err.message));
-        } finally {
-            setLoadingData(false);
-        }
-    }, [token, selectedStoreSlug]);
-
-    // Cargar categorías
-    const fetchCategorias = useCallback(async () => {
-        console.log("fetchCategorias: Llamado.");
-        if (!token) {
-            console.log("fetchCategorias: Token no presente, regresando.");
-            return;
-        }
-        try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/categorias/`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            console.log("Respuesta de categorías:", response.data);
-            setCategorias(response.data.results || response.data);
-        } catch (err) {
-            console.error("Error al cargar categorías:", err.response ? err.response.data : err.message);
-        }
-    }, [token]);
-
-    // Cargar métodos de pago
-    const fetchMetodosPago = useCallback(async () => {
-        console.log("fetchMetodosPago: Llamado.");
-        console.log("fetchMetodosPago: Token actual:", token ? token.substring(0, 10) + '...' : 'null');
-        if (!token) {
-            console.log("fetchMetodosPago: Token no presente, regresando.");
-            return;
-        }
-        try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            console.log("fetchMetodosPago: Respuesta de la API de métodos de pago:", response.data);
-            setMetodosPago(response.data);
-            if (response.data.length > 0) {
-                setMetodoPagoSeleccionado(response.data[0].nombre);
-                console.log("fetchMetodosPago: Método de pago seleccionado:", response.data[0].nombre);
-            } else {
-                console.log("fetchMetodosPago: Ninguna forma de pago devuelta.");
+    // Efecto para cargar productos y métodos de pago al iniciar
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!token || !selectedStoreSlug) {
+                setLoadingProducts(false);
+                return;
             }
-        } catch (err) {
-            console.error("fetchMetodosPago: Error al cargar métodos de pago:", err.response ? err.response.data : err.message);
-            showCustomAlert("Error al cargar métodos de pago.", 'error');
-        }
-    }, [token]);
+            setLoadingProducts(true);
+            setError(null);
+            try {
+                // Cargar productos
+                const productosResponse = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    params: { tienda_slug: selectedStoreSlug }
+                });
+                setProductos(productosResponse.data.results || productosResponse.data);
 
-    // Efecto para cargar datos iniciales cuando el usuario está autenticado y la tienda seleccionada
-    useEffect(() => {
-        console.log("useEffect principal: Estado de autenticación y tienda:", { isAuthenticated, user, selectedStoreSlug, authLoading });
-        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
-            setLoadingData(true);
-            fetchProductos();
-            fetchCategorias();
-            fetchMetodosPago();
-        } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_staff))) {
-            setError("Acceso denegado. No tienes permisos para usar el punto de venta.");
-            setLoadingData(false);
-        } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
-            setLoadingData(false);
-            setProductos([]);
-        }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos, fetchCategorias, fetchMetodosPago]);
+                // Cargar métodos de pago
+                const metodosPagoResponse = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                setMetodosPago(metodosPagoResponse.data);
+                if (metodosPagoResponse.data.length > 0) {
+                    setMetodoPagoSeleccionado(metodosPagoResponse.data[0].nombre); // Seleccionar el primero por defecto
+                }
 
-    // Efecto para recalcular el total de la venta cuando los productos en venta cambian
-    useEffect(() => {
-        const calcularTotal = productosEnVenta.reduce((acc, item) => acc + (parseFloat(item.precio) * item.cantidad), 0);
-        setTotalVenta(calcularTotal);
-        const totalPagesCart = Math.ceil(productosEnVenta.length / itemsPerPageCart);
-        if (currentPageCart > totalPagesCart && totalPagesCart > 0) {
-            setCurrentPageCart(totalPagesCart);
-        } else if (productosEnVenta.length === 0) {
-            setCurrentPageCart(1);
-        }
-    }, [productosEnVenta, currentPageCart]);
+            } catch (err) {
+                console.error("Error al cargar datos:", err.response ? err.response.data : err.message);
+                setError('Error al cargar productos o métodos de pago.');
+            } finally {
+                setLoadingProducts(false);
+            }
+        };
 
-    // Manejar la búsqueda de un producto por código de barras/nombre
-    const handleBuscarProducto = async (e) => {
-        e.preventDefault();
-        setError(null);
+        if (!authLoading && isAuthenticated && selectedStoreSlug) {
+            fetchData();
+        } else if (!authLoading && (!isAuthenticated || !selectedStoreSlug)) {
+            setLoadingProducts(false);
+            setError("Por favor, inicia sesión y selecciona una tienda para gestionar el punto de venta.");
+        }
+    }, [token, selectedStoreSlug, authLoading, isAuthenticated]);
+
+    // Manejar la búsqueda de producto por código de barras (botón buscar)
+    const handleBuscarProducto = async () => {
         if (!busquedaProducto) {
-            showCustomAlert("Por favor, introduce un nombre o código de barras para buscar.", 'error');
+            showCustomAlert('Por favor, ingresa un código de barras o nombre para buscar.', 'info');
             return;
         }
         if (!selectedStoreSlug) {
-            showCustomAlert("Por favor, selecciona una tienda antes de buscar productos.", 'error');
+            showCustomAlert('Por favor, selecciona una tienda.', 'error');
             return;
         }
 
         try {
-            let response;
-            try {
-                response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
-                });
-            } catch (barcodeErr) {
-                console.warn("No encontrado por código de barras, intentando por nombre...", barcodeErr);
-                response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    params: { search: busquedaProducto, tienda_slug: selectedStoreSlug }
-                });
-                if (response.data.results && response.data.results.length > 0) {
-                    response.data = response.data.results[0];
-                } else if (response.data.length > 0) {
-                    response.data = response.data[0];
-                } else {
-                    throw new Error("Producto no encontrado por nombre.");
-                }
-            }
-
-            console.log("Respuesta de búsqueda de producto:", response.data);
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
+            });
             setProductoSeleccionado(response.data);
-            setCantidadProducto(1);
-            setBusquedaProducto('');
+            showCustomAlert('Producto encontrado.', 'success');
         } catch (err) {
             console.error("Error al buscar producto:", err.response ? err.response.data : err.message);
             setProductoSeleccionado(null);
-            showCustomAlert("Producto no encontrado o error en la búsqueda: " + (err.response?.data?.error || err.message), 'error');
+            showCustomAlert('Producto no encontrado o error en la búsqueda.', 'error');
         }
     };
 
-    // Función para añadir un producto a la lista de venta, ya sea de la búsqueda o de la lista de disponibles
-    const handleAgregarProducto = (productToAdd, quantity = 1) => {
-        if (!productToAdd) {
-            showCustomAlert("Ningún producto seleccionado para añadir.", 'error');
+    // Añadir producto al carrito activo desde la búsqueda por código de barras o tabla
+    const handleAddProductoEnVenta = (product, quantity = 1) => {
+        if (!activeCart) {
+            showCustomAlert('Por favor, selecciona o crea un carrito antes de añadir productos.', 'info');
+            return;
+        }
+        if (product.stock === 0) {
+            showCustomAlert('Este producto no tiene stock disponible.', 'error');
             return;
         }
         if (quantity <= 0) {
-            showCustomAlert("La cantidad debe ser mayor que 0.", 'error');
-            return;
-        }
-        if (quantity > productToAdd.stock) {
-            showCustomAlert(`No hay suficiente stock. Stock disponible: ${productToAdd.stock}.`, 'error');
+            showCustomAlert('La cantidad debe ser mayor que cero.', 'error');
             return;
         }
 
-        const productoExistenteIndex = productosEnVenta.findIndex(item => item.id === productToAdd.id);
+        const currentItemInCart = activeCart.items.find(item => item.product.id === product.id);
+        const currentQuantityInCart = currentItemInCart ? currentItemInCart.quantity : 0;
 
-        if (productoExistenteIndex > -1) {
-            const nuevosProductosEnVenta = [...productosEnVenta];
-            const nuevaCantidad = nuevosProductosEnVenta[productoExistenteIndex].cantidad + quantity;
-
-            if (nuevaCantidad > productToAdd.stock) {
-                showCustomAlert(`No se puede añadir más. La cantidad total excede el stock disponible (${productToAdd.stock}).`, 'error');
-                return;
-            }
-            nuevosProductosEnVenta[productoExistenteIndex].cantidad = nuevaCantidad;
-            setProductosEnVenta(nuevosProductosEnVenta);
-        } else {
-            setProductosEnVenta([...productosEnVenta, { ...productToAdd, cantidad: quantity }]);
+        if (currentQuantityInCart + quantity > product.stock) {
+            showCustomAlert(`No hay suficiente stock. Disponible: ${product.stock}, en carrito: ${currentQuantityInCart}.`, 'error');
+            return;
         }
-        if (productToAdd.id === productoSeleccionado?.id) {
-            setProductoSeleccionado(null);
-            setCantidadProducto(1);
-            setBusquedaProducto('');
-        }
-        showCustomAlert(`${productToAdd.nombre} añadido a la venta.`, 'success');
+
+        addProductToCart(product, quantity); // Usa la función del contexto
+        setBusquedaProducto(''); // Limpiar la búsqueda después de añadir
+        setProductoSeleccionado(null); // Limpiar producto seleccionado
+        showCustomAlert('Producto añadido al carrito.', 'success');
     };
 
-    // Aumentar cantidad de un producto en el carrito
-    const handleIncreaseQuantity = (id) => {
-        setProductosEnVenta(prevItems => prevItems.map(item => {
-            if (item.id === id) {
-                const productInStock = productos.find(p => p.id === id); // Find original product to check stock
-                if (productInStock && item.cantidad < productInStock.stock) {
-                    return { ...item, cantidad: item.cantidad + 1 };
-                } else {
-                    showCustomAlert(`No hay más stock disponible para ${item.nombre}.`, 'error');
-                }
-            }
-            return item;
-        }));
+    // Decrementar cantidad de un producto en el carrito activo
+    const handleDecrementQuantity = (productId) => {
+        if (!activeCart) return;
+        decrementProductQuantity(activeCartId, productId); // Usa la función del contexto
+        showCustomAlert('Cantidad de producto actualizada.', 'info');
     };
 
-    // Disminuir cantidad de un producto en el carrito
-    const handleDecreaseQuantity = (id) => {
-        setProductosEnVenta(prevItems => prevItems.map(item => {
-            if (item.id === id && item.cantidad > 1) {
-                return { ...item, cantidad: item.cantidad - 1 };
-            }
-            return item;
-        }));
+    // Eliminar producto del carrito activo
+    const handleRemoveProductoEnVenta = (productId) => {
+        if (!activeCart) return;
+        setConfirmMessage('¿Estás seguro de que quieres quitar este producto del carrito?');
+        setConfirmAction(() => () => {
+            removeProductFromCart(activeCartId, productId); // Usa la función del contexto
+            showCustomAlert('Producto eliminado del carrito.', 'info');
+            setShowConfirmModal(false);
+        });
+        setShowConfirmModal(true);
     };
 
-    // Eliminar un producto de la lista de venta
-    const handleEliminarProductoDeVenta = (id) => {
-        setProductosEnVenta(productosEnVenta.filter(item => item.id !== id));
-        showCustomAlert("Producto eliminado de la venta.", 'info');
-    };
-
-    // Realizar la venta
-    const handleRealizarVenta = async () => {
-        if (productosEnVenta.length === 0) {
-            showCustomAlert("Ningún producto en el carrito.", 'error');
+    // Procesar la venta
+    const handleProcesarVenta = async () => {
+        if (!activeCart || activeCart.items.length === 0) {
+            showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
             return;
         }
         if (!metodoPagoSeleccionado) {
-            showCustomAlert("Por favor, selecciona un método de pago.", 'error');
+            showCustomAlert('Por favor, selecciona un método de pago.', 'error');
             return;
         }
         if (!selectedStoreSlug) {
-            showCustomAlert("Por favor, selecciona una tienda para registrar la venta.", 'error');
+            showCustomAlert('Por favor, selecciona una tienda.', 'error');
             return;
         }
 
-        setConfirmMessage(`¿Confirma la venta por un total de $${totalVenta.toFixed(2)} con ${metodoPagoSeleccionado}?`);
+        // Confirmación antes de procesar
+        setConfirmMessage(`¿Confirmas la venta por un total de $${activeCart.total.toFixed(2)} con ${metodoPagoSeleccionado}?`);
         setConfirmAction(() => async () => {
-            setShowConfirmModal(false);
+            setShowConfirmModal(false); // Cerrar modal de confirmación
             try {
-                const detalles = productosEnVenta.map(item => ({
-                    producto: item.id, // ID del producto
-                    cantidad: item.cantidad,
-                    precio_unitario: parseFloat(item.precio),
-                }));
-
                 const ventaData = {
-                    tienda_slug: selectedStoreSlug, // Enviar el slug de la tienda
-                    metodo_pago_nombre: metodoPagoSeleccionado, // Enviar el nombre del método de pago
-                    detalles: detalles,
+                    tienda_slug: selectedStoreSlug,
+                    metodo_pago_nombre: metodoPagoSeleccionado,
+                    detalles: activeCart.items.map(item => ({
+                        producto: item.product.id,
+                        cantidad: item.quantity,
+                        precio_unitario: item.product.precio, // Asegúrate de que este campo exista en tu producto
+                    })),
                 };
 
                 const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${token}` },
                 });
-                console.log("Respuesta de venta:", response.data);
 
-                showCustomAlert(`¡Venta realizada con éxito! ID: ${response.data.id}`, 'success');
-                setProductosEnVenta([]);
-                setTotalVenta(0);
-                setProductoSeleccionado(null);
-                setCantidadProducto(1);
-                fetchProductos(); // Recargar productos para actualizar stock
+                console.log('Venta procesada con éxito:', response.data);
+                showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
+                finalizeCart(activeCartId); // Marcar el carrito como finalizado en el contexto
+                setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : ''); // Resetear método de pago
             } catch (err) {
-                console.error("Error al realizar venta:", err.response ? err.response.data : err.message);
-                setError("Error al realizar venta: " + (err.response?.data?.detail || err.message));
-                showCustomAlert("Error al realizar venta.", 'error');
+                console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
+                showCustomAlert('Error al procesar la venta: ' + (err.response && err.response.data ? JSON.stringify(err.response.data) : err.message), 'error');
             }
         });
         setShowConfirmModal(true);
     };
 
-    // Obtener productos actuales para paginación del carrito
-    const indexOfLastItemCart = currentPageCart * itemsPerPageCart;
-    const indexOfFirstItemCart = indexOfLastItemCart - itemsPerPageCart;
-    const currentProductsInCart = productosEnVenta.slice(indexOfFirstItemCart, indexOfLastItemCart);
-    const totalPagesCart = Math.ceil(productosEnVenta.length / itemsPerPageCart);
+    // Manejar la creación de un nuevo carrito con alias
+    const handleCreateNewCartWithAlias = () => {
+        if (newCartAliasInput.trim() === '') {
+            showCustomAlert('El alias de la venta no puede estar vacío.', 'error');
+            return;
+        }
+        createNewCart(newCartAliasInput.trim());
+        setNewCartAliasInput('');
+        setShowNewCartModal(false);
+        showCustomAlert('Nueva venta creada.', 'success');
+    };
 
-    const paginateCart = (pageNumber) => setCurrentPageCart(pageNumber);
+    // Manejar la eliminación del carrito activo
+    const handleDeleteActiveCart = () => {
+        if (activeCart) {
+            setConfirmMessage(`¿Estás seguro de que quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`);
+            setConfirmAction(() => () => {
+                deleteCart(activeCartId);
+                showCustomAlert('Venta eliminada.', 'info');
+                setShowConfirmModal(false);
+            });
+            setShowConfirmModal(true);
+        }
+    };
 
-    // Obtener productos actuales para paginación de productos disponibles
-    const indexOfLastItemAvailable = currentPageAvailable * itemsPerPageAvailable;
-    const indexOfFirstItemAvailable = indexOfLastItemAvailable - itemsPerPageAvailable;
-    const currentAvailableProducts = productos.slice(indexOfFirstItemAvailable, indexOfLastItemAvailable);
-    const totalPagesAvailable = Math.ceil(productos.length / itemsPerPageAvailable);
+    // Filtrar productos disponibles por nombre o código de barras
+    const filteredProductosDisponibles = productos.filter(product => {
+        const searchTermLower = busquedaProducto.toLowerCase();
+        return (
+            product.nombre.toLowerCase().includes(searchTermLower) ||
+            (product.codigo_barras && product.codigo_barras.toLowerCase().includes(searchTermLower)) ||
+            (product.talle && product.talle.toLowerCase().includes(searchTermLower))
+        );
+    });
 
-    const paginateAvailable = (pageNumber) => setCurrentPageAvailable(pageNumber);
-
-
-    // Renderización condicional basada en el estado de carga y autenticación
-    if (authLoading || (isAuthenticated && !user)) {
-        return <p style={styles.loadingMessage}>Cargando datos del usuario...</p>;
+    if (authLoading) {
+        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
     if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
-        return <p style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para usar el punto de venta.</p>;
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
     }
 
     if (!selectedStoreSlug) {
@@ -360,201 +298,239 @@ const PuntoVenta = () => {
         );
     }
 
-    if (loadingData) {
-        return <p style={styles.loadingMessage}>Cargando datos del punto de venta...</p>;
+    if (loadingProducts) {
+        return <div style={styles.loadingMessage}>Cargando productos y métodos de pago...</div>;
     }
 
-    // Depuración para métodos de pago
-    console.log("Estado de métodos de pago (antes del render):", { metodosPago, metodoPagoSeleccionado });
+    if (error) {
+        return <div style={styles.errorMessage}>{error}</div>;
+    }
 
     return (
         <div style={styles.container}>
-            <h1>Punto de Venta ({selectedStoreSlug})</h1>
+            <h1 style={styles.header}>Punto de Venta ({selectedStoreSlug})</h1>
 
-            {error && <p style={styles.errorMessage}>{error}</p>}
+            {/* Sección de Gestión de Ventas Activas */}
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Gestión de Ventas Activas</h3>
+                <div style={styles.cartSelectionContainer}>
+                    {carts.map((cart, index) => (
+                        <button
+                            key={cart.id}
+                            onClick={() => selectCart(cart.id)}
+                            style={cart.id === activeCartId ? styles.activeCartButton : styles.inactiveCartButton}
+                        >
+                            {cart.alias || `Venta ${index + 1}`}
+                        </button>
+                    ))}
+                    <button onClick={() => setShowNewCartModal(true)} style={styles.newCartButton}>
+                        + Nueva Venta
+                    </button>
+                </div>
 
-            {/* Sección de Búsqueda y Añadir Producto */}
-            <div style={styles.searchAddSection}>
-                <h3>Buscar y Añadir Producto</h3>
-                <form onSubmit={handleBuscarProducto} style={styles.searchForm}>
-                    <input
-                        type="text"
-                        value={busquedaProducto}
-                        onChange={(e) => setBusquedaProducto(e.target.value)}
-                        placeholder="Buscar producto por nombre o código de barras"
-                        style={styles.searchInput}
-                    />
-                    <button type="submit" style={styles.searchButton}>Buscar</button>
-                </form>
-
-                {productoSeleccionado && (
-                    <div style={styles.selectedProductCard}>
-                        <h4>Producto Seleccionado:</h4>
-                        <p><strong>Nombre:</strong> {productoSeleccionado.nombre}</p>
-                        <p><strong>Precio:</strong> ${parseFloat(productoSeleccionado.precio).toFixed(2)}</p>
-                        <p><strong>Stock Disponible:</strong> {productoSeleccionado.stock}</p>
-                        <div style={styles.quantityControls}>
-                            <label>Cantidad:</label>
+                {activeCart && (
+                    <div style={styles.activeCartInfo}>
+                        <h4 style={styles.activeCartTitle}>Venta Activa: {activeCart.alias || activeCart.name}</h4>
+                        <div style={styles.activeCartActions}>
                             <input
-                                type="number"
-                                value={cantidadProducto}
-                                onChange={(e) => setCantidadProducto(parseInt(e.target.value) || 1)}
-                                min="1"
-                                max={productoSeleccionado.stock}
-                                style={styles.quantityInput}
+                                type="text"
+                                placeholder="Nuevo Alias (opcional)"
+                                value={activeCart.alias || ''}
+                                onChange={(e) => updateCartAlias(activeCartId, e.target.value)}
+                                style={styles.input}
                             />
-                            <button onClick={() => handleAgregarProducto(productoSeleccionado, cantidadProducto)} style={styles.addButton}>Añadir a la Venta</button>
+                            <button onClick={handleDeleteActiveCart} style={styles.deleteCartButton}>
+                                Eliminar Venta
+                            </button>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Sección de Resumen de Venta */}
-            <div style={styles.summarySection}>
-                <h2>Resumen de Venta</h2>
-                <p style={styles.totalText}>Total: ${totalVenta.toFixed(2)}</p>
-                <div style={styles.paymentMethodControls}>
-                    <label htmlFor="metodoPago">Método de Pago:</label>
-                    <select
-                        id="metodoPago"
-                        value={metodoPagoSeleccionado}
-                        onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
-                        style={styles.paymentMethodSelect}
-                    >
-                        {metodosPago.length > 0 ? (
-                            metodosPago.map(metodo => (
-                                <option key={metodo.id} value={metodo.nombre}>{metodo.nombre}</option>
-                            ))
-                        ) : (
-                            <option value="">Cargando métodos de pago...</option>
-                        )}
-                    </select>
+            {/* Modal para crear nueva venta */}
+            {showNewCartModal && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3 style={styles.modalHeader}>Crear Nueva Venta</h3>
+                        <input
+                            type="text"
+                            placeholder="Alias para la venta (ej: Cliente A)"
+                            value={newCartAliasInput}
+                            onChange={(e) => setNewCartAliasInput(e.target.value)}
+                            style={styles.input}
+                        />
+                        <div style={styles.modalActions}>
+                            <button onClick={() => setShowNewCartModal(false)} style={styles.modalCancelButton}>
+                                Cancelar
+                            </button>
+                            <button onClick={handleCreateNewCartWithAlias} style={styles.modalConfirmButton}>
+                                Crear Venta
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <button onClick={handleRealizarVenta} style={styles.completeSaleButton}>Realizar Venta</button>
+            )}
+
+            {/* Sección de Búsqueda de Productos por Código de Barras */}
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Buscar Producto por Código de Barras</h3>
+                <div style={styles.inputGroup}>
+                    <input
+                        type="text"
+                        placeholder="Ingresa código de barras o nombre"
+                        value={busquedaProducto}
+                        onChange={(e) => setBusquedaProducto(e.target.value)}
+                        onKeyPress={(e) => { if (e.key === 'Enter') handleBuscarProducto(); }}
+                        style={styles.input}
+                    />
+                    <button onClick={handleBuscarProducto} style={styles.primaryButton}>
+                        Buscar
+                    </button>
+                </div>
+                {productoSeleccionado && (
+                    <div style={styles.foundProductCard}>
+                        <p style={styles.foundProductText}>
+                            <strong>Producto:</strong> {productoSeleccionado.nombre} ({productoSeleccionado.talle}) - ${parseFloat(productoSeleccionado.precio).toFixed(2)}
+                        </p>
+                        <p style={styles.foundProductText}>
+                            Stock Disponible: {productoSeleccionado.stock}
+                        </p>
+                        <div style={styles.productActions}>
+                            <button
+                                onClick={() => handleAddProductoEnVenta(productoSeleccionado, 1)}
+                                disabled={productoSeleccionado.stock === 0}
+                                style={styles.addProductButton}
+                            >
+                                {productoSeleccionado.stock === 0 ? 'Sin Stock' : 'Añadir 1 Ud.'}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* Sección de Productos en Venta (el carrito) */}
-            <div style={styles.saleListSection}>
-                <h2>Productos en el Carrito</h2>
-                {productosEnVenta.length === 0 ? (
-                    <p style={styles.noDataMessage}>Ningún producto en la venta actual.</p>
-                ) : (
+            {/* Carrito de Venta Actual */}
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
+                {activeCart && activeCart.items.length > 0 ? (
                     <>
                         <table style={styles.table}>
                             <thead>
                                 <tr style={styles.tableHeaderRow}>
                                     <th style={styles.th}>Producto</th>
-                                    <th style={styles.th}>Talla</th>
+                                    <th style={styles.th}>Talle</th>
                                     <th style={styles.th}>Cantidad</th>
-                                    <th style={styles.th}>Precio Unitario</th>
+                                    <th style={styles.th}>P. Unitario</th>
                                     <th style={styles.th}>Subtotal</th>
                                     <th style={styles.th}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {currentProductsInCart.map(item => (
-                                    <tr key={item.id} style={styles.tableRow}>
-                                        <td style={styles.td}>{item.nombre}</td>
-                                        <td style={styles.td}>{item.talle}</td>
+                                {activeCart.items.map((item) => (
+                                    <tr key={item.product.id} style={styles.tableRow}>
+                                        <td style={styles.td}>{item.product.nombre}</td>
+                                        <td style={styles.td}>{item.product.talle}</td>
                                         <td style={styles.td}>
-                                            <div style={styles.quantityControlButtons}>
-                                                <button onClick={() => handleDecreaseQuantity(item.id)} style={styles.quantityButton}>-</button>
-                                                <span>{item.cantidad}</span>
-                                                <button onClick={() => handleIncreaseQuantity(item.id)} style={styles.quantityButton}>+</button>
+                                            <div style={styles.quantityControl}>
+                                                <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton}>-</button>
+                                                <span style={styles.quantityText}>{item.quantity}</span>
+                                                <button onClick={() => handleAddProductoEnVenta(item.product, 1)} style={styles.quantityButton}>+</button>
                                             </div>
                                         </td>
-                                        <td style={styles.td}>${parseFloat(item.precio).toFixed(2)}</td>
-                                        <td style={styles.td}>${(parseFloat(item.precio) * item.cantidad).toFixed(2)}</td>
+                                        <td style={styles.td}>${parseFloat(item.product.precio).toFixed(2)}</td>
+                                        <td style={styles.td}>${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
                                         <td style={styles.td}>
-                                            <button onClick={() => handleEliminarProductoDeVenta(item.id)} style={styles.deleteItemButton}>Eliminar</button>
+                                            <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} style={styles.removeButton}>
+                                                Quitar
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                        {totalPagesCart > 1 && (
-                            <div style={styles.paginationControls}>
-                                <button
-                                    onClick={() => paginateCart(currentPageCart - 1)}
-                                    disabled={currentPageCart === 1}
-                                    style={styles.paginationButton}
-                                >
-                                    Anterior
-                                </button>
-                                {Array.from({ length: totalPagesCart }, (_, i) => (
-                                    <button
-                                        key={i + 1}
-                                        onClick={() => paginateCart(i + 1)}
-                                        style={currentPageCart === i + 1 ? { ...styles.paginationButton, ...styles.paginationButtonActive } : styles.paginationButton}
-                                    >
-                                        {i + 1}
-                                    </button>
+                        <h4 style={styles.totalVenta}>Total de Venta: ${activeCart.total.toFixed(2)}</h4>
+
+                        {/* Selector de método de pago */}
+                        <div style={styles.paymentMethodSelectContainer}>
+                            <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de Pago:</label>
+                            <select
+                                id="metodoPago"
+                                value={metodoPagoSeleccionado}
+                                onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
+                                style={styles.input}
+                            >
+                                {metodosPago.map(method => (
+                                    <option key={method.id} value={method.nombre}>{method.nombre}</option>
                                 ))}
-                                <button
-                                    onClick={() => paginateCart(currentPageCart + 1)}
-                                    disabled={currentPageCart === totalPagesCart}
-                                    style={styles.paginationButton}
-                                >
-                                    Siguiente
-                                </button>
-                            </div>
-                        )}
+                            </select>
+                        </div>
+
+                        <button onClick={handleProcesarVenta} style={styles.processSaleButton}>
+                            Procesar Venta
+                        </button>
                     </>
+                ) : (
+                    <p style={styles.noDataMessage}>El carrito activo está vacío. Busca y añade productos.</p>
                 )}
             </div>
 
-            {/* Nueva Sección: Productos Disponibles */}
-            <div style={styles.availableProductsSection}>
-                <h2>Productos Disponibles</h2>
-                {productos.length === 0 ? (
-                    <p style={styles.noDataMessage}>Ningún producto disponible en esta tienda.</p>
+            {/* Lista de Productos Disponibles */}
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Productos Disponibles</h3>
+                <div style={styles.inputGroup}>
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre, talle o código..."
+                        value={busquedaProducto}
+                        onChange={(e) => setBusquedaProducto(e.target.value)}
+                        style={styles.input}
+                    />
+                </div>
+
+                {loadingProducts ? (
+                    <p style={styles.loadingMessage}>Cargando productos...</p>
+                ) : error ? (
+                    <p style={styles.errorMessage}>{error}</p>
                 ) : (
-                    <>
-                        <div style={styles.productListGrid}>
-                            {currentAvailableProducts.map(p => (
-                                <div key={p.id} style={styles.productCard}>
-                                    <h3>{p.nombre}</h3>
-                                    <p>Talla: {p.talle}</p>
-                                    <p>Precio: ${parseFloat(p.precio).toFixed(2)}</p>
-                                    <p>Stock: {p.stock}</p>
-                                    <button
-                                        onClick={() => handleAgregarProducto(p, 1)}
-                                        style={p.stock <= 0 ? { ...styles.addToSaleButton, ...styles.addToSaleButtonDisabled } : styles.addToSaleButton}
-                                        disabled={p.stock <= 0}
-                                    >
-                                        {p.stock > 0 ? 'Añadir (1)' : 'Sin Stock'}
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                        {totalPagesAvailable > 1 && (
-                            <div style={styles.paginationControls}>
-                                <button
-                                    onClick={() => paginateAvailable(currentPageAvailable - 1)}
-                                    disabled={currentPageAvailable === 1}
-                                    style={styles.paginationButton}
-                                >
-                                    Anterior
-                                </button>
-                                {Array.from({ length: totalPagesAvailable }, (_, i) => (
-                                    <button
-                                        key={i + 1}
-                                        onClick={() => paginateAvailable(i + 1)}
-                                        style={currentPageAvailable === i + 1 ? { ...styles.paginationButton, ...styles.paginationButtonActive } : styles.paginationButton}
-                                    >
-                                        {i + 1}
-                                    </button>
-                                ))}
-                                <button
-                                    onClick={() => paginateAvailable(currentPageAvailable + 1)}
-                                    disabled={currentPageAvailable === totalPagesAvailable}
-                                    style={styles.paginationButton}
-                                >
-                                    Siguiente
-                                </button>
-                            </div>
-                        )}
-                    </>
+                    <table style={styles.table}>
+                        <thead>
+                            <tr style={styles.tableHeaderRow}>
+                                <th style={styles.th}>Nombre</th>
+                                <th style={styles.th}>Talle</th>
+                                <th style={styles.th}>Código</th>
+                                <th style={styles.th}>Precio</th>
+                                <th style={styles.th}>Stock</th>
+                                <th style={styles.th}>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredProductosDisponibles.length > 0 ? (
+                                filteredProductosDisponibles.map(product => (
+                                    <tr key={product.id} style={styles.tableRow}>
+                                        <td style={styles.td}>{product.nombre}</td>
+                                        <td style={styles.td}>{product.talle}</td>
+                                        <td style={styles.td}>{product.codigo_barras || 'N/A'}</td>
+                                        <td style={styles.td}>${parseFloat(product.precio).toFixed(2)}</td>
+                                        <td style={styles.td}>{product.stock}</td>
+                                        <td style={styles.td}>
+                                            <button
+                                                onClick={() => handleAddProductoEnVenta(product, 1)}
+                                                disabled={product.stock === 0}
+                                                style={product.stock === 0 ? styles.disabledButton : styles.addButton}
+                                            >
+                                                {product.stock === 0 ? 'Sin Stock' : 'Añadir'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" style={styles.noDataMessage}>
+                                        No se encontraron productos con el filtro aplicado.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 )}
             </div>
 
@@ -571,7 +547,7 @@ const PuntoVenta = () => {
                 </div>
             )}
 
-            {/* Caja de Mensaje de Alerta */}
+            {/* Cuadro de Mensaje de Alerta */}
             {showAlertMessage && (
                 <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
                     <p>{alertMessage}</p>
@@ -584,246 +560,298 @@ const PuntoVenta = () => {
 const styles = {
     container: {
         padding: '20px',
+        fontFamily: 'Inter, sans-serif',
         maxWidth: '1200px',
         margin: '20px auto',
-        backgroundColor: '#fff',
+        backgroundColor: '#f8f9fa',
         borderRadius: '8px',
-        boxShadow: '0 0 10px rgba(0,0,0,0.1)',
-        fontFamily: 'Arial, sans-serif',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        color: '#333',
+    },
+    header: {
+        textAlign: 'center',
+        color: '#2c3e50',
+        marginBottom: '30px',
+        fontSize: '2.5em',
+        fontWeight: 'bold',
+    },
+    section: {
+        backgroundColor: '#ffffff',
+        padding: '25px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        marginBottom: '30px',
+    },
+    sectionHeader: {
+        fontSize: '1.8em',
+        color: '#34495e',
+        marginBottom: '20px',
+        borderBottom: '2px solid #eceff1',
+        paddingBottom: '10px',
     },
     loadingMessage: {
+        padding: '20px',
         textAlign: 'center',
-        marginTop: '50px',
         color: '#555',
+        fontSize: '1.1em',
     },
     accessDeniedMessage: {
+        color: '#dc3545',
+        marginBottom: '10px',
+        padding: '20px',
+        border: '1px solid #dc3545',
         textAlign: 'center',
-        marginTop: '50px',
-        color: 'red',
+        borderRadius: '8px',
+        backgroundColor: '#ffe3e6',
         fontWeight: 'bold',
     },
     noStoreSelectedMessage: {
         padding: '50px',
         textAlign: 'center',
         color: '#777',
+        fontSize: '1.2em',
     },
     errorMessage: {
-        color: 'red',
-        backgroundColor: '#ffe3e6',
-        padding: '10px',
-        borderRadius: '5px',
-        marginBottom: '15px',
-        textAlign: 'center',
-    },
-    searchAddSection: {
-        marginBottom: '30px',
-        border: '1px solid #e0e0e0',
-        padding: '20px',
-        borderRadius: '8px',
-        backgroundColor: '#f9f9f9',
-    },
-    searchForm: {
-        display: 'flex',
-        gap: '10px',
+        color: '#dc3545',
         marginBottom: '20px',
+        border: '1px solid #dc3545',
+        padding: '15px',
+        borderRadius: '8px',
+        backgroundColor: '#ffe3e6',
+        textAlign: 'center',
+        fontWeight: 'bold',
     },
-    searchInput: {
-        flexGrow: 1,
+    cartSelectionContainer: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '10px',
+        marginBottom: '15px',
         padding: '10px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
+        backgroundColor: '#eaf7ff',
+        borderRadius: '5px',
+        border: '1px dashed #a7d9ff',
     },
-    searchButton: {
-        padding: '10px 15px',
+    activeCartButton: {
+        padding: '8px 15px',
         backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
     },
-    selectedProductCard: {
-        border: '1px solid #d4edda',
-        backgroundColor: '#d4edda',
-        padding: '15px',
-        borderRadius: '8px',
-        marginTop: '15px',
-    },
-    quantityControls: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        marginTop: '10px',
-    },
-    quantityInput: {
-        width: '80px',
-        padding: '8px',
+    inactiveCartButton: {
+        padding: '8px 15px',
+        backgroundColor: '#f0f0f0',
+        color: '#333',
         border: '1px solid #ccc',
-        borderRadius: '4px',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
     },
-    addButton: {
+    newCartButton: {
         padding: '8px 15px',
         backgroundColor: '#28a745',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
     },
-    availableProductsSection: {
-        marginBottom: '30px',
-        border: '1px solid #e0e0e0',
-        padding: '20px',
-        borderRadius: '8px',
-        backgroundColor: '#f9f9f9',
-    },
-    productListGrid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-        gap: '20px',
+    activeCartInfo: {
         marginTop: '15px',
-    },
-    productCard: {
-        border: '1px solid #ddd',
-        borderRadius: '8px',
         padding: '15px',
-        textAlign: 'center',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-        backgroundColor: '#fff',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
+        backgroundColor: '#e6ffe6',
+        borderRadius: '8px',
+        border: '1px solid #28a745',
     },
-    addToSaleButton: {
-        marginTop: '10px',
+    activeCartTitle: {
+        marginBottom: '10px',
+        color: '#28a745',
+        fontSize: '1.2em',
+    },
+    activeCartActions: {
+        display: 'flex',
+        gap: '10px',
+        marginBottom: '10px',
+    },
+    deleteCartButton: {
         padding: '8px 15px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    inputGroup: {
+        display: 'flex',
+        gap: '10px',
+        marginBottom: '15px',
+        alignItems: 'center',
+    },
+    input: {
+        flexGrow: 1,
+        padding: '10px 12px',
+        border: '1px solid #dcdcdc',
+        borderRadius: '5px',
+        fontSize: '1em',
+        boxSizing: 'border-box',
+    },
+    primaryButton: {
+        padding: '10px 20px',
         backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        transition: 'background-color 0.2s ease',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
     },
-    addToSaleButtonDisabled: {
-        backgroundColor: '#ccc',
-        cursor: 'not-allowed',
+    foundProductCard: {
+        border: '1px solid #a7d9ff',
+        padding: '15px',
+        borderRadius: '8px',
+        backgroundColor: '#e7f0ff',
+        marginBottom: '15px',
     },
-    saleListSection: {
-        marginBottom: '30px',
+    foundProductText: {
+        margin: '5px 0',
+        color: '#333',
+        fontSize: '1.05em',
     },
-    noDataMessage: {
-        textAlign: 'center',
-        color: '#777',
-        fontStyle: 'italic',
+    productActions: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        marginTop: '10px',
+    },
+    addProductButton: {
+        padding: '10px 20px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
     },
     table: {
         width: '100%',
         borderCollapse: 'collapse',
-        marginTop: '10px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        marginTop: '15px',
         borderRadius: '8px',
         overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
     },
     tableHeaderRow: {
         backgroundColor: '#f2f2f2',
     },
     th: {
-        padding: '12px',
-        border: '1px solid #ddd',
+        padding: '12px 15px',
+        borderBottom: '1px solid #ddd',
         textAlign: 'left',
         fontWeight: 'bold',
-        color: '#333',
+        fontSize: '0.95em',
+        color: '#555',
     },
     tableRow: {
         backgroundColor: 'inherit',
+        transition: 'background-color 0.2s ease',
+        '&:nth-child(even)': {
+            backgroundColor: '#f9f9f9',
+        },
     },
     td: {
-        padding: '10px',
-        border: '1px solid #ddd',
-        verticalAlign: 'top',
+        padding: '10px 15px',
+        borderBottom: '1px solid #eee',
+        verticalAlign: 'middle',
+        fontSize: '0.9em',
     },
-    deleteItemButton: {
+    quantityControl: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+    },
+    quantityButton: {
         padding: '5px 10px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        fontSize: '0.9em',
+        transition: 'background-color 0.3s ease',
+    },
+    quantityText: {
+        minWidth: '20px',
+        textAlign: 'center',
+        fontWeight: 'bold',
+    },
+    removeButton: {
+        padding: '6px 12px',
         backgroundColor: '#dc3545',
         color: 'white',
         border: 'none',
         borderRadius: '4px',
         cursor: 'pointer',
+        fontSize: '0.85em',
+        transition: 'background-color 0.3s ease',
     },
-    quantityControlButtons: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '5px',
-    },
-    quantityButton: {
-        width: '30px',
-        height: '30px',
-        borderRadius: '50%',
-        border: '1px solid #007bff',
-        backgroundColor: '#007bff',
-        color: 'white',
-        fontSize: '1em',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'background-color 0.2s ease',
-    },
-    paginationControls: {
-        display: 'flex',
-        justifyContent: 'center',
-        marginTop: '20px',
-        gap: '10px',
-    },
-    paginationButton: {
-        padding: '8px 15px',
-        border: '1px solid #007bff',
-        borderRadius: '5px',
-        backgroundColor: 'white',
-        color: '#007bff',
-        cursor: 'pointer',
-        transition: 'background-color 0.2s ease, color 0.2s ease',
-    },
-    paginationButtonActive: {
-        backgroundColor: '#007bff',
-        color: 'white',
-    },
-    summarySection: {
-        border: '1px solid #e0e0e0',
-        padding: '20px',
-        borderRadius: '8px',
-        backgroundColor: '#f9f9f9',
+    totalVenta: {
         textAlign: 'right',
-        marginBottom: '30px',
-    },
-    totalText: {
-        fontSize: '1.8em',
+        marginTop: '20px',
+        fontSize: '1.5em',
+        color: '#28a745',
         fontWeight: 'bold',
-        color: '#333',
-        marginBottom: '15px',
     },
-    paymentMethodControls: {
+    paymentMethodSelectContainer: {
         display: 'flex',
-        justifyContent: 'flex-end',
         alignItems: 'center',
         gap: '10px',
         marginBottom: '20px',
     },
-    paymentMethodSelect: {
-        padding: '8px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        minWidth: '150px',
+    paymentMethodLabel: {
+        fontWeight: 'bold',
+        color: '#555',
+        fontSize: '1em',
     },
-    completeSaleButton: {
-        padding: '12px 25px',
-        backgroundColor: '#28a745',
+    processSaleButton: {
+        width: '100%',
+        padding: '15px',
+        backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '8px',
         cursor: 'pointer',
-        fontSize: '1.1em',
+        fontSize: '1.2em',
         fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
+    },
+    noDataMessage: {
+        textAlign: 'center',
+        color: '#777',
+        fontStyle: 'italic',
+        padding: '15px',
+    },
+    addButton: {
+        padding: '5px 10px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+    },
+    disabledButton: {
+        padding: '5px 10px',
+        backgroundColor: '#6c757d',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'not-allowed',
     },
     modalOverlay: {
         position: 'fixed',
@@ -847,6 +875,11 @@ const styles = {
         width: '90%',
         animation: 'fadeIn 0.3s ease-out',
     },
+    modalHeader: {
+        fontSize: '1.5em',
+        color: '#34495e',
+        marginBottom: '20px',
+    },
     modalMessage: {
         fontSize: '1.1em',
         marginBottom: '25px',
@@ -858,7 +891,7 @@ const styles = {
         gap: '20px',
     },
     modalConfirmButton: {
-        backgroundColor: '#dc3545',
+        backgroundColor: '#28a745', // Verde para confirmar
         color: 'white',
         padding: '12px 25px',
         border: 'none',
@@ -867,10 +900,6 @@ const styles = {
         fontSize: '1em',
         fontWeight: 'bold',
         transition: 'background-color 0.3s ease, transform 0.2s ease',
-    },
-    modalConfirmButtonHover: {
-        backgroundColor: '#c82333',
-        transform: 'scale(1.02)',
     },
     modalCancelButton: {
         backgroundColor: '#6c757d',
@@ -882,10 +911,6 @@ const styles = {
         fontSize: '1em',
         fontWeight: 'bold',
         transition: 'background-color 0.3s ease, transform 0.2s ease',
-    },
-    modalCancelButtonHover: {
-        backgroundColor: '#5a6268',
-        transform: 'scale(1.02)',
     },
     alertBox: {
         position: 'fixed',
@@ -904,10 +929,6 @@ const styles = {
         '10%': { opacity: 1, transform: 'translateY(0)' },
         '90%': { opacity: 1, transform: 'translateY(0)' },
         '100%': { opacity: 0, transform: 'translateY(-20px)' },
-    },
-    '@keyframes fadeIn': {
-        '0%': { opacity: 0, transform: 'scale(0.9)' },
-        '100%': { opacity: 1, transform: 'scale(1)' },
     },
 };
 
