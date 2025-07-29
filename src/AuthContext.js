@@ -77,10 +77,6 @@ export const AuthProvider = ({ children }) => {
         console.log("AuthContext: Intentando login para usuario:", username, "Tienda:", storeSlugFromUrl);
         try {
             const payload = { username, password };
-            // No enviar store_slug en la petición de token, ya que la validación se hará después
-            // if (storeSlugFromUrl) {
-            //     payload.store_slug = storeSlugFromUrl; 
-            // }
 
             const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/token/`, payload); 
 
@@ -96,28 +92,39 @@ export const AuthProvider = ({ children }) => {
             setUser(fetchedUser);
             console.log("AuthContext: Detalles de usuario obtenidos:", fetchedUser);
 
-            // --- INICIO DE LA VALIDACIÓN DE TIENDA ---
+            // --- INICIO DE LA VALIDACIÓN DE TIENDA (CON LOGS) ---
+            console.log("AuthContext (Login): Iniciando validación de tienda.");
+            console.log("AuthContext (Login): storeSlugFromUrl:", storeSlugFromUrl);
+            console.log("AuthContext (Login): fetchedUser.tienda:", fetchedUser.tienda);
+            // Si fetchedUser.tienda es un objeto, intentar acceder a .nombre
+            if (fetchedUser.tienda && typeof fetchedUser.tienda === 'object' && fetchedUser.tienda.nombre !== undefined) {
+                console.log("AuthContext (Login): fetchedUser.tienda.nombre:", fetchedUser.tienda.nombre);
+            } else if (fetchedUser.tienda === null) {
+                console.log("AuthContext (Login): fetchedUser.tienda es null.");
+            } else {
+                console.log("AuthContext (Login): fetchedUser.tienda no es un objeto con propiedad 'nombre' o es undefined.");
+            }
+
+
             if (storeSlugFromUrl) {
-                // Si el usuario es superusuario, puede acceder a cualquier tienda
                 if (fetchedUser.is_superuser) {
+                    console.log("AuthContext (Login): Superusuario, permitiendo acceso a cualquier tienda.");
                     selectStore(storeSlugFromUrl);
-                } else if (fetchedUser.tienda && fetchedUser.tienda.nombre === storeSlugFromUrl) {
-                    // Si el usuario tiene una tienda asignada y coincide con la URL
+                } else if (fetchedUser.tienda && typeof fetchedUser.tienda === 'object' && fetchedUser.tienda.nombre === storeSlugFromUrl) {
+                    console.log("AuthContext (Login): Usuario normal con tienda coincidente.");
                     selectStore(storeSlugFromUrl);
                 } else {
-                    // Si el usuario no tiene tienda asignada, o no coincide con la URL,
-                    // y no es superusuario, el login a esa tienda falla.
+                    console.log(`AuthContext (Login): Acceso denegado. Tienda del usuario: ${fetchedUser.tienda?.nombre || 'Ninguna'}, Tienda solicitada: ${storeSlugFromUrl}`);
                     setError(`Acceso denegado a la tienda '${storeSlugFromUrl}'. Tu usuario no está asociado a esta tienda.`);
                     logout(); // Cerrar sesión si la tienda no coincide
                     return false; 
                 }
             } else {
-                // Si no se especificó una tienda en la URL, y el usuario tiene una asignada,
-                // seleccionamos su tienda por defecto.
-                if (fetchedUser.tienda) {
+                if (fetchedUser.tienda && typeof fetchedUser.tienda === 'object' && fetchedUser.tienda.nombre !== undefined) {
+                    console.log("AuthContext (Login): No se especificó tienda en URL, seleccionando tienda por defecto del usuario.");
                     selectStore(fetchedUser.tienda.nombre);
                 } else {
-                    // Si no hay tienda en la URL ni asignada al usuario, no hay tienda seleccionada.
+                    console.log("AuthContext (Login): No hay tienda en la URL ni asignada al usuario. No se selecciona tienda.");
                     setSelectedStoreSlug(null);
                     localStorage.removeItem('selected_store_slug');
                 }
@@ -189,26 +196,39 @@ export const AuthProvider = ({ children }) => {
                         setUser(fetchedUser);
                         console.log("AuthContext: Usuario establecido:", fetchedUser);
 
+                        // --- INICIO DE LA VALIDACIÓN DE TIENDA (CON LOGS) ---
+                        console.log("AuthContext (Load): Iniciando validación de tienda.");
+                        console.log("AuthContext (Load): stored_store_slug:", stored_store_slug);
+                        console.log("AuthContext (Load): fetchedUser.tienda:", fetchedUser.tienda);
+                        if (fetchedUser.tienda && typeof fetchedUser.tienda === 'object' && fetchedUser.tienda.nombre !== undefined) {
+                            console.log("AuthContext (Load): fetchedUser.tienda.nombre:", fetchedUser.tienda.nombre);
+                        } else if (fetchedUser.tienda === null) {
+                            console.log("AuthContext (Load): fetchedUser.tienda es null.");
+                        } else {
+                            console.log("AuthContext (Load): fetchedUser.tienda no es un objeto con propiedad 'nombre' o es undefined.");
+                        }
+
                         // Validar que la tienda seleccionada (si existe) coincida con la del usuario
                         if (stored_store_slug) {
                             if (fetchedUser.is_superuser) {
-                                // Superusuarios pueden mantener cualquier tienda seleccionada
+                                console.log("AuthContext (Load): Superusuario, manteniendo tienda seleccionada.");
                                 selectStore(stored_store_slug);
-                            } else if (fetchedUser.tienda && fetchedUser.tienda.nombre === stored_store_slug) {
-                                // Usuario normal: la tienda debe coincidir
+                            } else if (fetchedUser.tienda && typeof fetchedUser.tienda === 'object' && fetchedUser.tienda.nombre === stored_store_slug) {
+                                console.log("AuthContext (Load): Usuario normal, tienda almacenada coincide.");
                                 selectStore(stored_store_slug);
                             } else {
-                                // La tienda almacenada no coincide con la del usuario, o el usuario no tiene tienda.
-                                // Deseleccionar la tienda y mostrar un mensaje.
                                 console.warn(`AuthContext: La tienda previamente seleccionada '${stored_store_slug}' no coincide con la tienda del usuario o el usuario no tiene tienda. Deseleccionando.`);
                                 setSelectedStoreSlug(null);
                                 localStorage.removeItem('selected_store_slug');
                                 // Podrías añadir un setError aquí si quieres notificar al usuario en la UI
                             }
-                        } else if (fetchedUser.tienda) {
-                            // Si no había tienda seleccionada, pero el usuario tiene una, la seleccionamos
+                        } else if (fetchedUser.tienda && typeof fetchedUser.tienda === 'object' && fetchedUser.tienda.nombre !== undefined) {
+                            console.log("AuthContext (Load): No había tienda seleccionada, seleccionando tienda por defecto del usuario.");
                             selectStore(fetchedUser.tienda.nombre);
+                        } else {
+                            console.log("AuthContext (Load): No hay tienda almacenada ni asignada al usuario. No se selecciona tienda.");
                         }
+                        // --- FIN DE LA VALIDACIÓN DE TIENDA ---
 
 
                     } catch (userError) {
