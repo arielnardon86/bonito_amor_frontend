@@ -1,7 +1,7 @@
 // BONITO_AMOR/frontend/src/components/Productos.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import Barcode from 'react-barcode';
+import Barcode from 'react-barcode'; // Se mantiene porque se usa en EtiquetasImpresion
 import EtiquetasImpresion from './EtiquetasImpresion';
 import { useAuth } from '../AuthContext';
 
@@ -59,10 +59,10 @@ function Productos() {
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   const [editingStockId, setEditingStockId] = useState(null);
-  const [newStockValue, setNewStockValue] = useState('');
+  const [newStockValue, setNewStockValue] = '';
 
-  const [editingPriceId, setEditingPriceId] = useState(null);
-  const [newPriceValue, setNewPriceValue] = '';
+  const [editingPriceId, setEditingPriceId] = null;
+  const [newPriceValue, setNewPriceValue] = useState(''); // Inicializar como cadena vacía
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -70,13 +70,16 @@ function Productos() {
 
   const [showAlertMessage, setShowAlertMessage] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState('success'); // 'success', 'error', 'info'
 
   const showCustomAlert = (message, type = 'success') => {
       setAlertMessage(message);
+      setAlertType(type); // Establecer el tipo de alerta
       setShowAlertMessage(true);
       setTimeout(() => {
           setShowAlertMessage(false);
           setAlertMessage('');
+          setAlertType('success'); // Reiniciar a predeterminado
       }, 3000);
   };
 
@@ -431,7 +434,7 @@ function Productos() {
                 <th style={styles.th}>Nombre</th>
                 <th style={styles.th}>Talle</th>
                 <th style={styles.th}>Código</th>
-                <th style={styles.th}>Imagen Código</th>
+                {/* <th style={styles.th}>Imagen Código</th> -- ELIMINADA */}
                 <th style={styles.th}>P. Venta</th>
                 <th style={styles.th}>Stock</th>
                 <th style={styles.th}>Acciones</th>
@@ -462,7 +465,7 @@ function Productos() {
                   <td style={styles.td}>{producto.nombre}</td>
                   <td style={styles.td}>{producto.talle || 'N/A'}</td>
                   <td style={styles.td}>{producto.codigo_barras || 'N/A'}</td>
-                  <td style={styles.td}>
+                  {/* <td style={styles.td}> -- ELIMINADA
                     {producto.codigo_barras ? (
                       <div style={styles.barcodeContainer}>
                           <Barcode
@@ -480,7 +483,7 @@ function Productos() {
                     ) : (
                       <span style={styles.noBarcodeText}>Sin código</span>
                     )}
-                  </td>
+                  </td> */}
                   <td style={styles.td}>
                     {editingPriceId === producto.id ? (
                       <div style={styles.editControls}>
@@ -564,7 +567,7 @@ function Productos() {
 
       {/* Cuadro de Mensaje de Alerta */}
       {showAlertMessage && (
-          <div style={styles.alertBox}>
+          <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
               <p>{alertMessage}</p>
           </div>
       )}
@@ -876,7 +879,7 @@ const styles = {
         position: 'fixed',
         top: '20px',
         right: '20px',
-        backgroundColor: '#28a745',
+        backgroundColor: '#28a745', // Default to success green
         color: 'white',
         padding: '15px 25px',
         borderRadius: '8px',
