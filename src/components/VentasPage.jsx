@@ -59,6 +59,19 @@ const VentasPage = () => {
         }, 3000);
     };
 
+    /**
+     * Función para verificar si todos los detalles de una venta están anulados individualmente.
+     * @param {Array} detalles - Array de objetos detalle de venta.
+     * @returns {boolean} - True si todos los detalles están anulados, False en caso contrario.
+     */
+    const areAllDetailsAnnulled = (detalles) => {
+        if (!detalles || detalles.length === 0) {
+            return false; // Una venta sin detalles no se considera completamente anulada por detalles
+        }
+        return detalles.every(detalle => detalle.anulado_individualmente);
+    };
+
+
     const fetchVentas = useCallback(async (pageUrl = null) => {
         if (!token || !selectedStoreSlug || !stores.length) { 
             setLoading(false);
@@ -96,7 +109,16 @@ const VentasPage = () => {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: params
             });
-            setVentas(response.data.results || response.data);
+            
+            // Mapear las ventas para añadir la propiedad 'todos_detalles_anulados'
+            const updatedVentas = response.data.results.map(venta => ({
+                ...venta,
+                // Calcular si todos los detalles están anulados individualmente
+                // Esto es para la lógica de mostrar 'Sí' en la columna 'Anulada' de la venta principal
+                todos_detalles_anulados: areAllDetailsAnnulled(venta.detalles)
+            }));
+
+            setVentas(updatedVentas || []); // Usar el array actualizado
             setNextPageUrl(response.data.next);
             setPrevPageUrl(response.data.previous);
             if (pageUrl) {
@@ -186,28 +208,10 @@ const VentasPage = () => {
                 });
                 
                 showCustomAlert('Producto de la venta anulado con éxito!', 'success');
-                // CAMBIO CLAVE: Forzar una re-renderización completa de la lista de ventas
-                // Esto es más robusto que solo confiar en el estado local después de la anulación.
+                // Al anular un detalle, recargar todas las ventas
+                // Esto asegura que el estado de 'anulado_individualmente' y el 'total' de la venta se actualicen
+                // Y que la lógica de 'todos_detalles_anulados' se recalcule
                 fetchVentas(); 
-
-                // Si quieres una actualización más "suave" sin recargar todo,
-                // podrías actualizar el estado 'ventas' directamente, pero es más complejo:
-                /*
-                setVentas(prevVentas => prevVentas.map(venta => {
-                    if (venta.id === ventaId) {
-                        const updatedDetalles = venta.detalles.map(det => 
-                            det.id === detalleId ? { ...det, anulado_individualmente: true } : det
-                        );
-                        // Recalcular el total en el frontend si es necesario,
-                        // o confiar en que el backend lo envía actualizado.
-                        const newTotal = updatedDetalles
-                            .filter(det => !det.anulado_individualmente)
-                            .reduce((sum, det) => sum + parseFloat(det.subtotal || 0), 0);
-                        return { ...venta, detalles: updatedDetalles, total: newTotal.toFixed(2) };
-                    }
-                    return venta;
-                }));
-                */
 
             } catch (err) {
                 showCustomAlert('Error al anular el detalle de la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
@@ -314,11 +318,13 @@ const VentasPage = () => {
                                     <tr>
                                         <td style={styles.td}>{venta.id}</td>
                                         <td style={styles.td}>{new Date(venta.fecha_venta).toLocaleString()}</td>
-                                        {/* Asegurarse de que venta.total sea un número antes de parseFloat */}
                                         <td style={styles.td}>${parseFloat(venta.total || 0).toFixed(2)}</td> 
                                         <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
                                         <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
-                                        <td style={styles.td}>{venta.anulada ? 'Sí' : 'No'}</td>
+                                        {/* Lógica para mostrar "Sí" si la venta está anulada o si todos sus detalles están anulados */}
+                                        <td style={styles.td}>
+                                            {venta.anulada || venta.todos_detalles_anulados ? 'Sí' : 'No'}
+                                        </td>
                                         <td style={styles.td}>
                                             <button
                                                 onClick={() => setExpandedSaleId(expandedSaleId === venta.id ? null : venta.id)}
@@ -326,7 +332,8 @@ const VentasPage = () => {
                                             >
                                                 {expandedSaleId === venta.id ? 'Ocultar Detalles' : 'Ver Detalles'}
                                             </button>
-                                            {!venta.anulada && (
+                                            {/* El botón de Anular Venta solo se muestra si la venta no está anulada Y no todos los detalles están anulados */}
+                                            {!venta.anulada && !venta.todos_detalles_anulados && (
                                                 <button
                                                     onClick={() => handleAnularVenta(venta.id)}
                                                     style={{ ...styles.anularButton, marginLeft: '10px' }}
@@ -360,9 +367,10 @@ const VentasPage = () => {
                                                                     <td style={styles.detailTd}>{detalle.cantidad}</td>
                                                                     <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario_venta || 0).toFixed(2)}</td>
                                                                     <td style={styles.detailTd}>${parseFloat(detalle.subtotal || 0).toFixed(2)}</td>
+                                                                    {/* Mostrar el estado real de anulado_individualmente */}
                                                                     <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
                                                                     <td style={styles.detailTd}>
-                                                                        {/* Solo mostrar el botón si la venta no está anulada y el detalle no está anulado individualmente */}
+                                                                        {/* El botón solo se muestra si la venta no está anulada Y el detalle no está anulado individualmente */}
                                                                         {!venta.anulada && !detalle.anulado_individualmente && ( 
                                                                             <button
                                                                                 onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
