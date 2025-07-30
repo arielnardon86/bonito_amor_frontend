@@ -22,50 +22,32 @@ const normalizeApiUrl = (url) => {
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const VentasPage = () => {
-    // Obtener el usuario, token, estado de autenticación, carga de autenticación,
-    // slug de la tienda seleccionada y la lista de tiendas del AuthContext
     const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth(); 
     
-    // Estado para almacenar la lista de ventas
     const [ventas, setVentas] = useState([]);
-    // Estado para indicar si los datos están cargando
     const [loading, setLoading] = useState(true);
-    // Estado para almacenar mensajes de error
     const [error, setError] = useState(null);
 
-    // Estado para el filtro de fecha (YYYY-MM-DD)
     const [filterDate, setFilterDate] = useState('');
-    // Estado para el filtro de vendedor (ID del usuario)
     const [filterSellerId, setFilterSellerId] = useState('');
-    // Estado para el filtro de ventas anuladas ('', 'true', 'false')
     const [filterAnulada, setFilterAnulada] = useState('');
 
-    // Estados para la paginación
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
     const [currentPageNumber, setCurrentPageNumber] = useState(1);
 
-    // Estado para controlar la expansión de los detalles de una venta
     const [expandedSaleId, setExpandedSaleId] = useState(null); 
 
-    // Estados para el modal de confirmación personalizado
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmMessage, setConfirmMessage] = useState('');
     const [confirmAction, setConfirmAction] = useState(() => () => {});
 
-    // Estados para el cuadro de mensaje de alerta personalizado
     const [showAlertMessage, setShowAlertMessage] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
-    const [alertType, setAlertType] = useState('success'); // 'success', 'error', 'info'
+    const [alertType, setAlertType] = useState('success');
 
-    // Estado para almacenar la lista de vendedores disponibles
     const [sellers, setSellers] = useState([]);
 
-    /**
-     * Muestra un cuadro de mensaje de alerta personalizado.
-     * @param {string} message - El mensaje a mostrar.
-     * @param {string} type - El tipo de alerta ('success', 'error', 'info').
-     */
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
         setAlertType(type); 
@@ -77,18 +59,12 @@ const VentasPage = () => {
         }, 3000);
     };
 
-    /**
-     * Fetches sales data from the backend.
-     * @param {string|null} pageUrl - The URL for pagination (next/previous page), or null for the first page.
-     */
     const fetchVentas = useCallback(async (pageUrl = null) => {
-        // No intentar cargar ventas si no hay token, tienda seleccionada o si las tiendas aún no han cargado
         if (!token || !selectedStoreSlug || !stores.length) { 
             setLoading(false);
             return;
         }
 
-        // Obtener el ID de la tienda a partir del slug seleccionado
         const store = stores.find(s => s.nombre === selectedStoreSlug);
         if (!store) {
             console.warn("VentasPage: No se encontró la tienda con el slug:", selectedStoreSlug);
@@ -96,17 +72,16 @@ const VentasPage = () => {
             setError("No se pudo cargar la tienda seleccionada.");
             return;
         }
-        const storeId = store.id; // ID de la tienda (UUID)
+        const storeId = store.id;
 
         setLoading(true);
         setError(null);
         try {
             const url = pageUrl || `${BASE_API_ENDPOINT}/api/ventas/`;
             const params = {
-                tienda: storeId, // Enviar el ID de la tienda (UUID) para filtrar
+                tienda: storeId,
             };
 
-            // Añadir filtros si están presentes
             if (filterDate) {
                 params.fecha_venta__date = filterDate; 
             }
@@ -124,7 +99,6 @@ const VentasPage = () => {
             setVentas(response.data.results || response.data);
             setNextPageUrl(response.data.next);
             setPrevPageUrl(response.data.previous);
-            // Calcular el número de página actual basado en la URL de paginación
             if (pageUrl) {
                 const urlParams = new URLSearchParams(new URL(pageUrl).search);
                 setCurrentPageNumber(parseInt(urlParams.get('page')) || 1);
@@ -132,31 +106,25 @@ const VentasPage = () => {
                 setCurrentPageNumber(1);
             }
         } catch (err) {
-            setError('Error al cargar las ventas: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setError('Error al cargar las ventas: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
             console.error('Error fetching ventas:', err.response || err.message);
         } finally {
             setLoading(false);
         }
     }, [token, selectedStoreSlug, stores, filterDate, filterSellerId, filterAnulada]);
 
-    /**
-     * Fetches sellers (users) data from the backend for the current selected store.
-     */
     const fetchSellers = useCallback(async () => {
-        // No intentar cargar vendedores si no hay token, tienda seleccionada o si las tiendas aún no han cargado
         if (!token || !selectedStoreSlug || !stores.length) return; 
 
-        // Obtener el ID de la tienda a partir del slug seleccionado
         const store = stores.find(s => s.nombre === selectedStoreSlug);
         if (!store) {
             console.warn("VentasPage: No se encontró la tienda con el slug:", selectedStoreSlug);
             setSellers([]);
             return;
         }
-        const storeId = store.id; // ID de la tienda (UUID)
+        const storeId = store.id;
 
         try {
-            // Enviar el ID de la tienda (UUID) para filtrar los usuarios
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { tienda: storeId } 
@@ -164,36 +132,25 @@ const VentasPage = () => {
             setSellers(response.data.results || response.data);
         } catch (err) {
             console.error('Error fetching sellers:', err.response ? err.response.data : err.message);
-            setError(`Error al cargar vendedores: ${err.response?.data ? JSON.stringify(err.response.data) : err.message}`);
+            setError(`Error al cargar vendedores: ${err.response?.data ? JSON.stringify(err.response.data) : err.message}`, 'error');
         }
     }, [token, selectedStoreSlug, stores]); 
 
-    // Efecto para cargar ventas y vendedores cuando cambian las dependencias de autenticación o tienda
     useEffect(() => {
-        // Solo proceder si la autenticación ha terminado, el usuario está autenticado,
-        // es superusuario y hay una tienda seleccionada.
-        // También se espera que la lista de 'stores' haya cargado.
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
             if (stores.length > 0) { 
                 fetchVentas();
                 fetchSellers();
             }
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
-            // Si no está autenticado o no es superusuario, mostrar mensaje de acceso denegado
             setError("Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.");
             setLoading(false);
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
-            // Si está autenticado pero no hay tienda seleccionada, dejar de cargar y no mostrar ventas
             setLoading(false); 
         }
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchVentas, fetchSellers, stores]); 
 
 
-    /**
-     * Maneja la anulación de una venta completa.
-     * Muestra un modal de confirmación antes de proceder.
-     * @param {string} ventaId - El ID de la venta a anular.
-     */
     const handleAnularVenta = async (ventaId) => {
         setConfirmMessage('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.');
         setConfirmAction(() => async () => {
@@ -212,18 +169,19 @@ const VentasPage = () => {
         setShowConfirmModal(true);
     };
 
-    /**
-     * Maneja la anulación de un producto individual dentro de una venta.
-     * Muestra un modal de confirmación antes de proceder.
-     * @param {string} ventaId - El ID de la venta a la que pertenece el detalle.
-     * @param {string} detalleId - El ID del detalle de venta a anular.
-     */
     const handleAnularDetalleVenta = async (ventaId, detalleId) => {
+        console.log("Attempting to annul sales detail:");
+        console.log("Venta ID:", ventaId);
+        console.log("Detalle ID:", detalleId);
+
         setConfirmMessage('¿Estás seguro de que quieres ANULAR este producto de la venta? Esto revertirá el stock del producto.');
         setConfirmAction(() => async () => {
             setShowConfirmModal(false); 
             try {
-                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/`, { detalle_id: detalleId }, {
+                const payload = { detalle_id: detalleId };
+                console.log("Sending payload:", payload);
+
+                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/`, payload, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 showCustomAlert('Producto de la venta anulado con éxito!', 'success');
@@ -236,17 +194,14 @@ const VentasPage = () => {
         setShowConfirmModal(true);
     };
 
-    // Renderizado condicional basado en el estado de autenticación y carga
     if (authLoading || (isAuthenticated && !user)) { 
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    // Restringir acceso solo a superusuarios
     if (!isAuthenticated || !user.is_superuser) { 
         return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.</div>;
     }
 
-    // Mensaje si no hay tienda seleccionada
     if (!selectedStoreSlug) {
         return (
             <div style={styles.noStoreSelectedMessage}>
@@ -255,12 +210,10 @@ const VentasPage = () => {
         );
     }
 
-    // Mensaje de carga de ventas
     if (loading) {
         return <div style={styles.loadingMessage}>Cargando ventas de {selectedStoreSlug}...</div>;
     }
 
-    // Mensaje de error
     if (error) {
         return <div style={styles.errorMessage}>{error}</div>;
     }
@@ -371,6 +324,7 @@ const VentasPage = () => {
                                                             <th style={styles.th}>Cantidad</th>
                                                             <th style={styles.th}>Precio Unitario</th>
                                                             <th style={styles.th}>Subtotal</th>
+                                                            <th style={styles.th}>Anulado</th> {/* Nuevo encabezado */}
                                                             <th style={styles.th}>Acciones Detalle</th>
                                                         </tr>
                                                     </thead>
@@ -382,8 +336,10 @@ const VentasPage = () => {
                                                                     <td style={styles.detailTd}>{detalle.cantidad}</td>
                                                                     <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario_venta).toFixed(2)}</td>
                                                                     <td style={styles.detailTd}>${parseFloat(detalle.subtotal).toFixed(2)}</td>
+                                                                    <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td> {/* Mostrar estado */}
                                                                     <td style={styles.detailTd}>
-                                                                        {!venta.anulada && ( 
+                                                                        {/* Solo mostrar el botón si la venta no está anulada y el detalle no está anulado individualmente */}
+                                                                        {!venta.anulada && !detalle.anulado_individualmente && ( 
                                                                             <button
                                                                                 onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
                                                                                 style={styles.anularDetalleButton}
@@ -396,7 +352,7 @@ const VentasPage = () => {
                                                             ))
                                                         ) : (
                                                             <tr>
-                                                                <td colSpan="5" style={styles.noDataMessage}>No hay detalles para esta venta.</td>
+                                                                <td colSpan="6" style={styles.noDataMessage}>No hay detalles para esta venta.</td>
                                                             </tr>
                                                         )}
                                                     </tbody>
