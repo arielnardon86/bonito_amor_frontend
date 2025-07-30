@@ -181,15 +181,34 @@ const VentasPage = () => {
                 const payload = { detalle_id: detalleId };
                 console.log("Sending payload:", payload);
 
-                const response = await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/`, payload, {
+                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/`, payload, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                // Si la operación fue exitosa (código 200 OK), actualizamos el estado del detalle en el frontend
-                // sin necesidad de recargar todas las ventas si la respuesta ya contiene el detalle actualizado.
-                // Sin embargo, para simplificar y asegurar consistencia, fetchVentas() es lo más robusto.
                 showCustomAlert('Producto de la venta anulado con éxito!', 'success');
-                fetchVentas(); // Re-fetch all sales to ensure UI is updated with new total and anulado_individualmente status
+                // CAMBIO CLAVE: Forzar una re-renderización completa de la lista de ventas
+                // Esto es más robusto que solo confiar en el estado local después de la anulación.
+                fetchVentas(); 
+
+                // Si quieres una actualización más "suave" sin recargar todo,
+                // podrías actualizar el estado 'ventas' directamente, pero es más complejo:
+                /*
+                setVentas(prevVentas => prevVentas.map(venta => {
+                    if (venta.id === ventaId) {
+                        const updatedDetalles = venta.detalles.map(det => 
+                            det.id === detalleId ? { ...det, anulado_individualmente: true } : det
+                        );
+                        // Recalcular el total en el frontend si es necesario,
+                        // o confiar en que el backend lo envía actualizado.
+                        const newTotal = updatedDetalles
+                            .filter(det => !det.anulado_individualmente)
+                            .reduce((sum, det) => sum + parseFloat(det.subtotal || 0), 0);
+                        return { ...venta, detalles: updatedDetalles, total: newTotal.toFixed(2) };
+                    }
+                    return venta;
+                }));
+                */
+
             } catch (err) {
                 showCustomAlert('Error al anular el detalle de la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
                 console.error('Error anulando detalle de venta:', err.response || err);
