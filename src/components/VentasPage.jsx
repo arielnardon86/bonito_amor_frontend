@@ -110,6 +110,9 @@ const VentasPage = () => {
                 params: params
             });
             
+            // *** NUEVO LOG: Inspeccionar los datos recibidos del backend ***
+            console.log("VentasPage: Datos de ventas recibidos del backend:", response.data.results);
+
             // Mapear las ventas para añadir la propiedad 'todos_detalles_anulados'
             const updatedVentas = response.data.results.map(venta => ({
                 ...venta,
@@ -117,6 +120,10 @@ const VentasPage = () => {
                 // Esto es para la lógica de mostrar 'Sí' en la columna 'Anulada' de la venta principal
                 todos_detalles_anulados: areAllDetailsAnnulled(venta.detalles)
             }));
+
+            // *** NUEVO LOG: Inspeccionar los datos de ventas después de añadir 'todos_detalles_anulados' ***
+            console.log("VentasPage: Datos de ventas después de procesamiento en frontend:", updatedVentas);
+
 
             setVentas(updatedVentas || []); // Usar el array actualizado
             setNextPageUrl(response.data.next);
