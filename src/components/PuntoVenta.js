@@ -111,9 +111,11 @@ const PuntoVenta = () => {
                 const metodosPagoResponse = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
-                setMetodosPago(metodosPagoResponse.data);
-                if (metodosPagoResponse.data.length > 0) {
-                    setMetodoPagoSeleccionado(metodosPagoResponse.data[0].nombre); // Seleccionar el primero por defecto
+                // CORRECCIÓN CLAVE: Asegurarse de que metodosPago sea un array, accediendo a .results si existe
+                const fetchedMetodosPago = metodosPagoResponse.data.results || metodosPagoResponse.data;
+                setMetodosPago(fetchedMetodosPago);
+                if (fetchedMetodosPago.length > 0) {
+                    setMetodoPagoSeleccionado(fetchedMetodosPago[0].nombre); // Seleccionar el primero por defecto
                 }
 
             } catch (err) {
@@ -308,7 +310,7 @@ const PuntoVenta = () => {
         }
     };
 
-    if (authLoading || (isAuthenticated && !user)) { // Añadido user check para evitar errores si user es null
+    if (authLoading || (isAuthenticated && !user)) { 
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
@@ -933,7 +935,7 @@ const styles = {
         gap: '20px',
     },
     modalConfirmButton: {
-        backgroundColor: '#28a745', // Verde para confirmar
+        backgroundColor: '#28a745', 
         color: 'white',
         padding: '12px 25px',
         border: 'none',
