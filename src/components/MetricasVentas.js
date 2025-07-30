@@ -22,7 +22,7 @@ const normalizeApiUrl = (url) => {
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const VentasPage = () => {
-    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth(); // Añadir 'stores'
+    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth(); 
     
     const [ventas, setVentas] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -66,16 +66,27 @@ const VentasPage = () => {
     };
 
     const fetchVentas = useCallback(async (pageUrl = null) => {
-        if (!token || !selectedStoreSlug) {
+        if (!token || !selectedStoreSlug || !stores.length) { // Asegurar que las tiendas estén cargadas
             setLoading(false);
             return;
         }
+
+        // Obtener el ID de la tienda a partir del slug
+        const store = stores.find(s => s.nombre === selectedStoreSlug);
+        if (!store) {
+            console.warn("VentasPage: No se encontró la tienda con el slug:", selectedStoreSlug);
+            setLoading(false);
+            setError("No se pudo cargar la tienda seleccionada.");
+            return;
+        }
+        const storeId = store.id; // ID de la tienda
+
         setLoading(true);
         setError(null);
         try {
             const url = pageUrl || `${BASE_API_ENDPOINT}/api/ventas/`;
             const params = {
-                tienda: selectedStoreSlug, // Siempre filtrar por la tienda seleccionada
+                tienda: storeId, // CAMBIO CLAVE: Enviar el ID de la tienda
             };
 
             // Añadir filtros si están presentes
@@ -109,22 +120,20 @@ const VentasPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [token, selectedStoreSlug, filterDate, filterSellerId, filterAnulada]);
+    }, [token, selectedStoreSlug, stores, filterDate, filterSellerId, filterAnulada]); // Añadir 'stores' a las dependencias
 
     const fetchSellers = useCallback(async () => {
-        if (!token || !selectedStoreSlug || !stores.length) return; // Añadir stores.length para asegurar que las tiendas estén cargadas
+        if (!token || !selectedStoreSlug || !stores.length) return; 
 
-        // Obtener el ID de la tienda a partir del slug
         const store = stores.find(s => s.nombre === selectedStoreSlug);
         if (!store) {
             console.warn("VentasPage: No se encontró la tienda con el slug:", selectedStoreSlug);
             setSellers([]);
             return;
         }
-        const storeId = store.id; // ID de la tienda
+        const storeId = store.id; 
 
         try {
-            // Enviar el ID de la tienda en lugar del slug
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { tienda: storeId } 
@@ -137,17 +146,21 @@ const VentasPage = () => {
     }, [token, selectedStoreSlug, stores]); 
 
     useEffect(() => {
-        // Solo permitir acceso si es superusuario
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
-            fetchVentas();
-            fetchSellers();
+            // Solo llamar a fetchUsers y fetchVentas si 'stores' ya está cargado.
+            // La dependencia 'stores' en fetchVentas y fetchSellers se encargará de re-ejecutar si stores cambia.
+            // Aquí solo nos aseguramos de que no se ejecuten si las tiendas aún no están disponibles.
+            if (stores.length > 0) { 
+                fetchVentas();
+                fetchSellers();
+            }
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
             setError("Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.");
             setLoading(false);
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false); 
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchVentas, fetchSellers]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchVentas, fetchSellers, stores]); // Añadir 'stores' aquí también
 
 
     const handleAnularVenta = async (ventaId) => {
