@@ -1,11 +1,37 @@
-// BONITO_AMOR/frontend/src/components/VentasPage.jsx
-
+// BONITO_AMOR/frontend/src/components/MetricasVentas.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 
-// URL base de la API, obtenida de las variables de entorno de React
-const API_BASE_URL = process.env.REACT_APP_API_URL; 
+// Importaciones de Chart.js
+import { Bar, Pie, Line } from 'react-chartjs-2';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    ArcElement,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+} from 'chart.js';
+
+// Registrar los componentes de Chart.js que vamos a usar
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    ArcElement,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend
+);
+
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 // Función para normalizar la URL base, eliminando cualquier /api/ o barra final
 const normalizeApiUrl = (url) => {
@@ -21,384 +47,389 @@ const normalizeApiUrl = (url) => {
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
-const VentasPage = () => {
-    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth(); 
-    
-    const [ventas, setVentas] = useState([]);
-    const [loading, setLoading] = useState(true);
+const MetricasVentas = () => {
+    // Obtener el usuario, estado de autenticación, carga de autenticación, slug de la tienda seleccionada y token del AuthContext
+    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, stores } = useAuth(); 
+
+    // Estado para las métricas de ventas obtenidas
+    const [metricas, setMetricas] = useState(null);
+    // Estado para indicar si las métricas están cargando
+    const [loadingMetrics, setLoadingMetrics] = useState(true);
+    // Estado para almacenar mensajes de error
     const [error, setError] = useState(null);
 
-    // Nuevo estado para el filtro de fecha (YYYY-MM-DD)
-    const [filterDate, setFilterDate] = useState('');
-    // Estado para el filtro de vendedor (ID del usuario)
-    const [filterSellerId, setFilterSellerId] = useState('');
-    const [filterAnulada, setFilterAnulada] = useState('');
+    // CAMBIO: Nuevo estado para el filtro de período (day, week, month, year) - POR DEFECTO 'day'
+    const [periodFilter, setPeriodFilter] = useState('day'); 
 
-    const [nextPageUrl, setNextPageUrl] = useState(null);
-    const [prevPageUrl, setPrevPageUrl] = useState(null);
-    const [currentPageNumber, setCurrentPageNumber] = useState(1);
+    // Estados para los filtros existentes (sin cambios)
+    const [sellerFilter, setSellerFilter] = useState('');
+    const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
 
-    const [expandedSaleId, setExpandedSaleId] = useState(null); 
+    const [availableSellers, setAvailableSellers] = useState([]);
+    const [availablePaymentMethods, setAvailablePaymentMethods] = useState([]);
 
-    // Estados para el modal de confirmación
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [confirmMessage, setConfirmMessage] = useState('');
-    const [confirmAction, setConfirmAction] = useState(() => () => {});
-
-    // Estados para el cuadro de mensaje de alerta personalizado
-    const [showAlertMessage, setShowAlertMessage] = useState(false);
-    const [alertMessage, setAlertMessage] = useState('');
-    const [alertType, setAlertType] = useState('success'); // 'success', 'error', 'info'
-
-    // Estado para almacenar la lista de vendedores disponibles
-    const [sellers, setSellers] = useState([]);
-
-
-    const showCustomAlert = (message, type = 'success') => {
-        setAlertMessage(message);
-        setAlertType(type); // Establecer el tipo de alerta
-        setShowAlertMessage(true);
-        setTimeout(() => {
-            setShowAlertMessage(false);
-            setAlertMessage('');
-            setAlertType('success'); // Reiniciar a predeterminado
-        }, 3000);
-    };
-
-    const fetchVentas = useCallback(async (pageUrl = null) => {
-        if (!token || !selectedStoreSlug || !stores.length) { // Asegurar que las tiendas estén cargadas
-            setLoading(false);
-            return;
-        }
-
+    // Función para obtener la lista de usuarios (vendedores)
+    const fetchUsers = useCallback(async () => {
+        if (!token || !selectedStoreSlug || !stores.length) return; // Añadir stores.length para asegurar que las tiendas estén cargadas
+        
         // Obtener el ID de la tienda a partir del slug
         const store = stores.find(s => s.nombre === selectedStoreSlug);
         if (!store) {
-            console.warn("VentasPage: No se encontró la tienda con el slug:", selectedStoreSlug);
-            setLoading(false);
-            setError("No se pudo cargar la tienda seleccionada.");
+            console.warn("MetricasVentas: No se encontró la tienda con el slug:", selectedStoreSlug);
+            setAvailableSellers([]);
             return;
         }
         const storeId = store.id; // ID de la tienda
 
-        setLoading(true);
-        setError(null);
-        try {
-            const url = pageUrl || `${BASE_API_ENDPOINT}/api/ventas/`;
-            const params = {
-                tienda: storeId, // CAMBIO CLAVE: Enviar el ID de la tienda
-            };
-
-            // Añadir filtros si están presentes
-            if (filterDate) {
-                params.fecha_venta__date = filterDate; 
-            }
-            if (filterSellerId) {
-                params.usuario = filterSellerId;
-            }
-            if (filterAnulada !== '') { 
-                params.anulada = filterAnulada;
-            }
-
-            const response = await axios.get(url, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: params
-            });
-            setVentas(response.data.results || response.data);
-            setNextPageUrl(response.data.next);
-            setPrevPageUrl(response.data.previous);
-            // Calcular el número de página actual
-            if (pageUrl) {
-                const urlParams = new URLSearchParams(pageUrl.split('?')[1]);
-                setCurrentPageNumber(parseInt(urlParams.get('page')) || 1);
-            } else {
-                setCurrentPageNumber(1);
-            }
-        } catch (err) {
-            setError('Error al cargar las ventas: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
-            console.error('Error fetching ventas:', err.response || err.message);
-        } finally {
-            setLoading(false);
-        }
-    }, [token, selectedStoreSlug, stores, filterDate, filterSellerId, filterAnulada]); // Añadir 'stores' a las dependencias
-
-    const fetchSellers = useCallback(async () => {
-        if (!token || !selectedStoreSlug || !stores.length) return; 
-
-        const store = stores.find(s => s.nombre === selectedStoreSlug);
-        if (!store) {
-            console.warn("VentasPage: No se encontró la tienda con el slug:", selectedStoreSlug);
-            setSellers([]);
-            return;
-        }
-        const storeId = store.id; 
-
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
-                params: { tienda: storeId } 
+                params: { tienda: storeId } // Enviar el ID de la tienda
             });
-            setSellers(response.data.results || response.data);
+            setAvailableSellers(response.data.results || response.data);
         } catch (err) {
-            console.error('Error fetching sellers:', err.response ? err.response.data : err.message);
+            console.error("Error al cargar vendedores:", err.response ? err.response.data : err.message);
             setError(`Error al cargar vendedores: ${err.response?.data ? JSON.stringify(err.response.data) : err.message}`);
         }
     }, [token, selectedStoreSlug, stores]); 
 
-    useEffect(() => {
-        if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
-            // Solo llamar a fetchUsers y fetchVentas si 'stores' ya está cargado.
-            // La dependencia 'stores' en fetchVentas y fetchSellers se encargará de re-ejecutar si stores cambia.
-            // Aquí solo nos aseguramos de que no se ejecuten si las tiendas aún no están disponibles.
-            if (stores.length > 0) { 
-                fetchVentas();
-                fetchSellers();
-            }
-        } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
-            setError("Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.");
-            setLoading(false);
-        } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
-            setLoading(false); 
+    // Función para obtener los métodos de pago
+    const fetchPaymentMethods = useCallback(async () => {
+        if (!token) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            setAvailablePaymentMethods(response.data.results || response.data);
+        } catch (err) {
+            console.error("Error al cargar métodos de pago:", err.response ? err.response.data : err.message);
+            setError(`Error al cargar métodos de pago: ${err.response?.data ? JSON.stringify(err.response.data) : err.message}`);
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchVentas, fetchSellers, stores]); // Añadir 'stores' aquí también
+    }, [token]);
 
+    // Función para obtener las métricas de ventas
+    const fetchMetricasVentas = useCallback(async () => {
+        if (!token || !selectedStoreSlug) {
+            setLoadingMetrics(false);
+            return;
+        }
+        setLoadingMetrics(true);
+        setError(null);
 
-    const handleAnularVenta = async (ventaId) => {
-        setConfirmMessage('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.');
-        setConfirmAction(() => async () => {
-            setShowConfirmModal(false); 
-            try {
-                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular/`, {}, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                showCustomAlert('Venta anulada con éxito!', 'success');
-                fetchVentas(); 
-            } catch (err) {
-                showCustomAlert('Error al anular la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
-                console.error('Error anulando venta:', err.response || err);
-            }
-        });
-        setShowConfirmModal(true);
+        const params = {
+            tienda_slug: selectedStoreSlug,
+            period: periodFilter, 
+        };
+
+        if (sellerFilter) params.seller_id = sellerFilter;
+        if (paymentMethodFilter) params.payment_method = paymentMethodFilter;
+
+        console.log("Fetching metrics from:", `${BASE_API_ENDPOINT}/api/metricas/metrics/`, params);
+
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metricas/metrics/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: params,
+            });
+            console.log("Metrics fetched:", response.data);
+            setMetricas(response.data);
+            setError(null); 
+        } catch (err) {
+            console.error("Error fetching metrics:", err.response ? err.response.data : err.message);
+            setError('Error al cargar las métricas: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setLoadingMetrics(false);
+        }
+    }, [token, selectedStoreSlug, periodFilter, sellerFilter, paymentMethodFilter]); 
+
+    // Efecto para cargar métricas y opciones de filtro cuando cambian las dependencias
+    useEffect(() => {
+        // Solo permitir acceso si es superusuario
+        if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
+            fetchUsers();
+            fetchPaymentMethods();
+            fetchMetricasVentas();
+        } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
+            setError("Acceso denegado. Solo los superusuarios pueden ver las métricas de ventas.");
+            setLoadingMetrics(false);
+        } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
+            setLoadingMetrics(false);
+            setMetricas(null); 
+        }
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchMetricasVentas, fetchUsers, fetchPaymentMethods]);
+
+    // Opciones comunes para los gráficos
+    const commonChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+            },
+            title: {
+                display: true,
+                text: '', 
+            },
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+            },
+        },
     };
 
-    const handleAnularDetalleVenta = async (ventaId, detalleId) => {
-        setConfirmMessage('¿Estás seguro de que quieres ANULAR este producto de la venta? Esto revertirá el stock del producto.');
-        setConfirmAction(() => async () => {
-            setShowConfirmModal(false); 
-            try {
-                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/`, { detalle_id: detalleId }, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                showCustomAlert('Producto de la venta anulado con éxito!', 'success');
-                fetchVentas(); 
-            } catch (err) {
-                showCustomAlert('Error al anular el detalle de la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
-                console.error('Error anulando detalle de venta:', err.response || err);
+    const barChartData = {
+        labels: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => {
+            const label = metricas.ventas_agrupadas_por_periodo.label;
+            if (label === "Últimas 24 Horas") {
+                return `${item.periodo}h`; 
+            } else if (label === "Última Semana") {
+                const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                return daysOfWeek[item.periodo - 1]; 
+            } else if (label === "Últimos 30 Días") {
+                return `Día ${item.periodo}`; 
+            } else if (label === "Últimos 365 Días") {
+                const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                return months[item.periodo - 1]; 
             }
-        });
-        setShowConfirmModal(true);
+            return String(item.periodo); 
+        }) || [],
+        datasets: [
+            {
+                label: 'Monto Total Vendido',
+                data: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => parseFloat(item.total_ventas)) || [], 
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+            },
+        ],
     };
 
+    const pieChartData = {
+        labels: metricas?.ventas_por_metodo_pago?.map(item => item.metodo_pago || 'Desconocido') || [], 
+        datasets: [
+            {
+                data: metricas?.ventas_por_metodo_pago?.map(item => parseFloat(item.monto_total)) || [],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(255, 159, 64, 0.6)',
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)',
+                ],
+                borderWidth: 1,
+            },
+        ],
+    };
+
+    const topProductsData = metricas?.productos_mas_vendidos || [];
+    const salesByUserTableData = metricas?.ventas_por_usuario || [];
+    const salesByPaymentMethodTableData = metricas?.ventas_por_metodo_pago || [];
 
     if (authLoading || (isAuthenticated && !user)) { 
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
     // Solo permitir acceso si es superusuario
-    if (!isAuthenticated || !user.is_superuser) { 
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.</div>;
+    if (!isAuthenticated || !user.is_superuser) {
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver las métricas de ventas.</div>;
     }
 
     if (!selectedStoreSlug) {
         return (
             <div style={styles.noStoreSelectedMessage}>
-                <h2>Por favor, selecciona una tienda en la barra de navegación para ver las ventas.</h2>
+                <h2>Por favor, selecciona una tienda en la barra de navegación para ver las métricas de ventas.</h2>
             </div>
         );
     }
 
-    if (loading) {
-        return <div style={styles.loadingMessage}>Cargando ventas de {selectedStoreSlug}...</div>;
+    if (loadingMetrics) {
+        return <div style={styles.loadingMessage}>Cargando métricas de {selectedStoreSlug}...</div>;
     }
 
     if (error) {
         return <div style={styles.errorMessage}>{error}</div>;
     }
 
+    if (!metricas) {
+        return <div style={styles.noDataMessage}>No hay datos de métricas disponibles para los filtros seleccionados.</div>;
+    }
+
     return (
         <div style={styles.container}>
-            <h1>Listado de Ventas ({selectedStoreSlug})</h1>
+            <h1>Métricas de Ventas ({selectedStoreSlug})</h1>
 
-            {/* Filtros */}
-            <div style={styles.filtersContainer}>
+            {/* Sección de Filtros */}
+            <div style={styles.filterSection}>
+                <h3>Filtros</h3>
                 <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Fecha:</label>
-                    <input
-                        type="date"
-                        value={filterDate}
-                        onChange={(e) => setFilterDate(e.target.value)}
-                        style={styles.filterInput}
-                    />
+                    <label style={styles.filterLabel}>Período:</label>
+                    <select
+                        value={periodFilter}
+                        onChange={(e) => setPeriodFilter(e.target.value)}
+                        style={styles.filterSelect}
+                    >
+                        <option value="day">Últimas 24 Horas</option>
+                        <option value="week">Última Semana</option>
+                        <option value="month">Últimos 30 Días</option>
+                        <option value="year">Últimos 365 Días</option>
+                    </select>
                 </div>
                 <div style={styles.filterGroup}>
                     <label style={styles.filterLabel}>Vendedor:</label>
-                    <select
-                        value={filterSellerId}
-                        onChange={(e) => setFilterSellerId(e.target.value)}
-                        style={styles.filterInput}
-                    >
+                    <select value={sellerFilter} onChange={(e) => setSellerFilter(e.target.value)} style={styles.filterSelect}>
                         <option value="">Todos</option>
-                        {sellers.map(seller => (
-                            <option key={seller.id} value={seller.id}>{seller.username} ({seller.first_name} {seller.last_name})</option>
+                        {availableSellers.map(seller => (
+                            <option key={seller.id} value={seller.id}>{seller.username}</option>
                         ))}
                     </select>
                 </div>
                 <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Anulada:</label>
-                    <select
-                        value={filterAnulada}
-                        onChange={(e) => setFilterAnulada(e.target.value)}
-                        style={styles.filterInput}
-                    >
-                        <option value="">Todas</option>
-                        <option value="false">No Anuladas</option>
-                        <option value="true">Anuladas</option>
+                    <label style={styles.filterLabel}>Método de Pago:</label>
+                    <select value={paymentMethodFilter} onChange={(e) => setPaymentMethodFilter(e.target.value)} style={styles.filterSelect}>
+                        <option value="">Todos</option>
+                        {availablePaymentMethods.map(method => (
+                            <option key={method.id} value={method.nombre}>{method.nombre}</option>
+                        ))}
                     </select>
                 </div>
-                <button onClick={() => fetchVentas()} style={styles.filterButton}>Aplicar Filtros</button>
-                <button onClick={() => {
-                    setFilterDate('');
-                    setFilterSellerId('');
-                    setFilterAnulada('');
-                    fetchVentas(null); 
-                }} style={{...styles.filterButton, backgroundColor: '#6c757d'}}>Limpiar Filtros</button>
+                <button onClick={fetchMetricasVentas} style={styles.applyFiltersButton}>Aplicar Filtros</button>
             </div>
 
+            {/* Resumen de Métricas */}
+            <div style={styles.summaryGrid}>
+                <div style={styles.summaryItem}>
+                    <h3>Total Ventas</h3>
+                    <p style={styles.summaryValue}>${parseFloat(metricas.total_ventas_periodo).toFixed(2)}</p>
+                </div>
+                <div style={styles.summaryItem}>
+                    <h3>Total Productos Vendidos</h3>
+                    <p style={styles.summaryValue}>{metricas.total_productos_vendidos_periodo}</p>
+                </div>
+            </div>
 
-            {ventas.length === 0 ? (
-                <p style={styles.noDataMessage}>No hay ventas disponibles para esta tienda con los filtros aplicados.</p>
-            ) : (
-                <>
-                    <table style={styles.table}>
-                        <thead>
-                            <tr style={styles.tableHeaderRow}>
-                                <th style={styles.th}>ID Venta</th>
-                                <th style={styles.th}>Fecha</th>
-                                <th style={styles.th}>Total</th>
-                                <th style={styles.th}>Vendedor</th>
-                                <th style={styles.th}>Método Pago</th>
-                                <th style={styles.th}>Anulada</th>
-                                <th style={styles.th}>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {ventas.map(venta => (
-                                <React.Fragment key={venta.id}>
-                                    <tr>
-                                        <td style={styles.td}>{venta.id}</td>
-                                        <td style={styles.td}>{new Date(venta.fecha_venta).toLocaleString()}</td>
-                                        <td style={styles.td}>${parseFloat(venta.total).toFixed(2)}</td>
-                                        <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
-                                        <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
-                                        <td style={styles.td}>{venta.anulada ? 'Sí' : 'No'}</td>
-                                        <td style={styles.td}>
-                                            <button
-                                                onClick={() => setExpandedSaleId(expandedSaleId === venta.id ? null : venta.id)}
-                                                style={styles.detailButton}
-                                            >
-                                                {expandedSaleId === venta.id ? 'Ocultar Detalles' : 'Ver Detalles'}
-                                            </button>
-                                            {!venta.anulada && (
-                                                <button
-                                                    onClick={() => handleAnularVenta(venta.id)}
-                                                    style={{ ...styles.anularButton, marginLeft: '10px' }}
-                                                >
-                                                    Anular Venta
-                                                </button>
-                                            )}
-                                        </td>
+            {/* Explicación de los gráficos */}
+            <div style={styles.chartExplanation}>
+                <p>
+                    Los gráficos a continuación muestran un análisis detallado de las ventas.
+                    El gráfico de barras "Ventas por {metricas.ventas_agrupadas_por_periodo.label}"
+                    presenta el monto total de ventas agrupado por el período seleccionado (año, mes o día).
+                    El gráfico de pastel "Ventas por Método de Pago" desglosa el monto total de ventas
+                    según el método de pago utilizado.
+                </p>
+            </div>
+
+            {/* Gráficos */}
+            <div style={styles.chartsContainer}>
+                <div style={styles.chartContainer}>
+                    <h3>Ventas por {metricas.ventas_agrupadas_por_periodo.label}</h3>
+                    {barChartData.labels.length > 0 ? (
+                        <Bar data={barChartData} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { ...commonChartOptions.plugins.title, text: `Ventas Agrupadas por ${metricas.ventas_agrupadas_por_periodo.label}` } } }} />
+                    ) : (
+                        <p style={styles.noDataMessage}>No hay datos de ventas para el período seleccionado.</p>
+                    )}
+                </div>
+                <div style={styles.chartContainer}>
+                    <h3>Ventas por Método de Pago</h3>
+                    {pieChartData.labels.length > 0 ? (
+                        <Pie data={pieChartData} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { ...commonChartOptions.plugins.title, text: 'Ventas por Método de Pago' } } }} />
+                    ) : (
+                        <p style={styles.noDataMessage}>No hay datos de ventas por método de pago.</p>
+                    )}
+                </div>
+            </div>
+
+            {/* Tablas de Detalle */}
+            <div style={styles.tablesContainer}>
+                <div style={styles.tableContainer}>
+                    <h3>Productos Más Vendidos</h3>
+                    {topProductsData.length > 0 ? (
+                        <table style={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th style={styles.th}>Producto</th>
+                                    <th style={styles.th}>Cantidad Total</th> 
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {topProductsData.map((item, index) => (
+                                    <tr key={index}>
+                                        <td style={styles.td}>{item.producto__nombre}</td>
+                                        <td style={styles.td}>{item.cantidad_total}</td>
                                     </tr>
-                                    {expandedSaleId === venta.id && venta.detalles && (
-                                        <tr>
-                                            <td colSpan="7" style={styles.detailRow}>
-                                                <h4 style={styles.detailHeader}>Detalles de la Venta {venta.id}</h4>
-                                                <table style={styles.detailTable}>
-                                                    <thead>
-                                                        <tr>
-                                                            <th style={styles.detailTh}>Producto</th>
-                                                            <th style={styles.th}>Cantidad</th>
-                                                            <th style={styles.th}>Precio Unitario</th>
-                                                            <th style={styles.th}>Subtotal</th>
-                                                            <th style={styles.th}>Acciones Detalle</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {venta.detalles.length > 0 ? (
-                                                            venta.detalles.map(detalle => (
-                                                                <tr key={detalle.id}>
-                                                                    <td style={styles.detailTd}>{detalle.producto_nombre}</td>
-                                                                    <td style={styles.detailTd}>{detalle.cantidad}</td>
-                                                                    <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario_venta).toFixed(2)}</td>
-                                                                    <td style={styles.detailTd}>${parseFloat(detalle.subtotal).toFixed(2)}</td>
-                                                                    <td style={styles.detailTd}>
-                                                                        {!venta.anulada && ( 
-                                                                            <button
-                                                                                onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
-                                                                                style={styles.anularDetalleButton}
-                                                                            >
-                                                                                Anular Detalle
-                                                                            </button>
-                                                                        )}
-                                                                    </td>
-                                                                </tr>
-                                                            ))
-                                                        ) : (
-                                                            <tr>
-                                                                <td colSpan="5" style={styles.noDataMessage}>No hay detalles para esta venta.</td>
-                                                            </tr>
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </React.Fragment>
-                            ))}
-                        </tbody>
-                    </table>
-
-                    {/* Paginación */}
-                    <div style={styles.paginationContainer}>
-                        <button onClick={() => fetchVentas(prevPageUrl)} disabled={!prevPageUrl} style={styles.paginationButton}>
-                            Anterior
-                        </button>
-                        <span style={styles.pageNumber}>Página {currentPageNumber}</span>
-                        <button onClick={() => fetchVentas(nextPageUrl)} disabled={!nextPageUrl} style={styles.paginationButton}>
-                            Siguiente
-                        </button>
-                    </div>
-                </>
-            )}
-
-            {/* Modal de Confirmación */}
-            {showConfirmModal && (
-                <div style={styles.modalOverlay}>
-                    <div style={styles.modalContent}>
-                        <p style={styles.modalMessage}>{confirmMessage}</p>
-                        <div style={styles.modalActions}>
-                            <button onClick={confirmAction} style={styles.modalConfirmButton}>Sí</button>
-                            <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>No</button>
-                        </div>
-                    </div>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p style={styles.noDataMessage}>No hay datos de productos más vendidos.</p>
+                    )}
                 </div>
-            )}
 
-            {/* Cuadro de Mensaje de Alerta */}
-            {showAlertMessage && (
-                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
-                    <p>{alertMessage}</p>
+                <div style={styles.tableContainer}>
+                    <h3>Ventas por Vendedor</h3>
+                    {salesByUserTableData.length > 0 ? (
+                        <table style={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th style={styles.th}>Vendedor</th>
+                                    <th style={styles.th}>Monto Total Vendido</th>
+                                    <th style={styles.th}>Cantidad de Ventas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {salesByUserTableData.map((item, index) => (
+                                    <tr key={index}>
+                                        <td style={styles.td}>{item.usuario__username}</td>
+                                        <td style={styles.td}>${parseFloat(item.monto_total_vendido).toFixed(2)}</td>
+                                        <td style={styles.td}>{item.cantidad_ventas}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p style={styles.noDataMessage}>No hay datos de ventas por vendedor.</p>
+                    )}
                 </div>
-            )}
+
+                <div style={styles.tableContainer}>
+                    <h3>Ventas por Método de Pago (Tabla)</h3>
+                    {salesByPaymentMethodTableData.length > 0 ? (
+                        <table style={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th style={styles.th}>Método de Pago</th>
+                                    <th style={styles.th}>Monto Total</th>
+                                    <th style={styles.th}>Cantidad de Ventas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {salesByPaymentMethodTableData.map((item, index) => (
+                                    <tr key={index}>
+                                        <td style={styles.td}>{item.metodo_pago}</td> 
+                                        <td style={styles.td}>${parseFloat(item.monto_total).toFixed(2)}</td>
+                                        <td style={styles.td}>{item.cantidad_ventas}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p style={styles.noDataMessage}>No hay datos de ventas por método de pago.</p>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };
@@ -406,281 +437,169 @@ const VentasPage = () => {
 const styles = {
     container: {
         padding: '20px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Inter, sans-serif',
         maxWidth: '1200px',
         margin: 'auto',
-        backgroundColor: '#fff',
+        backgroundColor: '#f8f9fa',
         borderRadius: '8px',
-        boxShadow: '0 0 10px rgba(0,0,0,0.1)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        color: '#333',
     },
     loadingMessage: {
         padding: '20px',
         textAlign: 'center',
         color: '#555',
+        fontSize: '1.1em',
     },
     accessDeniedMessage: {
-        color: 'red',
+        color: '#dc3545',
         marginBottom: '10px',
         padding: '20px',
-        border: '1px solid red',
+        border: '1px solid #dc3545',
         textAlign: 'center',
-        borderRadius: '5px',
+        borderRadius: '8px',
         backgroundColor: '#ffe3e6',
+        fontWeight: 'bold',
     },
     noStoreSelectedMessage: {
         padding: '50px',
         textAlign: 'center',
         color: '#777',
+        fontSize: '1.2em',
     },
     errorMessage: {
-        color: 'red',
-        marginBottom: '10px',
-        border: '1px solid red',
-        padding: '10px',
-        borderRadius: '5px',
+        color: '#dc3545',
+        marginBottom: '20px',
+        border: '1px solid #dc3545',
+        padding: '15px',
+        borderRadius: '8px',
         backgroundColor: '#ffe3e6',
+        textAlign: 'center',
+        fontWeight: 'bold',
     },
-    successMessage: {
-        color: 'green',
-        marginBottom: '10px',
-        border: '1px solid green',
-        padding: '10px',
-        borderRadius: '5px',
-        backgroundColor: '#e6ffe6',
-    },
-    filtersContainer: {
+    filterSection: {
+        backgroundColor: '#ffffff',
+        padding: '20px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+        marginBottom: '30px',
         display: 'flex',
         flexWrap: 'wrap',
         gap: '15px',
-        marginBottom: '20px',
-        padding: '15px',
-        border: '1px solid #e0e0e0',
-        borderRadius: '8px',
-        backgroundColor: '#f9f9f9',
         alignItems: 'flex-end',
     },
     filterGroup: {
         display: 'flex',
         flexDirection: 'column',
+        minWidth: '150px',
     },
     filterLabel: {
         marginBottom: '5px',
         fontWeight: 'bold',
         color: '#555',
+        fontSize: '0.9em',
     },
-    filterInput: {
+    filterSelect: {
         padding: '8px',
         border: '1px solid #ccc',
         borderRadius: '4px',
-        minWidth: '150px',
+        backgroundColor: '#fefefe',
     },
-    filterButton: {
-        padding: '10px 15px',
+    applyFiltersButton: {
+        padding: '10px 20px',
         backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        fontSize: '14px',
+        fontSize: '1em',
         transition: 'background-color 0.3s ease',
     },
-    filterButtonHover: {
-        backgroundColor: '#0056b3',
+    summaryGrid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gap: '20px',
+        marginBottom: '30px',
+    },
+    summaryItem: {
+        backgroundColor: '#e9f7ef',
+        padding: '20px',
+        borderRadius: '8px',
+        textAlign: 'center',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+    },
+    summaryValue: {
+        fontSize: '2.2em',
+        fontWeight: 'bold',
+        color: '#28a745',
+        margin: '10px 0 0',
+    },
+    chartContainer: {
+        backgroundColor: '#ffffff',
+        padding: '20px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+        marginBottom: '30px',
+        height: '400px', 
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     noDataMessage: {
         textAlign: 'center',
-        marginTop: '20px',
         color: '#777',
         fontStyle: 'italic',
+        marginBottom: '20px',
+        fontSize: '1em',
+    },
+    chartExplanation: {
+        backgroundColor: '#e6f7ff',
+        borderLeft: '4px solid #2196f3',
+        padding: '15px',
+        marginBottom: '30px',
+        borderRadius: '4px',
+        color: '#333',
+        fontSize: '0.95em',
+        lineHeight: '1.4',
+    },
+    chartsContainer: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
+        gap: '30px',
+        marginBottom: '30px',
+    },
+    tablesContainer: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gap: '30px',
+    },
+    tableContainer: {
+        backgroundColor: '#ffffff',
+        padding: '20px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
     },
     table: {
         width: '100%',
         borderCollapse: 'collapse',
-        textAlign: 'left',
-        border: '1px solid #ddd',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-    },
-    tableHeaderRow: {
-        backgroundColor: '#f2f2f2',
+        marginTop: '15px',
     },
     th: {
-        padding: '12px',
-        border: '1px solid #ddd',
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    td: {
-        padding: '12px',
-        border: '1px solid #ddd',
-        verticalAlign: 'middle',
-    },
-    detailButton: {
-        padding: '6px 10px',
-        backgroundColor: '#17a2b8',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '0.9em',
-        transition: 'background-color 0.3s ease',
-    },
-    detailButtonHover: {
-        backgroundColor: '#138496',
-    },
-    anularButton: {
-        padding: '6px 10px',
-        backgroundColor: '#dc3545',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '0.9em',
-        transition: 'background-color 0.3s ease',
-    },
-    anularButtonHover: {
-        backgroundColor: '#c82333',
-    },
-    detailRow: {
-        backgroundColor: '#fdfdfd',
-        padding: '15px',
-        borderTop: '2px solid #eee',
-    },
-    detailHeader: {
-        marginTop: '0',
-        marginBottom: '10px',
-        color: '#333',
-    },
-    detailTable: {
-        width: '100%',
-        borderCollapse: 'collapse',
-        marginTop: '10px',
-    },
-    detailTh: {
-        backgroundColor: '#e9ecef',
-        padding: '10px',
+        padding: '12px 8px',
+        borderBottom: '1px solid #ddd',
         textAlign: 'left',
-        borderBottom: '1px solid #dee2e6',
-    },
-    detailTd: {
-        padding: '10px',
-        borderBottom: '1px solid #dee2e6',
-    },
-    anularDetalleButton: {
-        padding: '5px 8px',
-        backgroundColor: '#ffc107',
-        color: 'black',
-        border: 'none',
-        borderRadius: '3px',
-        cursor: 'pointer',
-        fontSize: '0.8em',
-        transition: 'background-color 0.3s ease',
-    },
-    anularDetalleButtonHover: {
-        backgroundColor: '#e0a800',
-    },
-    paginationContainer: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: '20px',
-        gap: '10px',
-    },
-    paginationButton: {
-        padding: '8px 15px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontSize: '1em',
-        transition: 'background-color 0.3s ease',
-    },
-    paginationButtonDisabled: {
-        backgroundColor: '#cccccc',
-        cursor: 'not-allowed',
-    },
-    pageNumber: {
-        fontSize: '1em',
+        backgroundColor: '#f2f2f2',
         fontWeight: 'bold',
+        fontSize: '0.9em',
         color: '#555',
     },
-    modalOverlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1000,
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        padding: '30px',
-        borderRadius: '10px',
-        boxShadow: '0 5px 15px rgba(0, 0, 0, 0.3)',
-        textAlign: 'center',
-        maxWidth: '450px',
-        width: '90%',
-        animation: 'fadeIn 0.3s ease-out',
-    },
-    modalMessage: {
-        fontSize: '1.1em',
-        marginBottom: '25px',
-        color: '#333',
-    },
-    modalActions: {
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '20px',
-    },
-    modalConfirmButton: {
-        backgroundColor: '#dc3545',
-        color: 'white',
-        padding: '12px 25px',
-        border: 'none',
-        borderRadius: '6px',
-        cursor: 'pointer',
-        fontSize: '1em',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease, transform 0.2s ease',
-    },
-    modalConfirmButtonHover: {
-        backgroundColor: '#c82333',
-        transform: 'scale(1.02)',
-    },
-    modalCancelButton: {
-        backgroundColor: '#6c757d',
-        color: 'white',
-        padding: '12px 25px',
-        border: 'none',
-        borderRadius: '6px',
-        cursor: 'pointer',
-        fontSize: '1em',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease, transform 0.2s ease',
-    },
-    modalCancelButtonHover: {
-        backgroundColor: '#5a6268',
-        transform: 'scale(1.02)',
-    },
-    alertBox: {
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        backgroundColor: '#28a745', 
-        color: 'white',
-        padding: '15px 25px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-        zIndex: 1001,
-        opacity: 0,
-        animation: 'fadeInOut 3s forwards',
+    td: {
+        padding: '10px 8px',
+        borderBottom: '1px solid #eee',
+        textAlign: 'left',
+        fontSize: '0.9em',
     },
 };
 
-export default VentasPage;
+export default MetricasVentas;
