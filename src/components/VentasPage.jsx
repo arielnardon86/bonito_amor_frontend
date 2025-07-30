@@ -106,7 +106,7 @@ const VentasPage = () => {
                 setCurrentPageNumber(1);
             }
         } catch (err) {
-            setError('Error al cargar las ventas: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
+            setError('Error al cargar las ventas: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             console.error('Error fetching ventas:', err.response || err.message);
         } finally {
             setLoading(false);
@@ -132,7 +132,7 @@ const VentasPage = () => {
             setSellers(response.data.results || response.data);
         } catch (err) {
             console.error('Error fetching sellers:', err.response ? err.response.data : err.message);
-            setError(`Error al cargar vendedores: ${err.response?.data ? JSON.stringify(err.response.data) : err.message}`, 'error');
+            setError(`Error al cargar vendedores: ${err.response?.data ? JSON.stringify(err.response.data) : err.message}`);
         }
     }, [token, selectedStoreSlug, stores]); 
 
@@ -181,11 +181,15 @@ const VentasPage = () => {
                 const payload = { detalle_id: detalleId };
                 console.log("Sending payload:", payload);
 
-                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/`, payload, {
+                const response = await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/`, payload, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+                
+                // Si la operación fue exitosa (código 200 OK), actualizamos el estado del detalle en el frontend
+                // sin necesidad de recargar todas las ventas si la respuesta ya contiene el detalle actualizado.
+                // Sin embargo, para simplificar y asegurar consistencia, fetchVentas() es lo más robusto.
                 showCustomAlert('Producto de la venta anulado con éxito!', 'success');
-                fetchVentas(); 
+                fetchVentas(); // Re-fetch all sales to ensure UI is updated with new total and anulado_individualmente status
             } catch (err) {
                 showCustomAlert('Error al anular el detalle de la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
                 console.error('Error anulando detalle de venta:', err.response || err);
@@ -291,7 +295,8 @@ const VentasPage = () => {
                                     <tr>
                                         <td style={styles.td}>{venta.id}</td>
                                         <td style={styles.td}>{new Date(venta.fecha_venta).toLocaleString()}</td>
-                                        <td style={styles.td}>${parseFloat(venta.total).toFixed(2)}</td>
+                                        {/* Asegurarse de que venta.total sea un número antes de parseFloat */}
+                                        <td style={styles.td}>${parseFloat(venta.total || 0).toFixed(2)}</td> 
                                         <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
                                         <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
                                         <td style={styles.td}>{venta.anulada ? 'Sí' : 'No'}</td>
@@ -322,9 +327,9 @@ const VentasPage = () => {
                                                         <tr>
                                                             <th style={styles.detailTh}>Producto</th>
                                                             <th style={styles.th}>Cantidad</th>
-                                                            <th style={styles.th}>Precio Unitario</th>
+                                                            <th style={styles.th}>P. Unitario</th>
                                                             <th style={styles.th}>Subtotal</th>
-                                                            <th style={styles.th}>Anulado</th> {/* Nuevo encabezado */}
+                                                            <th style={styles.th}>Anulado</th>
                                                             <th style={styles.th}>Acciones Detalle</th>
                                                         </tr>
                                                     </thead>
@@ -334,9 +339,9 @@ const VentasPage = () => {
                                                                 <tr key={detalle.id}>
                                                                     <td style={styles.detailTd}>{detalle.producto_nombre}</td>
                                                                     <td style={styles.detailTd}>{detalle.cantidad}</td>
-                                                                    <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario_venta).toFixed(2)}</td>
-                                                                    <td style={styles.detailTd}>${parseFloat(detalle.subtotal).toFixed(2)}</td>
-                                                                    <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td> {/* Mostrar estado */}
+                                                                    <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario_venta || 0).toFixed(2)}</td>
+                                                                    <td style={styles.detailTd}>${parseFloat(detalle.subtotal || 0).toFixed(2)}</td>
+                                                                    <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
                                                                     <td style={styles.detailTd}>
                                                                         {/* Solo mostrar el botón si la venta no está anulada y el detalle no está anulado individualmente */}
                                                                         {!venta.anulada && !detalle.anulado_individualmente && ( 
