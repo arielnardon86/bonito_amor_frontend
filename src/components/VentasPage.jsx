@@ -110,7 +110,7 @@ const VentasPage = () => {
                 params: params
             });
             
-            // CAMBIO CLAVE: Mapear profundamente para crear nuevas referencias de objetos
+            // Mapear profundamente para crear nuevas referencias de objetos
             const processedVentas = response.data.results.map(venta => {
                 const updatedDetalles = venta.detalles ? venta.detalles.map(detalle => ({
                     ...detalle // Crear nueva referencia para cada detalle
@@ -122,8 +122,6 @@ const VentasPage = () => {
                     todos_detalles_anulados: areAllDetailsAnnulled(updatedDetalles)
                 };
             });
-
-            console.log("VentasPage: Datos de ventas después de procesamiento en frontend (con nuevas referencias):", processedVentas);
 
             setVentas(processedVentas || []); 
             setNextPageUrl(response.data.next);
@@ -215,10 +213,15 @@ const VentasPage = () => {
                 });
                 
                 showCustomAlert('Producto de la venta anulado con éxito!', 'success');
-                // Al anular un detalle, recargar todas las ventas
-                // Esto asegura que el estado de 'anulado_individualmente' y el 'total' de la venta se actualicen
-                // Y que la lógica de 'todos_detalles_anulados' se recalcule
-                fetchVentas(); 
+                
+                // CAMBIO CLAVE: Colapsar y re-expandir la fila para forzar la re-renderización de los detalles
+                const currentExpandedSaleId = expandedSaleId; // Guardar el ID actual
+                setExpandedSaleId(null); // Colapsar la fila
+                await fetchVentas(); // Recargar los datos (ya con la inmutabilidad profunda)
+                // Usar un pequeño retardo para asegurar que React procese el colapso antes de re-expandir
+                setTimeout(() => {
+                    setExpandedSaleId(currentExpandedSaleId); // Re-expandir la fila
+                }, 50); // Un pequeño retardo de 50ms (puedes ajustar si es necesario)
 
             } catch (err) {
                 showCustomAlert('Error al anular el detalle de la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
