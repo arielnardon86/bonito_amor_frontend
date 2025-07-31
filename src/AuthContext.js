@@ -96,22 +96,19 @@ export const AuthProvider = ({ children }) => {
             console.log("AuthContext (Login): Iniciando validación de tienda.");
             console.log("AuthContext (Login): storeSlugFromUrl:", storeSlugFromUrl);
             console.log("AuthContext (Login): fetchedUser.is_superuser:", fetchedUser.is_superuser);
-            console.log("AuthContext (Login): fetchedUser.tienda:", fetchedUser.tienda); // Esto será una cadena o null
+            console.log("AuthContext (Login): fetchedUser.tienda:", fetchedUser.tienda); 
 
             if (storeSlugFromUrl) {
-                // TODOS los usuarios (superusuarios o no) deben coincidir con la tienda de la URL
-                if (fetchedUser.tienda && fetchedUser.tienda === storeSlugFromUrl) { // Esta es la única condición para entrar a la tienda
+                if (fetchedUser.tienda && fetchedUser.tienda === storeSlugFromUrl) { 
                     console.log("AuthContext (Login): Tienda del usuario coincide con la solicitada en URL.");
                     selectStore(storeSlugFromUrl);
                 } else {
                     console.log(`AuthContext (Login): Acceso denegado. Tienda del usuario: ${fetchedUser.tienda || 'Ninguna'}, Tienda solicitada: ${storeSlugFromUrl}`);
                     setError(`Acceso denegado a la tienda '${storeSlugFromUrl}'. Tu usuario no está asociado a esta tienda.`);
-                    logout(); // Cerrar sesión si la tienda no coincide
+                    logout(); 
                     return false; 
                 }
             } else {
-                // Si no se especificó una tienda en la URL, y el usuario tiene una asignada,
-                // seleccionamos su tienda por defecto.
                 if (fetchedUser.tienda) {
                     console.log("AuthContext (Login): No se especificó tienda en URL, seleccionando tienda por defecto del usuario.");
                     selectStore(fetchedUser.tienda);
@@ -136,13 +133,19 @@ export const AuthProvider = ({ children }) => {
     const fetchStores = useCallback(async () => {
         console.log("AuthContext: fetchStores llamado.");
         try {
+            // La solicitud de tiendas ahora se hará con el token si está disponible
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tiendas/`);
             setStores(response.data.results || response.data);
             console.log("AuthContext: Tiendas cargadas con éxito:", response.data.results || response.data);
         } catch (err) {
             console.error("AuthContext: Error fetching stores:", err.response ? err.response.data : err.message);
-            const errorMessage = err.response?.data?.detail || "Error al cargar tiendas.";
-            setError(errorMessage); 
+            // Si el error es 401, no es necesario establecer un error visible si el usuario aún no ha iniciado sesión
+            // o si el token expiró y no se pudo refrescar (ya se maneja en refreshToken/logout).
+            // Solo establecer error si es un problema persistente de carga de tiendas.
+            if (err.response && err.response.status !== 401) {
+                const errorMessage = err.response?.data?.detail || "Error al cargar tiendas.";
+                setError(errorMessage); 
+            }
             setStores([]); 
         }
     }, [setError]);
@@ -162,8 +165,7 @@ export const AuthProvider = ({ children }) => {
                 setSelectedStoreSlug(stored_store_slug);
             }
             
-            await fetchStores(); 
-
+            // Primero, intenta manejar el token y el usuario
             if (current_access_token) {
                 try {
                     console.log("AuthContext: Decodificando token de acceso...");
@@ -175,10 +177,13 @@ export const AuthProvider = ({ children }) => {
                         current_access_token = await refreshToken(); 
                         if (!current_access_token) { 
                             setLoading(false);
+                            // Si el refresh falla, logout ya se encargó. No hay token, las tiendas se cargarán sin auth.
+                            await fetchStores(); // Cargar tiendas incluso si no hay token (para login page)
                             return;
                         }
                     }
                     
+                    // Si el token es válido o se refrescó, configúralo en Axios
                     setAuthToken(current_access_token);
                     console.log("AuthContext: Token de acceso válido o refrescado. Obteniendo detalles de usuario...");
 
@@ -192,21 +197,18 @@ export const AuthProvider = ({ children }) => {
                         console.log("AuthContext (Load): Iniciando validación de tienda.");
                         console.log("AuthContext (Load): stored_store_slug:", stored_store_slug);
                         console.log("AuthContext (Load): fetchedUser.is_superuser:", fetchedUser.is_superuser);
-                        console.log("AuthContext (Load): fetchedUser.tienda:", fetchedUser.tienda); // Esto será una cadena o null
+                        console.log("AuthContext (Load): fetchedUser.tienda:", fetchedUser.tienda); 
 
-                        // Validar que la tienda seleccionada (si existe) coincida con la del usuario
                         if (stored_store_slug) {
-                            // TODOS los usuarios (superusuarios o no) deben coincidir con la tienda almacenada
-                            if (fetchedUser.tienda && fetchedUser.tienda === stored_store_slug) { // Esta es la única condición
+                            if (fetchedUser.tienda && fetchedUser.tienda === stored_store_slug) { 
                                 console.log("AuthContext (Load): Tienda almacenada coincide con la del usuario.");
                                 selectStore(stored_store_slug);
                             } else {
                                 console.warn(`AuthContext: La tienda previamente seleccionada '${stored_store_slug}' no coincide con la tienda del usuario o el usuario no tiene tienda. Deseleccionando.`);
                                 setSelectedStoreSlug(null);
                                 localStorage.removeItem('selected_store_slug');
-                                // Podrías añadir un setError aquí si quieres notificar al usuario en la UI
                             }
-                        } else if (fetchedUser.tienda) { // Si no había tienda seleccionada, pero el usuario tiene una, la seleccionamos
+                        } else if (fetchedUser.tienda) { 
                             console.log("AuthContext (Load): No había tienda seleccionada, seleccionando tienda por defecto del usuario.");
                             selectStore(fetchedUser.tienda);
                         } else {
@@ -214,22 +216,31 @@ export const AuthProvider = ({ children }) => {
                         }
                         // --- FIN DE LA VALIDACIÓN DE TIENDA ---
 
-
                     } catch (userError) {
                         console.error("AuthContext: Error al obtener detalles de usuario:", userError.response ? userError.response.data : userError.message);
-                        logout();
+                        logout(); // Si falla la carga del usuario, cerrar sesión
                         setLoading(false);
+                        await fetchStores(); // Cargar tiendas incluso si no hay token (para login page)
                         return;
                     }
 
                 } catch (error) {
                     console.error("AuthContext: Error general en loadUserAndStores (decodificación/refresh):", error);
-                    logout();
+                    logout(); // Si hay un error general con el token, cerrar sesión
+                    setLoading(false);
+                    await fetchStores(); // Cargar tiendas incluso si no hay token (para login page)
+                    return;
                 }
             } else {
-                console.log("AuthContext: No se encontró token de acceso en localStorage. Las tiendas ya se intentaron cargar de forma no autenticada.");
+                console.log("AuthContext: No se encontró token de acceso en localStorage.");
                 setUser(null);
             }
+            
+            // CAMBIO CLAVE: Cargar tiendas aquí, después de intentar establecer el token
+            // Esto asegura que si hay un token válido, la solicitud de tiendas irá autenticada.
+            // Si no hay token, irá sin autenticar (lo cual está bien para la página de login).
+            await fetchStores(); 
+
             setLoading(false);
             console.log("AuthContext: loadUserAndStores finalizado. Loading es ahora false.");
         };
@@ -254,7 +265,7 @@ export const AuthProvider = ({ children }) => {
         }, 1000 * 60); 
 
         return () => clearInterval(interval);
-    }, [refreshToken, logout, setAuthToken, fetchStores, selectStore]); // Añadir selectStore a las dependencias
+    }, [refreshToken, logout, setAuthToken, fetchStores, selectStore]); 
 
 
     const authContextValue = {
