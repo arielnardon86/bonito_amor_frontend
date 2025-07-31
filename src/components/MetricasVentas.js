@@ -51,6 +51,12 @@ const MetricasVentas = () => {
     // Obtener el usuario, estado de autenticación, carga de autenticación, slug de la tienda seleccionada y token del AuthContext
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, stores } = useAuth(); 
 
+    // Obtener la fecha actual para los filtros por defecto
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0'); // Mes 0-11, por eso +1
+    const currentDay = today.getDate().toString().padStart(2, '0');
+
     // Estado para las métricas de ventas obtenidas
     const [metricas, setMetricas] = useState(null);
     // Estado para indicar si las métricas están cargando
@@ -58,10 +64,14 @@ const MetricasVentas = () => {
     // Estado para almacenar mensajes de error
     const [error, setError] = useState(null);
 
-    // CAMBIO: Nuevo estado para el filtro de período (day, week, month, year) - POR DEFECTO 'day'
-    const [periodFilter, setPeriodFilter] = useState('day'); 
+    // CAMBIO: Estados para el filtro de período (Año, Mes, Día)
+    const [filterYear, setFilterYear] = useState(currentYear.toString());
+    const [filterMonth, setFilterMonth] = useState(currentMonth);
+    const [filterDay, setFilterDay] = useState(currentDay);
+    // CAMBIO: Nuevo estado para el tipo de período seleccionado (para mostrar/ocultar campos)
+    const [periodType, setPeriodType] = useState('day'); // 'day', 'month', 'year'
 
-    // Estados para los filtros existentes (sin cambios)
+    // Estados para los filtros existentes
     const [sellerFilter, setSellerFilter] = useState('');
     const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
 
@@ -70,21 +80,20 @@ const MetricasVentas = () => {
 
     // Función para obtener la lista de usuarios (vendedores)
     const fetchUsers = useCallback(async () => {
-        if (!token || !selectedStoreSlug || !stores.length) return; // Añadir stores.length para asegurar que las tiendas estén cargadas
+        if (!token || !selectedStoreSlug || !stores.length) return; 
         
-        // Obtener el ID de la tienda a partir del slug
         const store = stores.find(s => s.nombre === selectedStoreSlug);
         if (!store) {
             console.warn("MetricasVentas: No se encontró la tienda con el slug:", selectedStoreSlug);
             setAvailableSellers([]);
             return;
         }
-        const storeId = store.id; // ID de la tienda
+        const storeId = store.id;
 
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
-                params: { tienda: storeId } // Enviar el ID de la tienda
+                params: { tienda: storeId } 
             });
             setAvailableSellers(response.data.results || response.data);
         } catch (err) {
@@ -118,7 +127,10 @@ const MetricasVentas = () => {
 
         const params = {
             tienda_slug: selectedStoreSlug,
-            period: periodFilter, 
+            // CAMBIO: Enviar los nuevos filtros de fecha
+            year: filterYear,
+            month: periodType === 'day' || periodType === 'month' ? filterMonth : undefined, // Enviar mes solo si el tipo es día o mes
+            day: periodType === 'day' ? filterDay : undefined, // Enviar día solo si el tipo es día
         };
 
         if (sellerFilter) params.seller_id = sellerFilter;
@@ -140,11 +152,10 @@ const MetricasVentas = () => {
         } finally {
             setLoadingMetrics(false);
         }
-    }, [token, selectedStoreSlug, periodFilter, sellerFilter, paymentMethodFilter]); 
+    }, [token, selectedStoreSlug, filterYear, filterMonth, filterDay, periodType, sellerFilter, paymentMethodFilter]); 
 
     // Efecto para cargar métricas y opciones de filtro cuando cambian las dependencias
     useEffect(() => {
-        // Solo permitir acceso si es superusuario
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
             fetchUsers();
             fetchPaymentMethods();
@@ -184,17 +195,14 @@ const MetricasVentas = () => {
 
     const barChartData = {
         labels: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => {
-            const label = metricas.ventas_agrupadas_por_periodo.label;
-            if (label === "Últimas 24 Horas") {
-                return `${item.periodo}h`; 
-            } else if (label === "Última Semana") {
-                const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-                return daysOfWeek[item.periodo - 1]; 
-            } else if (label === "Últimos 30 Días") {
-                return `Día ${item.periodo}`; 
-            } else if (label === "Últimos 365 Días") {
+            // CAMBIO: Ajustar las etiquetas del gráfico de barras según el tipo de período
+            if (periodType === 'day') {
+                return `${item.periodo}h`; // Asumiendo que el backend devuelve la hora del día
+            } else if (periodType === 'month') {
+                return `Día ${item.periodo}`; // Asumiendo que el backend devuelve el día del mes
+            } else if (periodType === 'year') {
                 const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-                return months[item.periodo - 1]; 
+                return months[item.periodo - 1]; // Asumiendo que el backend devuelve el número del mes
             }
             return String(item.periodo); 
         }) || [],
@@ -236,14 +244,15 @@ const MetricasVentas = () => {
     };
 
     const topProductsData = metricas?.productos_mas_vendidos || [];
-    const salesByUserTableData = metricas?.ventas_por_usuario || [];
-    const salesByPaymentMethodTableData = metricas?.ventas_por_metodo_pago || [];
+    // CAMBIO: Filtrar ventas anuladas para las tablas de cantidad
+    const salesByUserTableData = metricas?.ventas_por_usuario?.filter(item => parseFloat(item.monto_total_vendido) > 0) || [];
+    const salesByPaymentMethodTableData = metricas?.ventas_por_metodo_pago?.filter(item => parseFloat(item.monto_total) > 0) || [];
+
 
     if (authLoading || (isAuthenticated && !user)) { 
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    // Solo permitir acceso si es superusuario
     if (!isAuthenticated || !user.is_superuser) {
         return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver las métricas de ventas.</div>;
     }
@@ -278,16 +287,69 @@ const MetricasVentas = () => {
                 <div style={styles.filterGroup}>
                     <label style={styles.filterLabel}>Período:</label>
                     <select
-                        value={periodFilter}
-                        onChange={(e) => setPeriodFilter(e.target.value)}
+                        value={periodType}
+                        onChange={(e) => {
+                            setPeriodType(e.target.value);
+                            // Resetear día/mes si se cambia el tipo de período
+                            if (e.target.value === 'year') {
+                                setFilterMonth('');
+                                setFilterDay('');
+                            } else if (e.target.value === 'month') {
+                                setFilterDay('');
+                            }
+                        }}
                         style={styles.filterSelect}
                     >
-                        <option value="day">Últimas 24 Horas</option>
-                        <option value="week">Última Semana</option>
-                        <option value="month">Últimos 30 Días</option>
-                        <option value="year">Últimos 365 Días</option>
+                        <option value="day">Día</option>
+                        <option value="month">Mes</option>
+                        <option value="year">Año</option>
                     </select>
                 </div>
+                {/* Filtro de Año */}
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Año:</label>
+                    <input
+                        type="number"
+                        min="2000" // Puedes ajustar el rango de años
+                        max={currentYear}
+                        value={filterYear}
+                        onChange={(e) => setFilterYear(e.target.value)}
+                        style={styles.filterSelect}
+                    />
+                </div>
+                {/* Filtro de Mes (visible si el período es 'day' o 'month') */}
+                {(periodType === 'day' || periodType === 'month') && (
+                    <div style={styles.filterGroup}>
+                        <label style={styles.filterLabel}>Mes:</label>
+                        <select
+                            value={filterMonth}
+                            onChange={(e) => setFilterMonth(e.target.value)}
+                            style={styles.filterSelect}
+                        >
+                            <option value="">Todos</option>
+                            {[...Array(12).keys()].map(i => (
+                                <option key={i + 1} value={(i + 1).toString().padStart(2, '0')}>
+                                    {new Date(currentYear, i, 1).toLocaleString('es-ES', { month: 'long' })}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+                {/* Filtro de Día (visible solo si el período es 'day') */}
+                {periodType === 'day' && (
+                    <div style={styles.filterGroup}>
+                        <label style={styles.filterLabel}>Día:</label>
+                        <input
+                            type="number"
+                            min="1"
+                            max="31" // La validación de días por mes se hará en el backend o con lógica más avanzada
+                            value={filterDay}
+                            onChange={(e) => setFilterDay(e.target.value)}
+                            style={styles.filterSelect}
+                        />
+                    </div>
+                )}
+
                 <div style={styles.filterGroup}>
                     <label style={styles.filterLabel}>Vendedor:</label>
                     <select value={sellerFilter} onChange={(e) => setSellerFilter(e.target.value)} style={styles.filterSelect}>
@@ -325,8 +387,8 @@ const MetricasVentas = () => {
             <div style={styles.chartExplanation}>
                 <p>
                     Los gráficos a continuación muestran un análisis detallado de las ventas.
-                    El gráfico de barras "Ventas por {metricas.ventas_agrupadas_por_periodo.label}"
-                    presenta el monto total de ventas agrupado por el período seleccionado (año, mes o día).
+                    El gráfico de barras "Ventas por {periodType === 'day' ? 'Hora' : periodType === 'month' ? 'Día del Mes' : 'Mes del Año'}"
+                    presenta el monto total de ventas agrupado por el período seleccionado.
                     El gráfico de pastel "Ventas por Método de Pago" desglosa el monto total de ventas
                     según el método de pago utilizado.
                 </p>
@@ -335,9 +397,9 @@ const MetricasVentas = () => {
             {/* Gráficos */}
             <div style={styles.chartsContainer}>
                 <div style={styles.chartContainer}>
-                    <h3>Ventas por {metricas.ventas_agrupadas_por_periodo.label}</h3>
+                    <h3>Ventas por {periodType === 'day' ? 'Hora' : periodType === 'month' ? 'Día del Mes' : 'Mes del Año'}</h3>
                     {barChartData.labels.length > 0 ? (
-                        <Bar data={barChartData} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { ...commonChartOptions.plugins.title, text: `Ventas Agrupadas por ${metricas.ventas_agrupadas_por_periodo.label}` } } }} />
+                        <Bar data={barChartData} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { ...commonChartOptions.plugins.title, text: `Ventas Agrupadas por ${periodType === 'day' ? 'Hora' : periodType === 'month' ? 'Día del Mes' : 'Mes del Año'}` } } }} />
                     ) : (
                         <p style={styles.noDataMessage}>No hay datos de ventas para el período seleccionado.</p>
                     )}
