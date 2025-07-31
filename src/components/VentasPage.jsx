@@ -1,4 +1,4 @@
-// BONITO_AMOR/frontend/src/components/VentasPage.jsx
+// BONITO_AMOR/frontend/src/components/VentasPage.js
 
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
@@ -110,22 +110,22 @@ const VentasPage = () => {
                 params: params
             });
             
-            // *** NUEVO LOG: Inspeccionar los datos recibidos del backend ***
-            console.log("VentasPage: Datos de ventas recibidos del backend:", response.data.results);
+            // CAMBIO CLAVE: Mapear profundamente para crear nuevas referencias de objetos
+            const processedVentas = response.data.results.map(venta => {
+                const updatedDetalles = venta.detalles ? venta.detalles.map(detalle => ({
+                    ...detalle // Crear nueva referencia para cada detalle
+                })) : [];
 
-            // Mapear las ventas para añadir la propiedad 'todos_detalles_anulados'
-            const updatedVentas = response.data.results.map(venta => ({
-                ...venta,
-                // Calcular si todos los detalles están anulados individualmente
-                // Esto es para la lógica de mostrar 'Sí' en la columna 'Anulada' de la venta principal
-                todos_detalles_anulados: areAllDetailsAnnulled(venta.detalles)
-            }));
+                return {
+                    ...venta, // Crear nueva referencia para cada venta
+                    detalles: updatedDetalles,
+                    todos_detalles_anulados: areAllDetailsAnnulled(updatedDetalles)
+                };
+            });
 
-            // *** NUEVO LOG: Inspeccionar los datos de ventas después de añadir 'todos_detalles_anulados' ***
-            console.log("VentasPage: Datos de ventas después de procesamiento en frontend:", updatedVentas);
+            console.log("VentasPage: Datos de ventas después de procesamiento en frontend (con nuevas referencias):", processedVentas);
 
-
-            setVentas(updatedVentas || []); // Usar el array actualizado
+            setVentas(processedVentas || []); 
             setNextPageUrl(response.data.next);
             setPrevPageUrl(response.data.previous);
             if (pageUrl) {
@@ -369,7 +369,8 @@ const VentasPage = () => {
                                                     <tbody>
                                                         {venta.detalles.length > 0 ? (
                                                             venta.detalles.map(detalle => (
-                                                                <tr key={detalle.id}>
+                                                                // Asegurarse de que la key sea única y estable para cada detalle
+                                                                <tr key={detalle.id}> 
                                                                     <td style={styles.detailTd}>{detalle.producto_nombre}</td>
                                                                     <td style={styles.detailTd}>{detalle.cantidad}</td>
                                                                     <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario_venta || 0).toFixed(2)}</td>
