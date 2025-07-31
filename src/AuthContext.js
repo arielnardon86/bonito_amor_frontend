@@ -120,6 +120,9 @@ export const AuthProvider = ({ children }) => {
             }
             // --- FIN DE LA VALIDACIÓN DE TIENDA ---
 
+            // CAMBIO: Cargar tiendas después de un login exitoso y con el token ya configurado
+            await fetchStores();
+
             return true; 
         } catch (err) {
             console.error("AuthContext: Login fallido:", err.response ? err.response.data : err.message);
@@ -128,20 +131,18 @@ export const AuthProvider = ({ children }) => {
             logout(); 
             return false; 
         }
-    }, [setAuthToken, logout, selectStore, setError]); 
+    }, [setAuthToken, logout, selectStore, setError, fetchStores]); // Añadir fetchStores a las dependencias
 
     const fetchStores = useCallback(async () => {
         console.log("AuthContext: fetchStores llamado.");
         try {
-            // La solicitud de tiendas ahora se hará con el token si está disponible
+            // Esta solicitud ahora se hará con el token si está disponible en axios.defaults.headers.common['Authorization']
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tiendas/`);
             setStores(response.data.results || response.data);
             console.log("AuthContext: Tiendas cargadas con éxito:", response.data.results || response.data);
         } catch (err) {
             console.error("AuthContext: Error fetching stores:", err.response ? err.response.data : err.message);
-            // Si el error es 401, no es necesario establecer un error visible si el usuario aún no ha iniciado sesión
-            // o si el token expiró y no se pudo refrescar (ya se maneja en refreshToken/logout).
-            // Solo establecer error si es un problema persistente de carga de tiendas.
+            // Solo establecer error visible si no es un 401 (ya que un 401 es esperado si no hay token)
             if (err.response && err.response.status !== 401) {
                 const errorMessage = err.response?.data?.detail || "Error al cargar tiendas.";
                 setError(errorMessage); 
@@ -165,7 +166,6 @@ export const AuthProvider = ({ children }) => {
                 setSelectedStoreSlug(stored_store_slug);
             }
             
-            // Primero, intenta manejar el token y el usuario
             if (current_access_token) {
                 try {
                     console.log("AuthContext: Decodificando token de acceso...");
@@ -177,8 +177,7 @@ export const AuthProvider = ({ children }) => {
                         current_access_token = await refreshToken(); 
                         if (!current_access_token) { 
                             setLoading(false);
-                            // Si el refresh falla, logout ya se encargó. No hay token, las tiendas se cargarán sin auth.
-                            await fetchStores(); // Cargar tiendas incluso si no hay token (para login page)
+                            // Si el refresh falla, logout ya se encargó. No hay token, no intentamos cargar tiendas autenticadas.
                             return;
                         }
                     }
@@ -216,31 +215,29 @@ export const AuthProvider = ({ children }) => {
                         }
                         // --- FIN DE LA VALIDACIÓN DE TIENDA ---
 
+                        // CAMBIO CLAVE: Cargar tiendas solo si el usuario está autenticado y su información se cargó correctamente
+                        await fetchStores();
+
+
                     } catch (userError) {
                         console.error("AuthContext: Error al obtener detalles de usuario:", userError.response ? userError.response.data : userError.message);
-                        logout(); // Si falla la carga del usuario, cerrar sesión
+                        logout(); 
                         setLoading(false);
-                        await fetchStores(); // Cargar tiendas incluso si no hay token (para login page)
                         return;
                     }
 
                 } catch (error) {
                     console.error("AuthContext: Error general en loadUserAndStores (decodificación/refresh):", error);
-                    logout(); // Si hay un error general con el token, cerrar sesión
+                    logout(); 
                     setLoading(false);
-                    await fetchStores(); // Cargar tiendas incluso si no hay token (para login page)
                     return;
                 }
             } else {
-                console.log("AuthContext: No se encontró token de acceso en localStorage.");
+                console.log("AuthContext: No se encontró token de acceso en localStorage. No se cargarán tiendas autenticadas.");
                 setUser(null);
+                setStores([]); // Asegurar que las tiendas estén vacías si no hay token
             }
             
-            // CAMBIO CLAVE: Cargar tiendas aquí, después de intentar establecer el token
-            // Esto asegura que si hay un token válido, la solicitud de tiendas irá autenticada.
-            // Si no hay token, irá sin autenticar (lo cual está bien para la página de login).
-            await fetchStores(); 
-
             setLoading(false);
             console.log("AuthContext: loadUserAndStores finalizado. Loading es ahora false.");
         };
@@ -265,8 +262,8 @@ export const AuthProvider = ({ children }) => {
         }, 1000 * 60); 
 
         return () => clearInterval(interval);
-    }, [refreshToken, logout, setAuthToken, fetchStores, selectStore]); 
-
+    }, [refreshToken, logout, setAuthToken, selectStore, fetchStores]); // fetchStores añadido como dependencia
+    // Asegurarse de que fetchStores esté en las dependencias si se llama dentro del useEffect
 
     const authContextValue = {
         user,
