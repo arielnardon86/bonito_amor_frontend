@@ -7,23 +7,21 @@ const ProtectedRoute = ({ children, adminOnly = false, staffOnly = false }) => {
     const { isAuthenticated, user, loading } = useAuth();
 
     if (loading) {
+        // Muestra un mensaje de carga mientras se verifica el estado de autenticación
         return <div style={{ textAlign: 'center', marginTop: '50px' }}>Cargando...</div>;
     }
 
+    // Si no está autenticado, redirige al login con el slug por defecto
     if (!isAuthenticated) {
-        console.log("ProtectedRoute: Not authenticated, redirecting to login.");
-        return <Navigate to="/login" replace />;
+        console.log("ProtectedRoute: No autenticado, redirigiendo a login.");
+        return <Navigate to="/login/bonito-amor" replace />; // Redirige a la ruta de login con un slug
     }
 
     // Asegurarse de que 'user' no sea null/undefined antes de acceder a sus propiedades
     // Esto es especialmente importante si 'loading' cambia a false antes de que 'user' se haya cargado completamente
     if (!user) {
-        // En una aplicación real, esto podría significar un error en la carga del usuario
-        // o un breve lapso entre isAuthenticated=true y user data cargada.
-        // Podrías redirigir a login o mostrar un error. Por ahora, asumimos que AuthContext
-        // maneja bien la carga de 'user' cuando isAuthenticated es true.
-        console.log("ProtectedRoute: Authenticated but user data not available, redirecting to home (or login).");
-        return <Navigate to="/login" replace />; // O a "/" si tu ruta "/" es accesible por default
+        console.log("ProtectedRoute: Autenticado pero datos de usuario no disponibles, redirigiendo a login.");
+        return <Navigate to="/login/bonito-amor" replace />; // Redirige a la ruta de login con un slug
     }
 
 
@@ -31,27 +29,24 @@ const ProtectedRoute = ({ children, adminOnly = false, staffOnly = false }) => {
     // 1. Si se requiere que sea admin (superuser)
     if (adminOnly) {
         if (!user.is_superuser) {
-            console.log("ProtectedRoute: Not superuser, redirecting to home.");
-            return <Navigate to="/" replace />;
+            console.log("ProtectedRoute: No es superusuario, redirigiendo a la página principal.");
+            return <Navigate to="/" replace />; // Redirige a la raíz si no tiene permisos de admin
         }
-        // Si es adminOnly y es superusuario, no necesita más verificaciones de staff, pasa
         return children;
     }
 
     // 2. Si se requiere que sea staff (pero no adminOnly, ya que eso se manejó arriba)
-    // is_staff incluye a is_superuser, así que esto cubrirá a superusuarios también
     if (staffOnly) {
         if (!user.is_staff) {
-            console.log("ProtectedRoute: Not staff, redirecting to home.");
-            return <Navigate to="/" replace />;
+            console.log("ProtectedRoute: No es staff, redirigiendo a la página principal.");
+            return <Navigate to="/" replace />; // Redirige a la raíz si no tiene permisos de staff
         }
-        // Si es staffOnly y es staff (o superusuario), no necesita más verificaciones, pasa
         return children;
     }
 
     // 3. Si no se especificaron adminOnly ni staffOnly (ruta por defecto),
     // cualquier usuario autenticado puede acceder.
-    console.log("ProtectedRoute: No specific roles required, user authenticated. Granting access.");
+    console.log("ProtectedRoute: No se requieren roles específicos, usuario autenticado. Concediendo acceso.");
     return children;
 };
 

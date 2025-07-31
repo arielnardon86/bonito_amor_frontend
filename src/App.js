@@ -50,7 +50,6 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-logo">
-        {/* Siempre redirige a la raíz (página de selección de tienda si no logueado, o Punto de Venta si sí) */}
         <Link to="/">
           <img src="/total-stock-logo.jpg" alt="Total Stock Logo" className="app-logo-image" />
         </Link>
@@ -64,8 +63,8 @@ const Navbar = () => {
           </div>
 
           <ul className={isOpen ? "nav-links active" : "nav-links"}>
-            {/* Selector de Tienda: Solo visible si hay tiendas, el usuario está autenticado, Y NO HAY UNA TIENDA SELECCIONADA */}
-            {stores.length > 0 && !selectedStoreSlug && ( // <-- CAMBIO AQUÍ
+            {/* Selector de Tienda: Visible si hay tiendas y NO hay una tienda seleccionada */}
+            {stores.length > 0 && !selectedStoreSlug && ( 
                 <li className="store-select-item">
                     <select
                         value={selectedStoreSlug || ''}
@@ -73,8 +72,9 @@ const Navbar = () => {
                         className="store-selector"
                     >
                         <option value="">Selecciona una Tienda</option>
+                        {/* Usar store.id como key y store.nombre como valor, ya que el backend devuelve nombre */}
                         {stores.map(store => (
-                            <option key={store.slug} value={store.slug}>
+                            <option key={store.id} value={store.nombre}> 
                                 {store.nombre}
                             </option>
                         ))}
@@ -85,7 +85,7 @@ const Navbar = () => {
             {/* Mostrar el nombre de la tienda seleccionada si existe */}
             {selectedStoreSlug && (
                 <li className="store-name-display">
-                    Tienda: <strong>{stores.find(s => s.slug === selectedStoreSlug)?.nombre || selectedStoreSlug.replace(/-/g, ' ').toUpperCase()}</strong>
+                    Tienda: <strong>{selectedStoreSlug}</strong> {/* Mostrar el slug directamente */}
                 </li>
             )}
 
@@ -121,6 +121,7 @@ function AppContent() {
   const { isAuthenticated, loading, selectedStoreSlug } = useAuth(); 
 
   if (loading) {
+    // Muestra una pantalla de carga mientras AuthContext está inicializando
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
   }
 
@@ -132,27 +133,24 @@ function AppContent() {
           {/* Ruta de login, ahora puede recibir un storeSlug opcional */}
           <Route path="/login/:storeSlug?" element={<Login />} />
 
-          {/* Logic for root path */}
-          {isAuthenticated ? (
-            selectedStoreSlug ? (
-              // If authenticated and store selected, go to PuntoVenta
-              <Route path="/" element={
+          {/* Lógica para la ruta raíz ("/") */}
+          <Route path="/" element={
+            isAuthenticated ? (
+              selectedStoreSlug ? (
+                // Si está autenticado Y tiene tienda seleccionada, va al Punto de Venta
                 <ProtectedRoute staffOnly={true}>
                   <PuntoVenta />
                 </ProtectedRoute>
-              } />
+              ) : (
+                // Si está autenticado PERO NO tiene tienda seleccionada, va a la HomePage (para seleccionar tienda)
+                <HomePage />
+              )
             ) : (
-              // If authenticated but no store selected, go to HomePage to select
-              <Route path="/" element={<HomePage />} />
+              // Si NO está autenticado, siempre redirige a la página de login
+              <Navigate to="/login/bonito-amor" replace />
             )
-          ) : (
-            // If not authenticated, go to HomePage (which will lead to login)
-            <Route path="/" element={<HomePage />} />
-          )}
+          } />
 
-          {/* Redirigir a la página principal (/) si no está autenticado y no está en /login */}
-          {!isAuthenticated && <Route path="*" element={<Navigate to="/" replace />} />}
-          
           {/* Rutas Protegidas que requieren autenticación y tienda seleccionada */}
           {isAuthenticated && selectedStoreSlug && (
             <>
@@ -195,15 +193,9 @@ function AppContent() {
             </>
           )}
 
-          {/* This block is now redundant due to the root path logic above and catch-all */}
-          {/* If está autenticado pero NO tiene tienda seleccionada, y no está en una ruta protegida */}
-          {isAuthenticated && !selectedStoreSlug && (
-            <Route path="*" element={
-              <div style={{ padding: '50px', textAlign: 'center' }}>
-                <h2>Por favor, selecciona una tienda en la barra de navegación para continuar.</h2>
-              </div>
-            } />
-          )}
+          {/* Si no está autenticado y no está en /login, redirige a /login/bonito-amor */}
+          {!isAuthenticated && <Route path="*" element={<Navigate to="/login/bonito-amor" replace />} />}
+
         </Routes>
       </div>
     </>
