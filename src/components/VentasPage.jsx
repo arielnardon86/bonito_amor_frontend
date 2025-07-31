@@ -214,14 +214,13 @@ const VentasPage = () => {
                 
                 showCustomAlert('Producto de la venta anulado con éxito!', 'success');
                 
-                // CAMBIO CLAVE: Colapsar y re-expandir la fila para forzar la re-renderización de los detalles
-                const currentExpandedSaleId = expandedSaleId; // Guardar el ID actual
-                setExpandedSaleId(null); // Colapsar la fila
-                await fetchVentas(); // Recargar los datos (ya con la inmutabilidad profunda)
-                // Usar un pequeño retardo para asegurar que React procese el colapso antes de re-expandir
+                // Estrategia de re-renderizado: colapsar y re-expandir la fila
+                const currentExpandedSaleId = expandedSaleId; 
+                setExpandedSaleId(null); 
+                await fetchVentas(); 
                 setTimeout(() => {
-                    setExpandedSaleId(currentExpandedSaleId); // Re-expandir la fila
-                }, 50); // Un pequeño retardo de 50ms (puedes ajustar si es necesario)
+                    setExpandedSaleId(currentExpandedSaleId); 
+                }, 50); 
 
             } catch (err) {
                 showCustomAlert('Error al anular el detalle de la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
@@ -371,28 +370,31 @@ const VentasPage = () => {
                                                     </thead>
                                                     <tbody>
                                                         {venta.detalles.length > 0 ? (
-                                                            venta.detalles.map(detalle => (
-                                                                // Asegurarse de que la key sea única y estable para cada detalle
-                                                                <tr key={detalle.id}> 
-                                                                    <td style={styles.detailTd}>{detalle.producto_nombre}</td>
-                                                                    <td style={styles.detailTd}>{detalle.cantidad}</td>
-                                                                    <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario_venta || 0).toFixed(2)}</td>
-                                                                    <td style={styles.detailTd}>${parseFloat(detalle.subtotal || 0).toFixed(2)}</td>
-                                                                    {/* Mostrar el estado real de anulado_individualmente */}
-                                                                    <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
-                                                                    <td style={styles.detailTd}>
-                                                                        {/* El botón solo se muestra si la venta no está anulada Y el detalle no está anulado individualmente */}
-                                                                        {!venta.anulada && !detalle.anulado_individualmente && ( 
-                                                                            <button
-                                                                                onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
-                                                                                style={styles.anularDetalleButton}
-                                                                            >
-                                                                                Anular Detalle
-                                                                            </button>
-                                                                        )}
-                                                                    </td>
-                                                                </tr>
-                                                            ))
+                                                            venta.detalles.map(detalle => {
+                                                                // *** NUEVO LOG: Inspeccionar el valor de anulado_individualmente en el momento de renderizado ***
+                                                                console.log(`VentasPage: Detalle ${detalle.id} - anulado_individualmente: ${detalle.anulado_individualmente}`);
+                                                                return (
+                                                                    <tr key={detalle.id}> 
+                                                                        <td style={styles.detailTd}>{detalle.producto_nombre}</td>
+                                                                        <td style={styles.detailTd}>{detalle.cantidad}</td>
+                                                                        <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario_venta || 0).toFixed(2)}</td>
+                                                                        <td style={styles.detailTd}>${parseFloat(detalle.subtotal || 0).toFixed(2)}</td>
+                                                                        {/* Mostrar el estado real de anulado_individualmente */}
+                                                                        <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
+                                                                        <td style={styles.detailTd}>
+                                                                            {/* El botón solo se muestra si la venta no está anulada Y el detalle no está anulado individualmente */}
+                                                                            {!venta.anulada && !detalle.anulado_individualmente && ( 
+                                                                                <button
+                                                                                    onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
+                                                                                    style={styles.anularDetalleButton}
+                                                                                >
+                                                                                    Anular Detalle
+                                                                                </button>
+                                                                            )}
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })
                                                         ) : (
                                                             <tr>
                                                                 <td colSpan="6" style={styles.noDataMessage}>No hay detalles para esta venta.</td>
