@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
     const [selectedStoreSlug, setSelectedStoreSlug] = useState(localStorage.getItem('selected_store_slug') || null);
     const navigate = useNavigate();
 
+    // setAuthToken es una función fundamental, no debe depender de nada
     const setAuthToken = useCallback((tkn) => {
         if (tkn) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${tkn}`;
@@ -27,8 +28,9 @@ export const AuthProvider = ({ children }) => {
             setToken(null);
             console.log("AuthContext: Token de Axios eliminado.");
         }
-    }, []);
+    }, []); // No dependencies, it's a pure setter of Axios header and local state
 
+    // logout depende de setAuthToken y navigate
     const logout = useCallback(() => {
         console.log("AuthContext: Ejecutando logout.");
         setUser(null);
@@ -36,16 +38,17 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('selected_store_slug');
         setSelectedStoreSlug(null);
-        setAuthToken(null);
+        setAuthToken(null); // Call setAuthToken to clear Axios header
         navigate('/login/bonito-amor'); 
-    }, [setAuthToken, navigate]);
+    }, [setAuthToken, navigate]); // Dependencies are stable
 
+    // refreshToken depende de logout y setAuthToken
     const refreshToken = useCallback(async () => {
         const refresh_token = localStorage.getItem('refresh_token');
         console.log("AuthContext: Intentando refrescar token. Refresh token:", refresh_token ? refresh_token.substring(0, 10) + '...' : 'null');
         if (!refresh_token) {
             console.log("No refresh token available. Logging out.");
-            logout();
+            logout(); // Call logout if no refresh token
             return null;
         }
 
@@ -55,23 +58,47 @@ export const AuthProvider = ({ children }) => {
             });
             const new_access_token = response.data.access;
             localStorage.setItem('access_token', new_access_token);
-            setAuthToken(new_access_token);
+            setAuthToken(new_access_token); // Call setAuthToken to update Axios header and local state
             console.log("AuthContext: Token refrescado con éxito.");
             return new_access_token;
         } catch (error) {
             console.error("Error refreshing token:", error.response ? error.response.data : error.message);
             setError(error.response?.data?.detail || "Error al refrescar el token."); 
-            logout();
+            logout(); // Call logout on refresh failure
             return null;
         }
-    }, [setAuthToken, logout, setError]);
+    }, [logout, setAuthToken, setError]); // Dependencies are stable
 
+    // selectStore no depende de otras funciones de useCallback
     const selectStore = useCallback((slug) => {
         localStorage.setItem('selected_store_slug', slug);
         setSelectedStoreSlug(slug);
         console.log("AuthContext: Tienda seleccionada:", slug);
-    }, []);
+    }, []); // No dependencies
 
+    // fetchStores depende de token (a través de axios.defaults.headers.common) y setError
+    const fetchStores = useCallback(async () => {
+        console.log("AuthContext: fetchStores llamado.");
+        try {
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tiendas/`);
+            setStores(response.data.results || response.data);
+            console.log("AuthContext: Tiendas cargadas con éxito:", response.data.results || response.data);
+        } catch (err) {
+            console.error("AuthContext: Error fetching stores:", err.response ? err.response.data : err.message);
+            if (err.response && err.response.status !== 401) { // Only set error if it's not an expected 401 due to no token
+                const errorMessage = err.response?.data?.detail || "Error al cargar tiendas.";
+                setError(errorMessage); 
+            }
+            setStores([]); 
+        }
+    }, [setError]); // Only setError as a dependency
+
+    // clearError no depende de nada
+    const clearError = useCallback(() => {
+        setError(null);
+    }, []); // No dependencies
+
+    // login depende de setAuthToken, logout, selectStore, fetchStores, setError
     const login = useCallback(async (username, password, storeSlugFromUrl) => { 
         setError(null); 
         console.log("AuthContext: Intentando login para usuario:", username, "Tienda:", storeSlugFromUrl);
@@ -84,7 +111,7 @@ export const AuthProvider = ({ children }) => {
 
             localStorage.setItem('access_token', access);
             localStorage.setItem('refresh_token', refresh);
-            setAuthToken(access); 
+            setAuthToken(access); // Set token in Axios and local state
 
             console.log("AuthContext: Obteniendo detalles de usuario después del login...");
             const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/me/`);
@@ -92,7 +119,6 @@ export const AuthProvider = ({ children }) => {
             setUser(fetchedUser);
             console.log("AuthContext: Detalles de usuario obtenidos:", fetchedUser);
 
-            // --- INICIO DE LA VALIDACIÓN DE TIENDA (AHORA ESTRICTA PARA TODOS) ---
             console.log("AuthContext (Login): Iniciando validación de tienda.");
             console.log("AuthContext (Login): storeSlugFromUrl:", storeSlugFromUrl);
             console.log("AuthContext (Login): fetchedUser.is_superuser:", fetchedUser.is_superuser);
@@ -118,10 +144,8 @@ export const AuthProvider = ({ children }) => {
                     localStorage.removeItem('selected_store_slug');
                 }
             }
-            // --- FIN DE LA VALIDACIÓN DE TIENDA ---
-
-            // CAMBIO: Cargar tiendas después de un login exitoso y con el token ya configurado
-            await fetchStores();
+            
+            await fetchStores(); // Fetch stores after user is logged in and token is set
 
             return true; 
         } catch (err) {
@@ -131,30 +155,10 @@ export const AuthProvider = ({ children }) => {
             logout(); 
             return false; 
         }
-    }, [setAuthToken, logout, selectStore, setError, fetchStores]); // Añadir fetchStores a las dependencias
+    }, [setAuthToken, logout, selectStore, setError, fetchStores]); 
 
-    const fetchStores = useCallback(async () => {
-        console.log("AuthContext: fetchStores llamado.");
-        try {
-            // Esta solicitud ahora se hará con el token si está disponible en axios.defaults.headers.common['Authorization']
-            const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tiendas/`);
-            setStores(response.data.results || response.data);
-            console.log("AuthContext: Tiendas cargadas con éxito:", response.data.results || response.data);
-        } catch (err) {
-            console.error("AuthContext: Error fetching stores:", err.response ? err.response.data : err.message);
-            // Solo establecer error visible si no es un 401 (ya que un 401 es esperado si no hay token)
-            if (err.response && err.response.status !== 401) {
-                const errorMessage = err.response?.data?.detail || "Error al cargar tiendas.";
-                setError(errorMessage); 
-            }
-            setStores([]); 
-        }
-    }, [setError]);
 
-    const clearError = useCallback(() => {
-        setError(null);
-    }, []);
-
+    // useEffect for initial load and token refresh interval
     useEffect(() => {
         const loadUserAndStores = async () => {
             setLoading(true); 
@@ -177,13 +181,11 @@ export const AuthProvider = ({ children }) => {
                         current_access_token = await refreshToken(); 
                         if (!current_access_token) { 
                             setLoading(false);
-                            // Si el refresh falla, logout ya se encargó. No hay token, no intentamos cargar tiendas autenticadas.
-                            return;
+                            return; // Logout handled by refreshToken
                         }
                     }
                     
-                    // Si el token es válido o se refrescó, configúralo en Axios
-                    setAuthToken(current_access_token);
+                    setAuthToken(current_access_token); // Ensure Axios header is set
                     console.log("AuthContext: Token de acceso válido o refrescado. Obteniendo detalles de usuario...");
 
                     try {
@@ -192,7 +194,6 @@ export const AuthProvider = ({ children }) => {
                         setUser(fetchedUser);
                         console.log("AuthContext: Usuario establecido:", fetchedUser);
 
-                        // --- INICIO DE LA VALIDACIÓN DE TIENDA (AHORA ESTRICTA PARA TODOS) ---
                         console.log("AuthContext (Load): Iniciando validación de tienda.");
                         console.log("AuthContext (Load): stored_store_slug:", stored_store_slug);
                         console.log("AuthContext (Load): fetchedUser.is_superuser:", fetchedUser.is_superuser);
@@ -213,11 +214,9 @@ export const AuthProvider = ({ children }) => {
                         } else {
                             console.log("AuthContext (Load): No hay tienda almacenada ni asignada al usuario. No se selecciona tienda.");
                         }
-                        // --- FIN DE LA VALIDACIÓN DE TIENDA ---
 
-                        // CAMBIO CLAVE: Cargar tiendas solo si el usuario está autenticado y su información se cargó correctamente
+                        // Call fetchStores ONLY after a user is successfully loaded and token is set
                         await fetchStores();
-
 
                     } catch (userError) {
                         console.error("AuthContext: Error al obtener detalles de usuario:", userError.response ? userError.response.data : userError.message);
@@ -233,9 +232,9 @@ export const AuthProvider = ({ children }) => {
                     return;
                 }
             } else {
-                console.log("AuthContext: No se encontró token de acceso en localStorage. No se cargarán tiendas autenticadas.");
+                console.log("AuthContext: No se encontró token de acceso en localStorage. Usuario no autenticado.");
                 setUser(null);
-                setStores([]); // Asegurar que las tiendas estén vacías si no hay token
+                setStores([]); // Clear stores if no token
             }
             
             setLoading(false);
@@ -262,8 +261,8 @@ export const AuthProvider = ({ children }) => {
         }, 1000 * 60); 
 
         return () => clearInterval(interval);
-    }, [refreshToken, logout, setAuthToken, selectStore, fetchStores]); // fetchStores añadido como dependencia
-    // Asegurarse de que fetchStores esté en las dependencias si se llama dentro del useEffect
+    }, [refreshToken, logout, setAuthToken, selectStore, fetchStores]); 
+
 
     const authContextValue = {
         user,
