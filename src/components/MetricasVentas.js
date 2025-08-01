@@ -47,6 +47,32 @@ const normalizeApiUrl = (url) => {
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
+// --- CAMBIO CLAVE AQUÍ: Mover commonChartOptions fuera del componente ---
+const commonChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            position: 'top',
+        },
+        tooltip: {
+            mode: 'index',
+            intersect: false,
+        },
+        title: {
+            display: true,
+            text: '', 
+        },
+    },
+    scales: {
+        y: {
+            beginAtZero: true,
+        },
+    },
+};
+// --- FIN DEL CAMBIO ---
+
+
 const MetricasVentas = () => {
     // Obtener el usuario, estado de autenticación, carga de autenticación, slug de la tienda seleccionada y token del AuthContext
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, stores } = useAuth(); 
@@ -174,7 +200,7 @@ const MetricasVentas = () => {
             setLoadingMetrics(false);
             setMetricas(null); 
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchUsers, fetchPaymentMethods]); // fetchMetricasVentas ya no es una dependencia aquí
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchUsers, fetchPaymentMethods]); 
 
     // Determinar la etiqueta del período para el gráfico de barras dinámicamente
     const getPeriodLabel = () => {
@@ -185,19 +211,18 @@ const MetricasVentas = () => {
         } else if (filterYear) {
             return 'Mes del Año';
         }
-        return 'Período'; // Fallback, aunque siempre debería haber al menos un año
+        return 'Período'; 
     };
 
     const barChartData = {
         labels: metricas?.ventas_agrupadas_por_periodo?.data?.map(item => {
-            // Ajustar las etiquetas del gráfico de barras según los filtros aplicados
             if (filterDay) {
-                return `${item.periodo}h`; // Agrupado por hora
+                return `${item.periodo}h`; 
             } else if (filterMonth) {
-                return `Día ${item.periodo}`; // Agrupado por día del mes
+                return `Día ${item.periodo}`; 
             } else if (filterYear) {
                 const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-                return months[item.periodo - 1]; // Agrupado por mes del año
+                return months[item.periodo - 1]; 
             }
             return String(item.periodo); 
         }) || [],
@@ -287,7 +312,7 @@ const MetricasVentas = () => {
                         value={filterYear}
                         onChange={(e) => {
                             setFilterYear(e.target.value);
-                            setFilterMonth(''); // Resetear mes y día al cambiar el año
+                            setFilterMonth(''); 
                             setFilterDay('');
                         }}
                         style={styles.filterSelect}
@@ -301,7 +326,7 @@ const MetricasVentas = () => {
                             value={filterMonth}
                             onChange={(e) => {
                                 setFilterMonth(e.target.value);
-                                setFilterDay(''); // Resetear día al cambiar el mes
+                                setFilterDay(''); 
                             }}
                             style={styles.filterSelect}
                         >
