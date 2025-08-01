@@ -7,7 +7,6 @@ const HomePage = () => {
     const { isAuthenticated, selectedStoreSlug, stores, selectStore, loading } = useAuth();
     const navigate = useNavigate();
 
-    // --- CAMBIO: Log para depuración ---
     console.log("HomePage: Estado de stores:", stores);
     console.log("HomePage: isAuthenticated:", isAuthenticated);
     console.log("HomePage: selectedStoreSlug:", selectedStoreSlug);
@@ -32,8 +31,9 @@ const HomePage = () => {
         return <div style={styles.loadingMessage}>Cargando datos de la aplicación...</div>;
     }
 
-    if (isAuthenticated && !selectedStoreSlug) {
-        // Usuario autenticado pero sin tienda seleccionada: Mostrar selector de tienda
+    // --- CAMBIO CLAVE AQUÍ: Modificar la condición para mostrar el selector de tienda ---
+    // Mostrar el selector si NO está autenticado O si está autenticado pero NO tiene una tienda seleccionada
+    if (!isAuthenticated || (isAuthenticated && !selectedStoreSlug)) {
         return (
             <div style={styles.container}>
                 <h1 style={styles.title}>Bienvenido a Total Stock</h1>
@@ -58,21 +58,30 @@ const HomePage = () => {
                 ) : (
                     <p style={styles.noStoresMessage}>No hay tiendas disponibles. Contacta al administrador.</p>
                 )}
+                {/* Añadir el enlace de iniciar sesión para usuarios no autenticados */}
+                {!isAuthenticated && (
+                    <p style={styles.callToAction}>
+                        ¿Ya tienes una cuenta? <Link to="/login/bonito-amor" style={styles.link}>Inicia sesión</Link>.
+                    </p>
+                )}
             </div>
         );
     }
 
-    // Si no está autenticado, o si ya está autenticado y tiene tienda (redirigido por useEffect)
-    // o si está autenticado pero no hay tiendas disponibles, mostrar mensaje de bienvenida
+    // Si está autenticado Y tiene tienda seleccionada, el useEffect de arriba ya lo redirigió.
+    // Esta parte del código solo se alcanzaría si hay algún estado inesperado, o antes de la redirección.
+    // Como fallback, podemos mostrar un mensaje general.
     return (
         <div style={styles.container}>
             <h1 style={styles.title}>Bienvenido a Total Stock</h1>
             <p style={styles.subtitle}>Gestiona tu inventario y ventas de forma eficiente.</p>
-            {!isAuthenticated && (
-                <p style={styles.callToAction}>
-                    Por favor, <Link to="/login/bonito-amor" style={styles.link}>inicia sesión</Link> para continuar.
-                </p>
-            )}
+            {/* Si llega aquí, es porque isAuthenticated && selectedStoreSlug es true,
+                y el useEffect debería haberlo redirigido.
+                Esto es un fallback si la redirección no ocurre por alguna razón. */}
+            <p style={styles.callToAction}>
+                Estás autenticado y tienes una tienda seleccionada. Si no fuiste redirigido, por favor,
+                ve al <Link to="/punto-venta" style={styles.link}>Punto de Venta</Link>.
+            </p>
         </div>
     );
 };
