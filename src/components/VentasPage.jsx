@@ -35,10 +35,10 @@ const VentasPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // CAMBIO: Establecer filterDate por defecto al día actual
+    // Establecer filterDate por defecto al día actual
     const [filterDate, setFilterDate] = useState(defaultDate);
     const [filterSellerId, setFilterSellerId] = useState('');
-    const [filterAnulada, setFilterAnulada] = useState(''); // Mantener como string 'true'/'false'
+    const [filterAnulada, setFilterAnulada] = useState(''); // Mantener como string 'true'/'false'/'', el backend lo convierte
 
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
@@ -103,21 +103,20 @@ const VentasPage = () => {
                 tienda: storeId,
             };
 
-            // CAMBIO: Los filtros se aplican aquí al llamar a fetchVentas
             if (filterDate) {
                 params.fecha_venta__date = filterDate; 
             }
             if (filterSellerId) {
                 params.usuario = filterSellerId;
             }
-            // CAMBIO: Asegurarse de enviar el valor correcto para el filtro de anulada
-            // Si filterAnulada es una cadena vacía, no se envía el parámetro.
-            // Si es 'true' o 'false', se envía ese string.
+            // Lógica para el filtro de anulada:
+            // Si filterAnulada es 'true' o 'false', lo enviamos.
+            // Si es '', no enviamos el parámetro para mostrar todas.
             if (filterAnulada !== '') { 
                 params.anulada = filterAnulada;
             }
 
-            console.log("Fetching ventas with params:", params); // Log para depuración
+            console.log("Fetching ventas with params:", params); 
 
             const response = await axios.get(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -151,7 +150,7 @@ const VentasPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [token, selectedStoreSlug, stores, filterDate, filterSellerId, filterAnulada]); // Dependencias de fetchVentas
+    }, [token, selectedStoreSlug, stores, filterDate, filterSellerId, filterAnulada]); 
 
     const fetchSellers = useCallback(async () => {
         if (!token || !selectedStoreSlug || !stores.length) return; 
@@ -176,7 +175,8 @@ const VentasPage = () => {
         }
     }, [token, selectedStoreSlug, stores]); 
 
-    // CAMBIO: useEffect para la carga inicial de ventas y vendedores
+    // useEffect para la carga inicial de ventas y vendedores
+    // Ahora fetchVentas solo se llama al inicio y con el botón
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
             if (stores.length > 0) { 
@@ -189,7 +189,7 @@ const VentasPage = () => {
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false); 
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, stores, fetchVentas]); // Añadir fetchVentas como dependencia para la carga inicial
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, stores]); // Eliminado fetchVentas de las dependencias
 
     const handleAnularVenta = async (ventaId) => {
         setConfirmMessage('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.');
@@ -243,18 +243,20 @@ const VentasPage = () => {
         setShowConfirmModal(true);
     };
 
-    // CAMBIO: Función para aplicar filtros
+    // Función para aplicar filtros
     const applyFilters = () => {
         fetchVentas(); // Llama a fetchVentas con los estados actuales de los filtros
     };
 
-    // CAMBIO: Función para limpiar filtros y recargar
+    // Función para limpiar filtros y recargar
     const clearFilters = () => {
         setFilterDate(defaultDate); // Vuelve al día actual por defecto
         setFilterSellerId('');
         setFilterAnulada('');
-        // Llama a fetchVentas con los filtros reseteados
-        fetchVentas(null); 
+        // Se usa un setTimeout para asegurar que los estados se actualicen antes de la llamada
+        setTimeout(() => {
+            fetchVentas(); 
+        }, 0);
     };
 
 
@@ -318,11 +320,11 @@ const VentasPage = () => {
                         style={styles.filterInput}
                     >
                         <option value="">Todas</option>
-                        <option value="false">No Anuladas</option> {/* Valor string 'false' */}
-                        <option value="true">Anuladas</option>    {/* Valor string 'true' */}
+                        <option value="false">No Anuladas</option> 
+                        <option value="true">Anuladas</option>    
                     </select>
                 </div>
-                {/* CAMBIO: Botones para aplicar y limpiar filtros */}
+                {/* Botones para aplicar y limpiar filtros */}
                 <button onClick={applyFilters} style={styles.filterButton}>Aplicar Filtros</button>
                 <button onClick={clearFilters} style={{...styles.filterButton, backgroundColor: '#6c757d'}}>Limpiar Filtros</button>
             </div>
