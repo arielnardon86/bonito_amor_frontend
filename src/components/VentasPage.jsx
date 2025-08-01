@@ -116,7 +116,10 @@ const VentasPage = () => {
                 params.anulada = filterAnulada;
             }
 
-            console.log("Fetching ventas with params:", params); 
+            // --- CAMBIO CLAVE AQUÍ: Log de depuración para el filtro anulada ---
+            console.log("VentasPage: Valor de filterAnulada (estado):", filterAnulada);
+            console.log("VentasPage: Parámetros finales enviados a la API:", params); 
+            // --- FIN DEL CAMBIO ---
 
             const response = await axios.get(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -180,7 +183,7 @@ const VentasPage = () => {
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
             if (stores.length > 0) { 
-                fetchVentas(); // Carga las ventas con los filtros por defecto (día actual)
+                fetchVentas(); 
                 fetchSellers();
             }
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
@@ -189,7 +192,7 @@ const VentasPage = () => {
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false); 
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, stores]); // Eliminado fetchVentas de las dependencias
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, stores]); 
 
     const handleAnularVenta = async (ventaId) => {
         setConfirmMessage('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.');
@@ -200,7 +203,7 @@ const VentasPage = () => {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 showCustomAlert('Venta anulada con éxito!', 'success');
-                fetchVentas(); // Recargar ventas después de anular
+                fetchVentas(); 
             } catch (err) {
                 showCustomAlert('Error al anular la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
                 console.error('Error anulando venta:', err.response || err);
@@ -227,7 +230,6 @@ const VentasPage = () => {
                 
                 showCustomAlert('Producto de la venta anulado con éxito!', 'success');
                 
-                // Estrategia de re-renderizado: colapsar y re-expandir la fila
                 const currentExpandedSaleId = expandedSaleId; 
                 setExpandedSaleId(null); 
                 await fetchVentas(); 
@@ -243,17 +245,14 @@ const VentasPage = () => {
         setShowConfirmModal(true);
     };
 
-    // Función para aplicar filtros
     const applyFilters = () => {
-        fetchVentas(); // Llama a fetchVentas con los estados actuales de los filtros
+        fetchVentas(); 
     };
 
-    // Función para limpiar filtros y recargar
     const clearFilters = () => {
-        setFilterDate(defaultDate); // Vuelve al día actual por defecto
+        setFilterDate(defaultDate); 
         setFilterSellerId('');
         setFilterAnulada('');
-        // Se usa un setTimeout para asegurar que los estados se actualicen antes de la llamada
         setTimeout(() => {
             fetchVentas(); 
         }, 0);
