@@ -24,13 +24,21 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const VentasPage = () => {
     const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth(); 
     
+    // Obtener la fecha actual para los filtros por defecto (día en curso)
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0'); // Mes 0-11, por eso +1
+    const currentDay = today.getDate().toString().padStart(2, '0');
+    const defaultDate = `${currentYear}-${currentMonth}-${currentDay}`;
+
     const [ventas, setVentas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const [filterDate, setFilterDate] = useState('');
+    // CAMBIO: Establecer filterDate por defecto al día actual
+    const [filterDate, setFilterDate] = useState(defaultDate);
     const [filterSellerId, setFilterSellerId] = useState('');
-    const [filterAnulada, setFilterAnulada] = useState('');
+    const [filterAnulada, setFilterAnulada] = useState(''); // Mantener como string 'true'/'false'
 
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
@@ -66,7 +74,7 @@ const VentasPage = () => {
      */
     const areAllDetailsAnnulled = (detalles) => {
         if (!detalles || detalles.length === 0) {
-            return false; // Una venta sin detalles no se considera completamente anulada por detalles
+            return false; 
         }
         return detalles.every(detalle => detalle.anulado_individualmente);
     };
@@ -95,29 +103,34 @@ const VentasPage = () => {
                 tienda: storeId,
             };
 
+            // CAMBIO: Los filtros se aplican aquí al llamar a fetchVentas
             if (filterDate) {
                 params.fecha_venta__date = filterDate; 
             }
             if (filterSellerId) {
                 params.usuario = filterSellerId;
             }
+            // CAMBIO: Asegurarse de enviar el valor correcto para el filtro de anulada
+            // Si filterAnulada es una cadena vacía, no se envía el parámetro.
+            // Si es 'true' o 'false', se envía ese string.
             if (filterAnulada !== '') { 
                 params.anulada = filterAnulada;
             }
+
+            console.log("Fetching ventas with params:", params); // Log para depuración
 
             const response = await axios.get(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: params
             });
             
-            // Mapear profundamente para crear nuevas referencias de objetos
             const processedVentas = response.data.results.map(venta => {
                 const updatedDetalles = venta.detalles ? venta.detalles.map(detalle => ({
-                    ...detalle // Crear nueva referencia para cada detalle
+                    ...detalle 
                 })) : [];
 
                 return {
-                    ...venta, // Crear nueva referencia para cada venta
+                    ...venta, 
                     detalles: updatedDetalles,
                     todos_detalles_anulados: areAllDetailsAnnulled(updatedDetalles)
                 };
@@ -138,7 +151,7 @@ const VentasPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [token, selectedStoreSlug, stores, filterDate, filterSellerId, filterAnulada]);
+    }, [token, selectedStoreSlug, stores, filterDate, filterSellerId, filterAnulada]); // Dependencias de fetchVentas
 
     const fetchSellers = useCallback(async () => {
         if (!token || !selectedStoreSlug || !stores.length) return; 
@@ -163,10 +176,11 @@ const VentasPage = () => {
         }
     }, [token, selectedStoreSlug, stores]); 
 
+    // CAMBIO: useEffect para la carga inicial de ventas y vendedores
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
             if (stores.length > 0) { 
-                fetchVentas();
+                fetchVentas(); // Carga las ventas con los filtros por defecto (día actual)
                 fetchSellers();
             }
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
@@ -175,8 +189,7 @@ const VentasPage = () => {
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false); 
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchVentas, fetchSellers, stores]); 
-
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, stores, fetchVentas]); // Añadir fetchVentas como dependencia para la carga inicial
 
     const handleAnularVenta = async (ventaId) => {
         setConfirmMessage('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.');
@@ -187,7 +200,7 @@ const VentasPage = () => {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 showCustomAlert('Venta anulada con éxito!', 'success');
-                fetchVentas(); 
+                fetchVentas(); // Recargar ventas después de anular
             } catch (err) {
                 showCustomAlert('Error al anular la venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message), 'error');
                 console.error('Error anulando venta:', err.response || err);
@@ -229,6 +242,21 @@ const VentasPage = () => {
         });
         setShowConfirmModal(true);
     };
+
+    // CAMBIO: Función para aplicar filtros
+    const applyFilters = () => {
+        fetchVentas(); // Llama a fetchVentas con los estados actuales de los filtros
+    };
+
+    // CAMBIO: Función para limpiar filtros y recargar
+    const clearFilters = () => {
+        setFilterDate(defaultDate); // Vuelve al día actual por defecto
+        setFilterSellerId('');
+        setFilterAnulada('');
+        // Llama a fetchVentas con los filtros reseteados
+        fetchVentas(null); 
+    };
+
 
     if (authLoading || (isAuthenticated && !user)) { 
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
@@ -290,17 +318,13 @@ const VentasPage = () => {
                         style={styles.filterInput}
                     >
                         <option value="">Todas</option>
-                        <option value="false">No Anuladas</option>
-                        <option value="true">Anuladas</option>
+                        <option value="false">No Anuladas</option> {/* Valor string 'false' */}
+                        <option value="true">Anuladas</option>    {/* Valor string 'true' */}
                     </select>
                 </div>
-                <button onClick={() => fetchVentas()} style={styles.filterButton}>Aplicar Filtros</button>
-                <button onClick={() => {
-                    setFilterDate('');
-                    setFilterSellerId('');
-                    setFilterAnulada('');
-                    fetchVentas(null); 
-                }} style={{...styles.filterButton, backgroundColor: '#6c757d'}}>Limpiar Filtros</button>
+                {/* CAMBIO: Botones para aplicar y limpiar filtros */}
+                <button onClick={applyFilters} style={styles.filterButton}>Aplicar Filtros</button>
+                <button onClick={clearFilters} style={{...styles.filterButton, backgroundColor: '#6c757d'}}>Limpiar Filtros</button>
             </div>
 
             {/* Mensaje si no hay ventas */}
@@ -371,8 +395,6 @@ const VentasPage = () => {
                                                     <tbody>
                                                         {venta.detalles.length > 0 ? (
                                                             venta.detalles.map(detalle => {
-                                                                // *** NUEVO LOG: Inspeccionar el valor de anulado_individualmente en el momento de renderizado ***
-                                                                console.log(`VentasPage: Detalle ${detalle.id} - anulado_individualmente: ${detalle.anulado_individualmente}`);
                                                                 return (
                                                                     <tr key={detalle.id}> 
                                                                         <td style={styles.detailTd}>{detalle.producto_nombre}</td>
