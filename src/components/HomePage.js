@@ -1,11 +1,17 @@
 // BONITO_AMOR/frontend/src/components/HomePage.js
 import React, { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // <-- Añadido Link aquí
+import { useNavigate, Link } from 'react-router-dom'; 
 import { useAuth } from '../AuthContext';
 
 const HomePage = () => {
     const { isAuthenticated, selectedStoreSlug, stores, selectStore, loading } = useAuth();
     const navigate = useNavigate();
+
+    // --- CAMBIO: Log para depuración ---
+    console.log("HomePage: Estado de stores:", stores);
+    console.log("HomePage: isAuthenticated:", isAuthenticated);
+    console.log("HomePage: selectedStoreSlug:", selectedStoreSlug);
+    console.log("HomePage: loading:", loading);
 
     // Redirigir si ya está autenticado y tiene una tienda seleccionada
     useEffect(() => {
@@ -17,7 +23,7 @@ const HomePage = () => {
     const handleStoreChange = (e) => {
         const selectedName = e.target.value;
         if (selectedName) {
-            // Redirige al login con el nombre de la tienda como parámetro
+            // Redirige al login con el nombre de la tienda como parámetro (que luego se slugifica)
             navigate(`/login/${selectedName.toLowerCase().replace(/\s/g, '-')}`); 
         }
     };
@@ -77,7 +83,7 @@ const styles = {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 'calc(100vh - 80px)', // Restar altura de la navbar
+        minHeight: 'calc(100vh - 80px)', 
         padding: '20px',
         textAlign: 'center',
         backgroundColor: '#f8f9fa',

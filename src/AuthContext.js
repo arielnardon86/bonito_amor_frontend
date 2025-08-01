@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('selected_store_slug');
         setSelectedStoreSlug(null);
         setAuthToken(null);
-        setStores([]); // Limpiar tiendas al cerrar sesión
+        setStores([]); 
         navigate('/login/bonito-amor'); 
     }, [setAuthToken, navigate]);
 
@@ -77,7 +77,9 @@ export const AuthProvider = ({ children }) => {
         console.log("AuthContext: fetchStores llamado.");
         try {
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tiendas/`);
-            setStores(response.data.results || response.data);
+            // --- CAMBIO: Log para depuración ---
+            console.log("AuthContext: Respuesta de /api/tiendas/:", response.data);
+            setStores(response.data.results || response.data); // Asegurarse de manejar paginación si existe
             console.log("AuthContext: Tiendas cargadas con éxito:", response.data.results || response.data);
             return true; 
         } catch (err) {
@@ -110,11 +112,6 @@ export const AuthProvider = ({ children }) => {
             setUser(fetchedUser);
             console.log("AuthContext: Detalles de usuario obtenidos:", fetchedUser);
 
-            // --- INICIO DE LA VALIDACIÓN DE TIENDA (CORREGIDA) ---
-            console.log("AuthContext (Login): Iniciando validación de tienda.");
-            console.log("AuthContext (Login): storeSlugFromUrl (desde URL):", storeSlugFromUrl);
-            console.log("AuthContext (Login): fetchedUser.tienda (nombre desde backend):", fetchedUser.tienda); 
-
             // Normalizar ambos valores para la comparación
             const normalizedFetchedUserStoreName = fetchedUser.tienda ? fetchedUser.tienda.toLowerCase().replace(/\s/g, '-') : null;
             const normalizedStoreSlugFromUrl = storeSlugFromUrl ? storeSlugFromUrl.toLowerCase().replace(/\s/g, '-') : null;
@@ -122,7 +119,7 @@ export const AuthProvider = ({ children }) => {
             if (storeSlugFromUrl) {
                 if (normalizedFetchedUserStoreName && normalizedFetchedUserStoreName === normalizedStoreSlugFromUrl) { 
                     console.log("AuthContext (Login): Tienda del usuario coincide con la solicitada en URL.");
-                    selectStore(fetchedUser.tienda); // Almacenar el nombre real de la tienda
+                    selectStore(fetchedUser.tienda); 
                 } else {
                     console.log(`AuthContext (Login): Acceso denegado. Tienda del usuario: '${fetchedUser.tienda || 'Ninguna'}', Tienda solicitada en URL: '${storeSlugFromUrl}'`);
                     setError(`Acceso denegado a la tienda '${storeSlugFromUrl}'. Tu usuario no está asociado a esta tienda.`);
@@ -133,14 +130,13 @@ export const AuthProvider = ({ children }) => {
             } else {
                 if (fetchedUser.tienda) {
                     console.log("AuthContext (Login): No se especificó tienda en URL, seleccionando tienda por defecto del usuario.");
-                    selectStore(fetchedUser.tienda); // Almacenar el nombre real de la tienda
+                    selectStore(fetchedUser.tienda); 
                 } else {
                     console.log("AuthContext (Login): No hay tienda en la URL ni asignada al usuario. No se selecciona tienda.");
                     setSelectedStoreSlug(null);
                     localStorage.removeItem('selected_store_slug');
                 }
             }
-            // --- FIN DE LA VALIDACIÓN DE TIENDA ---
             
             await fetchStores();
             setLoading(false);
@@ -161,7 +157,7 @@ export const AuthProvider = ({ children }) => {
             setLoading(true); 
             console.log("AuthContext: Iniciando loadUserInitial...");
             let current_access_token = localStorage.getItem('access_token');
-            const stored_store_slug = localStorage.getItem('selected_store_slug'); // Ahora es el nombre de la tienda
+            const stored_store_slug = localStorage.getItem('selected_store_slug'); 
 
             if (stored_store_slug) {
                 setSelectedStoreSlug(stored_store_slug);
@@ -190,11 +186,6 @@ export const AuthProvider = ({ children }) => {
                         setUser(fetchedUser);
                         console.log("AuthContext: Usuario establecido:", fetchedUser);
 
-                        // --- INICIO DE LA VALIDACIÓN DE TIENDA (CORREGIDA) ---
-                        console.log("AuthContext (Load): Iniciando validación de tienda.");
-                        console.log("AuthContext (Load): stored_store_slug (nombre de tienda almacenado):", stored_store_slug);
-                        console.log("AuthContext (Load): fetchedUser.tienda (nombre desde backend):", fetchedUser.tienda); 
-
                         // Normalizar ambos valores para la comparación
                         const normalizedFetchedUserStoreName = fetchedUser.tienda ? fetchedUser.tienda.toLowerCase().replace(/\s/g, '-') : null;
                         const normalizedStoredStoreSlug = stored_store_slug ? stored_store_slug.toLowerCase().replace(/\s/g, '-') : null;
@@ -203,7 +194,7 @@ export const AuthProvider = ({ children }) => {
                         if (stored_store_slug) {
                             if (normalizedFetchedUserStoreName && normalizedFetchedUserStoreName === normalizedStoredStoreSlug) { 
                                 console.log("AuthContext (Load): Tienda almacenada coincide con la del usuario.");
-                                selectStore(fetchedUser.tienda); // Almacenar el nombre real de la tienda
+                                selectStore(fetchedUser.tienda); 
                             } else {
                                 console.warn(`AuthContext: La tienda previamente seleccionada '${stored_store_slug}' no coincide con la tienda del usuario o el usuario no tiene tienda. Deseleccionando.`);
                                 setSelectedStoreSlug(null);
@@ -211,11 +202,10 @@ export const AuthProvider = ({ children }) => {
                             }
                         } else if (fetchedUser.tienda) { 
                             console.log("AuthContext (Load): No había tienda seleccionada, seleccionando tienda por defecto del usuario.");
-                            selectStore(fetchedUser.tienda); // Almacenar el nombre real de la tienda
+                            selectStore(fetchedUser.tienda); 
                         } else {
                             console.log("AuthContext (Load): No hay tienda almacenada ni asignada al usuario. No se selecciona tienda.");
                         }
-                        // --- FIN DE LA VALIDACIÓN DE TIENDA ---
 
                         await fetchStores();
 
@@ -275,7 +265,7 @@ export const AuthProvider = ({ children }) => {
         error, 
         clearError, 
         stores, 
-        selectedStoreSlug, // Ahora es el nombre de la tienda
+        selectedStoreSlug, 
         selectStore,
         isStaff: user ? user.is_staff : false,
         isSuperUser: user ? user.is_superuser : false,
