@@ -77,10 +77,14 @@ export const AuthProvider = ({ children }) => {
         console.log("AuthContext: fetchStores llamado.");
         try {
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tiendas/`);
-            // --- CAMBIO: Log para depuración ---
-            console.log("AuthContext: Respuesta de /api/tiendas/:", response.data);
-            setStores(response.data.results || response.data); // Asegurarse de manejar paginación si existe
-            console.log("AuthContext: Tiendas cargadas con éxito:", response.data.results || response.data);
+            // --- CAMBIO: Log para depuración de la respuesta cruda ---
+            console.log("AuthContext: RESPUESTA CRUDA de /api/tiendas/:", response); 
+            console.log("AuthContext: Datos de tiendas recibidos:", response.data);
+
+            // Asumiendo que la respuesta puede ser un objeto con 'results' (paginación) o un array directo
+            const fetchedStoresData = response.data.results || response.data;
+            setStores(fetchedStoresData);
+            console.log("AuthContext: Tiendas cargadas con éxito (estado actualizado):", fetchedStoresData);
             return true; 
         } catch (err) {
             console.error("AuthContext: Error fetching stores:", err.response ? err.response.data : err.message);
@@ -138,7 +142,7 @@ export const AuthProvider = ({ children }) => {
                 }
             }
             
-            await fetchStores();
+            await fetchStores(); // Cargar tiendas después del login exitoso
             setLoading(false);
             return true; 
         } catch (err) {
@@ -207,7 +211,7 @@ export const AuthProvider = ({ children }) => {
                             console.log("AuthContext (Load): No hay tienda almacenada ni asignada al usuario. No se selecciona tienda.");
                         }
 
-                        await fetchStores();
+                        await fetchStores(); // Cargar tiendas si hay un token válido
 
                     } catch (userError) {
                         console.error("AuthContext: Error al obtener detalles de usuario:", userError.response ? userError.response.data : userError.message);
@@ -225,7 +229,9 @@ export const AuthProvider = ({ children }) => {
             } else {
                 console.log("AuthContext: No se encontró token de acceso en localStorage. Usuario no autenticado.");
                 setUser(null);
-                setStores([]); 
+                // Si no hay token, intentar cargar tiendas de todas formas (sin autenticación)
+                // Esto es para la página de login/home donde se necesita la lista de tiendas
+                await fetchStores(); 
             }
             
             setLoading(false);
