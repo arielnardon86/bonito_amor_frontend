@@ -1,148 +1,153 @@
 // BONITO_AMOR/frontend/src/components/HomePage.js
-import React, { useState, useEffect } from 'react'; 
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// axios ya no se necesita directamente para fetchStores aquí
-import { useAuth } from '../AuthContext'; // Importar useAuth para el estado de autenticación y tiendas
+import { useAuth } from '../AuthContext';
 
 const HomePage = () => {
+    const { isAuthenticated, selectedStoreSlug, stores, selectStore, loading } = useAuth();
     const navigate = useNavigate();
-    // Obtener la lista de tiendas, la tienda seleccionada, la función para seleccionarla,
-    // y el estado de autenticación/carga del AuthContext
-    const { 
-        stores, // Usar directamente las tiendas del AuthContext
-        selectedStoreSlug: authSelectedStoreSlug, 
-        selectStore, 
-        isAuthenticated, 
-        loading: authLoading,
-        error: authError // También podemos usar el error del AuthContext
-    } = useAuth();
 
-    // Estado local para el valor del selector de tienda
-    const [selectedStoreSlugLocal, setSelectedStoreSlugLocal] = useState(''); 
-    
-    // Sincronizar el estado local del selector con el del contexto
+    // Redirigir si ya está autenticado y tiene una tienda seleccionada
     useEffect(() => {
-        if (authSelectedStoreSlug) {
-            setSelectedStoreSlugLocal(authSelectedStoreSlug);
+        if (!loading && isAuthenticated && selectedStoreSlug) {
+            navigate('/punto-venta', { replace: true });
         }
-    }, [authSelectedStoreSlug]);
+    }, [loading, isAuthenticated, selectedStoreSlug, navigate]);
 
-    // Efecto para redirigir si el usuario ya está autenticado y tiene una tienda seleccionada
-    useEffect(() => {
-        // Si el AuthContext ya terminó de cargar, está autenticado y ya tiene una tienda seleccionada
-        if (!authLoading && isAuthenticated && authSelectedStoreSlug) {
-            navigate('/'); // Redirige a la página principal (Punto de Venta)
-        }
-    }, [isAuthenticated, authSelectedStoreSlug, authLoading, navigate]);
-
-    const handleStoreSelect = (event) => {
-        const slug = event.target.value;
-        setSelectedStoreSlugLocal(slug); // Actualiza el estado local del select
-        selectStore(slug); // Actualiza la tienda seleccionada en el AuthContext y localStorage
-        if (slug) { 
-            navigate(`/login/${slug}`); // Redirige al login con el slug de la tienda
+    const handleStoreChange = (e) => {
+        const selectedName = e.target.value;
+        if (selectedName) {
+            // Redirige al login con el nombre de la tienda como parámetro
+            navigate(`/login/${selectedName.toLowerCase().replace(/\s/g, '-')}`); 
         }
     };
 
-    const styles = {
-        container: {
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: 'calc(100vh - 60px)',
-            backgroundColor: '#f0f2f5',
-            fontFamily: 'Arial, sans-serif',
-            padding: '20px',
-            textAlign: 'center',
-        },
-        header: {
-            fontSize: '2.8em',
-            color: '#333',
-            marginBottom: '20px',
-            fontWeight: 'bold',
-        },
-        subHeader: {
-            fontSize: '1.5em',
-            color: '#555',
-            marginBottom: '40px',
-        },
-        selectContainer: {
-            marginBottom: '40px',
-            width: '100%',
-            maxWidth: '300px',
-        },
-        select: {
-            width: '100%',
-            padding: '10px 15px',
-            fontSize: '1.2em',
-            borderRadius: '8px',
-            border: '1px solid #ccc',
-            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-            appearance: 'none',
-            background: 'white url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007bff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-6.5%200-12.9%202.8-17.6%208.6L144.7%20227.3c4.7%205.8%2011.1%208.6%2017.6%208.6s12.9-2.8%2017.6-8.6L287%2069.4z%22%2F%3E%3C%2Fsvg%3E") no-repeat right 10px center',
-            backgroundSize: '12px',
-            cursor: 'pointer',
-        },
-        loadingMessage: {
-            fontSize: '1.2em',
-            color: '#555',
-        },
-        errorMessage: {
-            fontSize: '1.2em',
-            color: 'red',
-        },
-        footerText: {
-            fontSize: '1em',
-            color: '#777',
-            marginTop: '50px',
-            lineHeight: '1.5',
-        }
-    };
+    if (loading) {
+        return <div style={styles.loadingMessage}>Cargando datos de la aplicación...</div>;
+    }
 
-    // Si el AuthContext está cargando, muestra mensaje de carga
-    if (authLoading) {
+    if (isAuthenticated && !selectedStoreSlug) {
+        // Usuario autenticado pero sin tienda seleccionada: Mostrar selector de tienda
         return (
             <div style={styles.container}>
-                <p style={styles.loadingMessage}>Cargando tiendas y estado de autenticación...</p>
+                <h1 style={styles.title}>Bienvenido a Total Stock</h1>
+                <p style={styles.subtitle}>Por favor, selecciona tu tienda para continuar.</p>
+                {stores.length > 0 ? (
+                    <div style={styles.selectorContainer}>
+                        <label htmlFor="store-select" style={styles.label}>Selecciona una Tienda:</label>
+                        <select
+                            id="store-select"
+                            value={selectedStoreSlug || ''}
+                            onChange={handleStoreChange}
+                            style={styles.select}
+                        >
+                            <option value="">-- Elige una tienda --</option>
+                            {stores.map(store => (
+                                <option key={store.id} value={store.nombre}>
+                                    {store.nombre}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                ) : (
+                    <p style={styles.noStoresMessage}>No hay tiendas disponibles. Contacta al administrador.</p>
+                )}
             </div>
         );
     }
 
-    // Si hay un error en el AuthContext (ej. al cargar tiendas), lo mostramos
-    if (authError) {
-        return (
-            <div style={styles.container}>
-                <p style={styles.errorMessage}>Error: {authError}</p>
-            </div>
-        );
-    }
-
+    // Si no está autenticado, o si ya está autenticado y tiene tienda (redirigido por useEffect)
+    // o si está autenticado pero no hay tiendas disponibles, mostrar mensaje de bienvenida
     return (
         <div style={styles.container}>
-            <h1 style={styles.header}>Bienvenido a Total Stock</h1>
-            <h2 style={styles.subHeader}>Elige tu tienda:</h2>
-
-            <div style={styles.selectContainer}>
-                <select 
-                    style={styles.select} 
-                    onChange={handleStoreSelect} 
-                    value={selectedStoreSlugLocal} 
-                >
-                    <option value="">-- Seleccionar Tienda --</option>
-                    {stores.map((store) => ( // Usar directamente 'stores' del AuthContext
-                        <option key={store.id} value={store.nombre}> {/* Usar store.nombre como slug */}
-                            {store.nombre}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <p style={styles.footerText}>
-                
-            </p>
+            <h1 style={styles.title}>Bienvenido a Total Stock</h1>
+            <p style={styles.subtitle}>Gestiona tu inventario y ventas de forma eficiente.</p>
+            {!isAuthenticated && (
+                <p style={styles.callToAction}>
+                    Por favor, <Link to="/login/bonito-amor" style={styles.link}>inicia sesión</Link> para continuar.
+                </p>
+            )}
         </div>
     );
+};
+
+const styles = {
+    container: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 'calc(100vh - 80px)', // Restar altura de la navbar
+        padding: '20px',
+        textAlign: 'center',
+        backgroundColor: '#f8f9fa',
+        color: '#333',
+        fontFamily: 'Inter, sans-serif',
+    },
+    title: {
+        fontSize: '2.8em',
+        color: '#007bff',
+        marginBottom: '15px',
+        fontWeight: 'bold',
+    },
+    subtitle: {
+        fontSize: '1.4em',
+        color: '#555',
+        marginBottom: '30px',
+        maxWidth: '600px',
+    },
+    callToAction: {
+        fontSize: '1.2em',
+        color: '#666',
+    },
+    link: {
+        color: '#007bff',
+        textDecoration: 'none',
+        fontWeight: 'bold',
+        '&:hover': {
+            textDecoration: 'underline',
+        },
+    },
+    loadingMessage: {
+        padding: '50px',
+        textAlign: 'center',
+        fontSize: '1.2em',
+        color: '#777',
+    },
+    selectorContainer: {
+        backgroundColor: '#ffffff',
+        padding: '30px',
+        borderRadius: '10px',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px',
+        minWidth: '300px',
+    },
+    label: {
+        fontSize: '1.1em',
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    select: {
+        padding: '12px 15px',
+        fontSize: '1em',
+        borderRadius: '6px',
+        border: '1px solid #ccc',
+        backgroundColor: '#fefefe',
+        width: '100%',
+        cursor: 'pointer',
+        transition: 'border-color 0.3s ease',
+        '&:focus': {
+            borderColor: '#007bff',
+            outline: 'none',
+        },
+    },
+    noStoresMessage: {
+        color: '#dc3545',
+        fontSize: '1.1em',
+        fontWeight: 'bold',
+    },
 };
 
 export default HomePage;

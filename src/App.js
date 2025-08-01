@@ -43,9 +43,7 @@ const Navbar = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [isOpen]);
 
-  const handleStoreChange = (e) => {
-    selectStore(e.target.value);
-  };
+  // handleStoreChange ya no es necesario aquí si el selector se mueve a HomePage
 
   return (
     <nav className="navbar">
@@ -63,29 +61,10 @@ const Navbar = () => {
           </div>
 
           <ul className={isOpen ? "nav-links active" : "nav-links"}>
-            {/* Selector de Tienda: Visible si hay tiendas y NO hay una tienda seleccionada */}
-            {stores.length > 0 && !selectedStoreSlug && ( 
-                <li className="store-select-item">
-                    <select
-                        value={selectedStoreSlug || ''}
-                        onChange={handleStoreChange}
-                        className="store-selector"
-                    >
-                        <option value="">Selecciona una Tienda</option>
-                        {/* Usar store.id como key y store.nombre como valor, ya que el backend devuelve nombre */}
-                        {stores.map(store => (
-                            <option key={store.id} value={store.nombre}> 
-                                {store.nombre}
-                            </option>
-                        ))}
-                    </select>
-                </li>
-            )}
-
             {/* Mostrar el nombre de la tienda seleccionada si existe */}
             {selectedStoreSlug && (
                 <li className="store-name-display">
-                    Tienda: <strong>{selectedStoreSlug}</strong> {/* Mostrar el slug directamente */}
+                    Tienda: <strong>{selectedStoreSlug}</strong> {/* selectedStoreSlug ahora es el nombre */}
                 </li>
             )}
 
@@ -121,7 +100,6 @@ function AppContent() {
   const { isAuthenticated, loading, selectedStoreSlug } = useAuth(); 
 
   if (loading) {
-    // Muestra una pantalla de carga mientras AuthContext está inicializando
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
   }
 
@@ -135,19 +113,14 @@ function AppContent() {
 
           {/* Lógica para la ruta raíz ("/") */}
           <Route path="/" element={
-            isAuthenticated ? (
-              selectedStoreSlug ? (
-                // Si está autenticado Y tiene tienda seleccionada, va al Punto de Venta
-                <ProtectedRoute staffOnly={true}>
-                  <PuntoVenta />
-                </ProtectedRoute>
-              ) : (
-                // Si está autenticado PERO NO tiene tienda seleccionada, va a la HomePage (para seleccionar tienda)
-                <HomePage />
-              )
+            isAuthenticated && selectedStoreSlug ? (
+              // Si está autenticado Y tiene tienda seleccionada, va al Punto de Venta
+              <ProtectedRoute staffOnly={true}>
+                <PuntoVenta />
+              </ProtectedRoute>
             ) : (
-              // Si NO está autenticado, siempre redirige a la página de login
-              <Navigate to="/login/bonito-amor" replace />
+              // Si no está autenticado O no tiene tienda seleccionada, va a HomePage
+              <HomePage />
             )
           } />
 
@@ -188,13 +161,14 @@ function AppContent() {
               />
 
               {/* Cualquier otra ruta si está autenticado y con tienda, redirige al Punto de Venta */}
-              {/* Esto captura rutas no definidas o incorrectas y las lleva al inicio de la app logueada */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}
 
-          {/* Si no está autenticado y no está en /login, redirige a /login/bonito-amor */}
-          {!isAuthenticated && <Route path="*" element={<Navigate to="/login/bonito-amor" replace />} />}
+          {/* Si no está autenticado y no está en /login, o si está autenticado pero sin tienda, va a HomePage */}
+          {(!isAuthenticated || (isAuthenticated && !selectedStoreSlug)) && 
+            <Route path="*" element={<Navigate to="/" replace />} />
+          }
 
         </Routes>
       </div>
