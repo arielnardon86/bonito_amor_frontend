@@ -1,6 +1,6 @@
 // BONITO_AMOR/frontend/src/components/HomePage.js
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // <-- Añadido Link aquí
 import { useAuth } from '../AuthContext';
 
 const HomePage = () => {
