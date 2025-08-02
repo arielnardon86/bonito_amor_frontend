@@ -20,7 +20,7 @@ const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL);
 
 
 const UserManagement = () => {
-    const { user, isAuthenticated, loading } = useAuth();
+    const { user, isAuthenticated, loading, selectedStoreSlug, stores } = useAuth(); 
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
@@ -35,6 +35,7 @@ const UserManagement = () => {
         last_name: '',
         is_staff: false,
         is_superuser: false,
+        tienda_id: null, // Usar tienda_id para enviar el ID al backend
     });
     // Estado para el usuario que se está editando
     const [editingUser, setEditingUser] = useState(null);
@@ -44,11 +45,23 @@ const UserManagement = () => {
         setLoadingUsers(true);
         setError('');
         try {
-            // El backend ya filtra por la tienda del usuario autenticado
+            const params = {};
+            // Si el usuario es superusuario y hay una tienda seleccionada,
+            // filtra los usuarios por esa tienda.
+            if (user && user.is_superuser && selectedStoreSlug) {
+                const store = stores.find(s => s.nombre === selectedStoreSlug);
+                if (store) {
+                    params.tienda = store.id; // Filtrar por el ID de la tienda
+                }
+            }
+            // Si el usuario es superusuario y NO hay tienda seleccionada,
+            // no se envía el parámetro 'tienda', por lo que el backend devolverá todos.
+
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                }
+                },
+                params: params // Enviar parámetros de filtro
             });
             setUsers(response.data.results); 
         } catch (err) {
@@ -57,8 +70,7 @@ const UserManagement = () => {
         } finally {
             setLoadingUsers(false);
         }
-    }, []); 
-
+    }, [user, selectedStoreSlug, stores]); // Añadir dependencias relevantes
 
     useEffect(() => {
         if (!loading) {
@@ -66,31 +78,46 @@ const UserManagement = () => {
             if (!isAuthenticated || !user?.is_superuser) {
                 navigate('/'); // O a una página de "Acceso Denegado"
             } else {
-                fetchUsers(); // Si tiene permisos, carga los usuarios
+                fetchUsers(); 
             }
         }
-    }, [isAuthenticated, user, loading, navigate, fetchUsers]);
+    }, [isAuthenticated, user, loading, navigate, fetchUsers, selectedStoreSlug, stores]); 
 
     const handleCreateUserChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setNewUser({
-            ...newUser,
+        setNewUser(prev => ({ // Usar prev para asegurar el estado más reciente
+            ...prev,
             [name]: type === 'checkbox' ? checked : value
-        });
+        }));
     };
 
     const handleCreateUserSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        // Validación frontend: contraseñas coinciden
         if (newUser.password !== newUser.password2) {
             setError('Las contraseñas no coinciden.');
             return;
         }
 
+        const dataToSend = { ...newUser };
+
+        // Si hay una tienda seleccionada, asignarla automáticamente al nuevo usuario
+        if (selectedStoreSlug) {
+            const store = stores.find(s => s.nombre === selectedStoreSlug);
+            if (store) {
+                dataToSend.tienda_id = store.id; // Asignar el ID de la tienda
+            } else {
+                setError('No se pudo determinar la tienda seleccionada para asignar al nuevo usuario.');
+                return;
+            }
+        } else {
+            // Si no hay tienda seleccionada, asegurar que tienda_id sea null
+            dataToSend.tienda_id = null;
+        }
+
         try {
-            await axios.post(`${BASE_API_ENDPOINT}/api/users/`, newUser, {
+            await axios.post(`${BASE_API_ENDPOINT}/api/users/`, dataToSend, { 
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }
@@ -104,6 +131,7 @@ const UserManagement = () => {
                 last_name: '',
                 is_staff: false,
                 is_superuser: false,
+                tienda_id: null, 
             });
             setShowCreateForm(false);
             fetchUsers(); // Refrescar la lista de usuarios
@@ -117,16 +145,11 @@ const UserManagement = () => {
     };
 
     const handleDeleteUser = async (userId) => {
-        // No permitir que un superusuario se elimine a sí mismo
         if (user && userId === user.id) {
             setError('No puedes eliminar tu propia cuenta de superusuario.');
             return;
         }
 
-        // Reemplazar window.confirm con un modal de confirmación personalizado
-        // (Asumo que ya tienes implementado un modal de confirmación similar a VentasPage)
-        // Por ahora, mantendré window.confirm para no introducir más complejidad si no tienes el modal genérico.
-        // Si tienes un modal, usa showConfirmModal y setConfirmAction aquí.
         if (window.confirm('¿Estás seguro de que quieres eliminar este usuario?')) {
             setError('');
             try {
@@ -135,7 +158,7 @@ const UserManagement = () => {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
-                fetchUsers(); // Refrescar la lista
+                fetchUsers(); 
             } catch (err) {
                 console.error('Error deleting user:', err.response ? err.response.data : err.message);
                 const errorMessage = err.response?.data ?
@@ -150,7 +173,8 @@ const UserManagement = () => {
         setEditingUser({
             ...userToEdit,
             password: '',
-            password2: '' // También resetear password2 para edición
+            password2: '', 
+            tienda_id: userToEdit.tienda ? userToEdit.tienda.id : null, // Cargar el ID de la tienda para edición
         });
     };
 
@@ -166,30 +190,35 @@ const UserManagement = () => {
         e.preventDefault();
         setError('');
 
-        // Validación frontend: contraseñas coinciden SOLO si se están cambiando
         if (editingUser.password && editingUser.password !== editingUser.password2) {
             setError('Las nuevas contraseñas no coinciden.');
             return;
         }
 
         try {
-            // Prepara los datos a enviar:
             const dataToSend = { ...editingUser };
 
-            // Si la contraseña no se modificó (el campo está vacío), NO la enviamos.
-            // Si se envió, entonces también se debe enviar password2.
             if (!dataToSend.password) {
                 delete dataToSend.password;
-                delete dataToSend.password2; // Eliminar también password2 si no se cambia la password
+                delete dataToSend.password2; 
             }
+            
+            // Asegurarse de que tienda_id se envíe correctamente (puede ser null)
+            // Si el campo de selección de tienda está deshabilitado/oculto en el frontend
+            // porque hay una tienda seleccionada, el valor de dataToSend.tienda_id
+            // ya debería ser el de la tienda seleccionada.
+            if (!dataToSend.tienda_id) {
+                dataToSend.tienda_id = null;
+            }
+
 
             await axios.patch(`${BASE_API_ENDPOINT}/api/users/${editingUser.id}/`, dataToSend, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }
             });
-            setEditingUser(null); // Cerrar formulario de edición
-            fetchUsers(); // Refrescar la lista
+            setEditingUser(null); 
+            fetchUsers(); 
         } catch (err) {
             console.error('Error updating user:', err.response ? err.response.data : err.message);
             const errorMessage = err.response?.data ?
@@ -200,15 +229,19 @@ const UserManagement = () => {
     };
 
     // Manejo de carga y permisos iniciales
-    if (loading || (isAuthenticated && !user)) { // Añadido user check para evitar errores si user es null
+    if (loading || (isAuthenticated && !user)) { 
         return <div style={{ textAlign: 'center', marginTop: '50px' }}>Cargando datos de usuario...</div>;
     }
 
     // Redirige si no está autenticado o no es superusuario
     if (!isAuthenticated || !user.is_superuser) {
-        // No renderizamos nada aquí, el useEffect ya manejará la navegación
-        return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Acceso denegado. No tienes permisos de administrador.</div>;
+        return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Acceso denegado. No tienes permisos de administrador para esta sección.</div>;
     }
+
+    // Determinar si el campo de selección de tienda debe ser visible/editable
+    const showStoreSelect = user.is_superuser && !selectedStoreSlug;
+    const currentStoreId = selectedStoreSlug ? stores.find(s => s.nombre === selectedStoreSlug)?.id : null;
+
 
     return (
         <div style={styles.container}>
@@ -255,6 +288,24 @@ const UserManagement = () => {
                                 />
                                 Es Superusuario (Máximos privilegios)
                             </label>
+                            
+                            {/* Campo de selección de tienda: visible si no hay tienda seleccionada O si es superusuario */}
+                            {/* Si hay una tienda seleccionada, se pre-rellena y deshabilita */}
+                            <div style={styles.inputGroup}>
+                                <label style={styles.filterLabel}>Tienda:</label>
+                                <select
+                                    name="tienda_id" // Usar tienda_id para el campo de entrada
+                                    value={selectedStoreSlug ? currentStoreId : (newUser.tienda_id || '')}
+                                    onChange={handleCreateUserChange}
+                                    style={styles.input}
+                                    disabled={!!selectedStoreSlug} // Deshabilitar si hay una tienda seleccionada
+                                >
+                                    <option value="">Sin tienda</option>
+                                    {stores.map(store => (
+                                        <option key={store.id} value={store.id}>{store.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <button type="submit" style={styles.submitButton}>Crear Usuario</button>
@@ -294,6 +345,24 @@ const UserManagement = () => {
                                 />
                                 Es Superusuario (Máximos privilegios)
                             </label>
+
+                            {/* Campo de selección de tienda: visible si no hay tienda seleccionada O si es superusuario */}
+                            {/* Si hay una tienda seleccionada, se pre-rellena y deshabilita */}
+                            <div style={styles.inputGroup}>
+                                <label style={styles.filterLabel}>Tienda:</label>
+                                <select
+                                    name="tienda_id" // Usar tienda_id para el campo de entrada
+                                    value={selectedStoreSlug ? currentStoreId : (editingUser.tienda_id || '')}
+                                    onChange={handleEditUserChange}
+                                    style={styles.input}
+                                    disabled={!!selectedStoreSlug} // Deshabilitar si hay una tienda seleccionada
+                                >
+                                    <option value="">Sin tienda</option>
+                                    {stores.map(store => (
+                                        <option key={store.id} value={store.id}>{store.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <button type="submit" style={styles.submitButton}>Actualizar Usuario</button>
@@ -316,6 +385,7 @@ const UserManagement = () => {
                             <th style={styles.th}>Apellido</th>
                             <th style={styles.th}>Staff</th>
                             <th style={styles.th}>Superusuario</th>
+                            <th style={styles.th}>Tienda</th> {/* Mostrar la tienda del usuario */}
                             <th style={styles.th}>Acciones</th>
                         </tr>
                     </thead>
@@ -329,6 +399,7 @@ const UserManagement = () => {
                                 <td style={styles.td}>{u.last_name}</td>
                                 <td style={styles.td}>{u.is_staff ? 'Sí' : 'No'}</td>
                                 <td style={styles.td}>{u.is_superuser ? 'Sí' : 'No'}</td>
+                                <td style={styles.td}>{u.tienda ? u.tienda.nombre : 'N/A'}</td> {/* Mostrar el nombre de la tienda */}
                                 <td style={styles.td}>
                                     <button onClick={() => handleEditUserClick(u)} style={{ ...styles.actionButton, backgroundColor: '#ffc107' }}>Editar</button>
                                     {u.id !== user.id && (
@@ -450,6 +521,11 @@ const styles = {
         cursor: 'pointer',
         fontSize: '14px',
     },
+    inputGroup: { // Nuevo estilo para agrupar label y select/input
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '5px',
+    }
 };
 
 export default UserManagement;
