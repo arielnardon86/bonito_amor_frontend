@@ -5,7 +5,7 @@ import { Routes, Route, Link, Navigate } from 'react-router-dom';
 import Productos from './components/Productos';
 import PuntoVenta from './components/PuntoVenta';
 import Login from './components/Login';
-import UserManagement from './components/UserManagement';
+//import UserManagement from './components/UserManagement'; --Ofuzca Gestion de usuarios
 import ProtectedRoute from './components/ProtectedRoute'; 
 import { AuthProvider, useAuth } from './AuthContext'; 
 import { SalesProvider } from './components/SalesContext'; 
@@ -133,14 +133,7 @@ function AppContent() {
                 </ProtectedRoute>
               } />
               
-              <Route
-                  path="/users"
-                  element={
-                      <ProtectedRoute adminOnly={true}>
-                          <UserManagement />
-                      </ProtectedRoute>
-                  }
-              />
+            
               
               <Route
                   path="/metricas-ventas"
