@@ -8,7 +8,7 @@ const TALLE_OPTIONS = [
     { value: 'XS', label: 'Extra Pequeño' },
     { value: 'S', label: 'Pequeño' },
     { value: 'M', label: 'Mediano' },
-    { value: 'L', label: 'Grande' },
+    { value: 'L', 'label': 'Grande' },
     { value: 'XL', label: 'Extra Grande' },
     { value: 'UNICA', label: 'Talla Única' },
     { value: 'NUM36', label: '36' },
@@ -243,7 +243,7 @@ const PuntoVenta = () => {
             setShowConfirmModal(false); // Cerrar modal de confirmación
             try {
                 const ventaData = {
-                    tienda: selectedStoreSlug, // <-- CAMBIO AQUÍ: de tienda_slug a tienda
+                    tienda_nombre: selectedStoreSlug, // <-- CAMBIO AQUÍ: de 'tienda' a 'tienda_nombre'
                     metodo_pago_nombre: metodoPagoSeleccionado,
                     total: finalTotal, // Enviar el total ya con el descuento aplicado
                     descuento_porcentaje: descuentoPorcentaje, // <-- Añadir este campo para el backend
