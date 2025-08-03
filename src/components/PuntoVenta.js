@@ -74,6 +74,9 @@ const PuntoVenta = () => {
     const [showNewCartModal, setShowNewCartModal] = useState(false);
     const [newCartAliasInput, setNewCartAliasInput] = useState('');
 
+    // --- NUEVO ESTADO PARA EL DESCUENTO ---
+    const [descuentoPorcentaje, setDescuentoPorcentaje] = useState(0); // Porcentaje de descuento
+
     // --- NUEVOS ESTADOS PARA LA PAGINACIÓN DE PRODUCTOS DISPONIBLES ---
     const [currentPage, setCurrentPage] = useState(1);
     const [productsPerPage] = useState(10); // 10 productos por página
@@ -208,6 +211,14 @@ const PuntoVenta = () => {
         setShowConfirmModal(true);
     };
 
+    // Calcular el total de la venta con descuento
+    const calculateTotalWithDiscount = useCallback(() => {
+        if (!activeCart) return 0;
+        let subtotal = activeCart.items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.product.precio)), 0);
+        const discountAmount = subtotal * (descuentoPorcentaje / 100);
+        return (subtotal - discountAmount);
+    }, [activeCart, descuentoPorcentaje]);
+
     // Procesar la venta
     const handleProcesarVenta = async () => {
         if (!activeCart || activeCart.items.length === 0) {
@@ -223,14 +234,19 @@ const PuntoVenta = () => {
             return;
         }
 
+        const finalTotal = calculateTotalWithDiscount();
+
         // Confirmación antes de procesar
-        setConfirmMessage(`¿Confirmas la venta por un total de $${activeCart.total.toFixed(2)} con ${metodoPagoSeleccionado}?`);
+        setConfirmMessage(`¿Confirmas la venta por un total de $${finalTotal.toFixed(2)} con ${metodoPagoSeleccionado}?` +
+                          (descuentoPorcentaje > 0 ? ` (Descuento aplicado: ${descuentoPorcentaje}%)` : ''));
         setConfirmAction(() => async () => {
             setShowConfirmModal(false); // Cerrar modal de confirmación
             try {
                 const ventaData = {
                     tienda_slug: selectedStoreSlug,
                     metodo_pago_nombre: metodoPagoSeleccionado,
+                    total: finalTotal, // Enviar el total ya con el descuento aplicado
+                    descuento_porcentaje: descuentoPorcentaje, // <-- Añadir este campo para el backend
                     detalles: activeCart.items.map(item => ({
                         producto: item.product.id,
                         cantidad: item.quantity,
@@ -246,6 +262,7 @@ const PuntoVenta = () => {
                 showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
                 finalizeCart(activeCartId); // Marcar el carrito como finalizado en el contexto
                 setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : ''); // Resetear método de pago
+                setDescuentoPorcentaje(0); // Resetear descuento
             } catch (err) {
                 console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
                 showCustomAlert('Error al procesar la venta: ' + (err.response && err.response.data ? JSON.stringify(err.response.data) : err.message), 'error');
@@ -476,7 +493,7 @@ const PuntoVenta = () => {
                                 ))}
                             </tbody>
                         </table>
-                        <h4 style={styles.totalVenta}>Total de Venta: ${activeCart.total.toFixed(2)}</h4>
+                        <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4> {/* Mostrar subtotal antes de descuento */}
 
                         {/* Selector de método de pago */}
                         <div style={styles.paymentMethodSelectContainer}>
@@ -492,6 +509,22 @@ const PuntoVenta = () => {
                                 ))}
                             </select>
                         </div>
+
+                        {/* Sección de Descuento */}
+                        <div style={styles.discountContainer}>
+                            <label htmlFor="descuento" style={styles.discountLabel}>Aplicar Descuento (%):</label>
+                            <input
+                                type="number"
+                                id="descuento"
+                                value={descuentoPorcentaje}
+                                onChange={(e) => setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))} // Asegura que esté entre 0 y 100
+                                style={styles.discountInput}
+                                min="0"
+                                max="100"
+                            />
+                        </div>
+
+                        <h4 style={styles.finalTotalVenta}>Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4> {/* Mostrar total con descuento */}
 
                         <button onClick={handleProcesarVenta} style={styles.processSaleButton}>
                             Procesar Venta
@@ -526,7 +559,7 @@ const PuntoVenta = () => {
                                 <tr style={styles.tableHeaderRow}>
                                     <th style={styles.th}>Nombre</th>
                                     <th style={styles.th}>Talle</th>
-                                    <th style={styles.th}>Código</th>
+                                    {/* <th style={styles.th}>Código</th> */} {/* ¡COLUMNA ELIMINADA! */}
                                     <th style={styles.th}>Precio</th>
                                     <th style={styles.th}>Stock</th>
                                     <th style={styles.th}>Acción</th>
@@ -538,7 +571,7 @@ const PuntoVenta = () => {
                                         <tr key={product.id} style={styles.tableRow}>
                                             <td style={styles.td}>{product.nombre}</td>
                                             <td style={styles.td}>{product.talle}</td>
-                                            <td style={styles.td}>{product.codigo_barras || 'N/A'}</td>
+                                            {/* <td style={styles.td}>{product.codigo_barras || 'N/A'}</td> */} {/* ¡CELDA ELIMINADA! */}
                                             <td style={styles.td}>${parseFloat(product.precio).toFixed(2)}</td>
                                             <td style={styles.td}>{product.stock}</td>
                                             <td style={styles.td}>
@@ -554,7 +587,7 @@ const PuntoVenta = () => {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="6" style={styles.noDataMessage}>
+                                        <td colSpan="5" style={styles.noDataMessage}> {/* Colspan ajustado a 5 */}
                                             No se encontraron productos con el filtro aplicado.
                                         </td>
                                     </tr>
@@ -852,16 +885,44 @@ const styles = {
         color: '#28a745',
         fontWeight: 'bold',
     },
+    finalTotalVenta: { // Nuevo estilo para el total final con descuento
+        textAlign: 'right',
+        marginTop: '10px',
+        fontSize: '1.7em',
+        color: '#007bff',
+        fontWeight: 'bold',
+    },
     paymentMethodSelectContainer: {
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        marginBottom: '20px',
+        marginBottom: '10px', // Ajustado para dejar espacio para el descuento
+        marginTop: '20px',
     },
     paymentMethodLabel: {
         fontWeight: 'bold',
         color: '#555',
         fontSize: '1em',
+    },
+    discountContainer: { // Nuevo estilo para el contenedor de descuento
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        marginBottom: '20px',
+    },
+    discountLabel: { // Nuevo estilo para la etiqueta de descuento
+        fontWeight: 'bold',
+        color: '#555',
+        fontSize: '1em',
+    },
+    discountInput: { // Nuevo estilo para el input de descuento
+        width: '80px', // Ancho fijo para el porcentaje
+        padding: '10px 12px',
+        border: '1px solid #dcdcdc',
+        borderRadius: '5px',
+        fontSize: '1em',
+        boxSizing: 'border-box',
+        textAlign: 'center',
     },
     processSaleButton: {
         width: '100%',

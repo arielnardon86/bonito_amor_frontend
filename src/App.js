@@ -78,7 +78,7 @@ const Navbar = () => {
                 <>
                     <li onClick={() => setIsOpen(false)}><Link to="/productos">Gestión de Productos</Link></li>
                     {/* <li onClick={() => setIsOpen(false)}><Link to="/users">Gestión de Usuarios</Link></li> */} {/* ¡ELIMINADO! */}
-                    <li onClick={() => setIsOpen(false)}><Link to="/metricas">Métricas</Link></li>
+                    <li onClick={() => setIsOpen(false)}><Link to="/metricas">Métricas de Ventas</Link></li>
                     <li onClick={() => setIsOpen(false)}><Link to="/ventas">Listado de Ventas</Link></li>
                 </>
             )}
