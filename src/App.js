@@ -5,7 +5,7 @@ import { Routes, Route, Link, Navigate } from 'react-router-dom';
 import Productos from './components/Productos';
 import PuntoVenta from './components/PuntoVenta';
 import Login from './components/Login';
-//import UserManagement from './components/UserManagement'; --Ofuzca Gestion de usuarios
+// import UserManagement from './components/UserManagement'; // Eliminado
 import ProtectedRoute from './components/ProtectedRoute'; 
 import { AuthProvider, useAuth } from './AuthContext'; 
 import { SalesProvider } from './components/SalesContext'; 
@@ -77,8 +77,8 @@ const Navbar = () => {
             {user && user.is_superuser && ( 
                 <>
                     <li onClick={() => setIsOpen(false)}><Link to="/productos">Gestión de Productos</Link></li>
-                    <li onClick={() => setIsOpen(false)}><Link to="/users">Gestión de Usuarios</Link></li>
-                    <li onClick={() => setIsOpen(false)}><Link to="/metricas-ventas">Métricas de Ventas</Link></li>
+                    {/* <li onClick={() => setIsOpen(false)}><Link to="/users">Gestión de Usuarios</Link></li> */} {/* ¡ELIMINADO! */}
+                    <li onClick={() => setIsOpen(false)}><Link to="/metricas">Métricas</Link></li>
                     <li onClick={() => setIsOpen(false)}><Link to="/ventas">Listado de Ventas</Link></li>
                 </>
             )}
@@ -96,7 +96,7 @@ const Navbar = () => {
   );
 };
 
-function AppContent() {
+const AppContent = () => {
   const { isAuthenticated, loading, selectedStoreSlug } = useAuth(); 
 
   if (loading) {
@@ -136,7 +136,7 @@ function AppContent() {
             
               
               <Route
-                  path="/metricas-ventas"
+                  path="/metricas"
                   element={
                       <ProtectedRoute adminOnly={true}>
                           <MetricasVentas />
@@ -152,6 +152,15 @@ function AppContent() {
                       </ProtectedRoute>
                   }
               />
+
+              {/* <Route // Eliminada
+                  path="/users"
+                  element={
+                      <ProtectedRoute adminOnly={true}>
+                          <UserManagement />
+                      </ProtectedRoute>
+                  }
+              /> */}
 
               {/* Cualquier otra ruta si está autenticado y con tienda, redirige al Punto de Venta */}
               <Route path="*" element={<Navigate to="/" replace />} />
