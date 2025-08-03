@@ -243,14 +243,14 @@ const PuntoVenta = () => {
             setShowConfirmModal(false); // Cerrar modal de confirmación
             try {
                 const ventaData = {
-                    tienda_nombre: selectedStoreSlug, // <-- CAMBIO AQUÍ: de 'tienda' a 'tienda_nombre'
+                    tienda_nombre: selectedStoreSlug, // <-- Asegurarse que este campo coincida con el backend
                     metodo_pago_nombre: metodoPagoSeleccionado,
                     total: finalTotal, // Enviar el total ya con el descuento aplicado
-                    descuento_porcentaje: descuentoPorcentaje, // <-- Añadir este campo para el backend
+                    descuento_porcentaje: descuentoPorcentaje, 
                     detalles: activeCart.items.map(item => ({
                         producto: item.product.id,
                         cantidad: item.quantity,
-                        precio_unitario: item.product.precio, // Asegúrate de que este campo exista en tu producto
+                        precio_unitario: item.product.precio, 
                     })),
                 };
 
