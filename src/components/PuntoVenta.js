@@ -243,7 +243,7 @@ const PuntoVenta = () => {
             setShowConfirmModal(false); // Cerrar modal de confirmación
             try {
                 const ventaData = {
-                    tienda: selectedStoreSlug, // <-- CAMBIO CLAVE: Ahora enviamos 'tienda' con el nombre (slug)
+                    tienda: selectedStoreSlug, // <-- CAMBIO CLAVE: Enviamos 'tienda' con el nombre (slug)
                     metodo_pago_nombre: metodoPagoSeleccionado,
                     total: finalTotal, // Enviar el total ya con el descuento aplicado
                     descuento_porcentaje: descuentoPorcentaje, 
