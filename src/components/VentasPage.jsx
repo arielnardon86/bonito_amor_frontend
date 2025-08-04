@@ -109,17 +109,12 @@ const VentasPage = () => {
             if (filterSellerId) {
                 params.usuario = filterSellerId;
             }
-            // Lógica para el filtro de anulada:
-            // Si filterAnulada es 'true' o 'false', lo enviamos.
-            // Si es '', no enviamos el parámetro para mostrar todas.
             if (filterAnulada !== '') { 
                 params.anulada = filterAnulada;
             }
 
-            // --- CAMBIO CLAVE AQUÍ: Log de depuración para el filtro anulada ---
             console.log("VentasPage: Valor de filterAnulada (estado):", filterAnulada);
             console.log("VentasPage: Parámetros finales enviados a la API:", params); 
-            // --- FIN DEL CAMBIO ---
 
             const response = await axios.get(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -425,6 +420,12 @@ const VentasPage = () => {
                                                         )}
                                                     </tbody>
                                                 </table>
+                                                {/* CAMBIO CLAVE AQUÍ: Mostrar el porcentaje de descuento */}
+                                                {venta.descuento_porcentaje > 0 && (
+                                                    <p style={styles.discountDisplay}>
+                                                        Descuento aplicado: {parseFloat(venta.descuento_porcentaje).toFixed(2)}%
+                                                    </p>
+                                                )}
                                             </td>
                                         </tr>
                                     )}
@@ -746,6 +747,13 @@ const styles = {
         zIndex: 1001,
         opacity: 0,
         animation: 'fadeInOut 3s forwards',
+    },
+    discountDisplay: { // Nuevo estilo para mostrar el descuento
+        textAlign: 'right',
+        marginTop: '10px',
+        fontSize: '1.1em',
+        color: '#007bff',
+        fontWeight: 'bold',
     },
 };
 
