@@ -29,69 +29,35 @@ export const AuthProvider = ({ children }) => {
     const [selectedStoreSlug, setSelectedStoreSlug] = useState(localStorage.getItem('selectedStoreSlug'));
     const [authError, setAuthError] = useState(null); // Estado para errores de autenticación
 
-    // Función para obtener las tiendas
+    // 1. Función para obtener las tiendas (no depende de otras funciones useCallback aquí)
     const fetchStores = useCallback(async () => {
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`);
             setStores(response.data.results || response.data);
         } catch (error) {
             console.error('AuthContext: Error fetching stores:', error.response ? error.response.data : error.message);
-            // Si el error es 401, significa que no hay credenciales, lo cual es esperado si la ruta es pública
-            // No es necesario establecer un estado de error global aquí, ya que la app puede funcionar sin tiendas cargadas inicialmente si el usuario no está logueado
         }
     }, []);
 
-    // Función para limpiar errores de autenticación
+    // 2. Función de logout (depende de fetchStores)
+    const logout = useCallback(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('selectedStoreSlug');
+        setToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
+        setSelectedStoreSlug(null);
+        delete axios.defaults.headers.common['Authorization'];
+        setAuthError(null); // Limpiar errores al hacer logout
+        fetchStores(); // Llama a fetchStores
+    }, [fetchStores]);
+
+    // 3. Función para limpiar errores de autenticación (no depende de otras funciones useCallback)
     const clearError = useCallback(() => {
         setAuthError(null);
     }, []);
 
-    // Cargar usuario y token al inicio
-    const loadUserInitial = useCallback(async () => {
-        setLoading(true);
-        const storedToken = localStorage.getItem('token');
-        if (storedToken) {
-            try {
-                const decodedUser = jwtDecode(storedToken);
-                setUser(decodedUser);
-                setToken(storedToken);
-                setIsAuthenticated(true);
-
-                // Si el token tiene una tienda asociada, la seleccionamos por defecto
-                if (decodedUser.tienda_nombre) {
-                    setSelectedStoreSlug(decodedUser.tienda_nombre);
-                    localStorage.setItem('selectedStoreSlug', decodedUser.tienda_nombre);
-                } else {
-                    setSelectedStoreSlug(null);
-                    localStorage.removeItem('selectedStoreSlug');
-                }
-
-                // Configurar el token para todas las peticiones de Axios
-                axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-            } catch (error) {
-                console.error('Error decodificando el token o token inválido:', error);
-                logout(); // Limpiar token inválido
-            }
-        } else {
-            setIsAuthenticated(false);
-            setUser(null);
-            setToken(null);
-            delete axios.defaults.headers.common['Authorization'];
-        }
-        
-        // Siempre intentar cargar las tiendas, ya que ahora pueden ser públicas
-        await fetchStores();
-
-        setLoading(false);
-        console.log('AuthContext: loadUserInitial finalizado. Loading es ahora false.');
-    }, [fetchStores, logout]); // Añadir logout a las dependencias
-
-    // Efecto para cargar el usuario y las tiendas al montar el componente
-    useEffect(() => {
-        loadUserInitial();
-    }, [loadUserInitial]);
-
-    // Función de login
+    // 4. Función de login (depende de fetchStores)
     const login = async (username, password) => {
         setAuthError(null); // Limpiar errores antes de intentar login
         try {
@@ -129,25 +95,56 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Función de logout
-    const logout = useCallback(() => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('selectedStoreSlug');
-        setToken(null);
-        setUser(null);
-        setIsAuthenticated(false);
-        setSelectedStoreSlug(null);
-        delete axios.defaults.headers.common['Authorization'];
-        setAuthError(null); // Limpiar errores al hacer logout
-        // Recargar tiendas después del logout, por si hay permisos diferentes
-        fetchStores();
-    }, [fetchStores]);
+    // 5. Cargar usuario y token al inicio (depende de logout y fetchStores)
+    const loadUserInitial = useCallback(async () => {
+        setLoading(true);
+        const storedToken = localStorage.getItem('token');
+        if (storedToken) {
+            try {
+                const decodedUser = jwtDecode(storedToken);
+                setUser(decodedUser);
+                setToken(storedToken);
+                setIsAuthenticated(true);
 
-    // Función para seleccionar tienda
+                // Si el token tiene una tienda asociada, la seleccionamos por defecto
+                if (decodedUser.tienda_nombre) {
+                    setSelectedStoreSlug(decodedUser.tienda_nombre);
+                    localStorage.setItem('selectedStoreSlug', decodedUser.tienda_nombre);
+                } else {
+                    setSelectedStoreSlug(null);
+                    localStorage.removeItem('selectedStoreSlug');
+                }
+
+                // Configurar el token para todas las peticiones de Axios
+                axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+            } catch (error) {
+                console.error('Error decodificando el token o token inválido:', error);
+                logout(); // Llama a logout
+            }
+        } else {
+            setIsAuthenticated(false);
+            setUser(null);
+            setToken(null);
+            delete axios.defaults.headers.common['Authorization'];
+        }
+        
+        // Siempre intentar cargar las tiendas, ya que ahora pueden ser públicas
+        await fetchStores(); // Llama a fetchStores
+
+        setLoading(false);
+        console.log('AuthContext: loadUserInitial finalizado. Loading es ahora false.');
+    }, [fetchStores, logout]);
+
+    // 6. Función para seleccionar tienda (no depende de otras funciones useCallback)
     const selectStore = useCallback((slug) => {
         setSelectedStoreSlug(slug);
         localStorage.setItem('selectedStoreSlug', slug);
     }, []);
+
+    // Efecto para cargar el usuario y las tiendas al montar el componente
+    useEffect(() => {
+        loadUserInitial();
+    }, [loadUserInitial]);
 
     const contextValue = {
         user,
