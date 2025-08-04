@@ -27,6 +27,7 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [stores, setStores] = useState([]);
     const [selectedStoreSlug, setSelectedStoreSlug] = useState(localStorage.getItem('selectedStoreSlug'));
+    const [authError, setAuthError] = useState(null); // Estado para errores de autenticación
 
     // Función para obtener las tiendas
     const fetchStores = useCallback(async () => {
@@ -38,6 +39,11 @@ export const AuthProvider = ({ children }) => {
             // Si el error es 401, significa que no hay credenciales, lo cual es esperado si la ruta es pública
             // No es necesario establecer un estado de error global aquí, ya que la app puede funcionar sin tiendas cargadas inicialmente si el usuario no está logueado
         }
+    }, []);
+
+    // Función para limpiar errores de autenticación
+    const clearError = useCallback(() => {
+        setAuthError(null);
     }, []);
 
     // Cargar usuario y token al inicio
@@ -78,8 +84,7 @@ export const AuthProvider = ({ children }) => {
 
         setLoading(false);
         console.log('AuthContext: loadUserInitial finalizado. Loading es ahora false.');
-    }, [fetchStores]);
-
+    }, [fetchStores, logout]); // Añadir logout a las dependencias
 
     // Efecto para cargar el usuario y las tiendas al montar el componente
     useEffect(() => {
@@ -88,6 +93,7 @@ export const AuthProvider = ({ children }) => {
 
     // Función de login
     const login = async (username, password) => {
+        setAuthError(null); // Limpiar errores antes de intentar login
         try {
             const response = await axios.post(`${BASE_API_ENDPOINT}/api/token/`, { username, password });
             const newToken = response.data.access;
@@ -114,8 +120,10 @@ export const AuthProvider = ({ children }) => {
             console.error('Error en el login:', error.response ? error.response.data : error.message);
             // Manejo de errores específicos del login
             if (error.response && error.response.status === 401) {
+                setAuthError('Credenciales inválidas. Inténtalo de nuevo.');
                 throw new Error('Credenciales inválidas. Inténtalo de nuevo.');
             } else {
+                setAuthError('Error al intentar iniciar sesión. Por favor, inténtalo de nuevo más tarde.');
                 throw new Error('Error al intentar iniciar sesión. Por favor, inténtalo de nuevo más tarde.');
             }
         }
@@ -130,6 +138,7 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(false);
         setSelectedStoreSlug(null);
         delete axios.defaults.headers.common['Authorization'];
+        setAuthError(null); // Limpiar errores al hacer logout
         // Recargar tiendas después del logout, por si hay permisos diferentes
         fetchStores();
     }, [fetchStores]);
@@ -150,7 +159,9 @@ export const AuthProvider = ({ children }) => {
         stores,
         selectedStoreSlug,
         selectStore,
-        fetchStores // Exponer fetchStores para recargar manualmente si es necesario
+        fetchStores, // Exponer fetchStores para recargar manualmente si es necesario
+        error: authError, // Exponer el estado de error
+        clearError // Exponer la función para limpiar errores
     };
 
     return (
