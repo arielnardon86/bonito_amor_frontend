@@ -7,6 +7,7 @@ import { useAuth } from '../AuthContext';
 
 // NEW TALLE_OPTIONS
 const TALLE_OPTIONS = [
+    { value: 'UNICO', label: 'UNICO' },  
     { value: 'XS', label: 'XS' },
     { value: 'S', label: 'S' },
     { value: 'M', label: 'M' },
