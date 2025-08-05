@@ -382,8 +382,8 @@ const VentasPage = () => {
                                                         <tr>
                                                             <th style={styles.detailTh}>Producto</th>
                                                             <th style={styles.th}>Cantidad</th>
-                                                            <th style={styles.th}>P. Unitario</th>
-                                                            <th style={styles.th}>Subtotal</th>
+                                                            <th style={styles.th}>P. Unitario (con desc.)</th> {/* CAMBIO EN ETIQUETA */}
+                                                            <th style={styles.th}>Subtotal (con desc.)</th> {/* CAMBIO EN ETIQUETA */}
                                                             <th style={styles.th}>Anulado</th>
                                                             <th style={styles.th}>Acciones Detalle</th>
                                                         </tr>
@@ -391,12 +391,19 @@ const VentasPage = () => {
                                                     <tbody>
                                                         {venta.detalles.length > 0 ? (
                                                             venta.detalles.map(detalle => {
+                                                                // Calcular precio unitario y subtotal con el descuento de la venta
+                                                                const precioUnitarioOriginal = parseFloat(detalle.precio_unitario_venta || 0);
+                                                                const descuentoAplicado = parseFloat(venta.descuento_porcentaje || 0);
+                                                                
+                                                                const precioUnitarioConDescuento = precioUnitarioOriginal * (1 - descuentoAplicado / 100);
+                                                                const subtotalConDescuento = detalle.cantidad * precioUnitarioConDescuento;
+
                                                                 return (
                                                                     <tr key={detalle.id}> 
                                                                         <td style={styles.detailTd}>{detalle.producto_nombre}</td>
                                                                         <td style={styles.detailTd}>{detalle.cantidad}</td>
-                                                                        <td style={styles.detailTd}>${parseFloat(detalle.precio_unitario_venta || 0).toFixed(2)}</td>
-                                                                        <td style={styles.detailTd}>${parseFloat(detalle.subtotal || 0).toFixed(2)}</td>
+                                                                        <td style={styles.detailTd}>${precioUnitarioConDescuento.toFixed(2)}</td> {/* Mostrar precio con descuento */}
+                                                                        <td style={styles.detailTd}>${subtotalConDescuento.toFixed(2)}</td> {/* Mostrar subtotal con descuento */}
                                                                         {/* Mostrar el estado real de anulado_individualmente */}
                                                                         <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
                                                                         <td style={styles.detailTd}>
@@ -423,7 +430,7 @@ const VentasPage = () => {
                                                 {/* CAMBIO CLAVE AQUÍ: Mostrar el porcentaje de descuento */}
                                                 {venta.descuento_porcentaje > 0 && (
                                                     <p style={styles.discountDisplay}>
-                                                        Descuento aplicado: {parseFloat(venta.descuento_porcentaje).toFixed(2)}%
+                                                        Descuento aplicado a la venta: {parseFloat(venta.descuento_porcentaje).toFixed(2)}%
                                                     </p>
                                                 )}
                                             </td>
@@ -498,6 +505,7 @@ const styles = {
         padding: '50px',
         textAlign: 'center',
         color: '#777',
+        fontSize: '1.2em',
     },
     errorMessage: {
         color: 'red',
