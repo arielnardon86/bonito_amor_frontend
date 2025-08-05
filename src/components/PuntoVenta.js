@@ -4,18 +4,30 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useSales } from './SalesContext'; // Importar el contexto de ventas
 
+// NEW TALLE_OPTIONS
 const TALLE_OPTIONS = [
-    { value: 'XS', label: 'Extra Pequeño' },
-    { value: 'S', label: 'Pequeño' },
-    { value: 'M', label: 'Mediano' },
-    { value: 'L', 'label': 'Grande' },
-    { value: 'XL', label: 'Extra Grande' },
-    { value: 'UNICA', label: 'Talla Única' },
-    { value: 'NUM36', label: '36' },
-    { value: 'NUM38', label: '38' },
-    { value: 'NUM40', label: '40' },
-    { value: 'NUM42', label: '42' },
-    { value: 'NUM44', label: '44' },
+    { value: 'XS', label: 'XS' },
+    { value: 'S', label: 'S' },
+    { value: 'M', label: 'M' },
+    { value: 'L', label: 'L' },
+    { value: 'XL', label: 'XL' },
+    { value: 'XXL', label: 'XXL' },
+    { value: '3XL', label: '3XL' },
+    { value: '4XL', label: '4XL' },
+    { value: '5XL', label: '5XL' },
+    { value: '6XL', label: '6XL' },
+    { value: '7XL', label: '7XL' },
+    { value: '8XL', label: '8XL' },
+    { value: '1', label: '1' },
+    { value: '2', label: '2' },
+    { value: '3', label: '3' },
+    { value: '4', label: '4' },
+    { value: '5', label: '5' },
+    { value: '6', label: '6' },
+    { value: '8', label: '8' },
+    { value: '12', label: '12' },
+    { value: '14', label: '14' },
+    { value: '16', label: '16' },
 ];
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
@@ -84,7 +96,7 @@ const PuntoVenta = () => {
     // Función para mostrar un mensaje de alerta personalizado
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
-        setAlertType(type);
+        setAlertType(type); // Establecer el tipo de alerta
         setShowAlertMessage(true);
         setTimeout(() => {
             setShowAlertMessage(false);
@@ -114,11 +126,11 @@ const PuntoVenta = () => {
                 const metodosPagoResponse = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
-                // CORRECCIÓN CLAVE: Asegurarse de que metodosPago sea un array, accediendo a .results si existe
+                // KEY CORRECTION: Ensure metodosPago is an array, accessing .results if it exists
                 const fetchedMetodosPago = metodosPagoResponse.data.results || metodosPagoResponse.data;
                 setMetodosPago(fetchedMetodosPago);
                 if (fetchedMetodosPago.length > 0) {
-                    setMetodoPagoSeleccionado(fetchedMetodosPago[0].nombre); // Seleccionar el primero por defecto
+                    setMetodoPagoSeleccionado(fetchedMetodosPago[0].nombre); // Select the first by default
                 }
 
             } catch (err) {
@@ -129,16 +141,16 @@ const PuntoVenta = () => {
             }
         };
 
-        // Permite acceso si es staff O superusuario
+        // Allow access if staff OR superuser
         if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
             fetchData();
         } else if (!authLoading && (!isAuthenticated || !user || (!(user.is_superuser || user.is_staff)))) {
             setLoadingProducts(false);
             setError("Por favor, inicia sesión y selecciona una tienda para gestionar el punto de venta.");
         }
-    }, [token, selectedStoreSlug, authLoading, isAuthenticated, user]); // Añadir 'user' a las dependencias
+    }, [token, selectedStoreSlug, authLoading, isAuthenticated, user]); // Add 'user' to dependencies
 
-    // Manejar la búsqueda de producto por código de barras (botón buscar)
+    // Handle product search by barcode (search button)
     const handleBuscarProducto = async () => {
         if (!busquedaProducto) {
             showCustomAlert('Por favor, ingresa un código de barras o nombre para buscar.', 'info');
@@ -163,7 +175,7 @@ const PuntoVenta = () => {
         }
     };
 
-    // Añadir producto al carrito activo desde la búsqueda por código de barras o tabla
+    // Add product to active cart from barcode search or table
     const handleAddProductoEnVenta = (product, quantity = 1) => {
         if (!activeCart) {
             showCustomAlert('Por favor, selecciona o crea un carrito antes de añadir productos.', 'info');
@@ -186,32 +198,32 @@ const PuntoVenta = () => {
             return;
         }
 
-        addProductToCart(product, quantity); // Usa la función del contexto
-        setBusquedaProducto(''); // Limpiar la búsqueda después de añadir
-        setProductoSeleccionado(null); // Limpiar producto seleccionado
+        addProductToCart(product, quantity); // Use context function
+        setBusquedaProducto(''); // Clear search after adding
+        setProductoSeleccionado(null); // Clear selected product
         showCustomAlert('Producto añadido al carrito.', 'success');
     };
 
-    // Decrementar cantidad de un producto en el carrito activo
+    // Decrement quantity of a product in the active cart
     const handleDecrementQuantity = (productId) => {
         if (!activeCart) return;
-        decrementProductQuantity(activeCartId, productId); // Usa la función del contexto
+        decrementProductQuantity(activeCartId, productId); // Use context function
         showCustomAlert('Cantidad de producto actualizada.', 'info');
     };
 
-    // Eliminar producto del carrito activo
+    // Remove product from active cart
     const handleRemoveProductoEnVenta = (productId) => {
         if (!activeCart) return;
         setConfirmMessage('¿Estás seguro de que quieres quitar este producto del carrito?');
         setConfirmAction(() => () => {
-            removeProductFromCart(activeCartId, productId); // Usa la función del contexto
+            removeProductFromCart(activeCartId, productId); // Use context function
             showCustomAlert('Producto eliminado del carrito.', 'info');
             setShowConfirmModal(false);
         });
         setShowConfirmModal(true);
     };
 
-    // Calcular el total de la venta con descuento
+    // Calculate total sale with discount
     const calculateTotalWithDiscount = useCallback(() => {
         if (!activeCart) return 0;
         let subtotal = activeCart.items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.product.precio)), 0);
@@ -219,7 +231,7 @@ const PuntoVenta = () => {
         return (subtotal - discountAmount);
     }, [activeCart, descuentoPorcentaje]);
 
-    // Procesar la venta
+    // Process sale
     const handleProcesarVenta = async () => {
         if (!activeCart || activeCart.items.length === 0) {
             showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
@@ -236,16 +248,16 @@ const PuntoVenta = () => {
 
         const finalTotal = calculateTotalWithDiscount();
 
-        // Confirmación antes de procesar
+        // Confirmation before processing
         setConfirmMessage(`¿Confirmas la venta por un total de $${finalTotal.toFixed(2)} con ${metodoPagoSeleccionado}?` +
                           (descuentoPorcentaje > 0 ? ` (Descuento aplicado: ${descuentoPorcentaje}%)` : ''));
         setConfirmAction(() => async () => {
-            setShowConfirmModal(false); // Cerrar modal de confirmación
+            setShowConfirmModal(false); // Close confirmation modal
             try {
                 const ventaData = {
-                    tienda: selectedStoreSlug, // <-- CAMBIO CLAVE: Enviamos 'tienda' con el nombre (slug)
+                    tienda: selectedStoreSlug, // <-- KEY CHANGE: Send 'tienda' with the name (slug)
                     metodo_pago_nombre: metodoPagoSeleccionado,
-                    total: finalTotal, // Enviar el total ya con el descuento aplicado
+                    total: finalTotal, // Send the total already with the discount applied
                     descuento_porcentaje: descuentoPorcentaje, 
                     detalles: activeCart.items.map(item => ({
                         producto: item.product.id,
@@ -260,9 +272,9 @@ const PuntoVenta = () => {
 
                 console.log('Venta procesada con éxito:', response.data);
                 showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
-                finalizeCart(activeCartId); // Marcar el carrito como finalizado en el contexto
-                setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : ''); // Resetear método de pago
-                setDescuentoPorcentaje(0); // Resetear descuento
+                finalizeCart(activeCartId); // Mark cart as finalized in context
+                setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : ''); // Reset payment method
+                setDescuentoPorcentaje(0); // Reset discount
             } catch (err) {
                 console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
                 showCustomAlert('Error al procesar la venta: ' + (err.response && err.response.data ? JSON.stringify(err.response.data) : err.message), 'error');
@@ -271,7 +283,7 @@ const PuntoVenta = () => {
         setShowConfirmModal(true);
     };
 
-    // Manejar la creación de un nuevo carrito con alias
+    // Handle creation of a new cart with alias
     const handleCreateNewCartWithAlias = () => {
         if (newCartAliasInput.trim() === '') {
             showCustomAlert('El alias de la venta no puede estar vacío.', 'error');
@@ -283,7 +295,7 @@ const PuntoVenta = () => {
         showCustomAlert('Nueva venta creada.', 'success');
     };
 
-    // Manejar la eliminación del carrito activo
+    // Handle deletion of active cart
     const handleDeleteActiveCart = () => {
         if (activeCart) {
             setConfirmMessage(`¿Estás seguro de que quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`);
@@ -296,7 +308,7 @@ const PuntoVenta = () => {
         }
     };
 
-    // Filtrar productos disponibles por nombre o código de barras
+    // Filter available products by name or barcode
     const filteredProductosDisponibles = productos.filter(product => {
         const searchTermLower = busquedaProducto.toLowerCase();
         return (
@@ -306,7 +318,7 @@ const PuntoVenta = () => {
         );
     });
 
-    // --- Lógica de paginación para productos disponibles ---
+    // --- Pagination logic for available products ---
     const indexOfLastProduct = currentPage * productsPerPage;
     const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
     const currentProducts = filteredProductosDisponibles.slice(indexOfFirstProduct, indexOfLastProduct);
@@ -331,7 +343,7 @@ const PuntoVenta = () => {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    // Permitir acceso si es staff O superusuario
+    // Allow access if staff OR superuser
     if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
         return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
     }
@@ -356,7 +368,7 @@ const PuntoVenta = () => {
         <div style={styles.container}>
             <h1 style={styles.header}>Punto de Venta ({selectedStoreSlug})</h1>
 
-            {/* Sección de Gestión de Ventas Activas */}
+            {/* Active Sales Management Section */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Gestión de Ventas Activas</h3>
                 <div style={styles.cartSelectionContainer}>
@@ -393,7 +405,7 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Modal para crear nueva venta */}
+            {/* Modal for creating new sale */}
             {showNewCartModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -417,7 +429,7 @@ const PuntoVenta = () => {
                 </div>
             )}
 
-            {/* Sección de Búsqueda de Productos por Código de Barras */}
+            {/* Barcode Product Search Section */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Buscar Producto por Código de Barras</h3>
                 <div style={styles.inputGroup}>
@@ -454,7 +466,7 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Carrito de Venta Actual */}
+            {/* Current Sale Cart */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
                 {activeCart && activeCart.items.length > 0 ? (
@@ -493,9 +505,9 @@ const PuntoVenta = () => {
                                 ))}
                             </tbody>
                         </table>
-                        <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4> {/* Mostrar subtotal antes de descuento */}
+                        <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4> {/* Show subtotal before discount */}
 
-                        {/* Selector de método de pago */}
+                        {/* Payment Method Selector */}
                         <div style={styles.paymentMethodSelectContainer}>
                             <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de Pago:</label>
                             <select
@@ -510,21 +522,21 @@ const PuntoVenta = () => {
                             </select>
                         </div>
 
-                        {/* Sección de Descuento */}
+                        {/* Discount Section */}
                         <div style={styles.discountContainer}>
                             <label htmlFor="descuento" style={styles.discountLabel}>Aplicar Descuento (%):</label>
                             <input
                                 type="number"
                                 id="descuento"
                                 value={descuentoPorcentaje}
-                                onChange={(e) => setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))} // Asegura que esté entre 0 y 100
+                                onChange={(e) => setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))} // Ensure it's between 0 and 100
                                 style={styles.discountInput}
                                 min="0"
                                 max="100"
                             />
                         </div>
 
-                        <h4 style={styles.finalTotalVenta}>Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4> {/* Mostrar total con descuento */}
+                        <h4 style={styles.finalTotalVenta}>Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4> {/* Show total with discount */}
 
                         <button onClick={handleProcesarVenta} style={styles.processSaleButton}>
                             Procesar Venta
@@ -535,7 +547,7 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Lista de Productos Disponibles */}
+            {/* Available Products List */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Productos Disponibles</h3>
                 <div style={styles.inputGroup}>
@@ -559,7 +571,7 @@ const PuntoVenta = () => {
                                 <tr style={styles.tableHeaderRow}>
                                     <th style={styles.th}>Nombre</th>
                                     <th style={styles.th}>Talle</th>
-                                    {/* <th style={styles.th}>Código</th> */} {/* ¡COLUMNA ELIMINADA! */}
+                                    {/* <th style={styles.th}>Código</th> */} {/* COLUMN REMOVED! */}
                                     <th style={styles.th}>Precio</th>
                                     <th style={styles.th}>Stock</th>
                                     <th style={styles.th}>Acción</th>
@@ -571,7 +583,7 @@ const PuntoVenta = () => {
                                         <tr key={product.id} style={styles.tableRow}>
                                             <td style={styles.td}>{product.nombre}</td>
                                             <td style={styles.td}>{product.talle}</td>
-                                            {/* <td style={styles.td}>{product.codigo_barras || 'N/A'}</td> */} {/* ¡CELDA ELIMINADA! */}
+                                            {/* <td style={styles.td}>{product.codigo_barras || 'N/A'}</td> */} {/* CELL REMOVED! */}
                                             <td style={styles.td}>${parseFloat(product.precio).toFixed(2)}</td>
                                             <td style={styles.td}>{product.stock}</td>
                                             <td style={styles.td}>
@@ -587,7 +599,7 @@ const PuntoVenta = () => {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="5" style={styles.noDataMessage}> {/* Colspan ajustado a 5 */}
+                                        <td colSpan="5" style={styles.noDataMessage}> {/* Colspan adjusted to 5 */}
                                             No se encontraron productos con el filtro aplicado.
                                         </td>
                                     </tr>
@@ -595,7 +607,7 @@ const PuntoVenta = () => {
                             </tbody>
                         </table>
 
-                        {/* Controles de Paginación para Productos Disponibles */}
+                        {/* Pagination Controls for Available Products */}
                         {totalPages > 1 && (
                             <div style={styles.paginationContainer}>
                                 <button onClick={prevPage} disabled={currentPage === 1} style={styles.paginationButton}>
@@ -611,7 +623,7 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Modal de Confirmación */}
+            {/* Confirmation Modal */}
             {showConfirmModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -624,7 +636,7 @@ const PuntoVenta = () => {
                 </div>
             )}
 
-            {/* Cuadro de Mensaje de Alerta */}
+            {/* Custom Alert Message Box */}
             {showAlertMessage && (
                 <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
                     <p>{alertMessage}</p>
@@ -698,265 +710,206 @@ const styles = {
         textAlign: 'center',
         fontWeight: 'bold',
     },
-    cartSelectionContainer: {
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '10px',
-        marginBottom: '15px',
-        padding: '10px',
-        backgroundColor: '#eaf7ff',
-        borderRadius: '5px',
-        border: '1px dashed #a7d9ff',
-    },
-    activeCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease',
-    },
-    inactiveCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#f0f0f0',
-        color: '#333',
-        border: '1px solid #ccc',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        transition: 'background-color 0.3s ease',
-    },
-    newCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#28a745',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        transition: 'background-color 0.3s ease',
-    },
-    activeCartInfo: {
-        marginTop: '15px',
-        padding: '15px',
-        backgroundColor: '#e6ffe6',
-        borderRadius: '8px',
-        border: '1px solid #28a745',
-    },
-    activeCartTitle: {
-        marginBottom: '10px',
+    successMessage: {
         color: '#28a745',
-        fontSize: '1.2em',
-    },
-    activeCartActions: {
-        display: 'flex',
-        gap: '10px',
         marginBottom: '10px',
+        border: '1px solid #28a745',
+        padding: '15px',
+        borderRadius: '8px',
+        backgroundColor: '#e6ffe6',
     },
-    deleteCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#dc3545',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        transition: 'background-color 0.3s ease',
+    formContainer: {
+        marginBottom: '30px',
+        border: '1px solid #e0e0e0',
+        padding: '20px',
+        borderRadius: '8px',
+        backgroundColor: '#f9f9f9',
     },
-    inputGroup: {
-        display: 'flex',
-        gap: '10px',
+    formGroup: {
         marginBottom: '15px',
-        alignItems: 'center',
+    },
+    label: {
+        display: 'block',
+        marginBottom: '5px',
+        fontWeight: 'bold',
+        color: '#555',
     },
     input: {
-        flexGrow: 1,
-        padding: '10px 12px',
-        border: '1px solid #dcdcdc',
-        borderRadius: '5px',
-        fontSize: '1em',
+        width: '100%',
+        padding: '10px',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
         boxSizing: 'border-box',
     },
-    primaryButton: {
+    submitButton: {
         padding: '10px 20px',
         backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        fontSize: '1em',
-        fontWeight: 'bold',
+        fontSize: '16px',
         transition: 'background-color 0.3s ease',
     },
-    foundProductCard: {
-        border: '1px solid #a7d9ff',
-        padding: '15px',
-        borderRadius: '8px',
-        backgroundColor: '#e7f0ff',
+    submitButtonHover: {
+        backgroundColor: '#0056b3',
+    },
+    noDataMessage: {
+        textAlign: 'center',
+        marginTop: '20px',
+        color: '#777',
+        fontStyle: 'italic',
+    },
+    tableActions: {
         marginBottom: '15px',
-    },
-    foundProductText: {
-        margin: '5px 0',
-        color: '#333',
-        fontSize: '1.05em',
-    },
-    productActions: {
         display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        marginTop: '10px',
+        justifyContent: 'flex-start',
     },
-    addProductButton: {
+    printSelectedButton: {
         padding: '10px 20px',
-        backgroundColor: '#28a745',
+        backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        fontSize: '1em',
-        fontWeight: 'bold',
+        fontSize: '16px',
         transition: 'background-color 0.3s ease',
+    },
+    printSelectedButtonHover: {
+        backgroundColor: '#0056b3',
     },
     table: {
         width: '100%',
         borderCollapse: 'collapse',
-        marginTop: '15px',
+        textAlign: 'left',
+        border: '1px solid #ddd',
         borderRadius: '8px',
         overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
     },
     tableHeaderRow: {
         backgroundColor: '#f2f2f2',
     },
     th: {
-        padding: '12px 15px',
-        borderBottom: '1px solid #ddd',
-        textAlign: 'left',
+        padding: '12px',
+        border: '1px solid #ddd',
         fontWeight: 'bold',
-        fontSize: '0.95em',
-        color: '#555',
-    },
-    tableRow: {
-        backgroundColor: 'inherit',
-        transition: 'background-color 0.2s ease',
-        '&:nth-child(even)': {
-            backgroundColor: '#f9f9f9',
-        },
+        color: '#333',
     },
     td: {
-        padding: '10px 15px',
-        borderBottom: '1px solid #eee',
+        padding: '12px',
+        border: '1px solid #ddd',
         verticalAlign: 'middle',
-        fontSize: '0.9em',
     },
-    quantityControl: {
+    quantityInput: {
+        width: '60px',
+        padding: '5px',
+        border: '1px solid #ccc',
+        borderRadius: '3px',
+    },
+    barcodeContainer: { // This style is no longer directly used in the table, but kept if EtiquetasImpresion uses it
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minWidth: '150px',
+    },
+    noBarcodeText: { // This style is no longer directly used in the table
+        color: '#888',
+        fontStyle: 'italic',
+    },
+    editControls: {
         display: 'flex',
         alignItems: 'center',
         gap: '5px',
     },
-    quantityButton: {
-        padding: '5px 10px',
-        backgroundColor: '#007bff',
+    editInput: {
+        width: '80px',
+        padding: '5px',
+        border: '1px solid #ccc',
+        borderRadius: '3px',
+    },
+    saveButton: {
+        padding: '5px 8px',
+        backgroundColor: '#28a745',
         color: 'white',
         border: 'none',
         borderRadius: '3px',
         cursor: 'pointer',
-        fontSize: '0.9em',
         transition: 'background-color 0.3s ease',
     },
-    quantityText: {
-        minWidth: '20px',
-        textAlign: 'center',
-        fontWeight: 'bold',
+    saveButtonHover: {
+        backgroundColor: '#218838',
     },
-    removeButton: {
-        padding: '6px 12px',
-        backgroundColor: '#dc3545',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '0.85em',
-        transition: 'background-color 0.3s ease',
-    },
-    totalVenta: {
-        textAlign: 'right',
-        marginTop: '20px',
-        fontSize: '1.5em',
-        color: '#28a745',
-        fontWeight: 'bold',
-    },
-    finalTotalVenta: { // Nuevo estilo para el total final con descuento
-        textAlign: 'right',
-        marginTop: '10px',
-        fontSize: '1.7em',
-        color: '#007bff',
-        fontWeight: 'bold',
-    },
-    paymentMethodSelectContainer: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        marginBottom: '10px', // Ajustado para dejar espacio para el descuento
-        marginTop: '20px',
-    },
-    paymentMethodLabel: {
-        fontWeight: 'bold',
-        color: '#555',
-        fontSize: '1em',
-    },
-    discountContainer: { // Nuevo estilo para el contenedor de descuento
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        marginBottom: '20px',
-    },
-    discountLabel: { // Nuevo estilo para la etiqueta de descuento
-        fontWeight: 'bold',
-        color: '#555',
-        fontSize: '1em',
-    },
-    discountInput: { // Nuevo estilo para el input de descuento
-        width: '80px', // Ancho fijo para el porcentaje
-        padding: '10px 12px',
-        border: '1px solid #dcdcdc',
-        borderRadius: '5px',
-        fontSize: '1em',
-        boxSizing: 'border-box',
-        textAlign: 'center',
-    },
-    processSaleButton: {
-        width: '100%',
-        padding: '15px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '8px',
-        cursor: 'pointer',
-        fontSize: '1.2em',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease',
-    },
-    noDataMessage: {
-        textAlign: 'center',
-        color: '#777',
-        fontStyle: 'italic',
-        padding: '15px',
-    },
-    addButton: {
-        padding: '5px 10px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '3px',
-        cursor: 'pointer',
-    },
-    disabledButton: {
-        padding: '5px 10px',
+    cancelButton: {
+        padding: '5px 8px',
         backgroundColor: '#6c757d',
         color: 'white',
         border: 'none',
         borderRadius: '3px',
-        cursor: 'not-allowed',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    cancelButtonHover: {
+        backgroundColor: '#5a6268',
+    },
+    displayControls: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+    },
+    editButton: {
+        padding: '5px 8px',
+        backgroundColor: '#ffc107',
+        color: 'black',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    editButtonHover: {
+        backgroundColor: '#e0a800',
+    },
+    deleteButton: {
+        padding: '8px 12px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    deleteButtonHover: {
+        backgroundColor: '#c82333',
+    },
+    printPreviewContainer: {
+        padding: '20px',
+    },
+    backButton: {
+        marginBottom: '10px',
+        padding: '10px 20px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    backButtonHover: {
+        backgroundColor: '#c82333',
+    },
+    printButton: {
+        marginLeft: '10px',
+        marginBottom: '10px',
+        padding: '10px 20px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    printButtonHover: {
+        backgroundColor: '#218838',
     },
     modalOverlay: {
         position: 'fixed',
@@ -980,11 +933,6 @@ const styles = {
         width: '90%',
         animation: 'fadeIn 0.3s ease-out',
     },
-    modalHeader: {
-        fontSize: '1.5em',
-        color: '#34495e',
-        marginBottom: '20px',
-    },
     modalMessage: {
         fontSize: '1.1em',
         marginBottom: '25px',
@@ -996,7 +944,7 @@ const styles = {
         gap: '20px',
     },
     modalConfirmButton: {
-        backgroundColor: '#28a745', 
+        backgroundColor: '#dc3545',
         color: 'white',
         padding: '12px 25px',
         border: 'none',
@@ -1005,6 +953,10 @@ const styles = {
         fontSize: '1em',
         fontWeight: 'bold',
         transition: 'background-color 0.3s ease, transform 0.2s ease',
+    },
+    modalConfirmButtonHover: {
+        backgroundColor: '#c82333',
+        transform: 'scale(1.02)',
     },
     modalCancelButton: {
         backgroundColor: '#6c757d',
@@ -1017,10 +969,15 @@ const styles = {
         fontWeight: 'bold',
         transition: 'background-color 0.3s ease, transform 0.2s ease',
     },
+    modalCancelButtonHover: {
+        backgroundColor: '#5a6268',
+        transform: 'scale(1.02)',
+    },
     alertBox: {
         position: 'fixed',
         top: '20px',
         right: '20px',
+        backgroundColor: '#28a745', // Default to success green
         color: 'white',
         padding: '15px 25px',
         borderRadius: '8px',
@@ -1028,34 +985,6 @@ const styles = {
         zIndex: 1001,
         opacity: 0,
         animation: 'fadeInOut 3s forwards',
-    },
-    '@keyframes fadeInOut': {
-        '0%': { opacity: 0, transform: 'translateY(-20px)' },
-        '10%': { opacity: 1, transform: 'translateY(0)' },
-        '90%': { opacity: 1, transform: 'translateY(0)' },
-        '100%': { opacity: 0, transform: 'translateY(-20px)' },
-    },
-    paginationContainer: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: '20px',
-        gap: '10px',
-    },
-    paginationButton: {
-        padding: '8px 15px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontSize: '0.9em',
-        transition: 'background-color 0.3s ease',
-    },
-    pageNumber: {
-        fontSize: '1em',
-        color: '#555',
-        fontWeight: 'bold',
     },
 };
 

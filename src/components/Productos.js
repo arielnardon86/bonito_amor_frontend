@@ -5,37 +5,49 @@ import Barcode from 'react-barcode'; // Se mantiene porque se usa en EtiquetasIm
 import EtiquetasImpresion from './EtiquetasImpresion';
 import { useAuth } from '../AuthContext';
 
+// NEW TALLE_OPTIONS
 const TALLE_OPTIONS = [
-    { value: 'XS', label: 'Extra Pequeño' },
-    { value: 'S', label: 'Pequeño' },
-    { value: 'M', label: 'Mediano' },
-    { value: 'L', label: 'Grande' },
-    { value: 'XL', label: 'Extra Grande' },
-    { value: 'UNICA', label: 'Talla Única' },
-    { value: 'NUM36', label: '36' },
-    { value: 'NUM38', label: '38' },
-    { value: 'NUM40', label: '40' },
-    { value: 'NUM42', label: '42' },
-    { value: 'NUM44', label: '44' },
+    { value: 'XS', label: 'XS' },
+    { value: 'S', label: 'S' },
+    { value: 'M', label: 'M' },
+    { value: 'L', label: 'L' },
+    { value: 'XL', label: 'XL' },
+    { value: 'XXL', label: 'XXL' },
+    { value: '3XL', label: '3XL' },
+    { value: '4XL', label: '4XL' },
+    { value: '5XL', label: '5XL' },
+    { value: '6XL', label: '6XL' },
+    { value: '7XL', label: '7XL' },
+    { value: '8XL', label: '8XL' },
+    { value: '1', label: '1' },
+    { value: '2', label: '2' },
+    { value: '3', label: '3' },
+    { value: '4', label: '4' },
+    { value: '5', label: '5' },
+    { value: '6', label: '6' },
+    { value: '8', label: '8' },
+    { value: '12', label: '12' },
+    { value: '14', label: '14' },
+    { value: '16', label: '16' },
 ];
 
 const API_BASE_URL = process.env.REACT_APP_API_URL; 
 
-// Función para normalizar la URL base, eliminando cualquier /api/ o barra final
+// Function to normalize the base URL, removing any /api/ or trailing slash
 const normalizeApiUrl = (url) => {
     let normalizedUrl = url;
-    // Eliminar cualquier /api/ al final si existe
+    // Remove any /api/ at the end if it exists
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
     }
-    // Eliminar barra final si existe
+    // Remove trailing slash if it exists
     if (normalizedUrl.endsWith('/')) {
         normalizedUrl = normalizedUrl.slice(0, -1);
     }
     return normalizedUrl;
 };
 
-// La URL base normalizada que usaremos para todas las llamadas
+// The normalized base URL we will use for all calls
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 
@@ -50,7 +62,7 @@ function Productos() {
   const [codigoBarras, setCodigoBarras] = useState('');
   const [precioVenta, setPrecioVenta] = useState('');
   const [stock, setStock] = useState('');
-  const [talle, setTalle] = useState('UNICA');
+  const [talle, setTalle] = useState('XS'); // Default to 'XS' or first new option
 
   const [successMessage, setSuccessMessage] = useState(null);
   const [mensajeError, setMensajeError] = useState(null);
@@ -59,10 +71,10 @@ function Productos() {
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   const [editingStockId, setEditingStockId] = useState(null);
-  const [newStockValue, setNewStockValue] = '';
+  const [newStockValue, setNewStockValue] = useState(''); // Initialize as empty string
 
   const [editingPriceId, setEditingPriceId] = useState(null);
-  const [newPriceValue, setNewPriceValue] = useState(''); // Inicializar como cadena vacía
+  const [newPriceValue, setNewPriceValue] = useState(''); // Initialize as empty string
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -74,12 +86,12 @@ function Productos() {
 
   const showCustomAlert = (message, type = 'success') => {
       setAlertMessage(message);
-      setAlertType(type); // Establecer el tipo de alerta
+      setAlertType(type); // Set alert type
       setShowAlertMessage(true);
       setTimeout(() => {
           setShowAlertMessage(false);
           setAlertMessage('');
-          setAlertType('success'); // Reiniciar a predeterminado
+          setAlertType('success'); // Reset to default
       }, 3000);
   };
 
@@ -117,7 +129,7 @@ function Productos() {
 
 
   useEffect(() => {
-    // Solo permitir acceso si es superusuario
+    // Only allow superuser access
     if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
         fetchProductos();
     } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
@@ -166,7 +178,7 @@ function Productos() {
     };
 
     try {
-      // Usar BASE_API_ENDPOINT y añadir /api/productos/
+      // Use BASE_API_ENDPOINT and add /api/productos/
       const response = await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, nuevoProducto, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -177,7 +189,7 @@ function Productos() {
       setCodigoBarras('');
       setPrecioVenta('');
       setStock('');
-      setTalle('UNICA');
+      setTalle('XS'); // Reset to 'XS' or first new option
     } catch (err) {
       setMensajeError('Error al añadir el producto: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
       console.error('Error adding product:', err.response || err);
@@ -245,7 +257,7 @@ function Productos() {
     setConfirmAction(() => async () => {
         setShowConfirmModal(false);
         try {
-            // Usar BASE_API_ENDPOINT y añadir /api/productos/
+            // Use BASE_API_ENDPOINT and add /api/productos/
             await axios.delete(`${BASE_API_ENDPOINT}/api/productos/${productId}/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -281,7 +293,7 @@ function Productos() {
     }
 
     try {
-      // Usar BASE_API_ENDPOINT y añadir /api/productos/
+      // Use BASE_API_ENDPOINT and add /api/productos/
       await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${productId}/`, { stock: stockInt }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -322,7 +334,7 @@ function Productos() {
     }
 
     try {
-      // Usar BASE_API_ENDPOINT y añadir /api/productos/
+      // Use BASE_API_ENDPOINT and add /api/productos/
       await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${productId}/`, { precio: priceFloat }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -342,11 +354,11 @@ function Productos() {
   };
 
 
-  if (authLoading || (isAuthenticated && !user)) { // Añadido user check para evitar errores si user es null
+  if (authLoading || (isAuthenticated && !user)) { // Added user check to avoid errors if user is null
     return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
   }
 
-  // Solo permitir acceso si es superusuario
+  // Only allow superuser access
   if (!isAuthenticated || !user.is_superuser) { 
     return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar productos.</div>;
   }
@@ -542,7 +554,7 @@ function Productos() {
         </>
       )}
 
-      {/* Modal de Confirmación */}
+      {/* Confirmation Modal */}
       {showConfirmModal && (
           <div style={styles.modalOverlay}>
               <div style={styles.modalContent}>
@@ -555,7 +567,7 @@ function Productos() {
           </div>
       )}
 
-      {/* Cuadro de Mensaje de Alerta */}
+      {/* Custom Alert Message Box */}
       {showAlertMessage && (
           <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
               <p>{alertMessage}</p>
@@ -699,13 +711,13 @@ const styles = {
         border: '1px solid #ccc',
         borderRadius: '3px',
     },
-    barcodeContainer: { // Este estilo ya no se usa directamente en la tabla, pero se mantiene si EtiquetasImpresion lo usa
+    barcodeContainer: { // This style is no longer directly used in the table, but kept if EtiquetasImpresion uses it
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         minWidth: '150px',
     },
-    noBarcodeText: { // Este estilo ya no se usa directamente en la tabla
+    noBarcodeText: { // This style is no longer directly used in the table
         color: '#888',
         fontStyle: 'italic',
     },
