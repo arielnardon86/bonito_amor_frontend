@@ -16,28 +16,28 @@ export const SalesProvider = ({ children }) => {
   const [carts, setCarts] = useState([]);
   const [activeCartId, setActiveCartId] = useState(null);
 
-  // Asegura que siempre haya al menos un carrito activo al cargar/inicializar
+  // Ensures there is always at least one active cart on load/initialization
   useEffect(() => {
-    if (carts.length === 0) { // Solo si no hay carritos, crea uno nuevo
+    if (carts.length === 0) { // Only if there are no carts, create a new one
       createNewCart('Venta #1');
     } else if (activeCartId === null && carts.length > 0) {
-      // Si no hay carrito activo pero sí hay carritos en la lista, selecciona el primero
+      // If there is no active cart but there are carts in the list, select the first one
       setActiveCartId(carts[0].id);
     } else if (activeCartId !== null && !carts.some(cart => cart.id === activeCartId)) {
-      // Si el activeCartId apunta a un carrito que ya no existe, selecciona el primero o crea uno
+      // If the activeCartId points to a cart that no longer exists, select the first one or create one
       if (carts.length > 0) {
         setActiveCartId(carts[0].id);
       } else {
         createNewCart('Venta #1');
       }
     }
-  }, [carts, activeCartId]); // Dependencias para reaccionar a cambios en carritos o en el ID activo
+  }, [carts, activeCartId]); // Dependencies to react to changes in carts or active ID
 
   const createNewCart = (initialAlias = '') => {
     const newCartId = uuidv4(); 
     const newCart = {
       id: newCartId,
-      name: `Venta #${carts.length + 1}`, // Nombre por defecto (ej. "Venta #1", "Venta #2")
+      name: `Venta #${carts.length + 1}`, // Default name (e.g., "Sale #1", "Sale #2")
       alias: initialAlias, 
       items: [],
       total: 0,
@@ -52,7 +52,7 @@ export const SalesProvider = ({ children }) => {
     if (carts.some(cart => cart.id === id)) {
       setActiveCartId(id);
     } else {
-      console.warn("Carrito no encontrado:", id);
+      console.warn("Cart not found:", id);
     }
   };
 
@@ -66,7 +66,7 @@ export const SalesProvider = ({ children }) => {
 
   const addProductToCart = (productToAdd, quantity = 1) => {
     if (!activeCartId) {
-      console.warn("No hay carrito activo. Crea uno primero.");
+      console.warn("No active cart. Create one first.");
       return;
     }
 
@@ -76,6 +76,13 @@ export const SalesProvider = ({ children }) => {
         let updatedItems;
         let updatedTotal;
 
+        // Ensure productToAdd.precio is a number before using it in calculations
+        const productPrice = parseFloat(productToAdd.precio);
+        if (isNaN(productPrice)) {
+            console.error("Error: Product price is not a valid number:", productToAdd.precio);
+            return cart; // Return current cart if price is invalid
+        }
+
         if (existingItemIndex > -1) {
           updatedItems = cart.items.map((item, index) => 
             index === existingItemIndex 
@@ -83,10 +90,12 @@ export const SalesProvider = ({ children }) => {
               : item
           );
         } else {
-          updatedItems = [...cart.items, { product: productToAdd, quantity: quantity }];
+          // Store the product with its price ensured as a number
+          updatedItems = [...cart.items, { product: { ...productToAdd, precio: productPrice }, quantity: quantity }];
         }
         
-        updatedTotal = updatedItems.reduce((sum, item) => sum + (item.product.precio * item.quantity), 0);
+        // Recalculate total based on the numerical price
+        updatedTotal = updatedItems.reduce((sum, item) => sum + (parseFloat(item.product.precio) * item.quantity), 0);
 
         return { ...cart, items: updatedItems, total: updatedTotal };
       }
@@ -94,26 +103,26 @@ export const SalesProvider = ({ children }) => {
     }));
   };
 
-  // CAMBIO CLAVE AQUÍ: Aceptar cartId como primer argumento
+  // KEY CHANGE HERE: Accept cartId as the first argument
   const removeProductFromCart = (cartId, productId) => {
-    if (!cartId) return; // Asegúrate de que el cartId es válido
+    if (!cartId) return; // Ensure cartId is valid
 
     setCarts(prevCarts => prevCarts.map(cart => {
-      if (cart.id === cartId) { // Usa cartId para encontrar el carrito correcto
+      if (cart.id === cartId) { // Use cartId to find the correct cart
         const updatedItems = cart.items.filter(item => item.product.id !== productId);
-        const updatedTotal = updatedItems.reduce((sum, item) => sum + (item.product.precio * item.quantity), 0);
+        const updatedTotal = updatedItems.reduce((sum, item) => sum + (parseFloat(item.product.precio) * item.quantity), 0);
         return { ...cart, items: updatedItems, total: updatedTotal };
       }
       return cart;
     }));
   };
 
-  // CAMBIO CLAVE AQUÍ: Aceptar cartId como primer argumento
+  // KEY CHANGE HERE: Accept cartId as the first argument
   const decrementProductQuantity = (cartId, productId) => {
-    if (!cartId) return; // Asegúrate de que el cartId es válido
+    if (!cartId) return; // Ensure cartId is valid
 
     setCarts(prevCarts => prevCarts.map(cart => {
-      if (cart.id === cartId) { // Usa cartId para encontrar el carrito correcto
+      if (cart.id === cartId) { // Use cartId to find the correct cart
         const existingItemIndex = cart.items.findIndex(item => item.product.id === productId);
         if (existingItemIndex === -1) return cart; 
 
@@ -127,11 +136,11 @@ export const SalesProvider = ({ children }) => {
               : item
           );
         } else {
-          // Si la cantidad es 1, quita el producto del carrito
+          // If quantity is 1, remove the product from the cart
           updatedItems = cart.items.filter(item => item.product.id !== productId);
         }
         
-        updatedTotal = updatedItems.reduce((sum, item) => sum + (item.product.precio * item.quantity), 0);
+        updatedTotal = updatedItems.reduce((sum, item) => sum + (parseFloat(item.product.precio) * item.quantity), 0);
 
         return { ...cart, items: updatedItems, total: updatedTotal };
       }
@@ -143,10 +152,10 @@ export const SalesProvider = ({ children }) => {
     setCarts(prevCarts => {
       const remainingCarts = prevCarts.filter(cart => cart.id !== cartIdToDelete);
       
-      // Si el carrito eliminado era el activo
+      // If the deleted cart was the active one
       if (activeCartId === cartIdToDelete) {
         if (remainingCarts.length > 0) {
-          setActiveCartId(remainingCarts[0].id); // Selecciona el primer carrito restante
+          setActiveCartId(remainingCarts[0].id); // Select the first remaining cart
         } else {
           setActiveCartId(null); 
         }
@@ -156,7 +165,7 @@ export const SalesProvider = ({ children }) => {
   };
 
   const finalizeCart = async (cartId) => {
-    console.log(`Simulando finalización de carrito: ${cartId}`);
+    console.log(`Simulating cart finalization: ${cartId}`);
     deleteCart(cartId); 
   };
 
