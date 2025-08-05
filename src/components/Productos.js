@@ -33,21 +33,21 @@ const TALLE_OPTIONS = [
 
 const API_BASE_URL = process.env.REACT_APP_API_URL; 
 
-// Function to normalize the base URL, removing any /api/ or trailing slash
+// Función para normalizar la URL base, eliminando cualquier /api/ o barra final
 const normalizeApiUrl = (url) => {
     let normalizedUrl = url;
-    // Remove any /api/ at the end if it exists
+    // Eliminar cualquier /api/ al final si existe
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
     }
-    // Remove trailing slash if it exists
+    // Eliminar barra final si existe
     if (normalizedUrl.endsWith('/')) {
         normalizedUrl = normalizedUrl.slice(0, -1);
     }
     return normalizedUrl;
 };
 
-// The normalized base URL we will use for all calls
+// La URL base normalizada que usaremos para todas las llamadas
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 
@@ -62,7 +62,7 @@ function Productos() {
   const [codigoBarras, setCodigoBarras] = useState('');
   const [precioVenta, setPrecioVenta] = useState('');
   const [stock, setStock] = useState('');
-  const [talle, setTalle] = useState('XS'); // Default to 'XS' or first new option
+  const [talle, setTalle] = useState('UNICA');
 
   const [successMessage, setSuccessMessage] = useState(null);
   const [mensajeError, setMensajeError] = useState(null);
@@ -71,10 +71,10 @@ function Productos() {
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   const [editingStockId, setEditingStockId] = useState(null);
-  const [newStockValue, setNewStockValue] = useState(''); // Initialize as empty string
+  const [newStockValue, setNewStockValue] = '';
 
   const [editingPriceId, setEditingPriceId] = useState(null);
-  const [newPriceValue, setNewPriceValue] = useState(''); // Initialize as empty string
+  const [newPriceValue, setNewPriceValue] = useState(''); // Inicializar como cadena vacía
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -86,12 +86,12 @@ function Productos() {
 
   const showCustomAlert = (message, type = 'success') => {
       setAlertMessage(message);
-      setAlertType(type); // Set alert type
+      setAlertType(type); // Establecer el tipo de alerta
       setShowAlertMessage(true);
       setTimeout(() => {
           setShowAlertMessage(false);
           setAlertMessage('');
-          setAlertType('success'); // Reset to default
+          setAlertType('success'); // Reiniciar a predeterminado
       }, 3000);
   };
 
@@ -129,7 +129,7 @@ function Productos() {
 
 
   useEffect(() => {
-    // Only allow superuser access
+    // Solo permitir acceso si es superusuario
     if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
         fetchProductos();
     } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
@@ -178,7 +178,7 @@ function Productos() {
     };
 
     try {
-      // Use BASE_API_ENDPOINT and add /api/productos/
+      // Usar BASE_API_ENDPOINT y añadir /api/productos/
       const response = await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, nuevoProducto, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -189,7 +189,7 @@ function Productos() {
       setCodigoBarras('');
       setPrecioVenta('');
       setStock('');
-      setTalle('XS'); // Reset to 'XS' or first new option
+      setTalle('UNICA');
     } catch (err) {
       setMensajeError('Error al añadir el producto: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
       console.error('Error adding product:', err.response || err);
@@ -257,7 +257,7 @@ function Productos() {
     setConfirmAction(() => async () => {
         setShowConfirmModal(false);
         try {
-            // Use BASE_API_ENDPOINT and add /api/productos/
+            // Usar BASE_API_ENDPOINT y añadir /api/productos/
             await axios.delete(`${BASE_API_ENDPOINT}/api/productos/${productId}/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -293,7 +293,7 @@ function Productos() {
     }
 
     try {
-      // Use BASE_API_ENDPOINT and add /api/productos/
+      // Usar BASE_API_ENDPOINT y añadir /api/productos/
       await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${productId}/`, { stock: stockInt }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -334,7 +334,7 @@ function Productos() {
     }
 
     try {
-      // Use BASE_API_ENDPOINT and add /api/productos/
+      // Usar BASE_API_ENDPOINT y añadir /api/productos/
       await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${productId}/`, { precio: priceFloat }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -354,11 +354,11 @@ function Productos() {
   };
 
 
-  if (authLoading || (isAuthenticated && !user)) { // Added user check to avoid errors if user is null
+  if (authLoading || (isAuthenticated && !user)) { // Añadido user check para evitar errores si user es null
     return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
   }
 
-  // Only allow superuser access
+  // Solo permitir acceso si es superusuario
   if (!isAuthenticated || !user.is_superuser) { 
     return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar productos.</div>;
   }
@@ -554,7 +554,7 @@ function Productos() {
         </>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Modal de Confirmación */}
       {showConfirmModal && (
           <div style={styles.modalOverlay}>
               <div style={styles.modalContent}>
@@ -567,7 +567,7 @@ function Productos() {
           </div>
       )}
 
-      {/* Custom Alert Message Box */}
+      {/* Cuadro de Mensaje de Alerta */}
       {showAlertMessage && (
           <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
               <p>{alertMessage}</p>
@@ -711,13 +711,13 @@ const styles = {
         border: '1px solid #ccc',
         borderRadius: '3px',
     },
-    barcodeContainer: { // This style is no longer directly used in the table, but kept if EtiquetasImpresion uses it
+    barcodeContainer: { // Este estilo ya no se usa directamente en la tabla, pero se mantiene si EtiquetasImpresion lo usa
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         minWidth: '150px',
     },
-    noBarcodeText: { // This style is no longer directly used in the table
+    noBarcodeText: { // Este estilo ya no se usa directamente en la tabla
         color: '#888',
         fontStyle: 'italic',
     },
