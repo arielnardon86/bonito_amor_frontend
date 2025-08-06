@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 
-// Importaciones de Chart.js
+// Importaciones de Chart.js (se mantienen por si se usan Pie, pero no Bar/Line si se eliminan)
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -47,7 +47,7 @@ const normalizeApiUrl = (url) => {
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
-// Opciones comunes para gráficos para mantener la consistencia
+// Opciones comunes para gráficos (se mantienen por si se usan Pie, pero no Bar/Line si se eliminan)
 const commonChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -235,46 +235,6 @@ const MetricasVentas = () => {
         }, 0);
     };
 
-    // Data para el gráfico de Ventas Agrupadas por Período
-    const ventasAgrupadasData = {
-        labels: metrics?.ventas_agrupadas_por_periodo?.data.map(item => item.periodo) || [],
-        datasets: [
-            {
-                label: 'Total Ventas',
-                data: metrics?.ventas_agrupadas_por_periodo?.data.map(item => parseFloat(item.total_ventas)) || [],
-                backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-            },
-        ],
-    };
-
-    // Data para el gráfico de Productos Más Vendidos
-    const productosMasVendidosData = {
-        labels: metrics?.productos_mas_vendidos.map(item => item.producto_nombre) || [],
-        datasets: [
-            {
-                label: 'Cantidad Vendida',
-                data: metrics?.productos_mas_vendidos.map(item => item.cantidad_total) || [],
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.6)',
-                    'rgba(54, 162, 235, 0.6)',
-                    'rgba(255, 206, 86, 0.6)',
-                    'rgba(75, 192, 192, 0.6)',
-                    'rgba(153, 102, 255, 0.6)',
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(153, 102, 255, 1)',
-                ],
-                borderWidth: 1,
-            },
-        ],
-    };
-
     // Data para el gráfico de Ventas por Método de Pago
     const ventasPorMetodoPagoData = {
         labels: metrics?.ventas_por_metodo_pago.map(item => item.metodo_pago) || [],
@@ -426,26 +386,6 @@ const MetricasVentas = () => {
             </div>
 
             <div style={styles.chartsContainer}>
-                {/* Gráfico de Ventas Agrupadas por Período (Ahora de Barras) */}
-                <div style={styles.chartCard}>
-                    <h3 style={styles.chartTitle}>Ventas Agrupadas por {metrics?.ventas_agrupadas_por_periodo?.label || 'Período'}</h3>
-                    {ventasAgrupadasData.labels.length > 0 ? (
-                        <Bar data={ventasAgrupadasData} options={commonChartOptions} /> 
-                    ) : (
-                        <div style={styles.chartNoData}>No hay datos de ventas para este período.</div>
-                    )}
-                </div>
-
-                {/* Gráfico de Productos Más Vendidos (Ya era de Barras) */}
-                <div style={styles.chartCard}>
-                    <h3 style={styles.chartTitle}>Top 5 Productos Más Vendidos</h3>
-                    {productosMasVendidosData.labels.length > 0 ? (
-                        <Bar data={productosMasVendidosData} options={commonChartOptions} />
-                    ) : (
-                        <div style={styles.chartNoData}>No hay datos de productos vendidos.</div>
-                    )}
-                </div>
-
                 {/* Gráfico de Ventas por Usuario */}
                 <div style={styles.chartCard}>
                     <h3 style={styles.chartTitle}>Ventas por Vendedor</h3>
