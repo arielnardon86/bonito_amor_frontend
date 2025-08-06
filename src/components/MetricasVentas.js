@@ -337,7 +337,7 @@ const MetricasVentas = () => {
                         value={filterYear}
                         onChange={(e) => setFilterYear(e.target.value)}
                         style={styles.filterInput}
-                        min="2000" // Ajustar según sea necesario
+                        min="2000" 
                         max={new Date().getFullYear()}
                     />
                 </div>
@@ -412,31 +412,31 @@ const MetricasVentas = () => {
                     <p style={styles.cardValue}>{metrics?.total_productos_vendidos_periodo || 0}</p>
                 </div>
                 <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Total Compras</h3> {/* NUEVA TARJETA */}
+                    <h3 style={styles.cardTitle}>Total Compras</h3> 
                     <p style={styles.cardValue}>${parseFloat(metrics?.total_compras_periodo || 0).toFixed(2)}</p>
                 </div>
                 <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Rentabilidad Bruta</h3> {/* NUEVA TARJETA */}
+                    <h3 style={styles.cardTitle}>Rentabilidad Bruta</h3> 
                     <p style={styles.cardValue}>${parseFloat(metrics?.rentabilidad_bruta_periodo || 0).toFixed(2)}</p>
                 </div>
                 <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Margen de Rentabilidad</h3> {/* NUEVA TARJETA */}
+                    <h3 style={styles.cardTitle}>Margen de Rentabilidad</h3> 
                     <p style={styles.cardValue}>{parseFloat(metrics?.margen_rentabilidad_periodo || 0).toFixed(2)}%</p>
                 </div>
             </div>
 
             <div style={styles.chartsContainer}>
-                {/* Gráfico de Ventas Agrupadas por Período */}
+                {/* Gráfico de Ventas Agrupadas por Período (Ahora de Barras) */}
                 <div style={styles.chartCard}>
                     <h3 style={styles.chartTitle}>Ventas Agrupadas por {metrics?.ventas_agrupadas_por_periodo?.label || 'Período'}</h3>
                     {ventasAgrupadasData.labels.length > 0 ? (
-                        <Line data={ventasAgrupadasData} options={commonChartOptions} />
+                        <Bar data={ventasAgrupadasData} options={commonChartOptions} /> 
                     ) : (
                         <div style={styles.chartNoData}>No hay datos de ventas para este período.</div>
                     )}
                 </div>
 
-                {/* Gráfico de Productos Más Vendidos */}
+                {/* Gráfico de Productos Más Vendidos (Ya era de Barras) */}
                 <div style={styles.chartCard}>
                     <h3 style={styles.chartTitle}>Top 5 Productos Más Vendidos</h3>
                     {productosMasVendidosData.labels.length > 0 ? (
@@ -738,7 +738,7 @@ const styles = {
         padding: '20px',
         borderRadius: '8px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        minHeight: '400px', // Asegurar que los gráficos tengan suficiente espacio
+        minHeight: '400px', 
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
