@@ -269,11 +269,33 @@ const MetricasVentas = () => {
                 </div>
             </div>
 
-            {/* Eliminada la sección de chartsContainer y todos los gráficos */}
-            {/* Las tablas se muestran directamente ahora */}
-
             {/* Tablas de Detalles */}
             <div style={styles.tablesContainer}>
+                {/* Nueva Tabla de Productos Vendidos por Cantidad */}
+                <div style={styles.tableContainer}>
+                    <h3 style={styles.tableTitle}>Productos Vendidos por Cantidad</h3>
+                    {metrics?.productos_mas_vendidos.length > 0 ? (
+                        <table style={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th style={styles.th}>Nombre del Producto</th>
+                                    <th style={styles.th}>Cantidad Vendida</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {metrics.productos_mas_vendidos.map((productMetric, index) => (
+                                    <tr key={index}>
+                                        <td style={styles.td}>{productMetric.producto_nombre}</td>
+                                        <td style={styles.td}>{productMetric.cantidad_total}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p style={styles.noDataMessage}>No hay datos de productos vendidos para este período.</p>
+                    )}
+                </div>
+
                 {/* Tabla de Ventas por Usuario */}
                 <div style={styles.tableContainer}>
                     <h3 style={styles.tableTitle}>Ventas por Vendedor</h3>
@@ -446,13 +468,13 @@ const styles = {
         fontWeight: 'bold',
         color: '#2c3e50',
     },
-    chartsContainer: { // Este estilo ya no se usa directamente para contener gráficos, pero se mantiene por si se reutiliza para otra cosa
+    chartsContainer: { 
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
         gap: '30px',
         marginBottom: '30px',
     },
-    chartCard: { // Este estilo ya no se usa directamente para contener gráficos, pero se mantiene por si se reutiliza para otra cosa
+    chartCard: { 
         backgroundColor: '#ffffff',
         padding: '20px',
         borderRadius: '8px',
@@ -463,13 +485,13 @@ const styles = {
         justifyContent: 'center',
         alignItems: 'center',
     },
-    chartTitle: { // Este estilo ya no se usa directamente para los títulos de gráficos, pero se mantiene por si se reutiliza para otra cosa
+    chartTitle: { 
         fontSize: '1.4em',
         color: '#34495e',
         marginBottom: '15px',
         textAlign: 'center',
     },
-    chartNoData: { // Este estilo ya no se usa directamente para mensajes de "no data" en gráficos, pero se mantiene por si se reutiliza para otra cosa
+    chartNoData: { 
         textAlign: 'center',
         color: '#777',
         fontStyle: 'italic',
