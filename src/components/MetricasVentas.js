@@ -3,33 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 
-// Importaciones de Chart.js (se mantienen por si se usan Pie, pero no Bar/Line si se eliminan)
-import { Bar, Pie, Line } from 'react-chartjs-2';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    ArcElement,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-} from 'chart.js';
-
-// Registrar los componentes de Chart.js que vamos a usar
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    ArcElement,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend
-);
+// Eliminadas todas las importaciones de Chart.js ya que no se usarán gráficos.
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
@@ -46,71 +20,6 @@ const normalizeApiUrl = (url) => {
 };
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
-
-// Opciones comunes para gráficos (se mantienen por si se usan Pie, pero no Bar/Line si se eliminan)
-const commonChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'top',
-            labels: {
-                font: {
-                    size: 14,
-                    family: 'Inter, sans-serif',
-                },
-                color: '#333',
-            }
-        },
-        tooltip: {
-            callbacks: {
-                label: function(context) {
-                    let label = context.dataset.label || '';
-                    if (label) {
-                        label += ': ';
-                    }
-                    if (context.parsed.y !== null) {
-                        label += new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(context.parsed.y);
-                    }
-                    return label;
-                }
-            },
-            bodyFont: {
-                family: 'Inter, sans-serif',
-            },
-            titleFont: {
-                family: 'Inter, sans-serif',
-            },
-        }
-    },
-    scales: {
-        x: {
-            ticks: {
-                font: {
-                    family: 'Inter, sans-serif',
-                },
-                color: '#555',
-            },
-            grid: {
-                display: false,
-            }
-        },
-        y: {
-            ticks: {
-                callback: function(value) {
-                    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value);
-                },
-                font: {
-                    family: 'Inter, sans-serif',
-                },
-                color: '#555',
-            },
-            grid: {
-                color: '#e0e0e0',
-            }
-        }
-    }
-};
 
 const MetricasVentas = () => {
     const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth();
@@ -234,31 +143,6 @@ const MetricasVentas = () => {
             fetchMetrics();
         }, 0);
     };
-
-    // Data para el gráfico de Ventas por Método de Pago
-    const ventasPorMetodoPagoData = {
-        labels: metrics?.ventas_por_metodo_pago.map(item => item.metodo_pago) || [],
-        datasets: [
-            {
-                label: 'Monto Total',
-                data: metrics?.ventas_por_metodo_pago.map(item => parseFloat(item.monto_total)) || [],
-                backgroundColor: [
-                    'rgba(255, 159, 64, 0.6)',
-                    'rgba(192, 192, 75, 0.6)',
-                    'rgba(86, 206, 255, 0.6)',
-                    'rgba(132, 75, 192, 0.6)',
-                ],
-                borderColor: [
-                    'rgba(255, 159, 64, 1)',
-                    'rgba(192, 192, 75, 1)',
-                    'rgba(86, 206, 255, 1)',
-                    'rgba(132, 75, 192, 1)',
-                ],
-                borderWidth: 1,
-            },
-        ],
-    };
-
 
     if (authLoading || (isAuthenticated && !user)) { 
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
@@ -385,113 +269,8 @@ const MetricasVentas = () => {
                 </div>
             </div>
 
-            <div style={styles.chartsContainer}>
-                {/* Gráfico de Ventas por Usuario */}
-                <div style={styles.chartCard}>
-                    <h3 style={styles.chartTitle}>Ventas por Vendedor</h3>
-                    {metrics?.ventas_por_usuario.length > 0 ? (
-                        <Pie
-                            data={{
-                                labels: metrics.ventas_por_usuario.map(u => `${u.usuario__username} ($${parseFloat(u.monto_total_vendido).toFixed(2)})`),
-                                datasets: [{
-                                    data: metrics.ventas_por_usuario.map(u => parseFloat(u.monto_total_vendido)),
-                                    backgroundColor: [
-                                        '#4CAF50', '#2196F3', '#FFC107', '#E91E63', '#9C27B0',
-                                        '#00BCD4', '#FF5722', '#607D8B', '#795548', '#CDDC39'
-                                    ],
-                                    hoverOffset: 4
-                                }]
-                            }}
-                            options={{
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'right',
-                                        labels: {
-                                            font: {
-                                                size: 14,
-                                                family: 'Inter, sans-serif',
-                                            },
-                                            color: '#333',
-                                        }
-                                    },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function(context) {
-                                                let label = context.label || '';
-                                                if (label) {
-                                                    label += ': ';
-                                                }
-                                                if (context.parsed !== null) {
-                                                    label += new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(context.parsed);
-                                                }
-                                                return label;
-                                            }
-                                        },
-                                        bodyFont: {
-                                            family: 'Inter, sans-serif',
-                                        },
-                                        titleFont: {
-                                            family: 'Inter, sans-serif',
-                                        },
-                                    }
-                                }
-                            }}
-                        />
-                    ) : (
-                        <div style={styles.chartNoData}>No hay datos de ventas por vendedor.</div>
-                    )}
-                </div>
-
-                {/* Gráfico de Ventas por Método de Pago */}
-                <div style={styles.chartCard}>
-                    <h3 style={styles.chartTitle}>Ventas por Método de Pago</h3>
-                    {ventasPorMetodoPagoData.labels.length > 0 ? (
-                        <Pie
-                            data={ventasPorMetodoPagoData}
-                            options={{
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'right',
-                                        labels: {
-                                            font: {
-                                                size: 14,
-                                                family: 'Inter, sans-serif',
-                                            },
-                                            color: '#333',
-                                        }
-                                    },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function(context) {
-                                                let label = context.label || '';
-                                                if (label) {
-                                                    label += ': ';
-                                                }
-                                                if (context.parsed !== null) {
-                                                    label += new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(context.parsed);
-                                                }
-                                                return label;
-                                            }
-                                        },
-                                        bodyFont: {
-                                            family: 'Inter, sans-serif',
-                                        },
-                                        titleFont: {
-                                            family: 'Inter, sans-serif',
-                                        },
-                                    }
-                                }
-                            }}
-                        />
-                    ) : (
-                        <div style={styles.chartNoData}>No hay datos de ventas por método de pago.</div>
-                    )}
-                </div>
-            </div>
+            {/* Eliminada la sección de chartsContainer y todos los gráficos */}
+            {/* Las tablas se muestran directamente ahora */}
 
             {/* Tablas de Detalles */}
             <div style={styles.tablesContainer}>
@@ -667,13 +446,13 @@ const styles = {
         fontWeight: 'bold',
         color: '#2c3e50',
     },
-    chartsContainer: {
+    chartsContainer: { // Este estilo ya no se usa directamente para contener gráficos, pero se mantiene por si se reutiliza para otra cosa
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
         gap: '30px',
         marginBottom: '30px',
     },
-    chartCard: {
+    chartCard: { // Este estilo ya no se usa directamente para contener gráficos, pero se mantiene por si se reutiliza para otra cosa
         backgroundColor: '#ffffff',
         padding: '20px',
         borderRadius: '8px',
@@ -684,13 +463,13 @@ const styles = {
         justifyContent: 'center',
         alignItems: 'center',
     },
-    chartTitle: {
+    chartTitle: { // Este estilo ya no se usa directamente para los títulos de gráficos, pero se mantiene por si se reutiliza para otra cosa
         fontSize: '1.4em',
         color: '#34495e',
         marginBottom: '15px',
         textAlign: 'center',
     },
-    chartNoData: {
+    chartNoData: { // Este estilo ya no se usa directamente para mensajes de "no data" en gráficos, pero se mantiene por si se reutiliza para otra cosa
         textAlign: 'center',
         color: '#777',
         fontStyle: 'italic',
