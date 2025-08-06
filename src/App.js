@@ -5,14 +5,14 @@ import { Routes, Route, Link, Navigate } from 'react-router-dom';
 import Productos from './components/Productos';
 import PuntoVenta from './components/PuntoVenta';
 import Login from './components/Login';
-// import UserManagement from './components/UserManagement'; // Eliminado
+import RegistroCompras from './components/RegistroCompras'; // NUEVA IMPORTACIÓN
 import ProtectedRoute from './components/ProtectedRoute'; 
 import { AuthProvider, useAuth } from './AuthContext'; 
 import { SalesProvider } from './components/SalesContext'; 
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
-import HomePage from './components/HomePage'; // Importar HomePage
+import HomePage from './components/HomePage'; 
 
 import './App.css';
 
@@ -43,7 +43,6 @@ const Navbar = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [isOpen]);
 
-  // handleStoreChange ya no es necesario aquí si el selector se mueve a HomePage
 
   return (
     <nav className="navbar">
@@ -64,7 +63,7 @@ const Navbar = () => {
             {/* Mostrar el nombre de la tienda seleccionada si existe */}
             {selectedStoreSlug && (
                 <li className="store-name-display">
-                    Tienda: <strong>{selectedStoreSlug}</strong> {/* selectedStoreSlug ahora es el nombre */}
+                    Tienda: <strong>{selectedStoreSlug}</strong>
                 </li>
             )}
 
@@ -73,13 +72,13 @@ const Navbar = () => {
                 <li onClick={() => setIsOpen(false)}><Link to="/punto-venta">Punto de Venta</Link></li>
             )}
             
-            {/* Gestión de Productos, Usuarios, Métricas, Ventas: Solo para Superusuarios */}
+            {/* Gestión de Productos, Métricas, Ventas, Compras: Solo para Superusuarios */}
             {user && user.is_superuser && ( 
                 <>
                     <li onClick={() => setIsOpen(false)}><Link to="/productos">Gestión de Productos</Link></li>
-                    {/* <li onClick={() => setIsOpen(false)}><Link to="/users">Gestión de Usuarios</Link></li> */} {/* ¡ELIMINADO! */}
-                    <li onClick={() => setIsOpen(false)}><Link to="/metricas">Métricas de Ventas</Link></li>
+                    <li onClick={() => setIsOpen(false)}><Link to="/metricas-ventas">Métricas de Ventas</Link></li>
                     <li onClick={() => setIsOpen(false)}><Link to="/ventas">Listado de Ventas</Link></li>
+                    <li onClick={() => setIsOpen(false)}><Link to="/registro-compras">Registro de Compras</Link></li> {/* NUEVO ENLACE */}
                 </>
             )}
             
@@ -97,7 +96,7 @@ const Navbar = () => {
 };
 
 const AppContent = () => {
-  const { isAuthenticated, loading, selectedStoreSlug } = useAuth(); 
+  const { isAuthenticated, loading, selectedStoreSlug, user } = useAuth(); 
 
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
@@ -109,7 +108,8 @@ const AppContent = () => {
       <div className="container" style={{ padding: '20px' }}>
         <Routes>
           {/* Ruta de login, ahora puede recibir un storeSlug opcional */}
-          <Route path="/login/:storeSlug?" element={<Login />} />
+          <Route path="/login/:storeSlug" element={<Login />} />
+          <Route path="/login" element={<Login />} /> {/* Ruta sin storeSlug */}
 
           {/* Lógica para la ruta raíz ("/") */}
           <Route path="/" element={
@@ -125,46 +125,41 @@ const AppContent = () => {
           } />
 
           {/* Rutas Protegidas que requieren autenticación y tienda seleccionada */}
-          {isAuthenticated && selectedStoreSlug && (
+          {isAuthenticated && selectedStoreSlug && (user?.is_staff || user?.is_superuser) && (
+            <>
+              <Route path="/punto-venta" element={<PuntoVenta />} />
+            </>
+          )}
+
+          {/* Superuser-only routes */}
+          {isAuthenticated && selectedStoreSlug && user?.is_superuser && (
             <>
               <Route path="/productos" element={
                 <ProtectedRoute adminOnly={true}>
                   <Productos />
                 </ProtectedRoute>
               } />
-              
-            
-              
-              <Route
-                  path="/metricas"
-                  element={
-                      <ProtectedRoute adminOnly={true}>
-                          <MetricasVentas />
-                      </ProtectedRoute>
-                  }
-              />
-
-              <Route
-                  path="/ventas"
-                  element={
-                      <ProtectedRoute adminOnly={true}>
-                          <VentasPage />
-                      </ProtectedRoute>
-                  }
-              />
-
-              {/* <Route // Eliminada
-                  path="/users"
-                  element={
-                      <ProtectedRoute adminOnly={true}>
-                          <UserManagement />
-                      </ProtectedRoute>
-                  }
-              /> */}
-
-              {/* Cualquier otra ruta si está autenticado y con tienda, redirige al Punto de Venta */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/metricas-ventas" element={
+                <ProtectedRoute adminOnly={true}>
+                  <MetricasVentas />
+                </ProtectedRoute>
+              } />
+              <Route path="/ventas" element={
+                <ProtectedRoute adminOnly={true}>
+                  <VentasPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/registro-compras" element={ 
+                <ProtectedRoute adminOnly={true}>
+                  <RegistroCompras />
+                </ProtectedRoute>
+              } />
             </>
+          )}
+
+          {/* Redirigir usuarios autenticados sin tienda seleccionada a la página de inicio para que elijan una */}
+          {isAuthenticated && !selectedStoreSlug && (
+            <Route path="*" element={<Navigate to="/" replace />} />
           )}
 
           {/* Si no está autenticado y no está en /login, o si está autenticado pero sin tienda, va a HomePage */}

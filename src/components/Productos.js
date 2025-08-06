@@ -63,7 +63,7 @@ function Productos() {
   const [codigoBarras, setCodigoBarras] = useState('');
   const [precioVenta, setPrecioVenta] = useState('');
   const [stock, setStock] = useState('');
-  const [talle, setTalle] = useState('UNICA');
+  const [talle, setTalle] = useState('UNICO');
 
   const [successMessage, setSuccessMessage] = useState(null);
   const [mensajeError, setMensajeError] = useState(null);
@@ -72,7 +72,7 @@ function Productos() {
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   const [editingStockId, setEditingStockId] = useState(null);
-  const [newStockValue, setNewStockValue] = '';
+  const [newStockValue, setNewStockValue] = useState(''); // Inicializar como cadena vacía
 
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [newPriceValue, setNewPriceValue] = useState(''); // Inicializar como cadena vacía
@@ -190,7 +190,7 @@ function Productos() {
       setCodigoBarras('');
       setPrecioVenta('');
       setStock('');
-      setTalle('UNICA');
+      setTalle('UNICO');
     } catch (err) {
       setMensajeError('Error al añadir el producto: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
       console.error('Error adding product:', err.response || err);
@@ -355,7 +355,7 @@ function Productos() {
   };
 
 
-  if (authLoading || (isAuthenticated && !user)) { // Añadido user check para evitar errores si user es null
+  if (authLoading || (isAuthenticated && !user)) { 
     return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
   }
 
@@ -483,7 +483,7 @@ function Productos() {
                       />
                     )}
                   </td>
-                  <td style={styles.td}>{producto.id}</td>
+                  <td style={styles.td}>{producto.id.substring(0, 8)}...</td> {/* Mostrar solo los primeros 8 caracteres del ID */}
                   <td style={styles.td}>{producto.nombre}</td>
                   <td style={styles.td}>{producto.talle || 'N/A'}</td>
                   <td style={styles.td}>{producto.codigo_barras || 'N/A'}</td>
@@ -712,13 +712,13 @@ const styles = {
         border: '1px solid #ccc',
         borderRadius: '3px',
     },
-    barcodeContainer: { // Este estilo ya no se usa directamente en la tabla, pero se mantiene si EtiquetasImpresion lo usa
+    barcodeContainer: { 
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         minWidth: '150px',
     },
-    noBarcodeText: { // Este estilo ya no se usa directamente en la tabla
+    noBarcodeText: { 
         color: '#888',
         fontStyle: 'italic',
     },
