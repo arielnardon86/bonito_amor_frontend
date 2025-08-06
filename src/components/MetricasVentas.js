@@ -285,7 +285,7 @@ const MetricasVentas = () => {
                             <tbody>
                                 {metrics.productos_mas_vendidos.map((productMetric, index) => (
                                     <tr key={index}>
-                                        <td style={styles.td}>{productMetric.producto_nombre}</td>
+                                        <td style={styles.td}>{productMetric.producto__nombre}</td>
                                         <td style={styles.td}>{productMetric.cantidad_total}</td>
                                     </tr>
                                 ))}
