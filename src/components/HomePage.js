@@ -58,12 +58,7 @@ const HomePage = () => {
                 ) : (
                     <p style={styles.noStoresMessage}>No hay tiendas disponibles. Contacta al administrador.</p>
                 )}
-                {/* Añadir el enlace de iniciar sesión para usuarios no autenticados */}
-                {!isAuthenticated && (
-                    <p style={styles.callToAction}>
-                        ¿Ya tienes una cuenta? <Link to="/login/bonito-amor" style={styles.link}>Inicia sesión</Link>.
-                    </p>
-                )}
+
             </div>
         );
     }
