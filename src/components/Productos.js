@@ -1,13 +1,13 @@
 // BONITO_AMOR/frontend/src/components/Productos.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import Barcode from 'react-barcode'; // Se mantiene porque se usa en EtiquetasImpresion
+import Barcode from 'react-barcode';
 import EtiquetasImpresion from './EtiquetasImpresion';
 import { useAuth } from '../AuthContext';
 
 // NEW TALLE_OPTIONS
 const TALLE_OPTIONS = [
-    { value: 'UNICO', label: 'UNICO' },  
+    { value: 'UNICO', label: 'UNICO' },
     { value: 'XS', label: 'XS' },
     { value: 'S', label: 'S' },
     { value: 'M', label: 'M' },
@@ -32,7 +32,7 @@ const TALLE_OPTIONS = [
     { value: '16', label: '16' },
 ];
 
-const API_BASE_URL = process.env.REACT_APP_API_URL; 
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 // Función para normalizar la URL base, eliminando cualquier /api/ o barra final
 const normalizeApiUrl = (url) => {
@@ -98,7 +98,7 @@ function Productos() {
 
 
   const fetchProductos = useCallback(async () => {
-    if (!token || !selectedStoreSlug) { 
+    if (!token || !selectedStoreSlug) {
         setLoading(false);
         return;
     }
@@ -109,7 +109,7 @@ function Productos() {
         headers: { 'Authorization': `Bearer ${token}` },
         params: { tienda_slug: selectedStoreSlug }
       });
-      
+
       let productsData = [];
       if (response.data) {
           if (Array.isArray(response.data.results)) {
@@ -126,7 +126,7 @@ function Productos() {
       setLoading(false);
       console.error('Error fetching products:', err.response || err.message);
     }
-  }, [token, selectedStoreSlug]); 
+  }, [token, selectedStoreSlug]);
 
 
   useEffect(() => {
@@ -137,9 +137,9 @@ function Productos() {
         setError("Acceso denegado. Solo los superusuarios pueden ver/gestionar productos.");
         setLoading(false);
     } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
-        setLoading(false); 
+        setLoading(false);
     }
-  }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos]); 
+  }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos]);
 
 
   const handleSubmit = async (e) => {
@@ -152,11 +152,11 @@ function Productos() {
         return;
     }
 
-    if (!nombre || precioVenta === '' || stock === '' || !talle) { 
+    if (!nombre || precioVenta === '' || stock === '' || !talle) {
         setMensajeError('Por favor, completa todos los campos requeridos (Nombre, Precio Venta, Stock, Talle).');
         return;
     }
-    
+
     const parsedPrecioVenta = parseFloat(precioVenta);
     const parsedStock = parseInt(stock, 10);
 
@@ -171,9 +171,9 @@ function Productos() {
 
     const nuevoProducto = {
       nombre,
-      codigo_barras: codigoBarras || null, 
-      precio: parsedPrecioVenta, 
-      stock: parsedStock,                 
+      codigo_barras: codigoBarras || null,
+      precio: parsedPrecioVenta,
+      stock: parsedStock,
       talle,
       tienda: selectedStoreSlug
     };
@@ -185,7 +185,7 @@ function Productos() {
       });
       console.log('Producto añadido:', response.data);
       setSuccessMessage('Producto añadido con éxito!');
-      fetchProductos(); 
+      fetchProductos();
       setNombre('');
       setCodigoBarras('');
       setPrecioVenta('');
@@ -201,7 +201,7 @@ function Productos() {
     setSelectedProductsForLabels(prevSelected => {
       const newSelected = { ...prevSelected };
       if (isChecked) {
-        newSelected[productId] = newSelected[productId] || 1; 
+        newSelected[productId] = newSelected[productId] || 1;
       } else {
         delete newSelected[productId];
       }
@@ -212,7 +212,7 @@ function Productos() {
   const handleLabelQuantityChange = (productId, quantity) => {
     setSelectedProductsForLabels(prevSelected => ({
       ...prevSelected,
-      [productId]: parseInt(quantity) || 1 
+      [productId]: parseInt(quantity) || 1
     }));
   };
 
@@ -220,7 +220,7 @@ function Productos() {
     if (e.target.checked) {
       const allSelected = {};
       productos.forEach(p => {
-        allSelected[p.id] = 1; 
+        allSelected[p.id] = 1;
       });
       setSelectedProductsForLabels(allSelected);
     } else {
@@ -237,15 +237,15 @@ function Productos() {
   };
 
   const handleClosePrintPreview = () => {
-    setSelectedProductsForLabels({}); 
+    setSelectedProductsForLabels({});
     setShowPrintPreview(false);
   };
 
   const productosParaImprimir = productos
-    .filter(p => selectedProductsForLabels[p.id]) 
+    .filter(p => selectedProductsForLabels[p.id])
     .map(p => ({
       ...p,
-      labelQuantity: selectedProductsForLabels[p.id] 
+      labelQuantity: selectedProductsForLabels[p.id]
     }));
 
   const handleDeleteProduct = async (productId) => {
@@ -263,7 +263,7 @@ function Productos() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setSuccessMessage('Producto eliminado con éxito!');
-            fetchProductos(); 
+            fetchProductos();
         } catch (err) {
             setMensajeError('Error al eliminar el producto: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
             console.error('Error deleting product:', err.response || err);
@@ -274,7 +274,7 @@ function Productos() {
 
   const handleEditStockClick = (productId, currentStock) => {
     setEditingStockId(productId);
-    setNewStockValue(currentStock.toString()); 
+    setNewStockValue(currentStock.toString());
   };
 
   const handleSaveStock = async (productId) => {
@@ -286,7 +286,7 @@ function Productos() {
         return;
     }
 
-    const stockInt = parseInt(newStockValue, 10); 
+    const stockInt = parseInt(newStockValue, 10);
 
     if (isNaN(stockInt) || stockInt < 0) {
       setMensajeError('El stock debe ser un número entero no negativo.');
@@ -299,9 +299,9 @@ function Productos() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setSuccessMessage('Stock actualizado con éxito!');
-      setEditingStockId(null); 
-      setNewStockValue(''); 
-      fetchProductos(); 
+      setEditingStockId(null);
+      setNewStockValue('');
+      fetchProductos();
     } catch (err) {
       setMensajeError('Error al actualizar el stock: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
       console.error('Error updating stock:', err.response || err);
@@ -315,7 +315,7 @@ function Productos() {
 
   const handleEditPriceClick = (productId, currentPrice) => {
     setEditingPriceId(productId);
-    setNewPriceValue(currentPrice.toString()); 
+    setNewPriceValue(currentPrice.toString());
   };
 
   const handleSavePrice = async (productId) => {
@@ -340,9 +340,9 @@ function Productos() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setSuccessMessage('Precio de venta actualizado con éxito!');
-      setEditingPriceId(null); 
-      setNewPriceValue(''); 
-      fetchProductos(); 
+      setEditingPriceId(null);
+      setNewPriceValue('');
+      fetchProductos();
     } catch (err) {
       setMensajeError('Error al actualizar el precio de venta: ' + (err.response?.data ? JSON.stringify(err.response.data) : err.message));
       console.error('Error updating price:', err.response || err);
@@ -355,12 +355,12 @@ function Productos() {
   };
 
 
-  if (authLoading || (isAuthenticated && !user)) { 
+  if (authLoading || (isAuthenticated && !user)) {
     return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
   }
 
   // Solo permitir acceso si es superusuario
-  if (!isAuthenticated || !user.is_superuser) { 
+  if (!isAuthenticated || !user.is_superuser) {
     return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar productos.</div>;
   }
 
@@ -452,11 +452,9 @@ function Productos() {
                     checked={Object.keys(selectedProductsForLabels).length === productos.length && productos.length > 0}
                   />
                 </th>
-                <th style={styles.th}>Cant. Etiquetas</th> 
-                <th style={styles.th}>ID</th>
+                <th style={styles.th}>Cant. Etiquetas</th>
                 <th style={styles.th}>Nombre</th>
                 <th style={styles.th}>Talle</th>
-                <th style={styles.th}>Código</th>
                 <th style={styles.th}>P. Venta</th>
                 <th style={styles.th}>Stock</th>
                 <th style={styles.th}>Acciones</th>
@@ -468,12 +466,12 @@ function Productos() {
                   <td style={styles.td}>
                     <input
                       type="checkbox"
-                      checked={!!selectedProductsForLabels[producto.id]} 
+                      checked={!!selectedProductsForLabels[producto.id]}
                       onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
                     />
                   </td>
                   <td style={styles.td}>
-                    {!!selectedProductsForLabels[producto.id] && ( 
+                    {!!selectedProductsForLabels[producto.id] && (
                       <input
                         type="number"
                         min="1"
@@ -483,10 +481,8 @@ function Productos() {
                       />
                     )}
                   </td>
-                  <td style={styles.td}>{producto.id.substring(0, 8)}...</td> {/* Mostrar solo los primeros 8 caracteres del ID */}
                   <td style={styles.td}>{producto.nombre}</td>
                   <td style={styles.td}>{producto.talle || 'N/A'}</td>
-                  <td style={styles.td}>{producto.codigo_barras || 'N/A'}</td>
                   <td style={styles.td}>
                     {editingPriceId === producto.id ? (
                       <div style={styles.editControls}>
@@ -507,7 +503,7 @@ function Productos() {
                       </div>
                     ) : (
                       <div style={styles.displayControls}>
-                        <span>${parseFloat(producto.precio).toFixed(2)}</span> 
+                        <span>${parseFloat(producto.precio).toFixed(2)}</span>
                         <button onClick={() => handleEditPriceClick(producto.id, producto.precio)} style={styles.editButton}>
                           Editar
                         </button>
@@ -712,13 +708,13 @@ const styles = {
         border: '1px solid #ccc',
         borderRadius: '3px',
     },
-    barcodeContainer: { 
+    barcodeContainer: {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         minWidth: '150px',
     },
-    noBarcodeText: { 
+    noBarcodeText: {
         color: '#888',
         fontStyle: 'italic',
     },
