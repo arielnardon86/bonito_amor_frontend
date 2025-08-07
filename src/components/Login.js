@@ -1,40 +1,36 @@
 // BONITO_AMOR/frontend/src/components/Login.js
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom'; // Importa useParams
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
 function Login() {
   const { login, error: authError, clearError } = useAuth();
   const navigate = useNavigate();
-  const { storeSlug } = useParams(); // Obtiene storeSlug de la URL
+  const { storeSlug } = useParams();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  // No se necesita un estado de error local, se usa el error del AuthContext directamente
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    clearError(); // Limpia cualquier error previo del AuthContext
+    clearError();
 
-    // Pasa el storeSlug de la URL a la función de login
     const success = await login(username, password, storeSlug);
     if (success) {
-      // Si el login es exitoso, navega a la raíz.
-      // AppContent en App.js manejará la redirección basada en selectedStoreSlug.
-      navigate('/'); 
+      navigate('/');
     }
   };
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.header}>Iniciar Sesión en {storeSlug ? storeSlug.replace(/-/g, ' ').toUpperCase() : 'Tu Tienda'}</h2> {/* Muestra el nombre de la tienda */}
+      <h2 style={styles.header}>Iniciar Sesión en {storeSlug ? storeSlug.replace(/-/g, ' ').toUpperCase() : 'Tu Tienda'}</h2>
       
-      {(authError) && <p style={styles.error}>{authError}</p>} {/* Muestra el error del AuthContext */}
+      {(authError) && <p style={styles.error}>{authError}</p>}
 
       <form onSubmit={handleSubmit} style={styles.form}>
         <input
           type="text"
-          placeholder="Usuario"
+          placeholder="Nombre de usuario"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
@@ -99,14 +95,9 @@ const styles = {
         transition: 'background-color 0.3s ease',
     },
     error: {
-        color: 'red',
-        backgroundColor: '#ffe3e6',
-        padding: '10px',
-        borderRadius: '5px',
-        marginBottom: '15px',
-        width: '100%',
-        maxWidth: '350px',
-        textAlign: 'center',
+        color: '#dc3545',
+        marginBottom: '10px',
+        fontWeight: 'bold',
     },
 };
 
