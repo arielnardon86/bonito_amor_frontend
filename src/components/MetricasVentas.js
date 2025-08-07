@@ -3,6 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 
+// Eliminadas todas las importaciones de Chart.js ya que no se usarán gráficos.
+
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 // Función para normalizar la URL base, eliminando cualquier /api/ o barra final
@@ -25,25 +27,17 @@ const MetricasVentas = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Valores por defecto para hoy
+    // Filtros
     const today = new Date();
-    const currentYear = today.getFullYear().toString();
+    const currentYear = today.getFullYear();
     const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0');
     const currentDay = today.getDate().toString().padStart(2, '0');
 
-    // Estados para los filtros activos (los que se usan para la consulta API)
-    const [filterYear, setFilterYear] = useState('');
-    const [filterMonth, setFilterMonth] = useState(''); 
-    const [filterDay, setFilterDay] = useState('');     
+    const [filterYear, setFilterYear] = useState(currentYear.toString());
+    const [filterMonth, setFilterMonth] = useState(''); // Vacío para todos los meses
+    const [filterDay, setFilterDay] = useState('');     // Vacío para todos los días
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
-
-    // Estados para los filtros pendientes (los que se editan en el formulario)
-    const [pendingFilterYear, setPendingFilterYear] = useState('');
-    const [pendingFilterMonth, setPendingFilterMonth] = useState('');
-    const [pendingFilterDay, setPendingFilterDay] = useState('');
-    const [pendingFilterSellerId, setPendingFilterSellerId] = useState('');
-    const [pendingFilterPaymentMethod, setPendingFilterPaymentMethod] = useState('');
 
     const [sellers, setSellers] = useState([]);
     const [paymentMethods, setPaymentMethods] = useState([]);
@@ -62,7 +56,7 @@ const MetricasVentas = () => {
             setError("No se pudo cargar la tienda seleccionada.");
             return;
         }
-        const storeSlug = store.nombre;
+        const storeSlug = store.nombre; // Enviar el nombre de la tienda (slug)
 
         setLoading(true);
         setError(null);
@@ -121,24 +115,9 @@ const MetricasVentas = () => {
         }
     }, [token]);
 
-    // useEffect para la carga inicial y el cambio de tienda. Solo se llama a fetchMetrics una vez al inicio.
+
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
-            // Inicializar filtros a la fecha de hoy
-            const today = new Date();
-            const currentYear = today.getFullYear().toString();
-            const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0');
-            const currentDay = today.getDate().toString().padStart(2, '0');
-
-            setFilterYear(currentYear);
-            setPendingFilterYear(currentYear);
-
-            setFilterMonth(currentMonth);
-            setPendingFilterMonth(currentMonth);
-
-            setFilterDay(currentDay);
-            setPendingFilterDay(currentDay);
-
             fetchMetrics();
             fetchSellers();
             fetchPaymentMethods();
@@ -148,35 +127,21 @@ const MetricasVentas = () => {
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false);
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchPaymentMethods]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchMetrics, fetchSellers, fetchPaymentMethods]);
 
     const handleApplyFilters = () => {
-        // Actualizar los filtros activos con los valores pendientes
-        setFilterYear(pendingFilterYear);
-        setFilterMonth(pendingFilterMonth);
-        setFilterDay(pendingFilterDay);
-        setFilterSellerId(pendingFilterSellerId);
-        setFilterPaymentMethod(pendingFilterPaymentMethod);
-        // La llamada a fetchMetrics se disparará por el cambio en los estados activos
+        fetchMetrics();
     };
 
     const handleClearFilters = () => {
-        // Resetear ambos conjuntos de estados a valores por defecto
-        const today = new Date();
-        const currentYear = today.getFullYear().toString();
-        
-        setPendingFilterYear(currentYear);
-        setPendingFilterMonth('');
-        setPendingFilterDay('');
-        setPendingFilterSellerId('');
-        setPendingFilterPaymentMethod('');
-        
-        // Actualizar los filtros activos para que la UI se refresque con los valores por defecto
-        setFilterYear(currentYear);
+        setFilterYear(currentYear.toString());
         setFilterMonth('');
         setFilterDay('');
         setFilterSellerId('');
         setFilterPaymentMethod('');
+        setTimeout(() => { // Usar timeout para asegurar la actualización del estado antes de volver a buscar
+            fetchMetrics();
+        }, 0);
     };
 
     if (authLoading || (isAuthenticated && !user)) { 
@@ -213,8 +178,8 @@ const MetricasVentas = () => {
                     <label style={styles.filterLabel}>Año:</label>
                     <input
                         type="number"
-                        value={pendingFilterYear}
-                        onChange={(e) => setPendingFilterYear(e.target.value)}
+                        value={filterYear}
+                        onChange={(e) => setFilterYear(e.target.value)}
                         style={styles.filterInput}
                         min="2000" 
                         max={new Date().getFullYear()}
@@ -223,8 +188,8 @@ const MetricasVentas = () => {
                 <div style={styles.filterGroup}>
                     <label style={styles.filterLabel}>Mes:</label>
                     <select
-                        value={pendingFilterMonth}
-                        onChange={(e) => setPendingFilterMonth(e.target.value)}
+                        value={filterMonth}
+                        onChange={(e) => setFilterMonth(e.target.value)}
                         style={styles.filterInput}
                     >
                         <option value="">Todos</option>
@@ -237,8 +202,8 @@ const MetricasVentas = () => {
                     <label style={styles.filterLabel}>Día:</label>
                     <input
                         type="number"
-                        value={pendingFilterDay}
-                        onChange={(e) => setPendingFilterDay(e.target.value)}
+                        value={filterDay}
+                        onChange={(e) => setFilterDay(e.target.value)}
                         style={styles.filterInput}
                         min="1"
                         max="31"
@@ -247,8 +212,8 @@ const MetricasVentas = () => {
                 <div style={styles.filterGroup}>
                     <label style={styles.filterLabel}>Vendedor:</label>
                     <select
-                        value={pendingFilterSellerId}
-                        onChange={(e) => setPendingFilterSellerId(e.target.value)}
+                        value={filterSellerId}
+                        onChange={(e) => setFilterSellerId(e.target.value)}
                         style={styles.filterInput}
                     >
                         <option value="">Todos</option>
@@ -260,8 +225,8 @@ const MetricasVentas = () => {
                 <div style={styles.filterGroup}>
                     <label style={styles.filterLabel}>Método de Pago:</label>
                     <select
-                        value={pendingFilterPaymentMethod}
-                        onChange={(e) => setPendingFilterPaymentMethod(e.target.value)}
+                        value={filterPaymentMethod}
+                        onChange={(e) => setFilterPaymentMethod(e.target.value)}
                         style={styles.filterInput}
                     >
                         <option value="">Todos</option>
@@ -291,15 +256,15 @@ const MetricasVentas = () => {
                     <p style={styles.cardValue}>{metrics?.total_productos_vendidos_periodo || 0}</p>
                 </div>
                 <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Total Egresos</h3>
+                    <h3 style={styles.cardTitle}>Total Egresos</h3> 
                     <p style={styles.cardValue}>${parseFloat(metrics?.total_compras_periodo || 0).toFixed(2)}</p>
                 </div>
                 <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Rentabilidad Bruta</h3>
+                    <h3 style={styles.cardTitle}>Rentabilidad Bruta</h3> 
                     <p style={styles.cardValue}>${parseFloat(metrics?.rentabilidad_bruta_periodo || 0).toFixed(2)}</p>
                 </div>
                 <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Margen de Rentabilidad</h3>
+                    <h3 style={styles.cardTitle}>Margen de Rentabilidad</h3> 
                     <p style={styles.cardValue}>{parseFloat(metrics?.margen_rentabilidad_periodo || 0).toFixed(2)}%</p>
                 </div>
             </div>
@@ -340,21 +305,21 @@ const MetricasVentas = () => {
                                 <tr>
                                     <th style={styles.th}>Vendedor</th>
                                     <th style={styles.th}>Monto Vendido</th>
-                                    <th style={styles.th}>Cantidad de Ventas</th>
+                                    <th style={styles.th}># Ventas</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {metrics.ventas_por_usuario.map((sellerMetric, index) => (
+                                {metrics.ventas_por_usuario.map((userMetric, index) => (
                                     <tr key={index}>
-                                        <td style={styles.td}>{sellerMetric.usuario__username}</td>
-                                        <td style={styles.td}>${parseFloat(sellerMetric.total_vendido).toFixed(2)}</td>
-                                        <td style={styles.td}>{sellerMetric.cantidad_ventas}</td>
+                                        <td style={styles.td}>{userMetric.usuario__username}</td>
+                                        <td style={styles.td}>${parseFloat(userMetric.monto_total_vendido).toFixed(2)}</td>
+                                        <td style={styles.td}>{userMetric.cantidad_ventas}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     ) : (
-                        <p style={styles.noDataMessage}>No hay datos de ventas por vendedor para este período.</p>
+                        <p style={styles.noDataMessage}>No hay datos de ventas por vendedor.</p>
                     )}
                 </div>
 
@@ -367,46 +332,21 @@ const MetricasVentas = () => {
                                 <tr>
                                     <th style={styles.th}>Método de Pago</th>
                                     <th style={styles.th}>Monto Total</th>
+                                    <th style={styles.th}># Ventas</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {metrics.ventas_por_metodo_pago.map((methodMetric, index) => (
+                                {metrics.ventas_por_metodo_pago.map((paymentMetric, index) => (
                                     <tr key={index}>
-                                        <td style={styles.td}>{methodMetric.metodo_pago__nombre}</td>
-                                        <td style={styles.td}>${parseFloat(methodMetric.total_vendido).toFixed(2)}</td>
+                                        <td style={styles.td}>{paymentMetric.metodo_pago || 'N/A'}</td>
+                                        <td style={styles.td}>${parseFloat(paymentMetric.monto_total).toFixed(2)}</td>
+                                        <td style={styles.td}>{paymentMetric.cantidad_ventas}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     ) : (
-                        <p style={styles.noDataMessage}>No hay datos de ventas por método de pago para este período.</p>
-                    )}
-                </div>
-
-                 {/* Tabla de Egresos por Mes */}
-                 <div style={styles.tableContainer}>
-                    <h3 style={styles.tableTitle}>Egresos Mensuales</h3>
-                    {metrics?.egresos_por_mes.length > 0 ? (
-                        <table style={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th style={styles.th}>Mes</th>
-                                    <th style={styles.th}>Año</th>
-                                    <th style={styles.th}>Monto Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {metrics.egresos_por_mes.map((egreso, index) => (
-                                    <tr key={index}>
-                                        <td style={styles.td}>{egreso.mes}</td>
-                                        <td style={styles.td}>{egreso.year}</td>
-                                        <td style={styles.td}>${parseFloat(egreso.total_egresos).toFixed(2)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <p style={styles.noDataMessage}>No hay datos de egresos para este período.</p>
+                        <p style={styles.noDataMessage}>No hay datos de ventas por método de pago.</p>
                     )}
                 </div>
             </div>
@@ -420,16 +360,16 @@ const styles = {
         fontFamily: 'Inter, sans-serif',
         maxWidth: '1200px',
         margin: '20px auto',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        backgroundColor: '#f4f7f6',
+        borderRadius: '10px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
         color: '#333',
     },
     loadingMessage: {
-        padding: '20px',
+        padding: '50px',
         textAlign: 'center',
+        fontSize: '1.2em',
         color: '#555',
-        fontSize: '1.1em',
     },
     accessDeniedMessage: {
         color: '#dc3545',
@@ -449,7 +389,7 @@ const styles = {
     },
     errorMessage: {
         color: '#dc3545',
-        marginBottom: '20px',
+        marginBottom: '10px',
         border: '1px solid #dc3545',
         padding: '15px',
         borderRadius: '8px',
@@ -465,7 +405,7 @@ const styles = {
         padding: '20px',
         backgroundColor: '#ffffff',
         borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
         alignItems: 'flex-end',
     },
     filterGroup: {
@@ -476,28 +416,34 @@ const styles = {
         marginBottom: '5px',
         fontWeight: 'bold',
         color: '#555',
+        fontSize: '0.95em',
     },
     filterInput: {
-        padding: '8px 12px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
+        padding: '10px',
+        border: '1px solid #ced4da',
+        borderRadius: '5px',
+        fontSize: '1em',
         minWidth: '120px',
     },
     filterButton: {
-        padding: '10px 20px',
+        padding: '10px 15px',
         backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        fontWeight: 'bold',
+        fontSize: '1em',
         transition: 'background-color 0.3s ease',
     },
     chartExplanation: {
-        backgroundColor: '#e9ecef',
+        backgroundColor: '#e6f7ff',
+        borderLeft: '4px solid #2196f3',
         padding: '15px',
-        borderRadius: '8px',
         marginBottom: '30px',
+        borderRadius: '4px',
+        color: '#333',
+        fontSize: '0.95em',
+        lineHeight: '1.4',
     },
     summaryCards: {
         display: 'grid',
@@ -514,51 +460,85 @@ const styles = {
     },
     cardTitle: {
         fontSize: '1.1em',
-        color: '#6c757d',
-        margin: '0 0 10px 0',
+        color: '#555',
+        marginBottom: '10px',
     },
     cardValue: {
-        fontSize: '2em',
+        fontSize: '1.8em',
         fontWeight: 'bold',
+        color: '#2c3e50',
+    },
+    chartsContainer: { 
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
+        gap: '30px',
+        marginBottom: '30px',
+    },
+    chartCard: { 
+        backgroundColor: '#ffffff',
+        padding: '20px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        minHeight: '400px', 
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    chartTitle: { 
+        fontSize: '1.4em',
         color: '#34495e',
+        marginBottom: '15px',
+        textAlign: 'center',
+    },
+    chartNoData: { 
+        textAlign: 'center',
+        color: '#777',
+        fontStyle: 'italic',
+        padding: '50px',
     },
     tablesContainer: {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '20px',
+        gap: '30px',
     },
     tableContainer: {
         backgroundColor: '#ffffff',
-        padding: '25px',
+        padding: '20px',
         borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
     },
     tableTitle: {
-        fontSize: '1.5em',
+        fontSize: '1.4em',
         color: '#34495e',
         marginBottom: '15px',
+        textAlign: 'center',
     },
     table: {
         width: '100%',
         borderCollapse: 'collapse',
-        textAlign: 'left',
+        marginTop: '15px',
     },
     th: {
-        padding: '12px',
-        borderBottom: '2px solid #dee2e6',
-        fontWeight: 'bold',
-        color: '#333',
+        padding: '12px 8px',
+        backgroundColor: '#e9ecef',
+        textAlign: 'left',
+        borderBottom: '1px solid #dee2e6',
+        fontSize: '0.9em',
+        color: '#495057',
     },
     td: {
-        padding: '12px',
-        borderBottom: '1px solid #e9ecef',
-        verticalAlign: 'middle',
+        padding: '10px 8px',
+        borderBottom: '1px solid #dee2e6',
+        fontSize: '0.9em',
+        color: '#343a40',
     },
     noDataMessage: {
         textAlign: 'center',
-        marginTop: '20px',
         color: '#777',
         fontStyle: 'italic',
+        marginBottom: '20px',
+        fontSize: '1em',
     },
 };
 
