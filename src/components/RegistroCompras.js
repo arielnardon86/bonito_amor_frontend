@@ -179,14 +179,14 @@ const RegistroCompras = () => {
 
     return (
         <div style={styles.container}>
-            <h1>Registro de Compras ({selectedStoreSlug})</h1>
+            <h1>Registro de egreso ({selectedStoreSlug})</h1>
 
             {/* Formulario para Añadir Nueva Compra */}
             <div style={styles.formSection}>
-                <h2 style={styles.formHeader}>Registrar Nueva Compra</h2>
+                <h2 style={styles.formHeader}>Registrar Nuevo Egreso</h2>
                 <form onSubmit={handleAddPurchase} style={styles.form}>
                     <div style={styles.formGroup}>
-                        <label style={styles.label}>Fecha de Compra:</label>
+                        <label style={styles.label}>Fecha:</label>
                         <input 
                             type="date" 
                             value={newPurchaseDate} 
@@ -197,7 +197,7 @@ const RegistroCompras = () => {
                         />
                     </div>
                     <div style={styles.formGroup}>
-                        <label style={styles.label}>Monto Total Gastado ($):</label>
+                        <label style={styles.label}>Monto ($):</label>
                         <input 
                             type="number" 
                             step="0.01" 
@@ -209,7 +209,7 @@ const RegistroCompras = () => {
                         />
                     </div>
                     <div style={styles.formGroup}>
-                        <label style={styles.label}>Proveedor (Opcional):</label>
+                        <label style={styles.label}>Detalle (Opcional):</label>
                         <input 
                             type="text" 
                             value={newPurchaseSupplier} 
@@ -225,9 +225,9 @@ const RegistroCompras = () => {
 
             {/* Lista de Compras Registradas */}
             <div style={styles.listSection}>
-                <h2 style={styles.listHeader}>Compras Registradas</h2>
+                <h2 style={styles.listHeader}>Egresos Registrados</h2>
                 {compras.length === 0 ? (
-                    <p style={styles.noDataMessage}>No hay compras registradas para esta tienda.</p>
+                    <p style={styles.noDataMessage}>No hay egresos registrados para esta tienda.</p>
                 ) : (
                     <table style={styles.table}>
                         <thead>
@@ -235,7 +235,7 @@ const RegistroCompras = () => {
                                 <th style={styles.th}>ID Compra</th>
                                 <th style={styles.th}>Fecha</th>
                                 <th style={styles.th}>Monto Total</th>
-                                <th style={styles.th}>Proveedor</th>
+                                <th style={styles.th}>Detalle</th>
                                 <th style={styles.th}>Registrado Por</th>
                                 <th style={styles.th}>Acciones</th>
                             </tr>
