@@ -193,7 +193,7 @@ const RegistroCompras = () => {
                             onChange={(e) => setNewPurchaseDate(e.target.value)} 
                             required 
                             style={styles.input} 
-                            disabled // La fecha se establece automáticamente en el backend
+                            
                         />
                     </div>
                     <div style={styles.formGroup}>
