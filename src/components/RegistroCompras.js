@@ -232,7 +232,7 @@ const RegistroCompras = () => {
                     <table style={styles.table}>
                         <thead>
                             <tr style={styles.tableHeaderRow}>
-                                
+                                <th style={styles.th}>ID</th>
                                 <th style={styles.th}>Fecha</th>
                                 <th style={styles.th}>Monto Total</th>
                                 <th style={styles.th}>Detalle</th>

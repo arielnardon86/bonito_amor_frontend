@@ -78,7 +78,7 @@ const Navbar = () => {
                     <li onClick={() => setIsOpen(false)}><Link to="/productos">Gestión de Productos</Link></li>
                     <li onClick={() => setIsOpen(false)}><Link to="/metricas-ventas">Métricas de Ventas</Link></li>
                     <li onClick={() => setIsOpen(false)}><Link to="/ventas">Listado de Ventas</Link></li>
-                    <li onClick={() => setIsOpen(false)}><Link to="/registro-compras">Registro de Compras</Link></li> {/* NUEVO ENLACE */}
+                    <li onClick={() => setIsOpen(false)}><Link to="/registro-compras">Registro de Egresos</Link></li> {/* NUEVO ENLACE */}
                 </>
             )}
             
