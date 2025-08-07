@@ -209,7 +209,7 @@ const RegistroCompras = () => {
                         />
                     </div>
                     <div style={styles.formGroup}>
-                        <label style={styles.label}>Detalle (Opcional):</label>
+                        <label style={styles.label}>Concepto (Opcional):</label>
                         <input 
                             type="text" 
                             value={newPurchaseSupplier} 
@@ -235,7 +235,7 @@ const RegistroCompras = () => {
                                 <th style={styles.th}>ID</th>
                                 <th style={styles.th}>Fecha</th>
                                 <th style={styles.th}>Monto Total</th>
-                                <th style={styles.th}>Detalle</th>
+                                <th style={styles.th}>Concepto</th>
                                 <th style={styles.th}>Registrado Por</th>
                                 <th style={styles.th}>Acciones</th>
                             </tr>

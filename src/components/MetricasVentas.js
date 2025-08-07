@@ -256,7 +256,7 @@ const MetricasVentas = () => {
                     <p style={styles.cardValue}>{metrics?.total_productos_vendidos_periodo || 0}</p>
                 </div>
                 <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Total Compras</h3> 
+                    <h3 style={styles.cardTitle}>Total Egresos</h3> 
                     <p style={styles.cardValue}>${parseFloat(metrics?.total_compras_periodo || 0).toFixed(2)}</p>
                 </div>
                 <div style={styles.card}>
