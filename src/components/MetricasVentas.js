@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
+// Función para normalizar la URL base, eliminando cualquier /api/ o barra final
 const normalizeApiUrl = (url) => {
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
@@ -31,16 +32,16 @@ const MetricasVentas = () => {
     const currentDay = today.getDate().toString().padStart(2, '0');
 
     // Estados para los filtros activos (los que se usan para la consulta API)
-    const [filterYear, setFilterYear] = useState(currentYear);
-    const [filterMonth, setFilterMonth] = useState(currentMonth);
-    const [filterDay, setFilterDay] = useState(currentDay);
+    const [filterYear, setFilterYear] = useState('');
+    const [filterMonth, setFilterMonth] = useState(''); 
+    const [filterDay, setFilterDay] = useState('');     
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
 
     // Estados para los filtros pendientes (los que se editan en el formulario)
-    const [pendingFilterYear, setPendingFilterYear] = useState(currentYear);
-    const [pendingFilterMonth, setPendingFilterMonth] = useState(currentMonth);
-    const [pendingFilterDay, setPendingFilterDay] = useState(currentDay);
+    const [pendingFilterYear, setPendingFilterYear] = useState('');
+    const [pendingFilterMonth, setPendingFilterMonth] = useState('');
+    const [pendingFilterDay, setPendingFilterDay] = useState('');
     const [pendingFilterSellerId, setPendingFilterSellerId] = useState('');
     const [pendingFilterPaymentMethod, setPendingFilterPaymentMethod] = useState('');
 
