@@ -236,17 +236,16 @@ const PuntoVenta = () => {
         setConfirmAction(() => async () => {
             setShowConfirmModal(false);
             try {
-                const ventaData = {
-                    tienda: selectedStoreSlug,
-                    metodo_pago_nombre: metodoPagoSeleccionado,
-                    monto_final: finalTotal,
-                    descuento_porcentaje: descuentoPorcentaje, 
-                    detalles: activeCart.items.map(item => ({
-                        producto: item.product.id,
-                        cantidad: item.quantity,
-                        precio_unitario: item.product.precio, 
-                    })),
-                };
+// CÓDIGO CORRECTO:
+const ventaData = {
+    tienda_slug: selectedStoreSlug, // Usar tienda_slug, como espera el serializador
+    metodo_pago_nombre: metodoPagoSeleccionado,
+    descuento: descuentoPorcentaje, // Usar 'descuento' como lo define el serializador
+    productos: activeCart.items.map(item => ({
+        producto: item.product.id,
+        cantidad: item.quantity,
+    })),
+};
 
                 const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                     headers: { 'Authorization': `Bearer ${token}` },
