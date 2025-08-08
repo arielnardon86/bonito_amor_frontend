@@ -241,7 +241,6 @@ const PuntoVenta = () => {
                     tienda_slug: selectedStoreSlug,
                     metodo_pago_nombre: metodoPagoSeleccionado,
                     descuento: descuentoPorcentaje,
-                    // CAMBIO: Se cambia 'productos' a 'detalles' para que coincida con el backend
                     detalles: activeCart.items.map(item => ({
                         producto: item.product.id,
                         cantidad: item.quantity,
