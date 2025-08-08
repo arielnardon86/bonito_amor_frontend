@@ -12,7 +12,6 @@ const HomePage = () => {
     console.log("HomePage: selectedStoreSlug:", selectedStoreSlug);
     console.log("HomePage: loading:", loading);
 
-    // Redirigir si ya está autenticado y tiene una tienda seleccionada
     useEffect(() => {
         if (!loading && isAuthenticated && selectedStoreSlug) {
             navigate('/punto-venta', { replace: true });
@@ -22,7 +21,6 @@ const HomePage = () => {
     const handleStoreChange = (e) => {
         const selectedName = e.target.value;
         if (selectedName) {
-            // Redirige al login con el nombre de la tienda como parámetro (que luego se slugifica)
             navigate(`/login/${selectedName.toLowerCase().replace(/\s/g, '-')}`); 
         }
     };
@@ -31,12 +29,10 @@ const HomePage = () => {
         return <div style={styles.loadingMessage}>Cargando datos de la aplicación...</div>;
     }
 
-    // --- CAMBIO CLAVE AQUÍ: Modificar la condición para mostrar el selector de tienda ---
-    // Mostrar el selector si NO está autenticado O si está autenticado pero NO tiene una tienda seleccionada
+    // Corregido: Acceder a stores.results para verificar si existen tiendas
+    const hasStores = stores && stores.results && stores.results.length > 0;
+    
     if (!isAuthenticated || (isAuthenticated && !selectedStoreSlug)) {
-        // Corrección: Usar `stores.results` para acceder a la lista de tiendas
-        const hasStores = stores && stores.results && stores.results.length > 0;
-        
         return (
             <div style={styles.container}>
                 <h1 style={styles.title}>Bienvenido a Total Stock</h1>
@@ -66,16 +62,10 @@ const HomePage = () => {
         );
     }
 
-    // Si está autenticado Y tiene tienda seleccionada, el useEffect de arriba ya lo redirigió.
-    // Esta parte del código solo se alcanzaría si hay algún estado inesperado, o antes de la redirección.
-    // Como fallback, podemos mostrar un mensaje general.
     return (
         <div style={styles.container}>
             <h1 style={styles.title}>Bienvenido a Total Stock</h1>
             <p style={styles.subtitle}>Gestiona tu inventario y ventas de forma eficiente.</p>
-            {/* Si llega aquí, es porque isAuthenticated && selectedStoreSlug es true,
-                y el useEffect debería haberlo redirigido.
-                Esto es un fallback si la redirección no ocurre por alguna razón. */}
             <p style={styles.callToAction}>
                 Estás autenticado y tienes una tienda seleccionada. Si no fuiste redirigido, por favor,
                 ve al <Link to="/punto-venta" style={styles.link}>Punto de Venta</Link>.

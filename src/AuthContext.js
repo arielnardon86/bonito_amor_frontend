@@ -66,12 +66,11 @@ export const AuthProvider = ({ children }) => {
 
             axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
-            // Obtener los datos del usuario directamente del token
             const decodedUser = jwtDecode(newToken);
-            const userStores = await fetchStores(); // Obtener la lista completa de tiendas para validar
+            const userStores = await fetchStores();
             
-            // Validar que el usuario tenga acceso a la tienda solicitada
-            const selectedStore = userStores.find(store => store.nombre.toLowerCase().replace(/\s/g, '-') === storeSlug);
+            // Corrige la llamada a .find()
+            const selectedStore = userStores.results.find(store => store.nombre.toLowerCase().replace(/\s/g, '-') === storeSlug);
             
             if (!selectedStore) {
                 setLoading(false);
@@ -110,14 +109,8 @@ export const AuthProvider = ({ children }) => {
             try {
                 axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
                 const decodedToken = jwtDecode(token);
-                // No necesitas la segunda llamada, puedes construir el objeto user con los datos del token
-                const userData = {
-                    id: decodedToken.user_id,
-                    username: decodedToken.username,
-                    email: decodedToken.email,
-                    is_staff: decodedToken.is_staff,
-                    is_superuser: decodedToken.is_superuser,
-                };
+                const userResponse = await axios.get(`${BASE_API_ENDPOINT}/api/users/${decodedToken.user_id}/`);
+                const userData = userResponse.data;
                 setUser(userData);
                 setIsAuthenticated(true);
             } catch (err) {
