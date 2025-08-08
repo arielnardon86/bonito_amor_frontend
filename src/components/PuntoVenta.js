@@ -1,10 +1,183 @@
-// BONITO_AMOR/frontend/src/components/PuntoVenta.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
-import '../styles/PuntoVenta.css';
+
+// --- Estilos definidos como un objeto para usarse directamente en el componente ---
+const styles = {
+    puntoVentaContainer: {
+        fontFamily: 'Inter, sans-serif',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        backgroundColor: '#f8f9fa',
+        padding: '20px',
+    },
+    mainContent: {
+        display: 'flex',
+        flexGrow: 1,
+        gap: '20px',
+        maxWidth: '1400px',
+        margin: '0 auto',
+        width: '100%',
+        flexWrap: 'wrap',
+    },
+    productosListContainer: {
+        flex: 2,
+        backgroundColor: '#ffffff',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        padding: '20px',
+    },
+    carritoContainer: {
+        flex: 1,
+        minWidth: '300px',
+        backgroundColor: '#ffffff',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+    },
+    searchInput: {
+        width: '100%',
+        padding: '12px 15px',
+        fontSize: '1em',
+        borderRadius: '5px',
+        border: '1px solid #ced4da',
+        marginBottom: '20px',
+        transition: 'border-color 0.3s ease',
+    },
+    productosGrid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+        gap: '15px',
+        overflowY: 'auto',
+        maxHeight: 'calc(100vh - 200px)',
+        paddingRight: '10px',
+    },
+    productoCard: {
+        backgroundColor: '#f1f3f5',
+        borderRadius: '8px',
+        padding: '15px',
+        textAlign: 'center',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        height: '100%',
+    },
+    productoCardPrice: {
+        fontSize: '1.2em',
+        fontWeight: 'bold',
+        color: '#007bff',
+        margin: '5px 0',
+    },
+    productoCardStock: {
+        fontSize: '0.9em',
+        color: '#6c757d',
+        margin: '5px 0',
+    },
+    addToCartButton: {
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        padding: '10px',
+        cursor: 'pointer',
+        marginTop: '10px',
+        transition: 'background-color 0.3s ease',
+    },
+    addToCartButtonDisabled: {
+        backgroundColor: '#6c757d',
+        cursor: 'not-allowed',
+    },
+    carritoList: {
+        listStyle: 'none',
+        padding: 0,
+        margin: 0,
+        overflowY: 'auto',
+        maxHeight: 'calc(100vh - 400px)',
+        flexGrow: 1,
+    },
+    carritoItem: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '10px 0',
+        borderBottom: '1px solid #e9ecef',
+    },
+    removeItemButton: {
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '50%',
+        width: '24px',
+        height: '24px',
+        fontSize: '0.8em',
+        cursor: 'pointer',
+    },
+    carritoResumen: {
+        marginTop: '20px',
+        paddingTop: '20px',
+        borderTop: '1px solid #e9ecef',
+    },
+    metodoPagoSelector: {
+        marginBottom: '15px',
+    },
+    checkoutButton: {
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        padding: '12px 20px',
+        cursor: 'pointer',
+        fontSize: '1.1em',
+        fontWeight: 'bold',
+        width: '100%',
+        marginTop: '10px',
+    },
+    clearCartButton: {
+        backgroundColor: '#6c757d',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        padding: '10px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        width: '100%',
+        marginTop: '10px',
+    },
+    alerta: {
+        padding: '10px',
+        borderRadius: '5px',
+        marginBottom: '15px',
+        textAlign: 'center',
+    },
+    alertaSuccess: {
+        backgroundColor: '#d4edda',
+        color: '#155724',
+    },
+    alertaError: {
+        backgroundColor: '#f8d7da',
+        color: '#721c24',
+    },
+    loadingMessage: {
+        padding: '20px',
+        textAlign: 'center',
+        fontSize: '1.1em',
+        color: '#555',
+    },
+    errorMessage: {
+        padding: '20px',
+        textAlign: 'center',
+        fontSize: '1.1em',
+        color: '#dc3545',
+        backgroundColor: '#ffe3e6',
+        borderRadius: '8px',
+    }
+};
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 const normalizeApiUrl = (url) => {
@@ -133,7 +306,7 @@ const PuntoVenta = () => {
         const ventaData = {
             monto_final: total,
             metodo_pago: selectedMetodoPago,
-            tienda_slug: selectedStoreSlug, // Envía el slug de la tienda
+            tienda: tiendaId,
             detalle_venta: carrito.map(item => ({
                 producto: item.producto.id,
                 cantidad: item.cantidad,
@@ -152,7 +325,6 @@ const PuntoVenta = () => {
             await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, config);
             setAlerta({ mensaje: 'Venta realizada con éxito.', tipo: 'success' });
             handleClearCart();
-            // Refresca la lista de productos para actualizar el stock
             fetchProductos();
         } catch (err) {
             console.error('Error al procesar la venta:', err.response || err.message);
@@ -169,32 +341,36 @@ const PuntoVenta = () => {
     );
 
     if (loading) {
-        return <div className="loading-message">Cargando productos...</div>;
+        return <div style={styles.loadingMessage}>Cargando productos...</div>;
     }
 
     if (error) {
-        return <div className="error-message">{error}</div>;
+        return <div style={styles.errorMessage}>{error}</div>;
     }
     
     return (
-        <div className="punto-venta-container">
-            <div className="main-content">
-                <div className="productos-list-container">
+        <div style={styles.puntoVentaContainer}>
+            <div style={styles.mainContent}>
+                <div style={styles.productosListContainer}>
                     <input
                         type="text"
                         placeholder="Buscar producto por nombre o código de barras..."
                         value={searchTerm}
                         onChange={handleSearch}
-                        className="search-input"
+                        style={styles.searchInput}
                     />
-                    <div className="productos-grid">
+                    <div style={styles.productosGrid}>
                         {productosFiltrados.length > 0 ? (
                             productosFiltrados.map(producto => (
-                                <div key={producto.id} className="producto-card">
+                                <div key={producto.id} style={styles.productoCard}>
                                     <h3>{producto.nombre} ({producto.talle})</h3>
-                                    <p className="producto-card-price">${parseFloat(producto.precio).toFixed(2)}</p>
-                                    <p className="producto-card-stock">Stock: {producto.stock}</p>
-                                    <button onClick={() => handleAddProducto(producto)} className="add-to-cart-button" disabled={producto.stock <= 0}>
+                                    <p style={styles.productoCardPrice}>${parseFloat(producto.precio).toFixed(2)}</p>
+                                    <p style={styles.productoCardStock}>Stock: {producto.stock}</p>
+                                    <button 
+                                        onClick={() => handleAddProducto(producto)} 
+                                        style={producto.stock <= 0 ? { ...styles.addToCartButton, ...styles.addToCartButtonDisabled } : styles.addToCartButton} 
+                                        disabled={producto.stock <= 0}
+                                    >
                                         Añadir al Carrito
                                     </button>
                                 </div>
@@ -204,27 +380,27 @@ const PuntoVenta = () => {
                         )}
                     </div>
                 </div>
-                <div className="carrito-container">
+                <div style={styles.carritoContainer}>
                     <h2>Carrito de Compras</h2>
-                    <div className="alerta-container">
+                    <div style={styles.alertaContainer}>
                         {alerta.mensaje && (
-                            <div className={`alerta ${alerta.tipo}`}>
+                            <div style={{ ...styles.alerta, ...(alerta.tipo === 'success' ? styles.alertaSuccess : styles.alertaError) }}>
                                 {alerta.mensaje}
                             </div>
                         )}
                     </div>
-                    <ul className="carrito-list">
+                    <ul style={styles.carritoList}>
                         {carrito.map(item => (
-                            <li key={item.producto.id} className="carrito-item">
+                            <li key={item.producto.id} style={styles.carritoItem}>
                                 <span>{item.cantidad} x {item.producto.nombre} ({item.producto.talle})</span>
                                 <span>${item.subtotal.toFixed(2)}</span>
-                                <button onClick={() => handleRemoveItem(item.producto.id)} className="remove-item-button">X</button>
+                                <button onClick={() => handleRemoveItem(item.producto.id)} style={styles.removeItemButton}>X</button>
                             </li>
                         ))}
                     </ul>
-                    <div className="carrito-resumen">
+                    <div style={styles.carritoResumen}>
                         <h3>Total: ${total.toFixed(2)}</h3>
-                        <div className="metodo-pago-selector">
+                        <div style={styles.metodoPagoSelector}>
                             <label htmlFor="metodo-pago">Método de Pago:</label>
                             <select
                                 id="metodo-pago"
@@ -236,10 +412,10 @@ const PuntoVenta = () => {
                                 ))}
                             </select>
                         </div>
-                        <button onClick={handleVenta} className="checkout-button" disabled={carrito.length === 0}>
+                        <button onClick={handleVenta} style={styles.checkoutButton} disabled={carrito.length === 0}>
                             Procesar Venta
                         </button>
-                        <button onClick={handleClearCart} className="clear-cart-button">
+                        <button onClick={handleClearCart} style={styles.clearCartButton}>
                             Vaciar Carrito
                         </button>
                     </div>
