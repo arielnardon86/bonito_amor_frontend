@@ -1,5 +1,3 @@
-// BONITO_AMOR/frontend/src/AuthContext.js
-
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
@@ -66,13 +64,13 @@ export const AuthProvider = ({ children }) => {
             const newToken = response.data.access;
             localStorage.setItem('token', newToken);
 
-            const decodedUser = jwtDecode(newToken);
-            const userResponse = await axios.get(`${BASE_API_ENDPOINT}/api/users/${decodedUser.user_id}/`, {
-                headers: { 'Authorization': `Bearer ${newToken}` }
-            });
-            const userData = userResponse.data;
+            axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
-            const userStores = userData.tiendas_acceso || [];
+            // Obtener los datos del usuario directamente del token
+            const decodedUser = jwtDecode(newToken);
+            const userStores = await fetchStores(); // Obtener la lista completa de tiendas para validar
+            
+            // Validar que el usuario tenga acceso a la tienda solicitada
             const selectedStore = userStores.find(store => store.nombre.toLowerCase().replace(/\s/g, '-') === storeSlug);
             
             if (!selectedStore) {
@@ -82,12 +80,19 @@ export const AuthProvider = ({ children }) => {
                 return false;
             }
 
+            const userData = {
+                id: decodedUser.user_id,
+                username: decodedUser.username,
+                email: decodedUser.email,
+                is_staff: decodedUser.is_staff,
+                is_superuser: decodedUser.is_superuser,
+            };
+
             setUser(userData);
             setToken(newToken);
             setIsAuthenticated(true);
             setSelectedStoreSlug(selectedStore.nombre);
             localStorage.setItem('selectedStoreSlug', selectedStore.nombre);
-            axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
             setLoading(false);
             return true;
@@ -98,15 +103,21 @@ export const AuthProvider = ({ children }) => {
             logout();
             return false;
         }
-    }, [logout]);
+    }, [logout, fetchStores]);
 
     const loadUserInitial = useCallback(async () => {
         if (token) {
             try {
                 axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
                 const decodedToken = jwtDecode(token);
-                const userResponse = await axios.get(`${BASE_API_ENDPOINT}/api/users/${decodedToken.user_id}/`);
-                const userData = userResponse.data;
+                // No necesitas la segunda llamada, puedes construir el objeto user con los datos del token
+                const userData = {
+                    id: decodedToken.user_id,
+                    username: decodedToken.username,
+                    email: decodedToken.email,
+                    is_staff: decodedToken.is_staff,
+                    is_superuser: decodedToken.is_superuser,
+                };
                 setUser(userData);
                 setIsAuthenticated(true);
             } catch (err) {

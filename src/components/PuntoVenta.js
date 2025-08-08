@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
-import { useSales } from './SalesContext'; // Importar el contexto de ventas
+import { useSales } from './SalesContext'; 
 // NEW TALLE_OPTIONS
 const TALLE_OPTIONS = [
     { value: 'UNICO', label: 'UNICO' },
@@ -149,6 +149,7 @@ const PuntoVenta = () => {
         }
 
         try {
+            // CORRECCIÓN: el endpoint en el backend es `/api/productos/buscar_por_barcode/`
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
@@ -214,7 +215,7 @@ const PuntoVenta = () => {
         return (subtotal - discountAmount);
     }, [activeCart, descuentoPorcentaje]);
 
-    // Corrección clave en esta función para que coincida con el backend
+    // CORRECCIÓN CLAVE EN ESTA FUNCIÓN
     const handleProcesarVenta = async () => {
         if (!activeCart || activeCart.items.length === 0) {
             showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
@@ -236,15 +237,15 @@ const PuntoVenta = () => {
         setConfirmAction(() => async () => {
             setShowConfirmModal(false);
             try {
-                // Objeto de datos corregido para la petición a la API
+                // Objeto de datos CORREGIDO para la petición a la API
                 const ventaData = {
-                    tienda_slug: selectedStoreSlug,
-                    metodo_pago_nombre: metodoPagoSeleccionado,
-                    descuento: descuentoPorcentaje,
-                    // CORRECCIÓN: Se revierte a 'productos' ya que el backend lo requiere
-                    productos: activeCart.items.map(item => ({
+                    tienda_slug: selectedStoreSlug, // Usar el slug de la tienda
+                    metodo_pago: metodoPagoSeleccionado, // Usar el nombre del método de pago
+                    descuento_porcentaje: descuentoPorcentaje,
+                    detalles: activeCart.items.map(item => ({
                         producto: item.product.id,
                         cantidad: item.quantity,
+                        precio_unitario: parseFloat(item.product.precio), // ¡CAMBIO CLAVE!
                     })),
                 };
 
@@ -858,7 +859,7 @@ const styles = {
         color: '#28a745',
         fontWeight: 'bold',
     },
-    finalTotalVenta: { // Nuevo estilo para el total final con descuento
+    finalTotalVenta: { 
         textAlign: 'right',
         marginTop: '10px',
         fontSize: '1.7em',
@@ -869,7 +870,7 @@ const styles = {
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        marginBottom: '10px', // Ajustado para dejar espacio para el descuento
+        marginBottom: '10px', 
         marginTop: '20px',
     },
     paymentMethodLabel: {
@@ -877,19 +878,19 @@ const styles = {
         color: '#555',
         fontSize: '1em',
     },
-    discountContainer: { // Nuevo estilo para el contenedor de descuento
+    discountContainer: { 
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
         marginBottom: '20px',
     },
-    discountLabel: { // Nuevo estilo para la etiqueta de descuento
+    discountLabel: { 
         fontWeight: 'bold',
         color: '#555',
         fontSize: '1em',
     },
-    discountInput: { // Nuevo estilo para el input de descuento
-        width: '80px', // Ancho fijo para el porcentaje
+    discountInput: { 
+        width: '80px', 
         padding: '10px 12px',
         border: '1px solid #dcdcdc',
         borderRadius: '5px',
