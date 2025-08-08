@@ -1,163 +1,112 @@
-// BONITO_AMOR/frontend/src/components/HomePage.js
-import React, { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; 
-import { useAuth } from '../AuthContext';
+// HomePage.js
 
-const HomePage = () => {
-    const { isAuthenticated, selectedStoreSlug, stores, selectStore, loading } = useAuth();
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from './AuthContext';
+import '../styles/HomePage.css';
+import Select from 'react-select';
+
+function HomePage() {
+    const [stores, setStores] = useState(null);
+    const [selectedStoreSlug, setSelectedStoreSlug] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const navigate = useNavigate();
+    const { isAuthenticated, loginUser } = useAuth(); // Assuming useAuth provides a way to know if a user is authenticated
 
+    useEffect(() => {
+        const fetchStores = async () => {
+            try {
+                const response = await axios.get('https://bonito-amor-backend.onrender.com/api/tiendas/');
+                setStores(response.data);
+                setLoading(false);
+            } catch (error) {
+                console.error("Error fetching stores:", error);
+                setLoading(false);
+                setError("No se pudieron cargar las tiendas.");
+            }
+        };
+
+        fetchStores();
+    }, []);
+
+    useEffect(() => {
+        // Redirigir si el usuario está autenticado y ya seleccionó una tienda
+        if (isAuthenticated && selectedStoreSlug) {
+            navigate(`/${selectedStoreSlug}/dashboard`);
+        }
+    }, [isAuthenticated, selectedStoreSlug, navigate]);
+
+    const handleSelectStore = (selectedOption) => {
+        setSelectedStoreSlug(selectedOption.value);
+    };
+
+    const handleEnterStore = () => {
+        if (selectedStoreSlug) {
+            navigate(`/${selectedStoreSlug}/dashboard`);
+        }
+    };
+    
+    // Log para depuración
     console.log("HomePage: Estado de stores:", stores);
     console.log("HomePage: isAuthenticated:", isAuthenticated);
     console.log("HomePage: selectedStoreSlug:", selectedStoreSlug);
     console.log("HomePage: loading:", loading);
 
-    // Redirigir si ya está autenticado y tiene una tienda seleccionada
-    useEffect(() => {
-        if (!loading && isAuthenticated && selectedStoreSlug) {
-            navigate('/punto-venta', { replace: true });
-        }
-    }, [loading, isAuthenticated, selectedStoreSlug, navigate]);
-
-    const handleStoreChange = (e) => {
-        const selectedName = e.target.value;
-        if (selectedName) {
-            // Redirige al login con el nombre de la tienda como parámetro (que luego se slugifica)
-            navigate(`/login/${selectedName.toLowerCase().replace(/\s/g, '-')}`); 
-        }
-    };
-
     if (loading) {
-        return <div style={styles.loadingMessage}>Cargando datos de la aplicación...</div>;
+        return <div className="loading-message">Cargando tiendas...</div>;
     }
 
-    // --- CAMBIO CLAVE AQUÍ: Modificar la condición para mostrar el selector de tienda ---
-    // Mostrar el selector si NO está autenticado O si está autenticado pero NO tiene una tienda seleccionada
-    if (!isAuthenticated || (isAuthenticated && !selectedStoreSlug)) {
-        return (
-            <div style={styles.container}>
-                <h1 style={styles.title}>Bienvenido a Total Stock</h1>
-                <p style={styles.subtitle}>Por favor, selecciona tu tienda para continuar.</p>
-                {stores.length > 0 ? (
-                    <div style={styles.selectorContainer}>
-                        <label htmlFor="store-select" style={styles.label}>Selecciona una Tienda:</label>
-                        <select
-                            id="store-select"
-                            value={selectedStoreSlug || ''}
-                            onChange={handleStoreChange}
-                            style={styles.select}
-                        >
-                            <option value="">-- Elige una tienda --</option>
-                            {stores.map(store => (
-                                <option key={store.id} value={store.nombre}>
-                                    {store.nombre}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                ) : (
-                    <p style={styles.noStoresMessage}>No hay tiendas disponibles. Contacta al administrador.</p>
-                )}
+    // Condición corregida: Verificar si stores es un objeto y si tiene resultados
+    const hasStores = stores && stores.results && stores.results.length > 0;
 
-            </div>
-        );
-    }
-
-    // Si está autenticado Y tiene tienda seleccionada, el useEffect de arriba ya lo redirigió.
-    // Esta parte del código solo se alcanzaría si hay algún estado inesperado, o antes de la redirección.
-    // Como fallback, podemos mostrar un mensaje general.
     return (
-        <div style={styles.container}>
-            <h1 style={styles.title}>Bienvenido a Total Stock</h1>
-            <p style={styles.subtitle}>Gestiona tu inventario y ventas de forma eficiente.</p>
-            {/* Si llega aquí, es porque isAuthenticated && selectedStoreSlug es true,
-                y el useEffect debería haberlo redirigido.
-                Esto es un fallback si la redirección no ocurre por alguna razón. */}
-            <p style={styles.callToAction}>
-                Estás autenticado y tienes una tienda seleccionada. Si no fuiste redirigido, por favor,
-                ve al <Link to="/punto-venta" style={styles.link}>Punto de Venta</Link>.
-            </p>
+        <div className="home-container">
+            <header className="home-header">
+                <h1 className="home-title">TotalStock</h1>
+            </header>
+            <main className="home-main">
+                <div className="store-selection-card">
+                    <h2>Selecciona tu tienda</h2>
+                    {error && <div className="error-message">{error}</div>}
+                    {!hasStores ? (
+                        <div className="no-stores-message">
+                            No hay tiendas disponibles. Contacta al administrador.
+                        </div>
+                    ) : (
+                        <div className="store-selection-form">
+                            <Select
+                                options={stores.results.map(store => ({ value: store.nombre, label: store.nombre }))}
+                                onChange={handleSelectStore}
+                                placeholder="Elige una tienda..."
+                                className="store-select"
+                                classNamePrefix="store-select"
+                            />
+                            <button
+                                onClick={handleEnterStore}
+                                disabled={!selectedStoreSlug}
+                                className="enter-button"
+                            >
+                                Entrar
+                            </button>
+                        </div>
+                    )}
+                </div>
+                {/* Lógica para mostrar el formulario de login si no está autenticado */}
+                {!isAuthenticated && (
+                    <div className="login-section">
+                        <h2>Iniciar sesión</h2>
+                        <form onSubmit={loginUser} className="login-form">
+                            <input type="text" name="username" placeholder="Usuario" required />
+                            <input type="password" name="password" placeholder="Contraseña" required />
+                            <button type="submit" className="login-button">Entrar</button>
+                        </form>
+                    </div>
+                )}
+            </main>
         </div>
     );
-};
-
-const styles = {
-    container: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 'calc(100vh - 80px)', 
-        padding: '20px',
-        textAlign: 'center',
-        backgroundColor: '#f8f9fa',
-        color: '#333',
-        fontFamily: 'Inter, sans-serif',
-    },
-    title: {
-        fontSize: '2.8em',
-        color: '#007bff',
-        marginBottom: '15px',
-        fontWeight: 'bold',
-    },
-    subtitle: {
-        fontSize: '1.4em',
-        color: '#555',
-        marginBottom: '30px',
-        maxWidth: '600px',
-    },
-    callToAction: {
-        fontSize: '1.2em',
-        color: '#666',
-    },
-    link: {
-        color: '#007bff',
-        textDecoration: 'none',
-        fontWeight: 'bold',
-        '&:hover': {
-            textDecoration: 'underline',
-        },
-    },
-    loadingMessage: {
-        padding: '50px',
-        textAlign: 'center',
-        fontSize: '1.2em',
-        color: '#777',
-    },
-    selectorContainer: {
-        backgroundColor: '#ffffff',
-        padding: '30px',
-        borderRadius: '10px',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '20px',
-        minWidth: '300px',
-    },
-    label: {
-        fontSize: '1.1em',
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    select: {
-        padding: '12px 15px',
-        fontSize: '1em',
-        borderRadius: '6px',
-        border: '1px solid #ccc',
-        backgroundColor: '#fefefe',
-        width: '100%',
-        cursor: 'pointer',
-        transition: 'border-color 0.3s ease',
-        '&:focus': {
-            borderColor: '#007bff',
-            outline: 'none',
-        },
-    },
-    noStoresMessage: {
-        color: '#dc3545',
-        fontSize: '1.1em',
-        fontWeight: 'bold',
-    },
-};
+}
 
 export default HomePage;
