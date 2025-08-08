@@ -1,9 +1,9 @@
 // BONITO_AMOR/frontend/src/components/PuntoVenta.js
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useSales } from './SalesContext'; // Importar el contexto de ventas
-
 // NEW TALLE_OPTIONS
 const TALLE_OPTIONS = [
     { value: 'UNICO', label: 'UNICO' }, 
@@ -32,7 +32,6 @@ const TALLE_OPTIONS = [
 ];
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
-
 // Función para normalizar la URL base, eliminando cualquier /api/ o barra final
 const normalizeApiUrl = (url) => {
     let normalizedUrl = url;
@@ -49,7 +48,6 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const PuntoVenta = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
-    // Usar el contexto de ventas para gestionar los carritos
     const {
         carts,
         activeCart,
@@ -64,37 +62,31 @@ const PuntoVenta = () => {
         deleteCart
     } = useSales();
 
-    const [productos, setProductos] = useState([]); // Lista de todos los productos disponibles
-    const [metodosPago, setMetodosPago] = useState([]); // Lista de métodos de pago disponibles
-    const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState(''); // Método de pago seleccionado para la venta
-    const [busquedaProducto, setBusquedaProducto] = useState(''); // Para búsqueda por nombre/código de barras en la lista de productos
-    const [productoSeleccionado, setProductoSeleccionado] = useState(null); // Producto seleccionado por búsqueda de código de barras
+    const [productos, setProductos] = useState([]);
+    const [metodosPago, setMetodosPago] = useState([]);
+    const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
+    const [busquedaProducto, setBusquedaProducto] = useState('');
+    const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [error, setError] = useState(null);
 
-    // Estados para el modal de confirmación
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmMessage, setConfirmMessage] = useState('');
     const [confirmAction, setConfirmAction] = useState(() => () => {});
 
-    // Estados para el cuadro de mensaje de alerta personalizado
     const [showAlertMessage, setShowAlertMessage] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
-    const [alertType, setAlertType] = useState('success'); // 'success', 'error', 'info'
+    const [alertType, setAlertType] = useState('success');
 
-    // Estados para el modal de creación de nueva venta
     const [showNewCartModal, setShowNewCartModal] = useState(false);
     const [newCartAliasInput, setNewCartAliasInput] = useState('');
 
-    // --- NUEVO ESTADO PARA EL DESCUENTO ---
-    const [descuentoPorcentaje, setDescuentoPorcentaje] = useState(0); // Porcentaje de descuento
+    const [descuentoPorcentaje, setDescuentoPorcentaje] = useState(0);
 
-    // --- NUEVOS ESTADOS PARA LA PAGINACIÓN DE PRODUCTOS DISPONIBLES ---
     const [currentPage, setCurrentPage] = useState(1);
-    const [productsPerPage] = useState(10); // 10 productos por página
+    const [productsPerPage] = useState(10);
 
-    // Función para mostrar un mensaje de alerta personalizado
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
         setAlertType(type);
@@ -102,11 +94,10 @@ const PuntoVenta = () => {
         setTimeout(() => {
             setShowAlertMessage(false);
             setAlertMessage('');
-            setAlertType('success'); // Reiniciar a predeterminado
+            setAlertType('success');
         }, 3000);
     };
 
-    // Efecto para cargar productos y métodos de pago al iniciar
     useEffect(() => {
         const fetchData = async () => {
             if (!token || !selectedStoreSlug) {
@@ -116,22 +107,19 @@ const PuntoVenta = () => {
             setLoadingProducts(true);
             setError(null);
             try {
-                // Cargar productos
                 const productosResponse = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                     params: { tienda_slug: selectedStoreSlug }
                 });
                 setProductos(productosResponse.data.results || productosResponse.data);
 
-                // Cargar métodos de pago
                 const metodosPagoResponse = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
-                // CORRECCIÓN CLAVE: Asegurarse de que metodosPago sea un array, accediendo a .results si existe
                 const fetchedMetodosPago = metodosPagoResponse.data.results || metodosPagoResponse.data;
                 setMetodosPago(fetchedMetodosPago);
                 if (fetchedMetodosPago.length > 0) {
-                    setMetodoPagoSeleccionado(fetchedMetodosPago[0].nombre); // Seleccionar el primero por defecto
+                    setMetodoPagoSeleccionado(fetchedMetodosPago[0].nombre);
                 }
 
             } catch (err) {
@@ -142,16 +130,14 @@ const PuntoVenta = () => {
             }
         };
 
-        // Permite acceso si es staff O superusuario
         if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
             fetchData();
         } else if (!authLoading && (!isAuthenticated || !user || (!(user.is_superuser || user.is_staff)))) {
             setLoadingProducts(false);
             setError("Por favor, inicia sesión y selecciona una tienda para gestionar el punto de venta.");
         }
-    }, [token, selectedStoreSlug, authLoading, isAuthenticated, user]); // Añadir 'user' a las dependencias
+    }, [token, selectedStoreSlug, authLoading, isAuthenticated, user]);
 
-    // Manejar la búsqueda de producto por código de barras (botón buscar)
     const handleBuscarProducto = async () => {
         if (!busquedaProducto) {
             showCustomAlert('Por favor, ingresa un código de barras o nombre para buscar.', 'info');
@@ -176,7 +162,6 @@ const PuntoVenta = () => {
         }
     };
 
-    // Añadir producto al carrito activo desde la búsqueda por código de barras o tabla
     const handleAddProductoEnVenta = (product, quantity = 1) => {
         if (!activeCart) {
             showCustomAlert('Por favor, selecciona o crea un carrito antes de añadir productos.', 'info');
@@ -199,32 +184,29 @@ const PuntoVenta = () => {
             return;
         }
 
-        addProductToCart(product, quantity); // Usa la función del contexto
-        setBusquedaProducto(''); // Limpiar la búsqueda después de añadir
-        setProductoSeleccionado(null); // Limpiar producto seleccionado
+        addProductToCart(product, quantity);
+        setBusquedaProducto('');
+        setProductoSeleccionado(null);
         showCustomAlert('Producto añadido al carrito.', 'success');
     };
 
-    // Decrementar cantidad de un producto en el carrito activo
     const handleDecrementQuantity = (productId) => {
         if (!activeCart) return;
-        decrementProductQuantity(activeCartId, productId); // Usa la función del contexto
+        decrementProductQuantity(activeCartId, productId);
         showCustomAlert('Cantidad de producto actualizada.', 'info');
     };
 
-    // Eliminar producto del carrito activo
     const handleRemoveProductoEnVenta = (productId) => {
         if (!activeCart) return;
         setConfirmMessage('¿Estás seguro de que quieres quitar este producto del carrito?');
         setConfirmAction(() => () => {
-            removeProductFromCart(activeCartId, productId); // Usa la función del contexto
+            removeProductFromCart(activeCartId, productId);
             showCustomAlert('Producto eliminado del carrito.', 'info');
             setShowConfirmModal(false);
         });
         setShowConfirmModal(true);
     };
 
-    // Calcular el total de la venta con descuento
     const calculateTotalWithDiscount = useCallback(() => {
         if (!activeCart) return 0;
         let subtotal = activeCart.items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.product.precio)), 0);
@@ -232,7 +214,7 @@ const PuntoVenta = () => {
         return (subtotal - discountAmount);
     }, [activeCart, descuentoPorcentaje]);
 
-    // Procesar la venta
+    // Corrección aquí: Se usa 'monto_final' en lugar de 'total' o 'monto_total'
     const handleProcesarVenta = async () => {
         if (!activeCart || activeCart.items.length === 0) {
             showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
@@ -249,17 +231,15 @@ const PuntoVenta = () => {
 
         const finalTotal = calculateTotalWithDiscount();
 
-        // Confirmación antes de procesar
         setConfirmMessage(`¿Confirmas la venta por un total de $${finalTotal.toFixed(2)} con ${metodoPagoSeleccionado}?` +
                           (descuentoPorcentaje > 0 ? ` (Descuento aplicado: ${descuentoPorcentaje}%)` : ''));
         setConfirmAction(() => async () => {
-            setShowConfirmModal(false); // Cerrar modal de confirmación
+            setShowConfirmModal(false);
             try {
                 const ventaData = {
-                    tienda: selectedStoreSlug, 
+                    tienda: selectedStoreSlug,
                     metodo_pago_nombre: metodoPagoSeleccionado,
-                    // CORRECCIÓN: Se cambia 'total' por 'monto_final' para que coincida con el backend
-                    monto_final: finalTotal, 
+                    monto_final: finalTotal,
                     descuento_porcentaje: descuentoPorcentaje, 
                     detalles: activeCart.items.map(item => ({
                         producto: item.product.id,
@@ -274,9 +254,9 @@ const PuntoVenta = () => {
 
                 console.log('Venta procesada con éxito:', response.data);
                 showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
-                finalizeCart(activeCartId); // Marcar el carrito como finalizado en el contexto
-                setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : ''); // Resetear método de pago
-                setDescuentoPorcentaje(0); // Resetear descuento
+                finalizeCart(activeCartId);
+                setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
+                setDescuentoPorcentaje(0);
             } catch (err) {
                 console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
                 showCustomAlert('Error al procesar la venta: ' + (err.response && err.response.data ? JSON.stringify(err.response.data) : err.message), 'error');
@@ -285,7 +265,6 @@ const PuntoVenta = () => {
         setShowConfirmModal(true);
     };
 
-    // Manejar la creación de un nuevo carrito con alias
     const handleCreateNewCartWithAlias = () => {
         if (newCartAliasInput.trim() === '') {
             showCustomAlert('El alias de la venta no puede estar vacío.', 'error');
@@ -297,7 +276,6 @@ const PuntoVenta = () => {
         showCustomAlert('Nueva venta creada.', 'success');
     };
 
-    // Manejar la eliminación del carrito activo
     const handleDeleteActiveCart = () => {
         if (activeCart) {
             setConfirmMessage(`¿Estás seguro de que quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`);
@@ -310,7 +288,6 @@ const PuntoVenta = () => {
         }
     };
 
-    // Filtrar productos disponibles por nombre o código de barras
     const filteredProductosDisponibles = productos.filter(product => {
         const searchTermLower = busquedaProducto.toLowerCase();
         return (
@@ -320,7 +297,6 @@ const PuntoVenta = () => {
         );
     });
 
-    // --- Lógica de paginación para productos disponibles ---
     const indexOfLastProduct = currentPage * productsPerPage;
     const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
     const currentProducts = filteredProductosDisponibles.slice(indexOfFirstProduct, indexOfLastProduct);
@@ -345,7 +321,6 @@ const PuntoVenta = () => {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    // Permitir acceso si es staff O superusuario
     if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
         return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
     }
@@ -369,8 +344,6 @@ const PuntoVenta = () => {
     return (
         <div style={styles.container}>
             <h1 style={styles.header}>Punto de Venta ({selectedStoreSlug})</h1>
-
-            {/* Sección de Gestión de Ventas Activas */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Gestión de Ventas Activas</h3>
                 <div style={styles.cartSelectionContainer}>
@@ -407,7 +380,6 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Modal para crear nueva venta */}
             {showNewCartModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -431,7 +403,6 @@ const PuntoVenta = () => {
                 </div>
             )}
 
-            {/* Sección de Búsqueda de Productos por Código de Barras */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Buscar Producto por Código de Barras</h3>
                 <div style={styles.inputGroup}>
@@ -468,7 +439,6 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Carrito de Venta Actual */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
                 {activeCart && activeCart.items.length > 0 ? (
@@ -507,9 +477,7 @@ const PuntoVenta = () => {
                                 ))}
                             </tbody>
                         </table>
-                        <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4> {/* Mostrar subtotal antes de descuento */}
-
-                        {/* Selector de método de pago */}
+                        <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4>
                         <div style={styles.paymentMethodSelectContainer}>
                             <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de Pago:</label>
                             <select
@@ -523,23 +491,19 @@ const PuntoVenta = () => {
                                 ))}
                             </select>
                         </div>
-
-                        {/* Sección de Descuento */}
                         <div style={styles.discountContainer}>
                             <label htmlFor="descuento" style={styles.discountLabel}>Aplicar Descuento (%):</label>
                             <input
                                 type="number"
                                 id="descuento"
                                 value={descuentoPorcentaje}
-                                onChange={(e) => setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))} // Asegura que esté entre 0 y 100
+                                onChange={(e) => setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
                                 style={styles.discountInput}
                                 min="0"
                                 max="100"
                             />
                         </div>
-
-                        <h4 style={styles.finalTotalVenta}>Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4> {/* Mostrar total con descuento */}
-
+                        <h4 style={styles.finalTotalVenta}>Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4>
                         <button onClick={handleProcesarVenta} style={styles.processSaleButton}>
                             Procesar Venta
                         </button>
@@ -549,7 +513,6 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Lista de Productos Disponibles */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Productos Disponibles</h3>
                 <div style={styles.inputGroup}>
@@ -573,7 +536,6 @@ const PuntoVenta = () => {
                                 <tr style={styles.tableHeaderRow}>
                                     <th style={styles.th}>Nombre</th>
                                     <th style={styles.th}>Talle</th>
-                                    {/* <th style={styles.th}>Código</th> */} {/* ¡COLUMNA ELIMINADA! */}
                                     <th style={styles.th}>Precio</th>
                                     <th style={styles.th}>Stock</th>
                                     <th style={styles.th}>Acción</th>
@@ -585,7 +547,6 @@ const PuntoVenta = () => {
                                         <tr key={product.id} style={styles.tableRow}>
                                             <td style={styles.td}>{product.nombre}</td>
                                             <td style={styles.td}>{product.talle}</td>
-                                            {/* <td style={styles.td}>{product.codigo_barras || 'N/A'}</td> */} {/* ¡CELDA ELIMINADA! */}
                                             <td style={styles.td}>${parseFloat(product.precio).toFixed(2)}</td>
                                             <td style={styles.td}>{product.stock}</td>
                                             <td style={styles.td}>
@@ -601,7 +562,7 @@ const PuntoVenta = () => {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="5" style={styles.noDataMessage}> {/* Colspan ajustado a 5 */}
+                                        <td colSpan="5" style={styles.noDataMessage}>
                                             No se encontraron productos con el filtro aplicado.
                                         </td>
                                     </tr>
@@ -609,7 +570,6 @@ const PuntoVenta = () => {
                             </tbody>
                         </table>
 
-                        {/* Controles de Paginación para Productos Disponibles */}
                         {totalPages > 1 && (
                             <div style={styles.paginationContainer}>
                                 <button onClick={prevPage} disabled={currentPage === 1} style={styles.paginationButton}>
@@ -625,7 +585,6 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* Modal de Confirmación */}
             {showConfirmModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -638,7 +597,6 @@ const PuntoVenta = () => {
                 </div>
             )}
 
-            {/* Cuadro de Mensaje de Alerta */}
             {showAlertMessage && (
                 <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
                     <p>{alertMessage}</p>
