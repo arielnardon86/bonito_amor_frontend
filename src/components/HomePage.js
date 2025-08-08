@@ -1,5 +1,3 @@
-// HomePage.js
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -13,7 +11,7 @@ function HomePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const navigate = useNavigate();
-    const { isAuthenticated, loginUser } = useAuth(); // Assuming useAuth provides a way to know if a user is authenticated
+    const { isAuthenticated, loginUser } = useAuth(); // Asumiendo que useAuth proporciona una forma de saber si un usuario está autenticado
 
     useEffect(() => {
         const fetchStores = async () => {
