@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import { useSales } from './SalesContext'; // Importar el contexto de ventas
 // NEW TALLE_OPTIONS
 const TALLE_OPTIONS = [
-    { value: 'UNICO', label: 'UNICO' }, 
+    { value: 'UNICO', label: 'UNICO' },
     { value: 'XS', label: 'XS' },
     { value: 'S', label: 'S' },
     { value: 'M', label: 'M' },
@@ -214,7 +214,7 @@ const PuntoVenta = () => {
         return (subtotal - discountAmount);
     }, [activeCart, descuentoPorcentaje]);
 
-    // Corrección aquí: Se usa 'monto_final' en lugar de 'total' o 'monto_total'
+    // Corrección clave en esta función para que coincida con el backend
     const handleProcesarVenta = async () => {
         if (!activeCart || activeCart.items.length === 0) {
             showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
@@ -236,16 +236,16 @@ const PuntoVenta = () => {
         setConfirmAction(() => async () => {
             setShowConfirmModal(false);
             try {
-// CÓDIGO CORRECTO:
-const ventaData = {
-    tienda_slug: selectedStoreSlug, // Usar tienda_slug, como espera el serializador
-    metodo_pago_nombre: metodoPagoSeleccionado,
-    descuento: descuentoPorcentaje, // Usar 'descuento' como lo define el serializador
-    productos: activeCart.items.map(item => ({
-        producto: item.product.id,
-        cantidad: item.quantity,
-    })),
-};
+                // Objeto de datos corregido para la petición a la API
+                const ventaData = {
+                    tienda_slug: selectedStoreSlug,
+                    metodo_pago_nombre: metodoPagoSeleccionado,
+                    descuento: descuentoPorcentaje,
+                    productos: activeCart.items.map(item => ({
+                        producto: item.product.id,
+                        cantidad: item.quantity,
+                    })),
+                };
 
                 const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -316,7 +316,7 @@ const ventaData = {
         }
     };
 
-    if (authLoading || (isAuthenticated && !user)) { 
+    if (authLoading || (isAuthenticated && !user)) {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
