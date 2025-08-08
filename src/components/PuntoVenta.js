@@ -238,14 +238,15 @@ const PuntoVenta = () => {
             try {
                 // Objeto de datos corregido para la petición a la API
                 const ventaData = {
-    metodo_pago: selectedPaymentMethod,
-    detalles: activeCart.items.map(item => ({
-        producto: item.product.id,
-        cantidad: item.quantity,
-        precio_unitario: item.product.precio,
-    })),
-    descuento: activeCart.descuento || 0,
-};
+                    tienda_slug: selectedStoreSlug,
+                    metodo_pago_nombre: metodoPagoSeleccionado,
+                    descuento: descuentoPorcentaje,
+                    // CAMBIO: Se cambia 'productos' a 'detalles' para que coincida con el backend
+                    detalles: activeCart.items.map(item => ({
+                        producto: item.product.id,
+                        cantidad: item.quantity,
+                    })),
+                };
 
                 const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -604,7 +605,6 @@ const PuntoVenta = () => {
         </div>
     );
 };
-
 const styles = {
     container: {
         padding: '20px',
