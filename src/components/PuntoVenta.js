@@ -241,7 +241,8 @@ const PuntoVenta = () => {
                     tienda_slug: selectedStoreSlug,
                     metodo_pago_nombre: metodoPagoSeleccionado,
                     descuento: descuentoPorcentaje,
-                    detalles: activeCart.items.map(item => ({
+                    // CORRECCIÓN: Se revierte a 'productos' ya que el backend lo requiere
+                    productos: activeCart.items.map(item => ({
                         producto: item.product.id,
                         cantidad: item.quantity,
                     })),
@@ -604,6 +605,8 @@ const PuntoVenta = () => {
         </div>
     );
 };
+
+
 const styles = {
     container: {
         padding: '20px',
