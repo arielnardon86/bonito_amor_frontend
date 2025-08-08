@@ -6,7 +6,6 @@ import Barcode from 'react-barcode';
 import EtiquetasImpresion from './EtiquetasImpresion';
 import { useAuth } from '../AuthContext';
 
-// NEW TALLE_OPTIONS
 const TALLE_OPTIONS = [
     { value: 'UNICO', label: 'UNICO' },  
     { value: 'XS', label: 'XS' },
@@ -97,26 +96,13 @@ const Productos = () => {
             return;
         }
 
-        // --- CORRECCIÓN AQUÍ: Acceder a stores.results para encontrar la tienda ---
-        if (!stores || !stores.results) {
-            setError("No se pudo encontrar la lista de tiendas.");
-            setLoadingProducts(false);
-            return;
-        }
-        const store = stores.results.find(s => s.nombre === selectedStoreSlug);
-        if (!store) {
-            setError("No se pudo encontrar la tienda seleccionada.");
-            setLoadingProducts(false);
-            return;
-        }
-        const storeId = store.id;
-
+        // --- CORRECCIÓN AQUÍ: Usar el slug para filtrar en el backend ---
         setLoadingProducts(true);
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: {
-                    tienda: storeId
+                    tienda_slug: selectedStoreSlug
                 }
             });
             setProducts(response.data.results);
@@ -126,7 +112,7 @@ const Productos = () => {
         } finally {
             setLoadingProducts(false);
         }
-    }, [token, selectedStoreSlug, stores]);
+    }, [token, selectedStoreSlug]);
 
     useEffect(() => {
         fetchProducts();
@@ -146,20 +132,14 @@ const Productos = () => {
             return;
         }
     
-        const store = stores.results.find(s => s.nombre === selectedStoreSlug);
-        if (!store) {
-            setAlertMessage("No se pudo encontrar la tienda para el nuevo producto.");
-            setAlertType('error');
-            setShowAlertMessage(true);
-            return;
-        }
-    
         const productData = {
             ...newProduct,
             precio: parseFloat(newProduct.precio),
             costo: parseFloat(newProduct.costo),
             stock: parseInt(newProduct.stock, 10),
-            tienda: store.id,
+            // Asegúrate de que el backend pueda recibir tienda_slug o de lo contrario, 
+            // corrige el backend para que lo reciba
+            tienda_slug: selectedStoreSlug,
         };
 
         try {
@@ -199,7 +179,6 @@ const Productos = () => {
     const handleUpdateProduct = async () => {
         if (!editingProduct) return;
 
-        // Asegurarse de que los campos numéricos sean números
         const updatedProductData = {
             ...editingProduct,
             precio: parseFloat(editingProduct.precio),
@@ -569,7 +548,6 @@ const Productos = () => {
                 </form>
             </div>
 
-            {/* Modal de confirmación */}
             {showConfirmModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -583,7 +561,6 @@ const Productos = () => {
                 </div>
             )}
 
-            {/* Modal de impresión de etiquetas */}
             {showEtiquetasModal && (
                 <EtiquetasImpresion
                     products={productsToPrint}
