@@ -48,25 +48,16 @@ const MetricasVentas = () => {
 
 
     const fetchMetrics = useCallback(async () => {
-        if (!token || !selectedStoreSlug || !stores.length) {
+        if (!token || !selectedStoreSlug) {
             setLoading(false);
             return;
         }
-    
-        const store = stores.find(s => s.nombre === selectedStoreSlug);
-        if (!store) {
-            console.warn("MetricasVentas: No se encontró la tienda con el slug:", selectedStoreSlug);
-            setLoading(false);
-            setError("No se pudo cargar la tienda seleccionada.");
-            return;
-        }
-        const storeSlug = store.nombre;
     
         setLoading(true);
         setError(null);
         try {
             const params = {
-                tienda_slug: storeSlug,
+                tienda_slug: selectedStoreSlug,
                 year: filterYear,
                 month: filterMonth,
                 day: filterDay,
@@ -84,29 +75,22 @@ const MetricasVentas = () => {
         } finally {
             setLoading(false);
         }
-    }, [token, selectedStoreSlug, stores, filterYear, filterMonth, filterDay, filterSellerId, filterPaymentMethod]);
+    }, [token, selectedStoreSlug, filterYear, filterMonth, filterDay, filterSellerId, filterPaymentMethod]);
     
 
     const fetchSellers = useCallback(async () => {
-        if (!token || !selectedStoreSlug || !stores.length) return; 
-
-        const store = stores.find(s => s.nombre === selectedStoreSlug);
-        if (!store) {
-            setSellers([]);
-            return;
-        }
-        const storeId = store.id;
+        if (!token || !selectedStoreSlug) return; 
 
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
-                params: { tienda: storeId } 
+                params: { tienda_slug: selectedStoreSlug } 
             });
             setSellers(response.data.results || response.data);
         } catch (err) {
             console.error('Error fetching sellers:', err.response ? err.response.data : err.message);
         }
-    }, [token, selectedStoreSlug, stores]); 
+    }, [token, selectedStoreSlug]); 
 
     const fetchPaymentMethods = useCallback(async () => {
         if (!token) return;
@@ -352,7 +336,7 @@ const MetricasVentas = () => {
                             <tbody>
                                 {metrics.ventas_por_metodo_pago.map((methodMetric, index) => (
                                     <tr key={index}>
-                                        <td style={styles.td}>{methodMetric.metodo_pago__nombre}</td>
+                                        <td style={styles.td}>{methodMetric.metodo_pago}</td>
                                         <td style={styles.td}>${parseFloat(methodMetric.total_vendido).toFixed(2)}</td>
                                     </tr>
                                 ))}

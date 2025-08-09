@@ -92,10 +92,20 @@ const VentasPage = () => {
             const url = pageUrl || `${BASE_API_ENDPOINT}/api/ventas/`;
             const params = {
                 tienda_slug: selectedStoreSlug,
-                fecha_venta__date: filterDate,
-                usuario: filterSellerId,
-                anulada: filterAnulada
             };
+
+            if (filterDate) {
+                params.fecha_venta__date = filterDate; 
+            }
+            if (filterSellerId) {
+                params.usuario = filterSellerId;
+            }
+            if (filterAnulada !== '') { 
+                params.anulada = filterAnulada;
+            }
+
+            console.log("VentasPage: Valor de filterAnulada (estado):", filterAnulada);
+            console.log("VentasPage: Parámetros finales enviados a la API:", params); 
 
             const response = await axios.get(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
