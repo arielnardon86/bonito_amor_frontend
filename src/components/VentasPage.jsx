@@ -81,26 +81,18 @@ const VentasPage = () => {
 
 
     const fetchVentas = useCallback(async (pageUrl = null) => {
-        if (!token || !selectedStoreSlug || !stores.length) { 
+        if (!token || !selectedStoreSlug) { 
             setLoading(false);
             return;
         }
-
-        const store = stores.find(s => s.nombre === selectedStoreSlug);
-        if (!store) {
-            console.warn("VentasPage: No se encontró la tienda con el slug:", selectedStoreSlug);
-            setLoading(false);
-            setError("No se pudo cargar la tienda seleccionada.");
-            return;
-        }
-        const storeId = store.id;
 
         setLoading(true);
         setError(null);
         try {
             const url = pageUrl || `${BASE_API_ENDPOINT}/api/ventas/`;
             const params = {
-                tienda: storeId,
+                // CORRECCIÓN: Usar el slug de la tienda, no el ID.
+                tienda_slug: selectedStoreSlug,
             };
 
             if (filterDate) {
@@ -148,46 +140,35 @@ const VentasPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [token, selectedStoreSlug, stores, filterDate, filterSellerId, filterAnulada]); 
+    }, [token, selectedStoreSlug, filterDate, filterSellerId, filterAnulada]); 
 
     const fetchSellers = useCallback(async () => {
-        if (!token || !selectedStoreSlug || !stores.length) return; 
-
-        const store = stores.find(s => s.nombre === selectedStoreSlug);
-        if (!store) {
-            console.warn("VentasPage: No se encontró la tienda con el slug:", selectedStoreSlug);
-            setSellers([]);
-            return;
-        }
-        const storeId = store.id;
+        if (!token || !selectedStoreSlug) return; 
 
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
-                params: { tienda: storeId } 
+                // CORRECCIÓN: Se envía el slug en lugar del ID
+                params: { tienda_slug: selectedStoreSlug } 
             });
             setSellers(response.data.results || response.data);
         } catch (err) {
             console.error('Error fetching sellers:', err.response ? err.response.data : err.message);
             setError(`Error al cargar vendedores: ${err.response?.data ? JSON.stringify(err.response.data) : err.message}`);
         }
-    }, [token, selectedStoreSlug, stores]); 
+    }, [token, selectedStoreSlug]); 
 
-    // useEffect para la carga inicial de ventas y vendedores
-    // Ahora fetchVentas solo se llama al inicio y con el botón
     useEffect(() => {
-        if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) { 
-            if (stores.length > 0) { 
-                fetchVentas(); 
-                fetchSellers();
-            }
+        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) { 
+            fetchVentas(); 
+            fetchSellers();
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
             setError("Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.");
             setLoading(false);
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false); 
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, stores]); 
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchVentas]); 
 
     const handleAnularVenta = async (ventaId) => {
         setConfirmMessage('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.');
