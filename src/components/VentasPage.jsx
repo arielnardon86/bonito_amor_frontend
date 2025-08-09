@@ -363,8 +363,8 @@ const VentasPage = () => {
                                                         <tr>
                                                             <th style={styles.detailTh}>Producto</th>
                                                             <th style={styles.th}>Cantidad</th>
-                                                            <th style={styles.th}>P. Unitario (con desc.)</th> {/* CAMBIO EN ETIQUETA */}
-                                                            <th style={styles.th}>Subtotal (con desc.)</th> {/* CAMBIO EN ETIQUETA */}
+                                                            <th style={styles.th}>P. Unitario (con desc.)</th>
+                                                            <th style={styles.th}>Subtotal (con desc.)</th>
                                                             <th style={styles.th}>Anulado</th>
                                                             <th style={styles.th}>Acciones Detalle</th>
                                                         </tr>
@@ -372,8 +372,8 @@ const VentasPage = () => {
                                                     <tbody>
                                                         {venta.detalles.length > 0 ? (
                                                             venta.detalles.map(detalle => {
-                                                                // Calcular precio unitario y subtotal con el descuento de la venta
-                                                                const precioUnitarioOriginal = parseFloat(detalle.precio_unitario_venta || 0);
+                                                                // CORRECCIÓN: Usar 'precio_unitario' del detalle, que es el campo correcto.
+                                                                const precioUnitarioOriginal = parseFloat(detalle.precio_unitario || 0);
                                                                 const descuentoAplicado = parseFloat(venta.descuento_porcentaje || 0);
                                                                 
                                                                 const precioUnitarioConDescuento = precioUnitarioOriginal * (1 - descuentoAplicado / 100);
@@ -383,12 +383,10 @@ const VentasPage = () => {
                                                                     <tr key={detalle.id}> 
                                                                         <td style={styles.detailTd}>{detalle.producto_nombre}</td>
                                                                         <td style={styles.detailTd}>{detalle.cantidad}</td>
-                                                                        <td style={styles.detailTd}>${precioUnitarioConDescuento.toFixed(2)}</td> {/* Mostrar precio con descuento */}
-                                                                        <td style={styles.detailTd}>${subtotalConDescuento.toFixed(2)}</td> {/* Mostrar subtotal con descuento */}
-                                                                        {/* Mostrar el estado real de anulado_individualmente */}
+                                                                        <td style={styles.detailTd}>${precioUnitarioConDescuento.toFixed(2)}</td> 
+                                                                        <td style={styles.detailTd}>${subtotalConDescuento.toFixed(2)}</td> 
                                                                         <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
                                                                         <td style={styles.detailTd}>
-                                                                            {/* El botón solo se muestra si la venta no está anulada Y el detalle no está anulado individualmente */}
                                                                             {!venta.anulada && !detalle.anulado_individualmente && ( 
                                                                                 <button
                                                                                     onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
@@ -408,7 +406,6 @@ const VentasPage = () => {
                                                         )}
                                                     </tbody>
                                                 </table>
-                                                {/* CAMBIO CLAVE AQUÍ: Mostrar el porcentaje de descuento */}
                                                 {venta.descuento_porcentaje > 0 && (
                                                     <p style={styles.discountDisplay}>
                                                         Descuento aplicado a la venta: {parseFloat(venta.descuento_porcentaje).toFixed(2)}%
@@ -737,7 +734,7 @@ const styles = {
         opacity: 0,
         animation: 'fadeInOut 3s forwards',
     },
-    discountDisplay: { // Nuevo estilo para mostrar el descuento
+    discountDisplay: { 
         textAlign: 'right',
         marginTop: '10px',
         fontSize: '1.1em',
