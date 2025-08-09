@@ -29,13 +29,15 @@ const MetricasVentas = () => {
     const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0');
     const currentDay = today.getDate().toString().padStart(2, '0');
 
-    const [filterYear, setFilterYear] = useState('');
+    // Filtros aplicados
+    const [filterYear, setFilterYear] = useState(currentYear);
     const [filterMonth, setFilterMonth] = useState(''); 
     const [filterDay, setFilterDay] = useState('');     
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
 
-    const [pendingFilterYear, setPendingFilterYear] = useState('');
+    // Filtros pendientes (para los inputs)
+    const [pendingFilterYear, setPendingFilterYear] = useState(currentYear);
     const [pendingFilterMonth, setPendingFilterMonth] = useState('');
     const [pendingFilterDay, setPendingFilterDay] = useState('');
     const [pendingFilterSellerId, setPendingFilterSellerId] = useState('');
@@ -50,7 +52,7 @@ const MetricasVentas = () => {
             setLoading(false);
             return;
         }
-
+    
         const store = stores.find(s => s.nombre === selectedStoreSlug);
         if (!store) {
             console.warn("MetricasVentas: No se encontró la tienda con el slug:", selectedStoreSlug);
@@ -59,7 +61,7 @@ const MetricasVentas = () => {
             return;
         }
         const storeSlug = store.nombre;
-
+    
         setLoading(true);
         setError(null);
         try {
@@ -83,6 +85,7 @@ const MetricasVentas = () => {
             setLoading(false);
         }
     }, [token, selectedStoreSlug, stores, filterYear, filterMonth, filterDay, filterSellerId, filterPaymentMethod]);
+    
 
     const fetchSellers = useCallback(async () => {
         if (!token || !selectedStoreSlug || !stores.length) return; 
@@ -116,31 +119,26 @@ const MetricasVentas = () => {
             console.error("Error al cargar métodos de pago:", err.response ? err.response.data : err.message);
         }
     }, [token]);
-
+    
+    // CORRECCIÓN: El useEffect ahora se dispara cuando los filtros aplicados cambian
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
-            const today = new Date();
-            const currentYear = today.getFullYear().toString();
-            const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0');
-            const currentDay = today.getDate().toString().padStart(2, '0');
-
-            setFilterYear(currentYear);
-            setPendingFilterYear(currentYear);
-            setFilterMonth(currentMonth);
-            setPendingFilterMonth(currentMonth);
-            setFilterDay(currentDay);
-            setPendingFilterDay(currentDay);
-
             fetchMetrics();
-            fetchSellers();
-            fetchPaymentMethods();
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
             setError("Acceso denegado. Solo los superusuarios pueden ver las métricas.");
             setLoading(false);
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false);
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchPaymentMethods, fetchMetrics]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchMetrics]);
+    
+    // useEffect para cargar vendedores y métodos de pago solo una vez al cargar la página
+    useEffect(() => {
+        if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
+            fetchSellers();
+            fetchPaymentMethods();
+        }
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchPaymentMethods]);
 
 
     const handleApplyFilters = () => {

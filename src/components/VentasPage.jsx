@@ -91,22 +91,11 @@ const VentasPage = () => {
         try {
             const url = pageUrl || `${BASE_API_ENDPOINT}/api/ventas/`;
             const params = {
-                // CORRECCIÓN: Usar el slug de la tienda, no el ID.
                 tienda_slug: selectedStoreSlug,
+                fecha_venta__date: filterDate,
+                usuario: filterSellerId,
+                anulada: filterAnulada
             };
-
-            if (filterDate) {
-                params.fecha_venta__date = filterDate; 
-            }
-            if (filterSellerId) {
-                params.usuario = filterSellerId;
-            }
-            if (filterAnulada !== '') { 
-                params.anulada = filterAnulada;
-            }
-
-            console.log("VentasPage: Valor de filterAnulada (estado):", filterAnulada);
-            console.log("VentasPage: Parámetros finales enviados a la API:", params); 
 
             const response = await axios.get(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -148,7 +137,6 @@ const VentasPage = () => {
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
-                // CORRECCIÓN: Se envía el slug en lugar del ID
                 params: { tienda_slug: selectedStoreSlug } 
             });
             setSellers(response.data.results || response.data);
@@ -372,7 +360,6 @@ const VentasPage = () => {
                                                     <tbody>
                                                         {venta.detalles.length > 0 ? (
                                                             venta.detalles.map(detalle => {
-                                                                // CORRECCIÓN: Usar 'precio_unitario' del detalle, que es el campo correcto.
                                                                 const precioUnitarioOriginal = parseFloat(detalle.precio_unitario || 0);
                                                                 const descuentoAplicado = parseFloat(venta.descuento_porcentaje || 0);
                                                                 
