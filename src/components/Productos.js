@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
+import Barcode from 'react-barcode';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
@@ -64,7 +65,6 @@ const Productos = () => {
         precio: '',
         stock: '',
         codigo_barras: '',
-        tienda_slug: ''
     });
     
     // Estados para la edición en línea
@@ -186,13 +186,37 @@ const Productos = () => {
             .flat();
 
         if (etiquetasAImprimir.length > 0) {
-            console.log('--- Generando Etiquetas ---');
-            etiquetasAImprimir.forEach((etiqueta, index) => {
-                console.log(`Etiqueta ${index + 1}:`, etiqueta);
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Etiquetas</title>');
+            printWindow.document.write('<style>');
+            printWindow.document.write(`
+                body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+                .label-container { display: flex; flex-wrap: wrap; }
+                .label { border: 1px solid #ccc; padding: 10px; margin: 5px; text-align: center; font-size: 10px; }
+                .label p { margin: 0; }
+                .label .barcode-wrapper { margin-top: 5px; }
+            `);
+            printWindow.document.write('</style></head><body><div class="label-container">');
+
+            etiquetasAImprimir.forEach((etiqueta) => {
+                printWindow.document.write(`
+                    <div class="label">
+                        <p><strong>${etiqueta.nombre}</strong></p>
+                        <p>Talle: ${etiqueta.talle}</p>
+                        <div class="barcode-wrapper">
+                            ${etiqueta.codigo_barras ? `<img src="data:image/png;base64,${btoa(new Barcode(printWindow.document.createElement('canvas'), etiqueta.codigo_barras, { format: 'EAN13', displayValue: true, fontSize: 12 }).canvas.toDataURL())}" alt="Barcode"/>` : '<span>Sin código</span>'}
+                        </div>
+                        <p>Precio: $${parseFloat(etiqueta.precio).toFixed(2)}</p>
+                    </div>
+                `);
             });
-            console.log('--- Fin de la Impresión ---');
+
+            printWindow.document.write('</div></body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
             setEtiquetasSeleccionadas({});
-            alert(`Se han generado ${etiquetasAImprimir.length} etiquetas para imprimir (revisar consola para detalles).`);
+            alert(`Se han generado ${etiquetasAImprimir.length} etiquetas para imprimir.`);
         } else {
             alert('No hay etiquetas seleccionadas para imprimir.');
         }
