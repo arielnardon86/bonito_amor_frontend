@@ -132,7 +132,7 @@ const Productos = () => {
         const productToCreate = {
             ...newProduct,
             codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
-            tienda_slug: selectedStoreSlug
+            // No se envía tienda_slug al backend, el backend lo infiere del usuario
         };
 
         try {
