@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }) => {
             logout();
             return false;
         }
-    }, [logout, fetchStores]);
+    }, [logout]);
 
     const loadUserInitial = useCallback(async () => {
         if (token) {

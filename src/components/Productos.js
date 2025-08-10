@@ -1,13 +1,26 @@
 // BONITO_AMOR/frontend/src/components/Productos.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import Barcode from 'react-barcode';
-import EtiquetasImpresion from './EtiquetasImpresion';
 import { useAuth } from '../AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-const TALLE_OPTIONS = [
-    { value: 'UNICO', label: 'UNICO' },  
+const API_BASE_URL = process.env.REACT_APP_API_URL;
+
+const normalizeApiUrl = (url) => {
+    let normalizedUrl = url;
+    if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
+        normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
+    }
+    if (normalizedUrl.endsWith('/')) {
+        normalizedUrl = normalizedUrl.slice(0, -1);
+    }
+    return normalizedUrl;
+};
+
+const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
+
+const TalleOptions = [
+    { value: 'UNICO', label: 'UNICO' },
     { value: 'XS', label: 'XS' },
     { value: 'S', label: 'S' },
     { value: 'M', label: 'M' },
@@ -27,545 +40,403 @@ const TALLE_OPTIONS = [
     { value: '5', label: '5' },
     { value: '6', label: '6' },
     { value: '8', label: '8' },
-    { value: '10', label: '10' },
     { value: '12', label: '12' },
     { value: '14', label: '14' },
     { value: '16', label: '16' },
-    { value: '18', label: '18' },
-    { value: '20', label: '20' },
-    { value: '22', label: '22' },
-    { value: '24', label: '24' },
-    { value: '26', label: '26' },
-    { value: '28', label: '28' },
-    { value: '30', label: '30' },
-    { value: '32', label: '32' },
-    { value: '34', label: '34' },
-    { value: '36', label: '36' },
-    { value: '38', label: '38' },
-    { value: '40', label: '40' },
-    { value: '42', label: '42' },
-    { value: '44', label: '44' },
-    { value: '46', label: '46' },
-    { value: '48', label: '48' },
-    { value: '50', label: '50' },
 ];
 
-const API_BASE_URL = process.env.REACT_APP_API_URL;
-
-const normalizeApiUrl = (url) => {
-    let normalizedUrl = url;
-    if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
-        normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
-    }
-    if (normalizedUrl.endsWith('/')) {
-        normalizedUrl = normalizedUrl.slice(0, -1);
-    }
-    return normalizedUrl;
-};
-
-const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
-
 const Productos = () => {
-    const { token, user, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth();
-    const [products, setProducts] = useState([]);
+    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
+    const navigate = useNavigate();
+
+    const [productos, setProductos] = useState([]);
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [nextPage, setNextPage] = useState(null);
+    const [prevPage, setPrevPage] = useState(null);
+
     const [newProduct, setNewProduct] = useState({
         nombre: '',
         talle: 'UNICO',
-        descripcion: '',
         precio: '',
-        costo: '',
         stock: '',
         codigo_barras: '',
-        proveedor: '',
+        tienda_slug: ''
     });
-    const [editingProduct, setEditingProduct] = useState(null);
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [confirmAction, setConfirmAction] = useState(() => () => {});
-    const [productIdToDelete, setProductIdToDelete] = useState(null);
-    const [showEtiquetasModal, setShowEtiquetasModal] = useState(false);
-    const [productsToPrint, setProductsToPrint] = useState([]);
-    const [showAlertMessage, setShowAlertMessage] = useState(false);
-    const [alertMessage, setAlertMessage] = useState('');
-    const [alertType, setAlertType] = useState('success');
+    
+    // Estados para la edición en línea
+    const [editProductId, setEditProductId] = useState(null);
+    const [editPrice, setEditPrice] = useState('');
+    const [editStock, setEditStock] = useState('');
+    const [showPriceModal, setShowPriceModal] = useState(false);
+    const [showStockModal, setShowStockModal] = useState(false);
 
-    const fetchProducts = useCallback(async () => {
+    // Estado para la impresión de etiquetas
+    const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
+
+    // Generador de código de barras
+    const generarCodigoDeBarras = () => {
+        return Math.floor(100000000000 + Math.random() * 900000000000).toString();
+    };
+
+    const fetchProductos = useCallback(async (pageUrl = null) => {
         if (!token || !selectedStoreSlug) {
             setLoadingProducts(false);
             return;
         }
 
-        // --- CORRECCIÓN AQUÍ: Usar el slug para filtrar en el backend ---
         setLoadingProducts(true);
+        setError(null);
         try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
+            const url = pageUrl || `${BASE_API_ENDPOINT}/api/productos/`;
+            const response = await axios.get(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: {
-                    tienda_slug: selectedStoreSlug
+                    tienda_slug: selectedStoreSlug,
+                    search: searchTerm
                 }
             });
-            setProducts(response.data.results);
+            setProductos(response.data.results);
+            setNextPage(response.data.next);
+            setPrevPage(response.data.previous);
+            setTotalPages(Math.ceil(response.data.count / 10)); // Asumiendo 10 por página
+            setLoadingProducts(false);
         } catch (err) {
-            setError('Error al cargar los productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
-            console.error('Error fetching products:', err.response || err.message);
-        } finally {
+            setError('Error al cargar productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
         }
-    }, [token, selectedStoreSlug]);
+    }, [token, selectedStoreSlug, searchTerm]);
 
     useEffect(() => {
-        fetchProducts();
-    }, [fetchProducts]);
-
-    const handleNewProductChange = (e) => {
-        const { name, value } = e.target;
-        setNewProduct(prev => ({ ...prev, [name]: value }));
-    };
+        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
+            fetchProductos();
+        } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
+            setError("Acceso denegado. Solo los administradores pueden ver/gestionar productos.");
+            setLoadingProducts(false);
+        } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
+            setLoadingProducts(false);
+        }
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos]);
 
     const handleCreateProduct = async (e) => {
         e.preventDefault();
-        if (!newProduct.nombre || !newProduct.precio || !newProduct.costo || !newProduct.stock || !selectedStoreSlug) {
-            setAlertMessage("Todos los campos obligatorios deben ser completados.");
-            setAlertType('error');
-            setShowAlertMessage(true);
-            return;
-        }
-    
-        const productData = {
+        setLoadingProducts(true);
+        setError(null);
+
+        const productToCreate = {
             ...newProduct,
-            precio: parseFloat(newProduct.precio),
-            costo: parseFloat(newProduct.costo),
-            stock: parseInt(newProduct.stock, 10),
-            // Asegúrate de que el backend pueda recibir tienda_slug o de lo contrario, 
-            // corrige el backend para que lo reciba
-            tienda_slug: selectedStoreSlug,
+            codigo_barras: newProduct.codigo_barras || generarCodigoDeBarras(),
+            tienda_slug: selectedStoreSlug
         };
 
         try {
-            await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productData, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            setAlertMessage("Producto creado exitosamente.");
-            setAlertType('success');
-            setShowAlertMessage(true);
-            fetchProducts();
-            setNewProduct({
-                nombre: '', talle: 'UNICO', descripcion: '', precio: '', costo: '', stock: '', codigo_barras: '', proveedor: ''
-            });
-        } catch (err) {
-            const errorMsg = err.response && err.response.data
-                ? JSON.stringify(err.response.data)
-                : err.message;
-            setAlertMessage(`Error al crear el producto: ${errorMsg}`);
-            setAlertType('error');
-            setShowAlertMessage(true);
-            console.error("Error creating product:", err);
-        }
-    };
-
-    const startEditing = (product) => {
-        setEditingProduct({ ...product });
-    };
-
-    const handleEditProductChange = (e) => {
-        const { name, value } = e.target;
-        setEditingProduct(prev => ({ ...prev, [name]: value }));
-    };
-    
-    const handleUpdateProduct = async () => {
-        if (!editingProduct) return;
-
-        const updatedProductData = {
-            ...editingProduct,
-            precio: parseFloat(editingProduct.precio),
-            costo: parseFloat(editingProduct.costo),
-            stock: parseInt(editingProduct.stock, 10),
-        };
-
-        try {
-            await axios.put(`${BASE_API_ENDPOINT}/api/productos/${editingProduct.id}/`, updatedProductData, {
+            await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productToCreate, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            setAlertMessage("Producto actualizado exitosamente.");
-            setAlertType('success');
-            setShowAlertMessage(true);
-            setEditingProduct(null);
-            fetchProducts();
+            setNewProduct({ nombre: '', talle: 'UNICO', precio: '', stock: '', codigo_barras: '' });
+            fetchProductos();
         } catch (err) {
-            const errorMsg = err.response && err.response.data
-                ? JSON.stringify(err.response.data)
-                : err.message;
-            setAlertMessage(`Error al actualizar el producto: ${errorMsg}`);
-            setAlertType('error');
-            setShowAlertMessage(true);
+            setError('Error al crear producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setLoadingProducts(false);
         }
     };
     
-    const handleDeleteProduct = (productId) => {
-        setProductIdToDelete(productId);
-        setConfirmAction(() => async () => {
-            try {
-                await axios.delete(`${BASE_API_ENDPOINT}/api/productos/${productId}/`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                setAlertMessage("Producto eliminado exitosamente.");
-                setAlertType('success');
-                setShowAlertMessage(true);
-                fetchProducts();
-            } catch (err) {
-                const errorMsg = err.response && err.response.data
-                    ? JSON.stringify(err.response.data)
-                    : err.message;
-                setAlertMessage(`Error al eliminar el producto: ${errorMsg}`);
-                setAlertType('error');
-                setShowAlertMessage(true);
-                console.error("Error deleting product:", err);
-            } finally {
-                setShowConfirmModal(false);
-                setProductIdToDelete(null);
-            }
-        });
-        setShowConfirmModal(true);
-    };
-
-    const handlePrintEtiquetas = () => {
-        const selectedProducts = products.filter(p => p.selectedForPrint);
-        if (selectedProducts.length === 0) {
-            setAlertMessage("Por favor, selecciona al menos un producto para imprimir.");
-            setAlertType('error');
-            setShowAlertMessage(true);
-            return;
+    // Maneja la edición de precio
+    const handleEditPrice = async () => {
+        setLoadingProducts(true);
+        setError(null);
+        try {
+            await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProductId}/`, { precio: editPrice }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setEditProductId(null);
+            setShowPriceModal(false);
+            fetchProductos();
+        } catch (err) {
+            setError('Error al editar precio: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setLoadingProducts(false);
         }
-        setProductsToPrint(selectedProducts);
-        setShowEtiquetasModal(true);
     };
 
-    const handleSelectProductForPrint = (productId) => {
-        setProducts(prevProducts =>
-            prevProducts.map(p =>
-                p.id === productId ? { ...p, selectedForPrint: !p.selectedForPrint } : p
-            )
-        );
+    // Maneja la edición de stock
+    const handleEditStock = async () => {
+        setLoadingProducts(true);
+        setError(null);
+        try {
+            await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProductId}/`, { stock: editStock }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setEditProductId(null);
+            setShowStockModal(false);
+            fetchProductos();
+        } catch (err) {
+            setError('Error al editar stock: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setLoadingProducts(false);
+        }
     };
 
-    const handleCloseModal = () => {
-        setShowEtiquetasModal(false);
+    const handleEtiquetasChange = (id, cantidad) => {
+        setEtiquetasSeleccionadas(prev => ({
+            ...prev,
+            [id]: cantidad
+        }));
+    };
+    
+    const handleImprimirEtiquetas = () => {
+        const etiquetasAImprimir = Object.entries(etiquetasSeleccionadas)
+            .filter(([id, cantidad]) => cantidad > 0)
+            .map(([id, cantidad]) => {
+                const producto = productos.find(p => p.id === id);
+                return {
+                    nombre: producto.nombre,
+                    talle: producto.talle,
+                    codigo_barras: producto.codigo_barras,
+                    precio: producto.precio,
+                    cantidad: parseInt(cantidad, 10)
+                };
+            });
+    
+        if (etiquetasAImprimir.length > 0) {
+            // Lógica para imprimir etiquetas
+            console.log('Etiquetas a imprimir:', etiquetasAImprimir);
+            // resetear selecciones
+            setEtiquetasSeleccionadas({});
+            alert('Etiquetas enviadas a imprimir (revisar consola para detalles).');
+        } else {
+            alert('No hay etiquetas seleccionadas para imprimir.');
+        }
     };
 
     if (authLoading || (isAuthenticated && !user)) {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    if (!isAuthenticated) {
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. Por favor, inicia sesión.</div>;
+    if (!isAuthenticated || !user.is_superuser) {
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar productos.</div>;
     }
-
-    if (!user || (!user.is_superuser && !user.is_staff)) {
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para ver esta página.</div>;
-    }
-
     if (!selectedStoreSlug) {
-        return <div style={styles.noStoreSelectedMessage}>Por favor, selecciona una tienda.</div>;
+        return (
+            <div style={styles.noStoreSelectedMessage}>
+                <h2>Por favor, selecciona una tienda en la barra de navegación para ver los productos.</h2>
+            </div>
+        );
     }
-
-    if (loadingProducts) {
-        return <div style={styles.loadingMessage}>Cargando productos...</div>;
-    }
-
-    if (error) {
-        return <div style={styles.errorMessage}>{error}</div>;
-    }
-
+    
     return (
         <div style={styles.container}>
-            <h1>Productos ({selectedStoreSlug})</h1>
-
-            {showAlertMessage && (
-                <div style={{ ...styles.alert, backgroundColor: alertType === 'success' ? '#d4edda' : '#f8d7da' }}>
-                    <p style={{ color: alertType === 'success' ? '#155724' : '#721c24' }}>{alertMessage}</p>
-                </div>
-            )}
-
-            <div style={styles.tableContainer}>
-                <h2>Listado de Productos</h2>
-                <button onClick={handlePrintEtiquetas} style={styles.printButton}>Imprimir Etiquetas</button>
-                <table style={styles.table}>
-                    <thead>
-                        <tr>
-                            <th style={styles.th}>Seleccionar</th>
-                            <th style={styles.th}>Nombre</th>
-                            <th style={styles.th}>Talle</th>
-                            <th style={styles.th}>Descripción</th>
-                            <th style={styles.th}>Precio</th>
-                            <th style={styles.th}>Costo</th>
-                            <th style={styles.th}>Stock</th>
-                            <th style={styles.th}>Código de Barras</th>
-                            <th style={styles.th}>Proveedor</th>
-                            <th style={styles.th}>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {products.map((product) => (
-                            <tr key={product.id}>
-                                <td style={styles.td}>
-                                    <input
-                                        type="checkbox"
-                                        checked={!!product.selectedForPrint}
-                                        onChange={() => handleSelectProductForPrint(product.id)}
-                                    />
-                                </td>
-                                <td style={styles.td}>
-                                    {editingProduct && editingProduct.id === product.id ? (
-                                        <input
-                                            type="text"
-                                            name="nombre"
-                                            value={editingProduct.nombre}
-                                            onChange={handleEditProductChange}
-                                            style={styles.editInput}
-                                        />
-                                    ) : (
-                                        product.nombre
-                                    )}
-                                </td>
-                                <td style={styles.td}>
-                                    {editingProduct && editingProduct.id === product.id ? (
-                                        <select
-                                            name="talle"
-                                            value={editingProduct.talle}
-                                            onChange={handleEditProductChange}
-                                            style={styles.editInput}
-                                        >
-                                            {TALLE_OPTIONS.map(option => (
-                                                <option key={option.value} value={option.value}>{option.label}</option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        product.talle
-                                    )}
-                                </td>
-                                <td style={styles.td}>
-                                    {editingProduct && editingProduct.id === product.id ? (
-                                        <input
-                                            type="text"
-                                            name="descripcion"
-                                            value={editingProduct.descripcion}
-                                            onChange={handleEditProductChange}
-                                            style={styles.editInput}
-                                        />
-                                    ) : (
-                                        product.descripcion
-                                    )}
-                                </td>
-                                <td style={styles.td}>
-                                    {editingProduct && editingProduct.id === product.id ? (
-                                        <input
-                                            type="number"
-                                            name="precio"
-                                            value={editingProduct.precio}
-                                            onChange={handleEditProductChange}
-                                            style={styles.editInput}
-                                        />
-                                    ) : (
-                                        `$${parseFloat(product.precio).toFixed(2)}`
-                                    )}
-                                </td>
-                                <td style={styles.td}>
-                                    {editingProduct && editingProduct.id === product.id ? (
-                                        <input
-                                            type="number"
-                                            name="costo"
-                                            value={editingProduct.costo}
-                                            onChange={handleEditProductChange}
-                                            style={styles.editInput}
-                                        />
-                                    ) : (
-                                        `$${parseFloat(product.costo).toFixed(2)}`
-                                    )}
-                                </td>
-                                <td style={styles.td}>
-                                    {editingProduct && editingProduct.id === product.id ? (
-                                        <input
-                                            type="number"
-                                            name="stock"
-                                            value={editingProduct.stock}
-                                            onChange={handleEditProductChange}
-                                            style={styles.editInput}
-                                        />
-                                    ) : (
-                                        product.stock
-                                    )}
-                                </td>
-                                <td style={styles.td}>
-                                    {product.codigo_barras ? (
-                                        <div style={styles.barcodeWrapper}>
-                                            <Barcode value={product.codigo_barras} height={30} width={1} displayValue={false} />
-                                            <span style={styles.barcodeText}>{product.codigo_barras}</span>
-                                        </div>
-                                    ) : (
-                                        "N/A"
-                                    )}
-                                </td>
-                                <td style={styles.td}>
-                                    {editingProduct && editingProduct.id === product.id ? (
-                                        <input
-                                            type="text"
-                                            name="proveedor"
-                                            value={editingProduct.proveedor}
-                                            onChange={handleEditProductChange}
-                                            style={styles.editInput}
-                                        />
-                                    ) : (
-                                        product.proveedor || "N/A"
-                                    )}
-                                </td>
-                                <td style={styles.td}>
-                                    {editingProduct && editingProduct.id === product.id ? (
-                                        <>
-                                            <button onClick={handleUpdateProduct} style={{ ...styles.actionButton, backgroundColor: '#28a745' }}>Guardar</button>
-                                            <button onClick={() => setEditingProduct(null)} style={{ ...styles.actionButton, backgroundColor: '#6c757d' }}>Cancelar</button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button onClick={() => startEditing(product)} style={{ ...styles.actionButton, backgroundColor: '#ffc107' }}>Editar</button>
-                                            <button onClick={() => handleDeleteProduct(product.id)} style={{ ...styles.actionButton, backgroundColor: '#dc3545' }}>Eliminar</button>
-                                        </>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div style={styles.header}>
+                <h1 style={styles.title}>Gestión de Productos ({selectedStoreSlug})</h1>
             </div>
-
-            <div style={styles.formContainer}>
-                <h2>Agregar Nuevo Producto</h2>
+            
+            <div style={styles.section}>
+                <h2 style={styles.sectionTitle}>Agregar Nuevo Producto</h2>
                 <form onSubmit={handleCreateProduct} style={styles.form}>
-                    <div style={styles.formRow}>
-                        <div style={styles.formGroup}>
-                            <label style={styles.formLabel}>Nombre*</label>
-                            <input
-                                type="text"
-                                name="nombre"
-                                value={newProduct.nombre}
-                                onChange={handleNewProductChange}
-                                style={styles.formInput}
-                                required
-                            />
-                        </div>
-                        <div style={styles.formGroup}>
-                            <label style={styles.formLabel}>Talle</label>
-                            <select
-                                name="talle"
-                                value={newProduct.talle}
-                                onChange={handleNewProductChange}
-                                style={styles.formInput}
-                            >
-                                {TALLE_OPTIONS.map(option => (
-                                    <option key={option.value} value={option.value}>{option.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div style={styles.formGroup}>
-                            <label style={styles.formLabel}>Descripción</label>
-                            <input
-                                type="text"
-                                name="descripcion"
-                                value={newProduct.descripcion}
-                                onChange={handleNewProductChange}
-                                style={styles.formInput}
-                            />
-                        </div>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Nombre</label>
+                        <input
+                            type="text"
+                            value={newProduct.nombre}
+                            onChange={(e) => setNewProduct({ ...newProduct, nombre: e.target.value })}
+                            style={styles.input}
+                            required
+                        />
                     </div>
-                    <div style={styles.formRow}>
-                        <div style={styles.formGroup}>
-                            <label style={styles.formLabel}>Precio*</label>
-                            <input
-                                type="number"
-                                name="precio"
-                                value={newProduct.precio}
-                                onChange={handleNewProductChange}
-                                style={styles.formInput}
-                                min="0"
-                                step="0.01"
-                                required
-                            />
-                        </div>
-                        <div style={styles.formGroup}>
-                            <label style={styles.formLabel}>Costo*</label>
-                            <input
-                                type="number"
-                                name="costo"
-                                value={newProduct.costo}
-                                onChange={handleNewProductChange}
-                                style={styles.formInput}
-                                min="0"
-                                step="0.01"
-                                required
-                            />
-                        </div>
-                        <div style={styles.formGroup}>
-                            <label style={styles.formLabel}>Stock*</label>
-                            <input
-                                type="number"
-                                name="stock"
-                                value={newProduct.stock}
-                                onChange={handleNewProductChange}
-                                style={styles.formInput}
-                                min="0"
-                                required
-                            />
-                        </div>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Talle</label>
+                        <select
+                            value={newProduct.talle}
+                            onChange={(e) => setNewProduct({ ...newProduct, talle: e.target.value })}
+                            style={styles.input}
+                            required
+                        >
+                            {TalleOptions.map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </select>
                     </div>
-                    <div style={styles.formRow}>
-                        <div style={styles.formGroup}>
-                            <label style={styles.formLabel}>Código de Barras</label>
-                            <input
-                                type="text"
-                                name="codigo_barras"
-                                value={newProduct.codigo_barras}
-                                onChange={handleNewProductChange}
-                                style={styles.formInput}
-                            />
-                        </div>
-                        <div style={styles.formGroup}>
-                            <label style={styles.formLabel}>Proveedor</label>
-                            <input
-                                type="text"
-                                name="proveedor"
-                                value={newProduct.proveedor}
-                                onChange={handleNewProductChange}
-                                style={styles.formInput}
-                            />
-                        </div>
-                        <div style={styles.formGroup}>
-                            <button type="submit" style={styles.submitButton}>Guardar Producto</button>
-                        </div>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Precio</label>
+                        <input
+                            type="number"
+                            value={newProduct.precio}
+                            onChange={(e) => setNewProduct({ ...newProduct, precio: e.target.value })}
+                            style={styles.input}
+                            required
+                        />
                     </div>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Stock</label>
+                        <input
+                            type="number"
+                            value={newProduct.stock}
+                            onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                            style={styles.input}
+                            required
+                        />
+                    </div>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Código de barras (opcional)</label>
+                        <input
+                            type="text"
+                            value={newProduct.codigo_barras}
+                            onChange={(e) => setNewProduct({ ...newProduct, codigo_barras: e.target.value })}
+                            style={styles.input}
+                        />
+                    </div>
+                    <button type="submit" style={styles.submitButton} disabled={loadingProducts}>
+                        {loadingProducts ? 'Creando...' : 'Crear Producto'}
+                    </button>
                 </form>
             </div>
+            
+            <div style={styles.section}>
+                <div style={styles.tableHeader}>
+                    <h2 style={styles.sectionTitle}>Listado de Productos</h2>
+                    <button onClick={handleImprimirEtiquetas} style={styles.printButton}>Imprimir Etiquetas</button>
+                </div>
+                <div style={styles.filtersContainer}>
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre o talle..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={styles.filterInput}
+                    />
+                    <button onClick={() => fetchProductos()} style={styles.searchButton}>Buscar</button>
+                </div>
+                
+                {loadingProducts ? (
+                    <div style={styles.loadingMessage}>Cargando productos...</div>
+                ) : error ? (
+                    <div style={styles.errorMessage}>{error}</div>
+                ) : (
+                    <>
+                        <table style={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th style={styles.th}>Seleccionar</th>
+                                    <th style={styles.th}>Cantidad de Etiquetas</th>
+                                    <th style={styles.th}>Nombre</th>
+                                    <th style={styles.th}>Talle</th>
+                                    <th style={styles.th}>Precio</th>
+                                    <th style={styles.th}>Stock</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {productos.map(producto => (
+                                    <tr key={producto.id}>
+                                        <td style={styles.td}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={!!etiquetasSeleccionadas[producto.id] && etiquetasSeleccionadas[producto.id] > 0} 
+                                                onChange={(e) => {
+                                                    const isChecked = e.target.checked;
+                                                    const cantidad = isChecked ? 1 : 0;
+                                                    handleEtiquetasChange(producto.id, cantidad);
+                                                }}
+                                            />
+                                        </td>
+                                        <td style={styles.td}>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={etiquetasSeleccionadas[producto.id] || ''}
+                                                onChange={(e) => handleEtiquetasChange(producto.id, parseInt(e.target.value, 10))}
+                                                style={styles.etiquetasInput}
+                                            />
+                                        </td>
+                                        <td style={styles.td}>{producto.nombre}</td>
+                                        <td style={styles.td}>{producto.talle}</td>
+                                        <td style={styles.td}>
+                                            ${parseFloat(producto.precio).toFixed(2)}
+                                            <button onClick={() => {
+                                                setEditProductId(producto.id);
+                                                setEditPrice(producto.precio);
+                                                setShowPriceModal(true);
+                                            }} style={styles.editButton}>Editar</button>
+                                        </td>
+                                        <td style={styles.td}>
+                                            {producto.stock}
+                                            <button onClick={() => {
+                                                setEditProductId(producto.id);
+                                                setEditStock(producto.stock);
+                                                setShowStockModal(true);
+                                            }} style={styles.editButton}>Editar</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        
+                        <div style={styles.paginationContainer}>
+                            <button onClick={() => {
+                                if (prevPage) {
+                                    const pageNumber = new URLSearchParams(new URL(prevPage).search).get('page');
+                                    setCurrentPage(pageNumber ? parseInt(pageNumber, 10) : 1);
+                                    fetchProductos(prevPage);
+                                }
+                            }} disabled={!prevPage} style={styles.paginationButton}>Anterior</button>
+                            <span style={styles.pageNumber}>Página {currentPage} de {totalPages}</span>
+                            <button onClick={() => {
+                                if (nextPage) {
+                                    const pageNumber = new URLSearchParams(new URL(nextPage).search).get('page');
+                                    setCurrentPage(parseInt(pageNumber, 10));
+                                    fetchProductos(nextPage);
+                                }
+                            }} disabled={!nextPage} style={styles.paginationButton}>Siguiente</button>
+                        </div>
+                    </>
+                )}
+            </div>
 
-            {showConfirmModal && (
+            {/* Modal para editar precio */}
+            {showPriceModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
-                        <h3>Confirmar Eliminación</h3>
-                        <p>¿Estás seguro de que quieres eliminar este producto?</p>
-                        <div style={styles.modalButtons}>
-                            <button onClick={confirmAction} style={{ ...styles.modalButton, backgroundColor: '#dc3545' }}>Sí, Eliminar</button>
-                            <button onClick={() => setShowConfirmModal(false)} style={{ ...styles.modalButton, backgroundColor: '#6c757d' }}>Cancelar</button>
+                        <h3>Editar Precio</h3>
+                        <label>Nuevo precio:</label>
+                        <input
+                            type="number"
+                            value={editPrice}
+                            onChange={(e) => setEditPrice(e.target.value)}
+                            style={styles.modalInput}
+                        />
+                        <div style={styles.modalActions}>
+                            <button onClick={handleEditPrice} style={styles.modalConfirmButton}>Guardar</button>
+                            <button onClick={() => setShowPriceModal(false)} style={styles.modalCancelButton}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* Modal para editar stock */}
+            {showStockModal && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3>Editar Stock</h3>
+                        <label>Nuevo stock:</label>
+                        <input
+                            type="number"
+                            value={editStock}
+                            onChange={(e) => setEditStock(e.target.value)}
+                            style={styles.modalInput}
+                        />
+                        <div style={styles.modalActions}>
+                            <button onClick={handleEditStock} style={styles.modalConfirmButton}>Guardar</button>
+                            <button onClick={() => setShowStockModal(false)} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {showEtiquetasModal && (
-                <EtiquetasImpresion
-                    products={productsToPrint}
-                    onClose={handleCloseModal}
-                />
+            {/* Mensaje de error global */}
+            {error && (
+                <div style={styles.errorMessage}>
+                    {error}
+                </div>
             )}
         </div>
     );
@@ -575,12 +446,186 @@ const styles = {
     container: {
         padding: '20px',
         fontFamily: 'Inter, sans-serif',
-        maxWidth: '1400px',
+        maxWidth: '1200px',
         margin: '20px auto',
         backgroundColor: '#f8f9fa',
         borderRadius: '8px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         color: '#333',
+    },
+    header: {
+        textAlign: 'center',
+        marginBottom: '30px',
+    },
+    title: {
+        fontSize: '2.5em',
+        color: '#2c3e50',
+    },
+    section: {
+        backgroundColor: '#ffffff',
+        padding: '25px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        marginBottom: '30px',
+    },
+    sectionTitle: {
+        fontSize: '1.8em',
+        color: '#34495e',
+        marginBottom: '20px',
+        borderBottom: '2px solid #eceff1',
+        paddingBottom: '10px',
+    },
+    form: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '15px',
+    },
+    inputGroup: {
+        display: 'flex',
+        flexDirection: 'column',
+    },
+    label: {
+        marginBottom: '5px',
+        fontWeight: 'bold',
+        color: '#555',
+    },
+    input: {
+        padding: '10px 12px',
+        border: '1px solid #dcdcdc',
+        borderRadius: '5px',
+        fontSize: '1em',
+    },
+    submitButton: {
+        padding: '12px 20px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1.1em',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
+    },
+    tableHeader: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '20px',
+    },
+    printButton: {
+        padding: '10px 20px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
+    },
+    filtersContainer: {
+        display: 'flex',
+        gap: '10px',
+        marginBottom: '20px',
+    },
+    filterInput: {
+        flexGrow: 1,
+        padding: '10px 12px',
+        border: '1px solid #dcdcdc',
+        borderRadius: '5px',
+        fontSize: '1em',
+    },
+    searchButton: {
+        padding: '10px 20px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
+    },
+    table: {
+        width: '100%',
+        borderCollapse: 'collapse',
+        marginTop: '15px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    },
+    th: {
+        padding: '12px 15px',
+        borderBottom: '1px solid #ddd',
+        textAlign: 'left',
+        fontWeight: 'bold',
+        backgroundColor: '#f2f2f2',
+    },
+    td: {
+        padding: '10px 15px',
+        borderBottom: '1px solid #eee',
+        verticalAlign: 'middle',
+    },
+    editButton: {
+        marginLeft: '10px',
+        padding: '4px 8px',
+        backgroundColor: '#ffc107',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        fontSize: '0.8em',
+    },
+    etiquetasInput: {
+        width: '60px',
+        padding: '5px',
+        textAlign: 'center',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+    },
+    modalOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        padding: '30px',
+        borderRadius: '10px',
+        boxShadow: '0 5px 15px rgba(0, 0, 0, 0.3)',
+        textAlign: 'center',
+        maxWidth: '400px',
+        width: '90%',
+    },
+    modalInput: {
+        width: '100%',
+        padding: '10px',
+        marginBottom: '15px',
+        boxSizing: 'border-box',
+    },
+    modalActions: {
+        display: 'flex',
+        justifyContent: 'space-between',
+    },
+    modalConfirmButton: {
+        padding: '10px 20px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+    },
+    modalCancelButton: {
+        padding: '10px 20px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
     },
     loadingMessage: {
         padding: '20px',
@@ -614,151 +659,28 @@ const styles = {
         textAlign: 'center',
         fontWeight: 'bold',
     },
-    alert: {
-        padding: '12px',
-        borderRadius: '5px',
-        marginBottom: '15px',
-    },
-    tableContainer: {
-        backgroundColor: '#ffffff',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        marginBottom: '30px',
-        overflowX: 'auto',
-    },
-    table: {
-        width: '100%',
-        borderCollapse: 'collapse',
-        textAlign: 'left',
-        minWidth: '900px',
-    },
-    th: {
-        padding: '12px',
-        borderBottom: '2px solid #dee2e6',
-        backgroundColor: '#f2f2f2',
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    td: {
-        padding: '12px',
-        borderBottom: '1px solid #e9ecef',
-        verticalAlign: 'middle',
-    },
-    actionButton: {
-        padding: '8px 12px',
-        border: 'none',
-        borderRadius: '4px',
-        color: 'white',
-        cursor: 'pointer',
-        fontWeight: 'bold',
-        marginRight: '5px',
-        transition: 'opacity 0.2s ease',
-    },
-    editInput: {
-        width: '100px',
-        padding: '5px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-    },
-    formContainer: {
-        backgroundColor: '#ffffff',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        marginBottom: '30px',
-    },
-    form: {
+    paginationContainer: {
         display: 'flex',
-        flexDirection: 'column',
-        gap: '20px',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '20px',
+        gap: '10px',
     },
-    formRow: {
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '20px',
-        alignItems: 'flex-end',
-    },
-    formGroup: {
-        flex: 1,
-        minWidth: '200px',
-    },
-    formLabel: {
-        display: 'block',
-        marginBottom: '5px',
-        fontWeight: 'bold',
-        color: '#555',
-    },
-    formInput: {
-        width: '100%',
-        padding: '10px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-    },
-    submitButton: {
-        padding: '12px 20px',
+    paginationButton: {
+        padding: '8px 15px',
         backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease',
-        width: '100%',
-    },
-    modalOverlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        padding: '30px',
-        borderRadius: '8px',
-        textAlign: 'center',
-        minWidth: '350px',
-        boxShadow: '0 5px 15px rgba(0,0,0,0.3)',
-    },
-    modalButtons: {
-        marginTop: '20px',
-        display: 'flex',
-        justifyContent: 'space-around',
-    },
-    modalButton: {
-        padding: '10px 20px',
-        border: 'none',
-        borderRadius: '5px',
-        color: 'white',
-        cursor: 'pointer',
-        fontWeight: 'bold',
-    },
-    printButton: {
-        padding: '10px 20px',
-        backgroundColor: '#28a745',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontWeight: 'bold',
-        marginBottom: '20px',
+        fontSize: '1em',
         transition: 'background-color 0.3s ease',
     },
-    barcodeWrapper: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '5px',
-    },
-    barcodeText: {
-        fontSize: '0.8em',
+    pageNumber: {
+        fontSize: '1em',
+        fontWeight: 'bold',
         color: '#555',
-    }
+    },
 };
 
 export default Productos;
