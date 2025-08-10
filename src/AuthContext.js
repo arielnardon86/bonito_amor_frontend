@@ -62,39 +62,37 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await axios.post(`${BASE_API_ENDPOINT}/api/token/`, { username, password });
             const newToken = response.data.access;
-            localStorage.setItem('token', newToken);
-
-            axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-
+            
+            // Verificación de la tienda directamente del token
             const decodedUser = jwtDecode(newToken);
-            const userStores = await fetchStores();
             
-            // Corrige la llamada a .find()
-            const selectedStore = userStores.results.find(store => store.nombre.toLowerCase().replace(/\s/g, '-') === storeSlug);
-            
-            if (!selectedStore) {
+            // CORRECCIÓN CLAVE: Verificar si la tienda asignada en el token coincide con la seleccionada
+            if (decodedUser.tienda_nombre && decodedUser.tienda_nombre.toLowerCase().replace(/\s/g, '-') === storeSlug) {
+                localStorage.setItem('token', newToken);
+                axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+
+                const userData = {
+                    id: decodedUser.user_id,
+                    username: decodedUser.username,
+                    email: decodedUser.email,
+                    is_staff: decodedUser.is_staff,
+                    is_superuser: decodedUser.is_superuser,
+                };
+    
+                setUser(userData);
+                setToken(newToken);
+                setIsAuthenticated(true);
+                setSelectedStoreSlug(decodedUser.tienda_nombre);
+                localStorage.setItem('selectedStoreSlug', decodedUser.tienda_nombre);
+
+                setLoading(false);
+                return true;
+            } else {
                 setLoading(false);
                 setAuthError("El usuario no tiene acceso a esta tienda.");
                 logout();
                 return false;
             }
-
-            const userData = {
-                id: decodedUser.user_id,
-                username: decodedUser.username,
-                email: decodedUser.email,
-                is_staff: decodedUser.is_staff,
-                is_superuser: decodedUser.is_superuser,
-            };
-
-            setUser(userData);
-            setToken(newToken);
-            setIsAuthenticated(true);
-            setSelectedStoreSlug(selectedStore.nombre);
-            localStorage.setItem('selectedStoreSlug', selectedStore.nombre);
-
-            setLoading(false);
-            return true;
         } catch (err) {
             console.error('Error during login:', err.response ? err.response.data : err.message);
             setAuthError('Credenciales incorrectas o error de conexión.');
@@ -109,8 +107,14 @@ export const AuthProvider = ({ children }) => {
             try {
                 axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
                 const decodedToken = jwtDecode(token);
-                const userResponse = await axios.get(`${BASE_API_ENDPOINT}/api/users/${decodedToken.user_id}/`);
-                const userData = userResponse.data;
+                // No necesitas la segunda llamada, puedes construir el objeto user con los datos del token
+                const userData = {
+                    id: decodedToken.user_id,
+                    username: decodedToken.username,
+                    email: decodedToken.email,
+                    is_staff: decodedToken.is_staff,
+                    is_superuser: decodedToken.is_superuser,
+                };
                 setUser(userData);
                 setIsAuthenticated(true);
             } catch (err) {

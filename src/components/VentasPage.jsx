@@ -311,7 +311,6 @@ const VentasPage = () => {
                     <table style={styles.table}>
                         <thead>
                             <tr style={styles.tableHeaderRow}>
-                                <th style={styles.th}>ID Venta</th>
                                 <th style={styles.th}>Fecha</th>
                                 <th style={styles.th}>Total</th>
                                 <th style={styles.th}>Vendedor</th>
@@ -324,7 +323,6 @@ const VentasPage = () => {
                             {ventas.map(venta => (
                                 <React.Fragment key={venta.id}>
                                     <tr>
-                                        <td style={styles.td}>{venta.id}</td>
                                         <td style={styles.td}>{new Date(venta.fecha_venta).toLocaleString()}</td>
                                         <td style={styles.td}>${parseFloat(venta.total || 0).toFixed(2)}</td> 
                                         <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
@@ -354,7 +352,7 @@ const VentasPage = () => {
                                     {/* Detalles de la venta expandidos */}
                                     {expandedSaleId === venta.id && venta.detalles && (
                                         <tr>
-                                            <td colSpan="7" style={styles.detailRow}>
+                                            <td colSpan="6" style={styles.detailRow}>
                                                 <h4 style={styles.detailHeader}>Detalles de la Venta {venta.id}</h4>
                                                 <table style={styles.detailTable}>
                                                     <thead>

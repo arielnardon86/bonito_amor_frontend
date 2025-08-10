@@ -31,14 +31,14 @@ const MetricasVentas = () => {
 
     // Filtros aplicados
     const [filterYear, setFilterYear] = useState(currentYear);
-    const [filterMonth, setFilterMonth] = useState(''); 
+    const [filterMonth, setFilterMonth] = useState(currentMonth); 
     const [filterDay, setFilterDay] = useState('');     
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
 
     // Filtros pendientes (para los inputs)
     const [pendingFilterYear, setPendingFilterYear] = useState(currentYear);
-    const [pendingFilterMonth, setPendingFilterMonth] = useState('');
+    const [pendingFilterMonth, setPendingFilterMonth] = useState(currentMonth);
     const [pendingFilterDay, setPendingFilterDay] = useState('');
     const [pendingFilterSellerId, setPendingFilterSellerId] = useState('');
     const [pendingFilterPaymentMethod, setPendingFilterPaymentMethod] = useState('');
@@ -104,7 +104,6 @@ const MetricasVentas = () => {
         }
     }, [token]);
     
-    // CORRECCIÓN: El useEffect ahora se dispara cuando los filtros aplicados cambian
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
             fetchMetrics();
@@ -116,7 +115,6 @@ const MetricasVentas = () => {
         }
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchMetrics]);
     
-    // useEffect para cargar vendedores y métodos de pago solo una vez al cargar la página
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
             fetchSellers();
