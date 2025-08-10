@@ -67,14 +67,11 @@ const Productos = () => {
         codigo_barras: '',
     });
     
-    // Estados para la edición en línea
     const [editProduct, setEditProduct] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
 
-    // Estado para la impresión de etiquetas
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
 
-    // Generador de código de barras EAN-13 para Argentina
     const generarCodigoDeBarrasEAN13 = () => {
         let code = '779' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
         let sum = 0;
@@ -105,7 +102,7 @@ const Productos = () => {
             setProductos(response.data.results);
             setNextPage(response.data.next);
             setPrevPage(response.data.previous);
-            setTotalPages(Math.ceil(response.data.count / 10)); // Asumiendo 10 por página
+            setTotalPages(Math.ceil(response.data.count / 10)); 
             setLoadingProducts(false);
         } catch (err) {
             setError('Error al cargar productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
@@ -132,7 +129,8 @@ const Productos = () => {
         const productToCreate = {
             ...newProduct,
             codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
-            // No se envía tienda_slug al backend, el backend lo infiere del usuario
+            // CORRECCIÓN: se agrega el campo tienda_slug al payload
+            tienda_slug: selectedStoreSlug
         };
 
         try {
@@ -147,7 +145,6 @@ const Productos = () => {
         }
     };
     
-    // Maneja la edición completa del producto
     const handleEditProduct = async () => {
         setLoadingProducts(true);
         setError(null);
