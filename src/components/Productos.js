@@ -454,7 +454,7 @@ const styles = {
         margin: '20px auto',
         backgroundColor: '#f8f9fa',
         borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        boxShadow: '0 4px 12px (0,0,0,0.1)',
         color: '#333',
     },
     header: {
