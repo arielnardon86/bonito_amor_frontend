@@ -68,18 +68,21 @@ const Productos = () => {
     });
     
     // Estados para la edición en línea
-    const [editProductId, setEditProductId] = useState(null);
-    const [editPrice, setEditPrice] = useState('');
-    const [editStock, setEditStock] = useState('');
-    const [showPriceModal, setShowPriceModal] = useState(false);
-    const [showStockModal, setShowStockModal] = useState(false);
+    const [editProduct, setEditProduct] = useState(null);
+    const [showEditModal, setShowEditModal] = useState(false);
 
     // Estado para la impresión de etiquetas
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
 
-    // Generador de código de barras
-    const generarCodigoDeBarras = () => {
-        return Math.floor(100000000000 + Math.random() * 900000000000).toString();
+    // Generador de código de barras EAN-13 para Argentina
+    const generarCodigoDeBarrasEAN13 = () => {
+        let code = '779' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
+        let sum = 0;
+        for (let i = 0; i < 12; i++) {
+            sum += parseInt(code[i], 10) * (i % 2 === 0 ? 1 : 3);
+        }
+        const checksum = (10 - (sum % 10)) % 10;
+        return code + checksum.toString();
     };
 
     const fetchProductos = useCallback(async (pageUrl = null) => {
@@ -128,7 +131,7 @@ const Productos = () => {
 
         const productToCreate = {
             ...newProduct,
-            codigo_barras: newProduct.codigo_barras || generarCodigoDeBarras(),
+            codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
             tienda_slug: selectedStoreSlug
         };
 
@@ -144,40 +147,23 @@ const Productos = () => {
         }
     };
     
-    // Maneja la edición de precio
-    const handleEditPrice = async () => {
+    // Maneja la edición completa del producto
+    const handleEditProduct = async () => {
         setLoadingProducts(true);
         setError(null);
         try {
-            await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProductId}/`, { precio: editPrice }, {
+            await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProduct.id}/`, editProduct, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            setEditProductId(null);
-            setShowPriceModal(false);
+            setEditProduct(null);
+            setShowEditModal(false);
             fetchProductos();
         } catch (err) {
-            setError('Error al editar precio: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setError('Error al editar producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
         }
     };
-
-    // Maneja la edición de stock
-    const handleEditStock = async () => {
-        setLoadingProducts(true);
-        setError(null);
-        try {
-            await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProductId}/`, { stock: editStock }, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            setEditProductId(null);
-            setShowStockModal(false);
-            fetchProductos();
-        } catch (err) {
-            setError('Error al editar stock: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
-            setLoadingProducts(false);
-        }
-    };
-
+    
     const handleEtiquetasChange = (id, cantidad) => {
         setEtiquetasSeleccionadas(prev => ({
             ...prev,
@@ -189,22 +175,24 @@ const Productos = () => {
         const etiquetasAImprimir = Object.entries(etiquetasSeleccionadas)
             .filter(([id, cantidad]) => cantidad > 0)
             .map(([id, cantidad]) => {
-                const producto = productos.find(p => p.id === id);
-                return {
+                const producto = productos.find(p => p.id == id);
+                return Array.from({ length: cantidad }, () => ({
                     nombre: producto.nombre,
                     talle: producto.talle,
                     codigo_barras: producto.codigo_barras,
-                    precio: producto.precio,
-                    cantidad: parseInt(cantidad, 10)
-                };
-            });
-    
+                    precio: producto.precio
+                }));
+            })
+            .flat();
+
         if (etiquetasAImprimir.length > 0) {
-            // Lógica para imprimir etiquetas
-            console.log('Etiquetas a imprimir:', etiquetasAImprimir);
-            // resetear selecciones
+            console.log('--- Generando Etiquetas ---');
+            etiquetasAImprimir.forEach((etiqueta, index) => {
+                console.log(`Etiqueta ${index + 1}:`, etiqueta);
+            });
+            console.log('--- Fin de la Impresión ---');
             setEtiquetasSeleccionadas({});
-            alert('Etiquetas enviadas a imprimir (revisar consola para detalles).');
+            alert(`Se han generado ${etiquetasAImprimir.length} etiquetas para imprimir (revisar consola para detalles).`);
         } else {
             alert('No hay etiquetas seleccionadas para imprimir.');
         }
@@ -278,7 +266,7 @@ const Productos = () => {
                         />
                     </div>
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Código de barras (opcional)</label>
+                        <label style={styles.label}>Código de barras (si no se completa, se genera automáticamente)</label>
                         <input
                             type="text"
                             value={newProduct.codigo_barras}
@@ -318,11 +306,12 @@ const Productos = () => {
                             <thead>
                                 <tr>
                                     <th style={styles.th}>Seleccionar</th>
-                                    <th style={styles.th}>Cantidad de Etiquetas</th>
+                                    <th style={styles.th}>Cantidad de etiquetas</th>
                                     <th style={styles.th}>Nombre</th>
                                     <th style={styles.th}>Talle</th>
                                     <th style={styles.th}>Precio</th>
                                     <th style={styles.th}>Stock</th>
+                                    <th style={styles.th}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -331,11 +320,16 @@ const Productos = () => {
                                         <td style={styles.td}>
                                             <input 
                                                 type="checkbox" 
-                                                checked={!!etiquetasSeleccionadas[producto.id] && etiquetasSeleccionadas[producto.id] > 0} 
+                                                checked={!!etiquetasSeleccionadas[producto.id]} 
                                                 onChange={(e) => {
                                                     const isChecked = e.target.checked;
-                                                    const cantidad = isChecked ? 1 : 0;
-                                                    handleEtiquetasChange(producto.id, cantidad);
+                                                    if (isChecked) {
+                                                        handleEtiquetasChange(producto.id, 1);
+                                                    } else {
+                                                        const newSelections = { ...etiquetasSeleccionadas };
+                                                        delete newSelections[producto.id];
+                                                        setEtiquetasSeleccionadas(newSelections);
+                                                    }
                                                 }}
                                             />
                                         </td>
@@ -344,26 +338,19 @@ const Productos = () => {
                                                 type="number"
                                                 min="0"
                                                 value={etiquetasSeleccionadas[producto.id] || ''}
-                                                onChange={(e) => handleEtiquetasChange(producto.id, parseInt(e.target.value, 10))}
+                                                onChange={(e) => handleEtiquetasChange(producto.id, parseInt(e.target.value, 10) || 0)}
                                                 style={styles.etiquetasInput}
+                                                disabled={!etiquetasSeleccionadas[producto.id]}
                                             />
                                         </td>
                                         <td style={styles.td}>{producto.nombre}</td>
                                         <td style={styles.td}>{producto.talle}</td>
+                                        <td style={styles.td}>${parseFloat(producto.precio).toFixed(2)}</td>
+                                        <td style={styles.td}>{producto.stock}</td>
                                         <td style={styles.td}>
-                                            ${parseFloat(producto.precio).toFixed(2)}
                                             <button onClick={() => {
-                                                setEditProductId(producto.id);
-                                                setEditPrice(producto.precio);
-                                                setShowPriceModal(true);
-                                            }} style={styles.editButton}>Editar</button>
-                                        </td>
-                                        <td style={styles.td}>
-                                            {producto.stock}
-                                            <button onClick={() => {
-                                                setEditProductId(producto.id);
-                                                setEditStock(producto.stock);
-                                                setShowStockModal(true);
+                                                setEditProduct({ ...producto });
+                                                setShowEditModal(true);
                                             }} style={styles.editButton}>Editar</button>
                                         </td>
                                     </tr>
@@ -392,50 +379,43 @@ const Productos = () => {
                 )}
             </div>
 
-            {/* Modal para editar precio */}
-            {showPriceModal && (
+            {/* Modal para editar producto */}
+            {showEditModal && editProduct && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
-                        <h3>Editar Precio</h3>
-                        <label>Nuevo precio:</label>
-                        <input
-                            type="number"
-                            value={editPrice}
-                            onChange={(e) => setEditPrice(e.target.value)}
-                            style={styles.modalInput}
-                        />
+                        <h3>Editar Producto</h3>
+                        <div style={styles.inputGroup}>
+                            <label style={styles.label}>Nombre:</label>
+                            <input
+                                type="text"
+                                value={editProduct.nombre}
+                                onChange={(e) => setEditProduct({ ...editProduct, nombre: e.target.value })}
+                                style={styles.modalInput}
+                            />
+                        </div>
+                        <div style={styles.inputGroup}>
+                            <label style={styles.label}>Precio:</label>
+                            <input
+                                type="number"
+                                value={editProduct.precio}
+                                onChange={(e) => setEditProduct({ ...editProduct, precio: e.target.value })}
+                                style={styles.modalInput}
+                            />
+                        </div>
+                        <div style={styles.inputGroup}>
+                            <label style={styles.label}>Stock:</label>
+                            <input
+                                type="number"
+                                value={editProduct.stock}
+                                onChange={(e) => setEditProduct({ ...editProduct, stock: e.target.value })}
+                                style={styles.modalInput}
+                            />
+                        </div>
                         <div style={styles.modalActions}>
-                            <button onClick={handleEditPrice} style={styles.modalConfirmButton}>Guardar</button>
-                            <button onClick={() => setShowPriceModal(false)} style={styles.modalCancelButton}>Cancelar</button>
+                            <button onClick={handleEditProduct} style={styles.modalConfirmButton}>Guardar</button>
+                            <button onClick={() => setShowEditModal(false)} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
-                </div>
-            )}
-            
-            {/* Modal para editar stock */}
-            {showStockModal && (
-                <div style={styles.modalOverlay}>
-                    <div style={styles.modalContent}>
-                        <h3>Editar Stock</h3>
-                        <label>Nuevo stock:</label>
-                        <input
-                            type="number"
-                            value={editStock}
-                            onChange={(e) => setEditStock(e.target.value)}
-                            style={styles.modalInput}
-                        />
-                        <div style={styles.modalActions}>
-                            <button onClick={handleEditStock} style={styles.modalConfirmButton}>Guardar</button>
-                            <button onClick={() => setShowStockModal(false)} style={styles.modalCancelButton}>Cancelar</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Mensaje de error global */}
-            {error && (
-                <div style={styles.errorMessage}>
-                    {error}
                 </div>
             )}
         </div>
