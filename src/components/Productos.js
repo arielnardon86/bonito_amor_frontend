@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
-import JsBarcode from 'jsbarcode'; // Importa la librería
+import JsBarcode from 'jsbarcode';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
@@ -132,7 +132,7 @@ const Productos = () => {
         const productToCreate = {
             ...newProduct,
             codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
-            tienda_slug: selectedStoreSlug
+            tienda_slug: selectedStoreSlug,
         };
 
         try {
@@ -176,69 +176,18 @@ const Productos = () => {
     };
     
     const handleImprimirEtiquetas = () => {
-        const etiquetasAImprimir = Object.entries(etiquetasSeleccionadas)
+        const productosParaImprimir = Object.entries(etiquetasSeleccionadas)
             .filter(([id, cantidad]) => cantidad > 0)
             .map(([id, cantidad]) => {
                 const producto = productos.find(p => p.id == id);
-                return Array.from({ length: cantidad }, () => ({
-                    nombre: producto.nombre,
-                    talle: producto.talle,
-                    codigo_barras: producto.codigo_barras,
-                    precio: producto.precio
-                }));
-            })
-            .flat();
-
-        if (etiquetasAImprimir.length > 0) {
-            const printWindow = window.open('', '', 'height=600,width=800');
-            printWindow.document.write('<html><head><title>Etiquetas</title>');
-            printWindow.document.write('<style>');
-            printWindow.document.write(`
-                @page { size: 72mm auto; margin: 0; }
-                body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-                .label-container { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; width: 72mm; box-sizing: border-box; }
-                .label { padding: 2mm; margin-bottom: 2mm; display: inline-block; width: 72mm; text-align: center; font-size: 10px; page-break-inside: avoid; box-sizing: border-box; vertical-align: top; overflow: hidden; }
-                .label p { margin: 0; font-size: 8px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-                .label .barcode-wrapper { margin-top: 2px; margin-bottom: 2px; }
-                .label .price { font-weight: bold; font-size: 10px; margin-top: 2px; }
-                @media print {
-                  button { display: none !important; }
-                  body { margin: 0; padding: 0; }
-                  .label-container { width: 100%; display: block; }
-                  .label { width: 100%; margin-left: 0; margin-right: 0; }
-                }
-            `);
-            printWindow.document.write('</style></head><body><div class="label-container">');
-
-            etiquetasAImprimir.forEach((etiqueta) => {
-                const tempDiv = printWindow.document.createElement('div');
-                tempDiv.className = 'label';
-                
-                const barcodeContainer = document.createElement('div');
-                JsBarcode(barcodeContainer, etiqueta.codigo_barras, {
-                    format: 'EAN13',
-                    displayValue: true,
-                    fontSize: 12,
-                    width: 1,
-                    height: 30
-                });
-
-                tempDiv.innerHTML = `
-                    <p><strong>${etiqueta.nombre}</strong></p>
-                    <p>Talle: ${etiqueta.talle}</p>
-                    <div class="barcode-wrapper"></div>
-                    <p>Precio: $${parseFloat(etiqueta.precio).toFixed(2)}</p>
-                `;
-                tempDiv.querySelector('.barcode-wrapper').appendChild(barcodeContainer.querySelector('svg'));
-                printWindow.document.write(tempDiv.outerHTML);
+                return {
+                    ...producto,
+                    labelQuantity: parseInt(cantidad, 10)
+                };
             });
-
-            printWindow.document.write('</div></body></html>');
-            printWindow.document.close();
-            printWindow.focus();
-            printWindow.print();
-            setEtiquetasSeleccionadas({});
-            alert(`Se han generado ${etiquetasAImprimir.length} etiquetas para imprimir.`);
+        
+        if (productosParaImprimir.length > 0) {
+            navigate('/etiquetas', { state: { productosParaImprimir } });
         } else {
             alert('No hay etiquetas seleccionadas para imprimir.');
         }

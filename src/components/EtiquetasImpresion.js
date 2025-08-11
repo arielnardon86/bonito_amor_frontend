@@ -1,161 +1,76 @@
 // BONITO_AMOR/frontend/src/components/EtiquetasImpresion.js
-import React from 'react';
-import Barcode from 'react-barcode';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import JsBarcode from 'jsbarcode';
 
-function EtiquetasImpresion({ productosParaImprimir }) {
-  // Estilos para la impresión
-  const printStyles = `
-    @page {
-      size: 72mm auto; /* Ancho de 72mm, alto automático */
-      margin: 0; /* Márgenes a cero para aprovechar todo el ancho del rollo */
-    }
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-    .label-container {
-      display: flex;
-      flex-wrap: wrap;
-      /* No se usa 'gap' en el contenedor principal para controlar mejor el espaciado
-         entre etiquetas individuales con su propio margen. */
-      justify-content: flex-start;
-      align-items: flex-start;
-      width: 72mm; /* Asegura que el contenedor se ajuste al ancho del rollo */
-      box-sizing: border-box;
-    }
-    .label {
-      /* border: 0.5px solid #eee; */ /* Borde muy sutil para visualización en pantalla, se puede quitar en impresión final */
-      padding: 2mm;           /* Pequeño padding interno */
-      margin: 0;              /* Sin margen en el div de la etiqueta, el espaciado se maneja con el flujo */
-      display: inline-block;  /* Para que las etiquetas se coloquen una al lado de la otra */
-      width: 72mm;            /* Ancho del rollo de la impresora térmica (72mm) */
-      height: auto;           /* Alto automático según el contenido */
-      min-height: 25mm;       /* Altura mínima para asegurar espacio */
-      text-align: center;
-      font-size: 10px;         /* Fuente más pequeña para etiquetas */
-      page-break-inside: avoid; /* Evita que una etiqueta se corte entre páginas */
-      box-sizing: border-box;  /* Incluir padding y borde en el ancho/alto */
-      vertical-align: top;     /* Asegura que las etiquetas se alineen correctamente */
-      overflow: hidden;       /* Oculta contenido que se desborde */
-      /* Añadir un margen inferior para separar cada etiqueta si son continuas */
-      margin-bottom: 2mm; 
-    }
-    .label:last-child {
-        margin-bottom: 0; /* No hay margen inferior para la última etiqueta */
-    }
-    .label p {
-      margin: 0;
-      font-size: 8px;
-      line-height: 1;
-      white-space: nowrap; /* Evita saltos de línea en el nombre */
-      overflow: hidden; /* Oculta el texto que se desborda */
-      text-overflow: ellipsis; /* Añade puntos suspensivos si el texto es muy largo */
-      max-width: 100%; /* Asegura que el texto no se desborde */
-    }
-    .label .barcode-wrapper {
-      margin-top: 2px;
-      margin-bottom: 2px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-grow: 1; /* Permite que el código de barras ocupe el espacio disponible */
-    }
-    .label .barcode-wrapper svg {
-      width: 100%; /* Ajusta el ancho del SVG al contenedor */
-      height: auto;
-    }
-    .label .price {
-      font-weight: bold;
-      font-size: 10px;
-      margin-top: 2px;
-    }
-    /* Ocultar elementos que no son para impresión */
-    @media print {
-      button {
-        display: none !important;
-      }
-      /* Asegurarse de que el body no tenga márgenes en la impresión */
-      body {
-        margin: 0;
-        padding: 0;
-      }
-      /* Forzar que el contenedor de etiquetas use el ancho completo de la página de impresión */
-      .label-container {
-        width: 100%;
-        display: block; /* Cambiar a block para que cada etiqueta ocupe su propia línea si es necesario */
-      }
-      .label {
-        width: 100%; /* La etiqueta toma el 100% del ancho disponible en la página de impresión */
-        margin-left: 0;
-        margin-right: 0;
-      }
-    }
-  `;
+function EtiquetasImpresion() {
+    const location = useLocation();
+    const productosParaImprimir = location.state?.productosParaImprimir || [];
 
-  // Prepara las etiquetas para imprimir, duplicando según labelQuantity
-  const labelsToRender = [];
-  productosParaImprimir.forEach(item => {
-    const product = item; // El objeto ya es el producto con labelQuantity
-    const quantity = product.labelQuantity || 1; // Asegura al menos 1 etiqueta
+    useEffect(() => {
+        if (productosParaImprimir.length > 0) {
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Etiquetas</title>');
+            printWindow.document.write('<style>');
+            printWindow.document.write(`
+                @page { size: 72mm auto; margin: 0; }
+                body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+                .label-container { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; width: 72mm; box-sizing: border-box; }
+                .label { padding: 2mm; margin-bottom: 2mm; display: inline-block; width: 72mm; text-align: center; font-size: 10px; page-break-inside: avoid; box-sizing: border-box; vertical-align: top; overflow: hidden; }
+                .label p { margin: 0; font-size: 8px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+                .label .barcode-wrapper { margin-top: 2px; margin-bottom: 2px; }
+                .label .price { font-weight: bold; font-size: 10px; margin-top: 2px; }
+                @media print {
+                  button { display: none !important; }
+                  body { margin: 0; padding: 0; }
+                  .label-container { width: 100%; display: block; }
+                  .label { width: 100%; margin-left: 0; margin-right: 0; }
+                }
+            `);
+            printWindow.document.write('</style></head><body><div class="label-container">');
 
-    for (let i = 0; i < quantity; i++) {
-      console.log("Valor para código de barras:", product.codigo_barras);
+            productosParaImprimir.forEach((producto) => {
+                const tempDiv = printWindow.document.createElement('div');
+                tempDiv.className = 'label';
+                
+                const barcodeContainer = document.createElement('div');
+                JsBarcode(barcodeContainer, producto.codigo_barras, {
+                    format: 'EAN13',
+                    displayValue: true,
+                    fontSize: 12,
+                    width: 1,
+                    height: 30
+                });
 
-      let displayPrice = '0.00'; // Valor por defecto
+                tempDiv.innerHTML = `
+                    <p><strong>${producto.nombre}</strong></p>
+                    <p>Talle: ${producto.talle}</p>
+                    <div class="barcode-wrapper"></div>
+                    <p>Precio: $${parseFloat(producto.precio).toFixed(2)}</p>
+                `;
+                if (barcodeContainer.querySelector('svg')) {
+                    tempDiv.querySelector('.barcode-wrapper').appendChild(barcodeContainer.querySelector('svg'));
+                }
+                
+                printWindow.document.write(tempDiv.outerHTML);
+            });
 
-      // *** CAMBIO CLAVE AQUÍ: Usar product.precio en lugar de product.precio_venta ***
-      if (product.precio !== null && product.precio !== undefined) {
-        // Convertir a string y reemplazar comas por puntos para asegurar un parseo correcto
-        const priceString = String(product.precio).replace(',', '.');
-        const parsedPrice = parseFloat(priceString);
-
-        if (!isNaN(parsedPrice)) {
-          displayPrice = parsedPrice.toFixed(2);
+            printWindow.document.write('</div></body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
         } else {
-          console.warn(`Error: parseFloat resultó en NaN para el precio del producto ${product.id}. Valor original:`, product.precio);
+            // Manejar el caso de que no haya productos para imprimir
+            window.close(); // Cierra la ventana si no hay nada que imprimir
         }
-      } else {
-        console.warn(`precio es null o undefined para el producto ${product.id}.`);
-      }
+    }, [productosParaImprimir]);
 
-      labelsToRender.push(
-        <div key={`${product.id}-${i}`} className="label">
-          <p style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '1mm' }}>{product.nombre}</p>
-          {product.talle && <p style={{ fontSize: '9px', marginBottom: '1mm', color: '#555' }}>Talle: {product.talle}</p>}
-          <div className="barcode-wrapper">
-            {/* Asegúrate de que product.codigo_barras no sea null/undefined antes de usarlo */}
-            {product.codigo_barras ? (
-              <Barcode
-                value={String(product.codigo_barras)} // Asegura que el valor sea una cadena
-                format="CODE128" // ¡Cambiado a CODE128 para compatibilidad con UUIDs!
-                width={1.2} // Ajusta el grosor de las barras. Puedes reducirlo (ej. 1.0, 0.8) si el código es muy ancho para 72mm.
-                height={30} // Ajusta la altura del código de barras para ahorrar espacio
-                displayValue={true} // Mostrar el número debajo del código de barras
-                fontSize={9} // Tamaño de la fuente del número
-                textMargin={2} // Margen entre el código y el texto
-                background="#ffffff"
-                lineColor="#000000"
-              />
-            ) : (
-              <span style={{ fontSize: '8px', color: '#888' }}>Sin código</span>
-            )}
-          </div>
-          {/* Usar la variable displayPrice que ya está validada y formateada */}
-          <p className="price" style={{ marginTop: '1mm', fontSize: '13px', fontWeight: 'bold' }}>${displayPrice}</p>
+    return (
+        <div>
+            <h1>Preparando etiquetas para imprimir...</h1>
+            <p>Por favor, revisa el diálogo de impresión.</p>
         </div>
-      );
-    }
-  });
-
-  return (
-    <div>
-      <style>{printStyles}</style> {/* Inyecta los estilos de impresión */}
-      <div className="label-container">
-        {labelsToRender}
-      </div>
-    </div>
-  );
+    );
 }
 
 export default EtiquetasImpresion;
