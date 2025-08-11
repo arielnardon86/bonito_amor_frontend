@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
-import JsBarcode from 'jsbarcode';
+import JsBarcode from 'jsbarcode'; // Importa la librería
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
@@ -132,7 +132,7 @@ const Productos = () => {
         const productToCreate = {
             ...newProduct,
             codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
-            tienda_slug: selectedStoreSlug,
+            tienda_slug: selectedStoreSlug
         };
 
         try {
