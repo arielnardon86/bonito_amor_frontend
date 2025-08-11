@@ -9,12 +9,32 @@ function EtiquetasImpresion() {
 
     useEffect(() => {
         if (productosParaImprimir.length > 0) {
-            // Este código se ejecuta una vez que la página se carga
-            // Genera y muestra las etiquetas para la impresión automática
-            
-            const labelsToRender = productosParaImprimir.map((producto) => {
-                const svgContainer = document.createElement('div');
-                JsBarcode(svgContainer, producto.codigo_barras, {
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Etiquetas</title>');
+            printWindow.document.write('<style>');
+            printWindow.document.write(`
+                @page { size: 72mm auto; margin: 0; }
+                body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+                .label-container { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; width: 72mm; box-sizing: border-box; }
+                .label { padding: 2mm; margin-bottom: 2mm; display: inline-block; width: 72mm; text-align: center; font-size: 10px; page-break-inside: avoid; box-sizing: border-box; vertical-align: top; overflow: hidden; }
+                .label p { margin: 0; font-size: 8px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+                .label .barcode-wrapper { margin-top: 2px; margin-bottom: 2px; }
+                .label .price { font-weight: bold; font-size: 10px; margin-top: 2px; }
+                @media print {
+                  button { display: none !important; }
+                  body { margin: 0; padding: 0; }
+                  .label-container { width: 100%; display: block; }
+                  .label { width: 100%; margin-left: 0; margin-right: 0; }
+                }
+            `);
+            printWindow.document.write('</style></head><body><div class="label-container">');
+
+            productosParaImprimir.forEach((producto) => {
+                const tempDiv = printWindow.document.createElement('div');
+                tempDiv.className = 'label';
+                
+                const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                JsBarcode(svgElement, producto.codigo_barras, {
                     format: 'EAN13',
                     displayValue: true,
                     fontSize: 12,
@@ -22,46 +42,25 @@ function EtiquetasImpresion() {
                     height: 30
                 });
 
-                return `
-                    <div class="label">
-                        <p><strong>${producto.nombre}</strong></p>
-                        <p>Talle: ${producto.talle}</p>
-                        <div class="barcode-wrapper">
-                            ${svgContainer.innerHTML}
-                        </div>
-                        <p>Precio: $${parseFloat(producto.precio).toFixed(2)}</p>
-                    </div>
+                tempDiv.innerHTML = `
+                    <p><strong>${producto.nombre}</strong></p>
+                    <p>Talle: ${producto.talle}</p>
+                    <div class="barcode-wrapper"></div>
+                    <p>Precio: $${parseFloat(producto.precio).toFixed(2)}</p>
                 `;
-            }).join('');
+                if (svgElement) {
+                    tempDiv.querySelector('.barcode-wrapper').appendChild(svgElement);
+                }
+                
+                printWindow.document.write(tempDiv.outerHTML);
+            });
 
-            const printableContent = `
-                <html>
-                <head>
-                    <title>Etiquetas</title>
-                    <style>
-                        @page { size: 72mm auto; margin: 0; }
-                        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-                        .label-container { display: flex; flex-wrap: wrap; width: 72mm; box-sizing: border-box; }
-                        .label { padding: 2mm; margin-bottom: 2mm; display: inline-block; width: 72mm; text-align: center; font-size: 10px; page-break-inside: avoid; box-sizing: border-box; vertical-align: top; overflow: hidden; }
-                        .label p { margin: 0; font-size: 8px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-                        .label .barcode-wrapper { margin-top: 2px; margin-bottom: 2px; }
-                        .label .price { font-weight: bold; font-size: 10px; margin-top: 2px; }
-                        @media print {
-                          body { margin: 0; padding: 0; }
-                          .label-container { width: 100%; display: block; }
-                          .label { width: 100%; margin-left: 0; margin-right: 0; }
-                        }
-                    </style>
-                </head>
-                <body onload="window.print(); window.close();">
-                    <div class="label-container">${labelsToRender}</div>
-                </body>
-                </html>
-            `;
-            
-            const printWindow = window.open('', '', 'height=600,width=800');
-            printWindow.document.write(printableContent);
+            printWindow.document.write('</div></body></html>');
             printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        } else {
+            window.close();
         }
     }, [productosParaImprimir]);
 
