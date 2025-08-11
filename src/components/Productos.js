@@ -76,7 +76,7 @@ const Productos = () => {
 
     // Generador de código de barras EAN-13 para Argentina
     const generarCodigoDeBarrasEAN13 = () => {
-        let code = '779' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
+        let code = '779' + Math.floor(100000000 + Math.random() * 900000000).toString();
         let sum = 0;
         for (let i = 0; i < 12; i++) {
             sum += parseInt(code[i], 10) * (i % 2 === 0 ? 1 : 3);
