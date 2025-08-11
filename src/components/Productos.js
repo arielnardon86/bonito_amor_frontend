@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
-import Barcode from 'react-barcode';
+import JsBarcode from 'jsbarcode';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
@@ -67,11 +67,14 @@ const Productos = () => {
         codigo_barras: '',
     });
     
+    // Estados para la edición en línea
     const [editProduct, setEditProduct] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
 
+    // Estado para la impresión de etiquetas
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
 
+    // Generador de código de barras EAN-13 para Argentina
     const generarCodigoDeBarrasEAN13 = () => {
         let code = '779' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
         let sum = 0;
@@ -102,7 +105,7 @@ const Productos = () => {
             setProductos(response.data.results);
             setNextPage(response.data.next);
             setPrevPage(response.data.previous);
-            setTotalPages(Math.ceil(response.data.count / 10)); 
+            setTotalPages(Math.ceil(response.data.count / 10)); // Asumiendo 10 por página
             setLoadingProducts(false);
         } catch (err) {
             setError('Error al cargar productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
@@ -129,8 +132,7 @@ const Productos = () => {
         const productToCreate = {
             ...newProduct,
             codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
-            // CORRECCIÓN: se agrega el campo tienda_slug al payload
-            tienda_slug: selectedStoreSlug
+            tienda_slug: selectedStoreSlug,
         };
 
         try {
@@ -145,11 +147,16 @@ const Productos = () => {
         }
     };
     
+    // Maneja la edición completa del producto
     const handleEditProduct = async () => {
         setLoadingProducts(true);
         setError(null);
         try {
-            await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProduct.id}/`, editProduct, {
+            const updatedProduct = {
+                ...editProduct,
+                tienda_slug: selectedStoreSlug
+            };
+            await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProduct.id}/`, updatedProduct, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setEditProduct(null);
@@ -187,25 +194,43 @@ const Productos = () => {
             printWindow.document.write('<html><head><title>Etiquetas</title>');
             printWindow.document.write('<style>');
             printWindow.document.write(`
+                @page { size: 72mm auto; margin: 0; }
                 body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-                .label-container { display: flex; flex-wrap: wrap; }
-                .label { border: 1px solid #ccc; padding: 10px; margin: 5px; text-align: center; font-size: 10px; }
-                .label p { margin: 0; }
-                .label .barcode-wrapper { margin-top: 5px; }
+                .label-container { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; width: 72mm; box-sizing: border-box; }
+                .label { padding: 2mm; margin-bottom: 2mm; display: inline-block; width: 72mm; text-align: center; font-size: 10px; page-break-inside: avoid; box-sizing: border-box; vertical-align: top; overflow: hidden; }
+                .label p { margin: 0; font-size: 8px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+                .label .barcode-wrapper { margin-top: 2px; margin-bottom: 2px; }
+                .label .price { font-weight: bold; font-size: 10px; margin-top: 2px; }
+                @media print {
+                  button { display: none !important; }
+                  body { margin: 0; padding: 0; }
+                  .label-container { width: 100%; display: block; }
+                  .label { width: 100%; margin-left: 0; margin-right: 0; }
+                }
             `);
             printWindow.document.write('</style></head><body><div class="label-container">');
 
             etiquetasAImprimir.forEach((etiqueta) => {
-                printWindow.document.write(`
-                    <div class="label">
-                        <p><strong>${etiqueta.nombre}</strong></p>
-                        <p>Talle: ${etiqueta.talle}</p>
-                        <div class="barcode-wrapper">
-                            ${etiqueta.codigo_barras ? `<img src="data:image/png;base64,${btoa(new Barcode(printWindow.document.createElement('canvas'), etiqueta.codigo_barras, { format: 'EAN13', displayValue: true, fontSize: 12 }).canvas.toDataURL())}" alt="Barcode"/>` : '<span>Sin código</span>'}
-                        </div>
-                        <p>Precio: $${parseFloat(etiqueta.precio).toFixed(2)}</p>
-                    </div>
-                `);
+                const tempDiv = printWindow.document.createElement('div');
+                tempDiv.className = 'label';
+                
+                const barcodeContainer = document.createElement('div');
+                JsBarcode(barcodeContainer, etiqueta.codigo_barras, {
+                    format: 'EAN13',
+                    displayValue: true,
+                    fontSize: 12,
+                    width: 1,
+                    height: 30
+                });
+
+                tempDiv.innerHTML = `
+                    <p><strong>${etiqueta.nombre}</strong></p>
+                    <p>Talle: ${etiqueta.talle}</p>
+                    <div class="barcode-wrapper"></div>
+                    <p>Precio: $${parseFloat(etiqueta.precio).toFixed(2)}</p>
+                `;
+                tempDiv.querySelector('.barcode-wrapper').appendChild(barcodeContainer.querySelector('svg'));
+                printWindow.document.write(tempDiv.outerHTML);
             });
 
             printWindow.document.write('</div></body></html>');
