@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, Navigate } from 'react-router-dom';
+import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 
 import Productos from './components/Productos';
 import PuntoVenta from './components/PuntoVenta';
@@ -8,7 +8,7 @@ import RegistroCompras from './components/RegistroCompras';
 import ProtectedRoute from './components/ProtectedRoute'; 
 import { AuthProvider, useAuth } from './AuthContext'; 
 import { SalesProvider } from './components/SalesContext'; 
-import EtiquetasImpresion from './components/EtiquetasImpresion'; // NUEVA IMPORTACIÓN
+import EtiquetasImpresion from './components/EtiquetasImpresion';
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
@@ -21,8 +21,9 @@ import { faBars, faTimes } from '@fortawesome/free-solid-svg-icons';
 
 // Componente para la navegación
 const Navbar = () => {
-  const { isAuthenticated, user, logout, stores, selectedStoreSlug, selectStore } = useAuth(); 
+  const { isAuthenticated, user, logout, selectedStoreSlug } = useAuth(); 
   const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
@@ -43,6 +44,10 @@ const Navbar = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [isOpen]);
 
+  // Si estamos en la página de etiquetas, no mostramos la barra de navegación
+  if (location.pathname === '/etiquetas') {
+    return null;
+  }
 
   return (
     <nav className="navbar">
@@ -52,7 +57,6 @@ const Navbar = () => {
         </Link>
       </div>
 
-      {/* La barra de navegación solo muestra enlaces si el usuario está autenticado */}
       {isAuthenticated && (
         <>
           <div className="menu-icon" onClick={toggleMenu}>
@@ -60,25 +64,22 @@ const Navbar = () => {
           </div>
 
           <ul className={isOpen ? "nav-links active" : "nav-links"}>
-            {/* Mostrar el nombre de la tienda seleccionada si existe */}
             {selectedStoreSlug && (
                 <li className="store-name-display">
                     Tienda: <strong>{selectedStoreSlug}</strong>
                 </li>
             )}
 
-            {/* Punto de Venta: Accesible para Staff y Superusuarios */}
             {user && (user.is_staff || user.is_superuser) && ( 
                 <li onClick={() => setIsOpen(false)}><Link to="/punto-venta">Punto de Venta</Link></li>
             )}
             
-            {/* Gestión de Productos, Métricas, Ventas, Compras: Solo para Superusuarios */}
             {user && user.is_superuser && ( 
                 <>
                     <li onClick={() => setIsOpen(false)}><Link to="/productos">Gestión de Productos</Link></li>
                     <li onClick={() => setIsOpen(false)}><Link to="/metricas-ventas">Métricas de Ventas</Link></li>
                     <li onClick={() => setIsOpen(false)}><Link to="/ventas">Listado de Ventas</Link></li>
-                    <li onClick={() => setIsOpen(false)}><Link to="/registro-compras">Registro de Egresos</Link></li> {/* NUEVO ENLACE */}
+                    <li onClick={() => setIsOpen(false)}><Link to="/registro-compras">Registro de Egresos</Link></li>
                 </>
             )}
             
@@ -107,31 +108,25 @@ const AppContent = () => {
       <Navbar /> 
       <div className="container" style={{ padding: '20px' }}>
         <Routes>
-          {/* Ruta de login, ahora puede recibir un storeSlug opcional */}
           <Route path="/login/:storeSlug" element={<Login />} />
-          <Route path="/login" element={<Login />} /> {/* Ruta sin storeSlug */}
+          <Route path="/login" element={<Login />} />
 
-          {/* Lógica para la ruta raíz ("/") */}
           <Route path="/" element={
             isAuthenticated && selectedStoreSlug ? (
-              // Si está autenticado Y tiene tienda seleccionada, va al Punto de Venta
               <ProtectedRoute staffOnly={true}>
                 <PuntoVenta />
               </ProtectedRoute>
             ) : (
-              // Si no está autenticado O no tiene tienda seleccionada, va a HomePage
               <HomePage />
             )
           } />
 
-          {/* Rutas Protegidas que requieren autenticación y tienda seleccionada */}
           {isAuthenticated && selectedStoreSlug && (user?.is_staff || user?.is_superuser) && (
             <>
               <Route path="/punto-venta" element={<PuntoVenta />} />
             </>
           )}
 
-          {/* Superuser-only routes */}
           {isAuthenticated && selectedStoreSlug && user?.is_superuser && (
             <>
               <Route path="/productos" element={
@@ -154,17 +149,14 @@ const AppContent = () => {
                   <RegistroCompras />
                 </ProtectedRoute>
               } />
-              {/* NUEVA RUTA PARA IMPRIMIR ETIQUETAS */}
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />
             </>
           )}
 
-          {/* Redirigir usuarios autenticados sin tienda seleccionada a la página de inicio para que elijan una */}
           {isAuthenticated && !selectedStoreSlug && (
             <Route path="*" element={<Navigate to="/" replace />} />
           )}
 
-          {/* Si no está autenticado y no está en /login, o si está autenticado pero sin tienda, va a HomePage */}
           {(!isAuthenticated || (isAuthenticated && !selectedStoreSlug)) && 
             <Route path="*" element={<Navigate to="/" replace />} />
           }
@@ -173,7 +165,7 @@ const AppContent = () => {
       </div>
     </>
   );
-}
+};
 
 function App() {
   return (
