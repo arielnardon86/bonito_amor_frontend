@@ -67,9 +67,11 @@ const Productos = () => {
         codigo_barras: '',
     });
     
-    // Estados para la edición en línea
+    // Estados para la edición y eliminación
     const [editProduct, setEditProduct] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [productToDelete, setProductToDelete] = useState(null);
 
     // Estado para la impresión de etiquetas
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
@@ -168,6 +170,23 @@ const Productos = () => {
         }
     };
     
+    // Maneja la eliminación del producto
+    const handleDeleteProduct = async (id) => {
+        setLoadingProducts(true);
+        setError(null);
+        try {
+            await axios.delete(`${BASE_API_ENDPOINT}/api/productos/${id}/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setShowDeleteModal(false);
+            setProductToDelete(null);
+            fetchProductos();
+        } catch (err) {
+            setError('Error al eliminar producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setLoadingProducts(false);
+        }
+    };
+
     const handleEtiquetasChange = (id, cantidad) => {
         setEtiquetasSeleccionadas(prev => ({
             ...prev,
@@ -347,6 +366,10 @@ const Productos = () => {
                                                 setEditProduct({ ...producto });
                                                 setShowEditModal(true);
                                             }} style={styles.editButton}>Editar</button>
+                                            <button onClick={() => {
+                                                setProductToDelete(producto);
+                                                setShowDeleteModal(true);
+                                            }} style={{ ...styles.deleteButton, marginLeft: '10px' }}>Eliminar</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -413,6 +436,20 @@ const Productos = () => {
                     </div>
                 </div>
             )}
+            
+            {/* Modal de confirmación para eliminar */}
+            {showDeleteModal && productToDelete && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3>Confirmar Eliminación</h3>
+                        <p>¿Estás seguro de que quieres eliminar el producto <strong>{productToDelete.nombre}</strong>?</p>
+                        <div style={styles.modalActions}>
+                            <button onClick={() => handleDeleteProduct(productToDelete.id)} style={{...styles.modalConfirmButton, backgroundColor: '#dc3545'}}>Eliminar</button>
+                            <button onClick={() => setShowDeleteModal(false)} style={styles.modalCancelButton}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -425,7 +462,7 @@ const styles = {
         margin: '20px auto',
         backgroundColor: '#f8f9fa',
         borderRadius: '8px',
-        boxShadow: '0 4px 12px (0,0,0,0.1)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         color: '#333',
     },
     header: {
@@ -540,13 +577,22 @@ const styles = {
         verticalAlign: 'middle',
     },
     editButton: {
-        marginLeft: '10px',
         padding: '4px 8px',
         backgroundColor: '#ffc107',
         border: 'none',
         borderRadius: '3px',
         cursor: 'pointer',
         fontSize: '0.8em',
+        color: '#333'
+    },
+    deleteButton: {
+        padding: '4px 8px',
+        backgroundColor: '#dc3545',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        fontSize: '0.8em',
+        color: 'white',
     },
     etiquetasInput: {
         width: '60px',
