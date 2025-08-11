@@ -107,22 +107,16 @@ const MetricasVentas = () => {
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
             fetchMetrics();
+            fetchSellers();
+            fetchPaymentMethods();
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
             setError("Acceso denegado. Solo los superusuarios pueden ver las métricas.");
             setLoading(false);
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false);
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchMetrics]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchMetrics, fetchSellers, fetchPaymentMethods]);
     
-    useEffect(() => {
-        if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
-            fetchSellers();
-            fetchPaymentMethods();
-        }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchPaymentMethods]);
-
-
     const handleApplyFilters = () => {
         setFilterYear(pendingFilterYear);
         setFilterMonth(pendingFilterMonth);
@@ -383,7 +377,7 @@ const styles = {
         margin: '20px auto',
         backgroundColor: '#f8f9fa',
         borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        boxShadow: '0 4px 12px (0,0,0,0.1)',
         color: '#333',
     },
     loadingMessage: {
