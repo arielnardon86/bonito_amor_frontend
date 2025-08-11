@@ -1,14 +1,14 @@
-// BONITO_AMOR/frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, Navigate } from 'react-router-dom';
 
 import Productos from './components/Productos';
 import PuntoVenta from './components/PuntoVenta';
 import Login from './components/Login';
-import RegistroCompras from './components/RegistroCompras'; // NUEVA IMPORTACIÓN
+import RegistroCompras from './components/RegistroCompras'; 
 import ProtectedRoute from './components/ProtectedRoute'; 
 import { AuthProvider, useAuth } from './AuthContext'; 
 import { SalesProvider } from './components/SalesContext'; 
+import EtiquetasImpresion from './components/EtiquetasImpresion'; // NUEVA IMPORTACIÓN
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
@@ -154,6 +154,8 @@ const AppContent = () => {
                   <RegistroCompras />
                 </ProtectedRoute>
               } />
+              {/* NUEVA RUTA PARA IMPRIMIR ETIQUETAS */}
+              <Route path="/etiquetas" element={<EtiquetasImpresion />} />
             </>
           )}
 
