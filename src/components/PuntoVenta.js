@@ -256,34 +256,35 @@ const PuntoVenta = () => {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
 
-                    // Obtener los datos completos de la venta recién creada
-                    if (!response.data.id) {
+                    // Si el post fue exitoso, el backend debería devolver el ID
+                    if (response.data.id) {
+                        // Ahora hacemos una nueva solicitud GET para obtener los datos completos, incluyendo los nombres de los productos y la tienda
+                        const ventaCompletaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${response.data.id}/`, {
+                            headers: { 'Authorization': `Bearer ${token}` },
+                        });
+                        const ventaCompleta = ventaCompletaResponse.data;
+
+                        showCustomAlert('Venta procesada con éxito. ID: ' + ventaCompleta.id, 'success');
+                        
+                        finalizeCart(activeCartId);
+                        setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
+                        setDescuentoPorcentaje(0);
+
+                        Swal.fire({
+                            title: 'Venta procesada!',
+                            text: '¿Desea imprimir el recibo?',
+                            icon: 'success',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, imprimir',
+                            cancelButtonText: 'No',
+                        }).then((printResult) => {
+                            if (printResult.isConfirmed) {
+                                navigate('/recibo', { state: { venta: ventaCompleta } });
+                            }
+                        });
+                    } else {
                         throw new Error('No se recibió el ID de la venta.');
                     }
-                    const ventaCompletaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${response.data.id}/`, {
-                        headers: { 'Authorization': `Bearer ${token}` },
-                    });
-                    const ventaCompleta = ventaCompletaResponse.data;
-                    
-                    showCustomAlert('Venta procesada con éxito. ID: ' + ventaCompleta.id, 'success');
-                    
-                    finalizeCart(activeCartId);
-                    setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
-                    setDescuentoPorcentaje(0);
-
-                    Swal.fire({
-                        title: 'Venta procesada!',
-                        text: '¿Desea imprimir el recibo?',
-                        icon: 'success',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sí, imprimir',
-                        cancelButtonText: 'No',
-                    }).then((printResult) => {
-                        if (printResult.isConfirmed) {
-                            navigate('/recibo', { state: { venta: ventaCompleta } });
-                        }
-                    });
-
                 } catch (err) {
                     console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
                     Swal.fire({
@@ -1032,7 +1033,7 @@ const PuntoVenta = () => {
                     font-weight: bold;
                     transition: background-color 0.3s ease, transform 0.2s ease;
                 }
-                .alert-box {
+                .alert-box-success {
                     position: fixed;
                     top: 20px;
                     right: 20px;
@@ -1042,7 +1043,40 @@ const PuntoVenta = () => {
                     border-radius: 8px;
                     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
                     z-index: 1001;
+                    animation: slideIn 0.5s forwards, fadeOut 3s forwards;
                 }
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes fadeOut {
+                    0% { opacity: 1; }
+                    85% { opacity: 1; }
+                    100% { opacity: 0; }
+                }
+                .pagination-container {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    margin-top: 20px;
+                    gap: 10px;
+                }
+                .pagination-button {
+                    padding: 8px 15px;
+                    background-color: #007bff;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 1em;
+                    transition: background-color 0.3s ease;
+                }
+                .page-number {
+                    font-size: 1em;
+                    font-weight: bold;
+                    color: #555;
+                }
+                
                 @media (max-width: 768px) {
                     .punto-venta-container { padding: 10px; }
                     .main-header { font-size: 1.8em; }
