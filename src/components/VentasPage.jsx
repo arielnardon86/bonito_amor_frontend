@@ -235,22 +235,22 @@ const VentasPage = () => {
             <h1>Listado de Ventas ({selectedStoreSlug})</h1>
 
             {/* Sección de Filtros */}
-            <div style={styles.filtersContainer}>
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Fecha:</label>
+            <div className="filters-container">
+                <div className="filter-group">
+                    <label className="filter-label">Fecha:</label>
                     <input
                         type="date"
                         value={filterDate}
                         onChange={(e) => setFilterDate(e.target.value)}
-                        style={styles.filterInput}
+                        className="filter-input"
                     />
                 </div>
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Vendedor:</label>
+                <div className="filter-group">
+                    <label className="filter-label">Vendedor:</label>
                     <select
                         value={filterSellerId}
                         onChange={(e) => setFilterSellerId(e.target.value)}
-                        style={styles.filterInput}
+                        className="filter-input"
                     >
                         <option value="">Todos</option>
                         {sellers.map(seller => (
@@ -258,21 +258,20 @@ const VentasPage = () => {
                         ))}
                     </select>
                 </div>
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Anulada:</label>
+                <div className="filter-group">
+                    <label className="filter-label">Anulada:</label>
                     <select
                         value={filterAnulada}
                         onChange={(e) => setFilterAnulada(e.target.value)}
-                        style={styles.filterInput}
+                        className="filter-input"
                     >
                         <option value="">Todas</option>
                         <option value="false">No Anuladas</option> 
                         <option value="true">Anuladas</option>    
                     </select>
                 </div>
-                {/* Botones para aplicar y limpiar filtros */}
-                <button onClick={applyFilters} style={styles.filterButton}>Aplicar Filtros</button>
-                <button onClick={clearFilters} style={{...styles.filterButton, backgroundColor: '#6c757d'}}>Limpiar Filtros</button>
+                <button onClick={applyFilters} className="filter-button">Aplicar Filtros</button>
+                <button onClick={clearFilters} className="filter-button-secondary">Limpiar Filtros</button>
             </div>
 
             {/* Mensaje si no hay ventas */}
@@ -309,21 +308,21 @@ const VentasPage = () => {
                                             <div className="action-buttons">
                                                 <button
                                                     onClick={() => setExpandedSaleId(expandedSaleId === venta.id ? null : venta.id)}
-                                                    style={styles.detailButton}
+                                                    className="detail-button"
                                                 >
                                                     {expandedSaleId === venta.id ? 'Ocultar' : 'Ver'}
                                                 </button>
                                                 {!venta.anulada && (
                                                     <button
                                                         onClick={() => handleAnularVenta(venta.id)}
-                                                        style={styles.anularButton}
+                                                        className="anular-button"
                                                     >
                                                         Anular
                                                     </button>
                                                 )}
                                                 <button
                                                     onClick={() => handleReimprimirRecibo(venta)}
-                                                    style={styles.reprintButton}
+                                                    className="reprint-button"
                                                 >
                                                     Recibo
                                                 </button>
@@ -428,6 +427,103 @@ const VentasPage = () => {
                     <p>{alertMessage}</p>
                 </div>
             )}
+
+            <style>{`
+                .filters-container {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 15px;
+                    margin-bottom: 20px;
+                    padding: 15px;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    background-color: #f9f9f9;
+                    align-items: flex-end;
+                }
+                .filter-group {
+                    display: flex;
+                    flex-direction: column;
+                }
+                .filter-label {
+                    margin-bottom: 5px;
+                    font-weight: bold;
+                    color: #555;
+                }
+                .filter-input {
+                    padding: 8px;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                    min-width: 150px;
+                }
+                .filter-button {
+                    padding: 10px 15px;
+                    background-color: #007bff;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: background-color 0.3s ease;
+                }
+                .filter-button-secondary {
+                    padding: 10px 15px;
+                    background-color: #6c757d;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: background-color 0.3s ease;
+                }
+                .action-buttons {
+                    display: flex;
+                    gap: 5px;
+                    flex-wrap: wrap;
+                }
+                .detail-button, .anular-button, .reprint-button {
+                    padding: 6px 10px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    color: white;
+                    transition: background-color 0.3s ease;
+                }
+                .detail-button { background-color: #17a2b8; }
+                .anular-button { background-color: #dc3545; }
+                .reprint-button { background-color: #28a745; }
+
+                .table-responsive {
+                    overflow-x: auto;
+                }
+                @media (max-width: 768px) {
+                    .filters-container {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+                    .filter-group {
+                        width: 100%;
+                    }
+                    .filter-input {
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
+                    .action-buttons {
+                        flex-direction: column;
+                        gap: 8px;
+                    }
+                    .action-buttons button {
+                        width: 100%;
+                    }
+                    .detail-table-wrapper {
+                        overflow-x: auto;
+                    }
+                    .detail-table-wrapper table {
+                        width: 100%;
+                        white-space: nowrap;
+                    }
+                }
+            `}</style>
         </div>
     );
 };
@@ -506,129 +602,6 @@ const styles = {
         textAlign: 'center',
         fontWeight: 'bold',
     },
-    cartSelectionContainer: {
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '10px',
-        marginBottom: '15px',
-        padding: '10px',
-        backgroundColor: '#eaf7ff',
-        borderRadius: '5px',
-        border: '1px dashed #a7d9ff',
-    },
-    activeCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease',
-    },
-    inactiveCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#f0f0f0',
-        color: '#333',
-        border: '1px solid #ccc',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        transition: 'background-color 0.3s ease',
-    },
-    newCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#28a745',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        transition: 'background-color 0.3s ease',
-    },
-    activeCartInfo: {
-        marginTop: '15px',
-        padding: '15px',
-        backgroundColor: '#e6ffe6',
-        borderRadius: '8px',
-        border: '1px solid #28a745',
-    },
-    activeCartTitle: {
-        marginBottom: '10px',
-        color: '#28a745',
-        fontSize: '1.2em',
-    },
-    activeCartActions: {
-        display: 'flex',
-        gap: '10px',
-        marginBottom: '10px',
-    },
-    deleteCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#dc3545',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        transition: 'background-color 0.3s ease',
-    },
-    inputGroup: {
-        display: 'flex',
-        gap: '10px',
-        marginBottom: '15px',
-        alignItems: 'center',
-    },
-    input: {
-        flexGrow: 1,
-        padding: '10px 12px',
-        border: '1px solid #dcdcdc',
-        borderRadius: '5px',
-        fontSize: '1em',
-        boxSizing: 'border-box',
-    },
-    primaryButton: {
-        padding: '10px 20px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontSize: '1em',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease',
-    },
-    foundProductCard: {
-        border: '1px solid #a7d9ff',
-        padding: '15px',
-        borderRadius: '8px',
-        backgroundColor: '#e7f0ff',
-        marginBottom: '15px',
-    },
-    foundProductText: {
-        margin: '5px 0',
-        color: '#333',
-        fontSize: '1.05em',
-    },
-    productActions: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        marginTop: '10px',
-    },
-    addButton: {
-        padding: '5px 10px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '3px',
-        cursor: 'pointer',
-    },
-    disabledButton: {
-        padding: '5px 10px',
-        backgroundColor: '#6c757d',
-        color: 'white',
-        border: 'none',
-        borderRadius: '3px',
-        cursor: 'not-allowed',
-    },
     table: {
         width: '100%',
         borderCollapse: 'collapse',
@@ -666,182 +639,40 @@ const styles = {
         verticalAlign: 'middle',
         fontSize: '0.9em',
     },
-    quantityControl: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '5px',
-    },
-    quantityButton: {
-        padding: '5px 10px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '3px',
-        cursor: 'pointer',
-        fontSize: '0.9em',
-        transition: 'background-color 0.3s ease',
-    },
-    quantityText: {
-        minWidth: '20px',
-        textAlign: 'center',
-        fontWeight: 'bold',
-    },
-    removeButton: {
-        padding: '6px 12px',
-        backgroundColor: '#dc3545',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '0.85em',
-        transition: 'background-color 0.3s ease',
-    },
-    totalVenta: {
-        textAlign: 'right',
-        marginTop: '20px',
-        fontSize: '1.5em',
-        color: '#28a745',
-        fontWeight: 'bold',
-    },
-    finalTotalVenta: { 
-        textAlign: 'right',
-        marginTop: '10px',
-        fontSize: '1.7em',
-        color: '#007bff',
-        fontWeight: 'bold',
-    },
-    paymentMethodSelectContainer: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        marginBottom: '10px', 
-        marginTop: '20px',
-    },
-    paymentMethodLabel: {
-        fontWeight: 'bold',
-        color: '#555',
-        fontSize: '1em',
-    },
-    discountContainer: { 
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        marginBottom: '20px',
-    },
-    discountInput: { 
-        width: '80px', 
-        padding: '10px 12px',
-        border: '1px solid #dcdcdc',
-        borderRadius: '5px',
-        fontSize: '1em',
-        boxSizing: 'border-box',
-        textAlign: 'center',
-    },
-    processSaleButton: {
-        width: '100%',
+    detailRow: {
+        backgroundColor: '#fdfdfd',
         padding: '15px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '8px',
-        cursor: 'pointer',
-        fontSize: '1.2em',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease',
+        borderTop: '2px solid #eee',
     },
-    noDataMessage: {
-        textAlign: 'center',
-        color: '#777',
-        fontStyle: 'italic',
-        padding: '15px',
-    },
-    addButton: {
-        padding: '5px 10px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '3px',
-        cursor: 'pointer',
-    },
-    disabledButton: {
-        padding: '5px 10px',
-        backgroundColor: '#6c757d',
-        color: 'white',
-        border: 'none',
-        borderRadius: '3px',
-        cursor: 'not-allowed',
-    },
-    modalOverlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1000,
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        padding: '30px',
-        borderRadius: '10px',
-        boxShadow: '0 5px 15px rgba(0, 0, 0, 0.3)',
-        textAlign: 'center',
-        maxWidth: '450px',
-        width: '90%',
-        animation: 'fadeIn 0.3s ease-out',
-    },
-    modalHeader: {
-        fontSize: '1.5em',
-        color: '#34495e',
-        marginBottom: '20px',
-    },
-    modalMessage: {
-        fontSize: '1.1em',
-        marginBottom: '25px',
+    detailHeader: {
+        marginTop: '0',
+        marginBottom: '10px',
         color: '#333',
     },
-    modalActions: {
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '20px',
+    detailTable: {
+        width: '100%',
+        borderCollapse: 'collapse',
+        marginTop: '10px',
     },
-    modalConfirmButton: {
-        backgroundColor: '#28a745', 
-        color: 'white',
-        padding: '12px 25px',
+    detailTh: {
+        backgroundColor: '#e9ecef',
+        padding: '10px',
+        textAlign: 'left',
+        borderBottom: '1px solid #dee2e6',
+    },
+    detailTd: {
+        padding: '10px',
+        borderBottom: '1px solid #dee2e6',
+    },
+    anularDetalleButton: {
+        padding: '5px 8px',
+        backgroundColor: '#ffc107',
+        color: 'black',
         border: 'none',
-        borderRadius: '6px',
+        borderRadius: '3px',
         cursor: 'pointer',
-        fontSize: '1em',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease, transform 0.2s ease',
-    },
-    modalCancelButton: {
-        backgroundColor: '#6c757d',
-        color: 'white',
-        padding: '12px 25px',
-        border: 'none',
-        borderRadius: '6px',
-        cursor: 'pointer',
-        fontSize: '1em',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease, transform 0.2s ease',
-    },
-    alertBox: {
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        backgroundColor: '#28a745', 
-        color: 'white',
-        padding: '15px 25px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-        zIndex: 1001,
-        opacity: 0,
-        animation: 'fadeInOut 3s forwards',
+        fontSize: '0.8em',
+        transition: 'background-color 0.3s ease',
     },
     paginationContainer: {
         display: 'flex',

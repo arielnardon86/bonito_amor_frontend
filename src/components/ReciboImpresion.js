@@ -5,14 +5,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const ReciboImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { venta, items, descuento } = location.state || {};
+    const { venta } = location.state || {};
     const reciboRef = useRef(null);
 
     useEffect(() => {
-        if (reciboRef.current && venta && items) {
+        if (reciboRef.current && venta && venta.detalles) {
             reciboRef.current.innerHTML = '';
             
-            const totalSinDescuento = items.reduce((acc, item) => acc + (item.quantity * parseFloat(item.product.precio)), 0);
+            const totalSinDescuento = venta.detalles.reduce((acc, item) => acc + (item.cantidad * parseFloat(item.precio_unitario)), 0);
 
             reciboRef.current.innerHTML = `
                 <div class="receipt">
@@ -20,7 +20,6 @@ const ReciboImpresion = () => {
                         <h2>Comprobante de compra</h2>
                         <p>Tienda: ${venta.tienda_nombre || 'N/A'}</p>
                         <p>Fecha: ${new Date(venta.fecha_venta).toLocaleString() || 'N/A'}</p>
-                        <p>Atendido por: ${venta.usuario?.username || 'N/A'}</p>
                         <hr>
                     </div>
                     <div class="items">
@@ -35,12 +34,12 @@ const ReciboImpresion = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${items.map(item => `
+                                ${venta.detalles.map(item => `
                                     <tr>
-                                        <td>${item.quantity}</td>
-                                        <td>${item.product.nombre} - ${item.product.talle}</td>
-                                        <td>$${parseFloat(item.product.precio).toFixed(2)}</td>
-                                        <td>$${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
+                                        <td>${item.cantidad}</td>
+                                        <td>${item.producto_nombre || 'N/A'}</td>
+                                        <td>$${parseFloat(item.precio_unitario).toFixed(2)}</td>
+                                        <td>$${(item.cantidad * parseFloat(item.precio_unitario)).toFixed(2)}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -49,7 +48,7 @@ const ReciboImpresion = () => {
                     </div>
                     <div class="totals">
                         <p><strong>Subtotal:</strong> $${totalSinDescuento.toFixed(2)}</p>
-                        ${descuento > 0 ? `<p><strong>Descuento:</strong> ${parseFloat(descuento).toFixed(2)}%</p>` : ''}
+                        ${venta.descuento_porcentaje > 0 ? `<p><strong>Descuento:</strong> ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
                         <p><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
                         <p><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
                         <hr>
@@ -60,7 +59,7 @@ const ReciboImpresion = () => {
                 </div>
             `;
         }
-    }, [venta, items, descuento]);
+    }, [venta]);
 
     const handlePrint = () => {
         window.print();
@@ -70,7 +69,7 @@ const ReciboImpresion = () => {
         navigate('/punto-venta');
     };
 
-    if (!venta || !items) {
+    if (!venta) {
         return (
             <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>
                 <h1>No hay datos de venta para mostrar en el recibo.</h1>

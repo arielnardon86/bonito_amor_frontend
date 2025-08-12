@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
-import { useSales } from './SalesContext'; 
+import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
 
 const TalleOptions = [
@@ -199,13 +199,19 @@ const PuntoVenta = () => {
 
     const handleRemoveProductoEnVenta = (productId) => {
         if (!activeCart) return;
-        setConfirmMessage('¿Estás seguro de que quieres quitar este producto del carrito?');
-        setConfirmAction(() => () => {
-            removeProductFromCart(activeCartId, productId);
-            showCustomAlert('Producto eliminado del carrito.', 'info');
-            setShowConfirmModal(false);
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: "¿Quieres quitar este producto del carrito?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, quitar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                removeProductFromCart(activeCartId, productId);
+                showCustomAlert('Producto eliminado del carrito.', 'info');
+            }
         });
-        setShowConfirmModal(true);
     };
 
     const calculateTotalWithDiscount = useCallback(() => {
@@ -258,6 +264,12 @@ const PuntoVenta = () => {
                     });
                     
                     showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
+                    
+                    const ventaCompleta = {
+                        ...response.data,
+                        items: activeCart.items
+                    };
+
                     finalizeCart(activeCartId);
                     setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
                     setDescuentoPorcentaje(0);
@@ -271,7 +283,7 @@ const PuntoVenta = () => {
                         cancelButtonText: 'No',
                     }).then((printResult) => {
                         if (printResult.isConfirmed) {
-                            navigate('/recibo', { state: { venta: response.data, items: activeCart.items, descuento: descuentoPorcentaje } });
+                            navigate('/recibo', { state: { venta: ventaCompleta } });
                         }
                     });
 
