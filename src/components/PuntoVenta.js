@@ -65,7 +65,7 @@ const PuntoVenta = () => {
 
     const [productos, setProductos] = useState([]);
     const [metodosPago, setMetodosPago] = useState([]);
-    const [metodoPagoSeleccionado, setMetodosPagoSeleccionado] = useState('');
+    const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
     const [busquedaProducto, setBusquedaProducto] = useState('');
     const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
@@ -262,15 +262,15 @@ const PuntoVenta = () => {
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
-
-                    // Obtener los datos completos de la venta recién creada
+                    
+                    showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
+                    
+                    // Obtener los datos completos de la venta recién creada para el recibo
                     const ventaCompletaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${response.data.id}/`, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
                     const ventaCompleta = ventaCompletaResponse.data;
-                    
-                    showCustomAlert('Venta procesada con éxito. ID: ' + ventaCompleta.id, 'success');
-                    
+
                     finalizeCart(activeCartId);
                     setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
                     setDescuentoPorcentaje(0);
@@ -314,13 +314,21 @@ const PuntoVenta = () => {
 
     const handleDeleteActiveCart = () => {
         if (activeCart) {
-            setConfirmMessage(`¿Estás seguro de que quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`);
-            setConfirmAction(() => () => {
-                deleteCart(activeCartId);
-                showCustomAlert('Venta eliminada.', 'info');
-                setShowConfirmModal(false);
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: `¿Quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    deleteCart(activeCartId);
+                    showCustomAlert('Venta eliminada.', 'info');
+                }
             });
-            setShowConfirmModal(true);
         }
     };
 
