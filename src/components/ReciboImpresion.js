@@ -10,6 +10,8 @@ const ReciboImpresion = () => {
 
     useEffect(() => {
         if (reciboRef.current && venta && items) {
+            reciboRef.current.innerHTML = '';
+            
             const totalSinDescuento = items.reduce((acc, item) => acc + (item.quantity * parseFloat(item.product.precio)), 0);
             
             reciboRef.current.innerHTML = `
@@ -18,7 +20,7 @@ const ReciboImpresion = () => {
                         <h2>Comprobante de compra</h2>
                         <p>Tienda: ${venta.tienda_nombre}</p>
                         <p>Fecha: ${new Date(venta.fecha_venta).toLocaleString()}</p>
-                        
+                        <p>Atendido por: ${venta.usuario.username}</p>
                         <hr>
                     </div>
                     <div class="items">

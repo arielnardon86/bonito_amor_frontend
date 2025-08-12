@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 // URL base de la API, obtenida de las variables de entorno de React
 const API_BASE_URL = process.env.REACT_APP_API_URL; 
@@ -23,6 +24,7 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const VentasPage = () => {
     const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth(); 
+    const navigate = useNavigate();
     
     // Obtener la fecha actual para los filtros por defecto (día en curso)
     const today = new Date();
@@ -67,19 +69,6 @@ const VentasPage = () => {
         }, 3000);
     };
 
-    /**
-     * Función para verificar si todos los detalles de una venta están anulados individualmente.
-     * @param {Array} detalles - Array de objetos detalle de venta.
-     * @returns {boolean} - True si todos los detalles están anulados, False en caso contrario.
-     */
-    const areAllDetailsAnnulled = (detalles) => {
-        if (!detalles || detalles.length === 0) {
-            return false; 
-        }
-        return detalles.every(detalle => detalle.anulado_individualmente);
-    };
-
-
     const fetchVentas = useCallback(async (pageUrl = null) => {
         if (!token || !selectedStoreSlug) { 
             setLoading(false);
@@ -104,27 +93,12 @@ const VentasPage = () => {
                 params.anulada = filterAnulada;
             }
 
-            console.log("VentasPage: Valor de filterAnulada (estado):", filterAnulada);
-            console.log("VentasPage: Parámetros finales enviados a la API:", params); 
-
             const response = await axios.get(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: params
             });
             
-            const processedVentas = response.data.results.map(venta => {
-                const updatedDetalles = venta.detalles ? venta.detalles.map(detalle => ({
-                    ...detalle 
-                })) : [];
-
-                return {
-                    ...venta, 
-                    detalles: updatedDetalles,
-                    todos_detalles_anulados: areAllDetailsAnnulled(updatedDetalles)
-                };
-            });
-
-            setVentas(processedVentas || []); 
+            setVentas(response.data.results || []); 
             setNextPageUrl(response.data.next);
             setPrevPageUrl(response.data.previous);
             if (pageUrl) {
@@ -187,17 +161,11 @@ const VentasPage = () => {
     };
 
     const handleAnularDetalleVenta = async (ventaId, detalleId) => {
-        console.log("Attempting to annul sales detail:");
-        console.log("Venta ID:", ventaId);
-        console.log("Detalle ID:", detalleId);
-
         setConfirmMessage('¿Estás seguro de que quieres ANULAR este producto de la venta? Esto revertirá el stock del producto.');
         setConfirmAction(() => async () => {
             setShowConfirmModal(false); 
             try {
                 const payload = { detalle_id: detalleId };
-                console.log("Sending payload:", payload);
-
                 await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/`, payload, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -217,6 +185,26 @@ const VentasPage = () => {
             }
         });
         setShowConfirmModal(true);
+    };
+    
+    // Nueva función para reimprimir el recibo
+    const handleReimprimirRecibo = (venta) => {
+        const items = venta.detalles.map(d => ({
+            product: {
+                nombre: d.producto_nombre,
+                talle: d.producto.talle,
+                precio: d.precio_unitario,
+            },
+            quantity: d.cantidad,
+        }));
+
+        navigate('/recibo', { 
+            state: { 
+                venta, 
+                items, 
+                descuento: venta.descuento_porcentaje 
+            } 
+        });
     };
 
     const applyFilters = () => {
@@ -311,6 +299,7 @@ const VentasPage = () => {
                     <table style={styles.table}>
                         <thead>
                             <tr style={styles.tableHeaderRow}>
+                                <th style={styles.th}>ID Venta</th>
                                 <th style={styles.th}>Fecha</th>
                                 <th style={styles.th}>Total</th>
                                 <th style={styles.th}>Vendedor</th>
@@ -323,13 +312,14 @@ const VentasPage = () => {
                             {ventas.map(venta => (
                                 <React.Fragment key={venta.id}>
                                     <tr>
+                                        <td style={styles.td}>{venta.id}</td>
                                         <td style={styles.td}>{new Date(venta.fecha_venta).toLocaleString()}</td>
                                         <td style={styles.td}>${parseFloat(venta.total || 0).toFixed(2)}</td> 
                                         <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
                                         <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
                                         {/* Lógica para mostrar "Sí" si la venta está anulada o si todos sus detalles están anulados */}
                                         <td style={styles.td}>
-                                            {venta.anulada || venta.todos_detalles_anulados ? 'Sí' : 'No'}
+                                            {venta.anulada ? 'Sí' : 'No'}
                                         </td>
                                         <td style={styles.td}>
                                             <button
@@ -339,7 +329,7 @@ const VentasPage = () => {
                                                 {expandedSaleId === venta.id ? 'Ocultar Detalles' : 'Ver Detalles'}
                                             </button>
                                             {/* El botón de Anular Venta solo se muestra si la venta no está anulada Y no todos los detalles están anulados */}
-                                            {!venta.anulada && !venta.todos_detalles_anulados && (
+                                            {!venta.anulada && (
                                                 <button
                                                     onClick={() => handleAnularVenta(venta.id)}
                                                     style={{ ...styles.anularButton, marginLeft: '10px' }}
@@ -347,12 +337,18 @@ const VentasPage = () => {
                                                     Anular Venta
                                                 </button>
                                             )}
+                                             <button
+                                                onClick={() => handleReimprimirRecibo(venta)}
+                                                style={{ ...styles.reprintButton, marginLeft: '10px' }}
+                                            >
+                                                Reimprimir Recibo
+                                            </button>
                                         </td>
                                     </tr>
                                     {/* Detalles de la venta expandidos */}
                                     {expandedSaleId === venta.id && venta.detalles && (
                                         <tr>
-                                            <td colSpan="6" style={styles.detailRow}>
+                                            <td colSpan="7" style={styles.detailRow}>
                                                 <h4 style={styles.detailHeader}>Detalles de la Venta {venta.id}</h4>
                                                 <table style={styles.detailTable}>
                                                     <thead>
@@ -427,7 +423,6 @@ const VentasPage = () => {
                 </>
             )}
 
-            {/* Modal de Confirmación (Personalizado) */}
             {showConfirmModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -440,7 +435,6 @@ const VentasPage = () => {
                 </div>
             )}
 
-            {/* Cuadro de Mensaje de Alerta (Personalizado) */}
             {showAlertMessage && (
                 <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
                     <p>{alertMessage}</p>
@@ -450,29 +444,54 @@ const VentasPage = () => {
     );
 };
 
+
 const styles = {
     container: {
         padding: '20px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Inter, sans-serif',
         maxWidth: '1200px',
-        margin: 'auto',
-        backgroundColor: '#fff',
+        margin: '20px auto',
+        backgroundColor: '#f8f9fa',
         borderRadius: '8px',
-        boxShadow: '0 0 10px rgba(0,0,0,0.1)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        color: '#333',
+    },
+    header: {
+        textAlign: 'center',
+        color: '#2c3e50',
+        marginBottom: '30px',
+        fontSize: '2.5em',
+        fontWeight: 'bold',
+    },
+    section: {
+        backgroundColor: '#ffffff',
+        padding: '25px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        marginBottom: '30px',
+    },
+    sectionHeader: {
+        fontSize: '1.8em',
+        color: '#34495e',
+        marginBottom: '20px',
+        borderBottom: '2px solid #eceff1',
+        paddingBottom: '10px',
     },
     loadingMessage: {
         padding: '20px',
         textAlign: 'center',
         color: '#555',
+        fontSize: '1.1em',
     },
     accessDeniedMessage: {
-        color: 'red',
+        color: '#dc3545',
         marginBottom: '10px',
         padding: '20px',
-        border: '1px solid red',
+        border: '1px solid #dc3545',
         textAlign: 'center',
-        borderRadius: '5px',
+        borderRadius: '8px',
         backgroundColor: '#ffe3e6',
+        fontWeight: 'bold',
     },
     noStoreSelectedMessage: {
         padding: '50px',
@@ -481,178 +500,274 @@ const styles = {
         fontSize: '1.2em',
     },
     errorMessage: {
-        color: 'red',
-        marginBottom: '10px',
-        border: '1px solid red',
-        padding: '10px',
-        borderRadius: '5px',
+        color: '#dc3545',
+        marginBottom: '20px',
+        border: '1px solid #dc3545',
+        padding: '15px',
+        borderRadius: '8px',
         backgroundColor: '#ffe3e6',
+        textAlign: 'center',
+        fontWeight: 'bold',
     },
-    successMessage: {
-        color: 'green',
-        marginBottom: '10px',
-        border: '1px solid green',
-        padding: '10px',
-        borderRadius: '5px',
-        backgroundColor: '#e6ffe6',
-    },
-    filtersContainer: {
+    cartSelectionContainer: {
         display: 'flex',
         flexWrap: 'wrap',
-        gap: '15px',
-        marginBottom: '20px',
-        padding: '15px',
-        border: '1px solid #e0e0e0',
-        borderRadius: '8px',
-        backgroundColor: '#f9f9f9',
-        alignItems: 'flex-end',
-    },
-    filterGroup: {
-        display: 'flex',
-        flexDirection: 'column',
-    },
-    filterLabel: {
-        marginBottom: '5px',
-        fontWeight: 'bold',
-        color: '#555',
-    },
-    filterInput: {
-        padding: '8px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        minWidth: '150px',
-    },
-    filterButton: {
-        padding: '10px 15px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontSize: '14px',
-        transition: 'background-color 0.3s ease',
-    },
-    filterButtonHover: {
-        backgroundColor: '#0056b3',
-    },
-    noDataMessage: {
-        textAlign: 'center',
-        marginTop: '20px',
-        color: '#777',
-        fontStyle: 'italic',
-    },
-    table: {
-        width: '100%',
-        borderCollapse: 'collapse',
-        textAlign: 'left',
-        border: '1px solid #ddd',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-    },
-    tableHeaderRow: {
-        backgroundColor: '#f2f2f2',
-    },
-    th: {
-        padding: '12px',
-        border: '1px solid #ddd',
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    td: {
-        padding: '12px',
-        border: '1px solid #ddd',
-        verticalAlign: 'middle',
-    },
-    detailButton: {
-        padding: '6px 10px',
-        backgroundColor: '#17a2b8',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '0.9em',
-        transition: 'background-color 0.3s ease',
-    },
-    detailButtonHover: {
-        backgroundColor: '#138496',
-    },
-    anularButton: {
-        padding: '6px 10px',
-        backgroundColor: '#dc3545',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '0.9em',
-        transition: 'background-color 0.3s ease',
-    },
-    anularButtonHover: {
-        backgroundColor: '#c82333',
-    },
-    detailRow: {
-        backgroundColor: '#fdfdfd',
-        padding: '15px',
-        borderTop: '2px solid #eee',
-    },
-    detailHeader: {
-        marginTop: '0',
-        marginBottom: '10px',
-        color: '#333',
-    },
-    detailTable: {
-        width: '100%',
-        borderCollapse: 'collapse',
-        marginTop: '10px',
-    },
-    detailTh: {
-        backgroundColor: '#e9ecef',
-        padding: '10px',
-        textAlign: 'left',
-        borderBottom: '1px solid #dee2e6',
-    },
-    detailTd: {
-        padding: '10px',
-        borderBottom: '1px solid #dee2e6',
-    },
-    anularDetalleButton: {
-        padding: '5px 8px',
-        backgroundColor: '#ffc107',
-        color: 'black',
-        border: 'none',
-        borderRadius: '3px',
-        cursor: 'pointer',
-        fontSize: '0.8em',
-        transition: 'background-color 0.3s ease',
-    },
-    anularDetalleButtonHover: {
-        backgroundColor: '#e0a800',
-    },
-    paginationContainer: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: '20px',
         gap: '10px',
+        marginBottom: '15px',
+        padding: '10px',
+        backgroundColor: '#eaf7ff',
+        borderRadius: '5px',
+        border: '1px dashed #a7d9ff',
     },
-    paginationButton: {
+    activeCartButton: {
         padding: '8px 15px',
         backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        fontSize: '1em',
+        fontWeight: 'bold',
         transition: 'background-color 0.3s ease',
     },
-    paginationButtonDisabled: {
-        backgroundColor: '#cccccc',
-        cursor: 'not-allowed',
+    inactiveCartButton: {
+        padding: '8px 15px',
+        backgroundColor: '#f0f0f0',
+        color: '#333',
+        border: '1px solid #ccc',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
     },
-    pageNumber: {
+    newCartButton: {
+        padding: '8px 15px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    activeCartInfo: {
+        marginTop: '15px',
+        padding: '15px',
+        backgroundColor: '#e6ffe6',
+        borderRadius: '8px',
+        border: '1px solid #28a745',
+    },
+    activeCartTitle: {
+        marginBottom: '10px',
+        color: '#28a745',
+        fontSize: '1.2em',
+    },
+    activeCartActions: {
+        display: 'flex',
+        gap: '10px',
+        marginBottom: '10px',
+    },
+    deleteCartButton: {
+        padding: '8px 15px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    inputGroup: {
+        display: 'flex',
+        gap: '10px',
+        marginBottom: '15px',
+        alignItems: 'center',
+    },
+    input: {
+        flexGrow: 1,
+        padding: '10px 12px',
+        border: '1px solid #dcdcdc',
+        borderRadius: '5px',
+        fontSize: '1em',
+        boxSizing: 'border-box',
+    },
+    primaryButton: {
+        padding: '10px 20px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
         fontSize: '1em',
         fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
+    },
+    foundProductCard: {
+        border: '1px solid #a7d9ff',
+        padding: '15px',
+        borderRadius: '8px',
+        backgroundColor: '#e7f0ff',
+        marginBottom: '15px',
+    },
+    foundProductText: {
+        margin: '5px 0',
+        color: '#333',
+        fontSize: '1.05em',
+    },
+    productActions: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        marginTop: '10px',
+    },
+    addButton: {
+        padding: '5px 10px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+    },
+    disabledButton: {
+        padding: '5px 10px',
+        backgroundColor: '#6c757d',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'not-allowed',
+    },
+    table: {
+        width: '100%',
+        borderCollapse: 'collapse',
+        marginTop: '15px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    },
+    tableHeaderRow: {
+        backgroundColor: '#f2f2f2',
+    },
+    th: {
+        padding: '12px 15px',
+        borderBottom: '1px solid #ddd',
+        textAlign: 'left',
+        fontWeight: 'bold',
+        fontSize: '0.95em',
         color: '#555',
+    },
+    tableRow: {
+        backgroundColor: 'inherit',
+        transition: 'background-color 0.2s ease',
+        '&:nth-child(even)': {
+            backgroundColor: '#f9f9f9',
+        },
+    },
+    td: {
+        padding: '10px 15px',
+        borderBottom: '1px solid #eee',
+        verticalAlign: 'middle',
+        fontSize: '0.9em',
+    },
+    quantityControl: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+    },
+    quantityButton: {
+        padding: '5px 10px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        fontSize: '0.9em',
+        transition: 'background-color 0.3s ease',
+    },
+    quantityText: {
+        minWidth: '20px',
+        textAlign: 'center',
+        fontWeight: 'bold',
+    },
+    removeButton: {
+        padding: '6px 12px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '0.85em',
+        transition: 'background-color 0.3s ease',
+    },
+    totalVenta: {
+        textAlign: 'right',
+        marginTop: '20px',
+        fontSize: '1.5em',
+        color: '#28a745',
+        fontWeight: 'bold',
+    },
+    finalTotalVenta: { 
+        textAlign: 'right',
+        marginTop: '10px',
+        fontSize: '1.7em',
+        color: '#007bff',
+        fontWeight: 'bold',
+    },
+    paymentMethodSelectContainer: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        marginBottom: '10px', 
+        marginTop: '20px',
+    },
+    paymentMethodLabel: {
+        fontWeight: 'bold',
+        color: '#555',
+        fontSize: '1em',
+    },
+    discountContainer: { 
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        marginBottom: '20px',
+    },
+    discountInput: { 
+        width: '80px', 
+        padding: '10px 12px',
+        border: '1px solid #dcdcdc',
+        borderRadius: '5px',
+        fontSize: '1em',
+        boxSizing: 'border-box',
+        textAlign: 'center',
+    },
+    processSaleButton: {
+        width: '100%',
+        padding: '15px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontSize: '1.2em',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
+    },
+    noDataMessage: {
+        textAlign: 'center',
+        color: '#777',
+        fontStyle: 'italic',
+        padding: '15px',
+    },
+    addButton: {
+        padding: '5px 10px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+    },
+    disabledButton: {
+        padding: '5px 10px',
+        backgroundColor: '#6c757d',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'not-allowed',
     },
     modalOverlay: {
         position: 'fixed',
@@ -676,6 +791,11 @@ const styles = {
         width: '90%',
         animation: 'fadeIn 0.3s ease-out',
     },
+    modalHeader: {
+        fontSize: '1.5em',
+        color: '#34495e',
+        marginBottom: '20px',
+    },
     modalMessage: {
         fontSize: '1.1em',
         marginBottom: '25px',
@@ -687,7 +807,7 @@ const styles = {
         gap: '20px',
     },
     modalConfirmButton: {
-        backgroundColor: '#dc3545',
+        backgroundColor: '#28a745', 
         color: 'white',
         padding: '12px 25px',
         border: 'none',
@@ -696,10 +816,6 @@ const styles = {
         fontSize: '1em',
         fontWeight: 'bold',
         transition: 'background-color 0.3s ease, transform 0.2s ease',
-    },
-    modalConfirmButtonHover: {
-        backgroundColor: '#c82333',
-        transform: 'scale(1.02)',
     },
     modalCancelButton: {
         backgroundColor: '#6c757d',
@@ -711,10 +827,6 @@ const styles = {
         fontSize: '1em',
         fontWeight: 'bold',
         transition: 'background-color 0.3s ease, transform 0.2s ease',
-    },
-    modalCancelButtonHover: {
-        backgroundColor: '#5a6268',
-        transform: 'scale(1.02)',
     },
     alertBox: {
         position: 'fixed',
@@ -729,13 +841,28 @@ const styles = {
         opacity: 0,
         animation: 'fadeInOut 3s forwards',
     },
-    discountDisplay: { 
-        textAlign: 'right',
-        marginTop: '10px',
-        fontSize: '1.1em',
-        color: '#007bff',
+    paginationContainer: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '20px',
+        gap: '10px',
+    },
+    paginationButton: {
+        padding: '8px 15px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        transition: 'background-color 0.3s ease',
+    },
+    pageNumber: {
+        fontSize: '1em',
         fontWeight: 'bold',
+        color: '#555',
     },
 };
 
-export default VentasPage;
+export default PuntoVenta;
