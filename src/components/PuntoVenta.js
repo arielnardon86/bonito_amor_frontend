@@ -214,7 +214,6 @@ const PuntoVenta = () => {
         return (subtotal - discountAmount);
     }, [activeCart, descuentoPorcentaje]);
 
-    // CORRECCIÓN CLAVE EN ESTA FUNCIÓN
     const handleProcesarVenta = async () => {
         if (!activeCart || activeCart.items.length === 0) {
             showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
@@ -256,8 +255,11 @@ const PuntoVenta = () => {
                 setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
                 setDescuentoPorcentaje(0);
 
-                // REDIRIGIR A LA PÁGINA DE RECIBO CON LOS DATOS
-                navigate('/recibo', { state: { venta: response.data, items: activeCart.items, descuento: descuentoPorcentaje } });
+                // Preguntar si se desea imprimir el recibo
+                const confirmReceipt = window.confirm('Venta procesada. ¿Desea imprimir el recibo?');
+                if (confirmReceipt) {
+                    navigate('/recibo', { state: { venta: response.data, items: activeCart.items, descuento: descuentoPorcentaje } });
+                }
 
             } catch (err) {
                 console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
@@ -885,11 +887,6 @@ const styles = {
         alignItems: 'center',
         gap: '10px',
         marginBottom: '20px',
-    },
-    discountLabel: { 
-        fontWeight: 'bold',
-        color: '#555',
-        fontSize: '1em',
     },
     discountInput: { 
         width: '80px', 

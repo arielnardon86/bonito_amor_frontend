@@ -1,28 +1,24 @@
 // BONITO_AMOR/frontend/src/components/ReciboImpresion.js
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import JsBarcode from 'jsbarcode';
 
 const ReciboImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { venta, items, descuento } = location.state || {};
-    const labelsRef = React.useRef(null);
+    const reciboRef = useRef(null);
 
     useEffect(() => {
-        if (labelsRef.current && venta && items) {
-            labelsRef.current.innerHTML = '';
-            
+        if (reciboRef.current && venta && items) {
             const totalSinDescuento = items.reduce((acc, item) => acc + (item.quantity * parseFloat(item.product.precio)), 0);
-            const totalConDescuento = venta.total;
-
-            const printContent = `
+            
+            reciboRef.current.innerHTML = `
                 <div class="receipt">
                     <div class="header">
-                        <h2>BONITO AMOR</h2>
+                        <h2>Comprobante de compra</h2>
                         <p>Tienda: ${venta.tienda_nombre}</p>
                         <p>Fecha: ${new Date(venta.fecha_venta).toLocaleString()}</p>
-                        <p>Atendido por: ${venta.usuario.username}</p>
+                        
                         <hr>
                     </div>
                     <div class="items">
@@ -51,8 +47,8 @@ const ReciboImpresion = () => {
                     </div>
                     <div class="totals">
                         <p><strong>Subtotal:</strong> $${totalSinDescuento.toFixed(2)}</p>
-                        <p><strong>Descuento:</strong> ${parseFloat(descuento).toFixed(2)}%</p>
-                        <p><strong>Total:</strong> $${parseFloat(totalConDescuento).toFixed(2)}</p>
+                        ${descuento > 0 ? `<p><strong>Descuento:</strong> ${parseFloat(descuento).toFixed(2)}%</p>` : ''}
+                        <p><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
                         <p><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
                         <hr>
                     </div>
@@ -61,7 +57,6 @@ const ReciboImpresion = () => {
                     </div>
                 </div>
             `;
-            labelsRef.current.innerHTML = printContent;
         }
     }, [venta, items, descuento]);
 
@@ -83,13 +78,13 @@ const ReciboImpresion = () => {
     }
 
     return (
-        <div className="container" style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-            <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-                <button onClick={handleGoBack} style={{ padding: '10px 20px', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '5px', backgroundColor: '#f0f0f0' }}>Volver</button>
-                <button onClick={handlePrint} style={{ padding: '10px 20px', cursor: 'pointer', border: 'none', borderRadius: '5px', backgroundColor: '#28a745', color: 'white' }}>Imprimir Recibo</button>
+        <div className="receipt-page-container">
+            <div className="no-print-controls">
+                <button onClick={handleGoBack}>Volver</button>
+                <button onClick={handlePrint}>Imprimir Recibo</button>
             </div>
-
-            <div className="receipt-container" ref={labelsRef}>
+            
+            <div className="receipt-printable-area" ref={reciboRef}>
                 {/* El recibo se renderizará aquí */}
             </div>
 
@@ -99,15 +94,35 @@ const ReciboImpresion = () => {
                         size: 72mm auto;
                         margin: 0;
                     }
-                    body {
-                        font-family: 'Arial', sans-serif;
-                        color: #000;
+                    .receipt-page-container {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                        font-family: Arial, sans-serif;
                     }
-                    .receipt-container {
+                    .no-print-controls {
+                        margin-bottom: 20px;
+                    }
+                    .no-print-controls button {
+                        padding: 10px 20px;
+                        cursor: pointer;
+                        border: 1px solid #ccc;
+                        border-radius: 5px;
+                        background-color: #f0f0f0;
+                        margin: 0 5px;
+                    }
+                    .no-print-controls button:last-child {
+                        background-color: #28a745;
+                        color: white;
+                        border: none;
+                    }
+                    .receipt-printable-area {
                         width: 72mm;
-                        margin: 0 auto;
                         padding: 5mm;
                         background: #fff;
+                        border: 1px solid #000;
                     }
                     .receipt {
                         font-size: 10px;
@@ -151,10 +166,10 @@ const ReciboImpresion = () => {
                         body * {
                             visibility: hidden;
                         }
-                        .receipt-container, .receipt-container * {
+                        .receipt-printable-area, .receipt-printable-area * {
                             visibility: visible;
                         }
-                        .receipt-container {
+                        .receipt-printable-area {
                             position: absolute;
                             left: 0;
                             top: 0;
@@ -162,6 +177,9 @@ const ReciboImpresion = () => {
                             margin: 0;
                             padding: 0;
                             box-shadow: none;
+                        }
+                        .no-print-controls {
+                            display: none !important;
                         }
                     }
                 `}
