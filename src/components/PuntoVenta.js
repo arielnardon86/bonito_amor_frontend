@@ -353,34 +353,34 @@ const PuntoVenta = () => {
     };
 
     if (authLoading || (isAuthenticated && !user)) {
-        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
+        return <div className="loading-message">Cargando datos de usuario...</div>;
     }
 
     if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
+        return <div className="access-denied-message">Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
     }
 
     if (!selectedStoreSlug) {
         return (
-            <div style={styles.noStoreSelectedMessage}>
+            <div className="no-store-selected-message">
                 <h2>Por favor, selecciona una tienda en la barra de navegación para usar el punto de venta.</h2>
             </div>
         );
     }
 
     if (loadingProducts) {
-        return <div style={styles.loadingMessage}>Cargando productos y métodos de pago...</div>;
+        return <div className="loading-message">Cargando productos y métodos de pago...</div>;
     }
 
     if (error) {
-        return <div style={styles.errorMessage}>{error}</div>;
+        return <div className="error-message">{error}</div>;
     }
 
     return (
-        <div style={styles.container}>
-            <h1 style={styles.header}>Punto de Venta ({selectedStoreSlug})</h1>
-            <div style={styles.section}>
-                <h3 style={styles.sectionHeader}>Gestión de Ventas Activas</h3>
+        <div className="punto-venta-container">
+            <h1 className="main-header">Punto de Venta ({selectedStoreSlug})</h1>
+            <div className="section">
+                <h3 className="section-header">Gestión de Ventas Activas</h3>
                 <div className="cart-selection-container">
                     {carts.map((cart, index) => (
                         <button
@@ -397,8 +397,8 @@ const PuntoVenta = () => {
                 </div>
 
                 {activeCart && (
-                    <div style={styles.activeCartInfo}>
-                        <h4 style={styles.activeCartTitle}>Venta Activa: {activeCart.alias || activeCart.name}</h4>
+                    <div className="active-cart-info">
+                        <h4 className="active-cart-title">Venta Activa: {activeCart.alias || activeCart.name}</h4>
                         <div className="active-cart-actions">
                             <input
                                 type="text"
@@ -416,9 +416,9 @@ const PuntoVenta = () => {
             </div>
 
             {showNewCartModal && (
-                <div style={styles.modalOverlay}>
-                    <div style={styles.modalContent}>
-                        <h3 style={styles.modalHeader}>Crear Nueva Venta</h3>
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h3 className="modal-header">Crear Nueva Venta</h3>
                         <input
                             type="text"
                             placeholder="Alias para la venta (ej: Cliente A)"
@@ -426,7 +426,7 @@ const PuntoVenta = () => {
                             onChange={(e) => setNewCartAliasInput(e.target.value)}
                             className="input-field"
                         />
-                        <div style={styles.modalActions}>
+                        <div className="modal-actions">
                             <button onClick={() => setShowNewCartModal(false)} className="modal-cancel-button">
                                 Cancelar
                             </button>
@@ -438,8 +438,8 @@ const PuntoVenta = () => {
                 </div>
             )}
 
-            <div style={styles.section}>
-                <h3 style={styles.sectionHeader}>Buscar Producto por Código de Barras</h3>
+            <div className="section">
+                <h3 className="section-header">Buscar Producto por Código de Barras</h3>
                 <div className="input-group">
                     <input
                         type="text"
@@ -474,8 +474,8 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            <div style={styles.section}>
-                <h3 style={styles.sectionHeader}>Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
+            <div className="section">
+                <h3 className="section-header">Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
                 {activeCart && activeCart.items.length > 0 ? (
                     <>
                         <div className="table-responsive">
@@ -551,8 +551,8 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            <div style={styles.section}>
-                <h3 style={styles.sectionHeader}>Productos Disponibles</h3>
+            <div className="section">
+                <h3 className="section-header">Productos Disponibles</h3>
                 <div className="input-group">
                     <input
                         type="text"
@@ -647,373 +647,8 @@ const PuntoVenta = () => {
                     </div>
                 </div>
             )}
-            
-            <style>{`
-                .cart-selection-container {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 10px;
-                    margin-bottom: 15px;
-                    padding: 10px;
-                    background-color: #eaf7ff;
-                    border: 1px dashed #a7d9ff;
-                    border-radius: 5px;
-                }
-                .active-cart-button, .inactive-cart-button {
-                    padding: 8px 15px;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease;
-                }
-                .active-cart-button {
-                    background-color: #007bff;
-                    color: white;
-                }
-                .inactive-cart-button {
-                    background-color: #f0f0f0;
-                    color: #333;
-                    border: 1px solid #ccc;
-                }
-                .new-cart-button {
-                    padding: 8px 15px;
-                    background-color: #28a745;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    transition: background-color 0.3s ease;
-                }
-                .active-cart-actions {
-                    display: flex;
-                    gap: 10px;
-                    margin-bottom: 10px;
-                }
-                .delete-cart-button {
-                    padding: 8px 15px;
-                    background-color: #dc3545;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    transition: background-color 0.3s ease;
-                }
-                .input-group {
-                    display: flex;
-                    gap: 10px;
-                    margin-bottom: 15px;
-                    align-items: center;
-                }
-                .input-field {
-                    flex-grow: 1;
-                    padding: 10px 12px;
-                    border: 1px solid #dcdcdc;
-                    border-radius: 5px;
-                    font-size: 1em;
-                    box-sizing: border-box;
-                }
-                .primary-button {
-                    padding: 10px 20px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 1em;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease;
-                }
-                .found-product-card {
-                    border: 1px solid #a7d9ff;
-                    padding: 15px;
-                    border-radius: 8px;
-                    background-color: #e7f0ff;
-                    margin-bottom: 15px;
-                }
-                .found-product-text {
-                    margin: 5px 0;
-                    color: #333;
-                    font-size: 1.05em;
-                }
-                .product-actions {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-top: 10px;
-                }
-                .add-product-button {
-                    padding: 10px 20px;
-                    background-color: #28a745;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 1em;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease;
-                }
-                .cart-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 15px;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                }
-                .table-header-row {
-                    background-color: #f2f2f2;
-                }
-                .th {
-                    padding: 12px 15px;
-                    border-bottom: 1px solid #ddd;
-                    text-align: left;
-                    font-weight: bold;
-                    font-size: 0.95em;
-                    color: #555;
-                }
-                .table-row {
-                    background-color: inherit;
-                    transition: background-color 0.2s ease;
-                }
-                .table-row:nth-child(even) {
-                    background-color: #f9f9f9;
-                }
-                .td {
-                    padding: 10px 15px;
-                    border-bottom: 1px solid #eee;
-                    vertical-align: middle;
-                    font-size: 0.9em;
-                }
-                .quantity-control {
-                    display: flex;
-                    align-items: center;
-                    gap: 5px;
-                }
-                .quantity-button {
-                    padding: 5px 10px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 3px;
-                    cursor: pointer;
-                    font-size: 0.9em;
-                    transition: background-color 0.3s ease;
-                }
-                .quantity-text {
-                    min-width: 20px;
-                    text-align: center;
-                    font-weight: bold;
-                }
-                .remove-button {
-                    padding: 6px 12px;
-                    background-color: #dc3545;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 0.85em;
-                    transition: background-color 0.3s ease;
-                }
-                .total-venta {
-                    text-align: right;
-                    margin-top: 20px;
-                    font-size: 1.5em;
-                    color: #28a745;
-                    font-weight: bold;
-                }
-                .final-total-venta {
-                    text-align: right;
-                    margin-top: 10px;
-                    font-size: 1.7em;
-                    color: #007bff;
-                    font-weight: bold;
-                }
-                .payment-method-select-container {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 10px;
-                    margin-top: 20px;
-                }
-                .payment-method-label {
-                    font-weight: bold;
-                    color: #555;
-                    font-size: 1em;
-                }
-                .discount-container {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 20px;
-                }
-                .discount-label {
-                    font-weight: bold;
-                    color: #555;
-                    font-size: 1em;
-                }
-                .discount-input {
-                    width: 80px;
-                    padding: 10px 12px;
-                    border: 1px solid #dcdcdc;
-                    border-radius: 5px;
-                    font-size: 1em;
-                    box-sizing: border-box;
-                    text-align: center;
-                }
-                .process-sale-button {
-                    width: 100%;
-                    padding: 15px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-size: 1.2em;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease;
-                }
-                .no-data-message {
-                    text-align: center;
-                    color: #777;
-                    font-style: italic;
-                    padding: 15px;
-                }
-                .add-button {
-                    padding: 5px 10px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 3px;
-                    cursor: pointer;
-                }
-                .disabled-button {
-                    padding: 5px 10px;
-                    background-color: #6c757d;
-                    color: white;
-                    border: none;
-                    border-radius: 3px;
-                    cursor: not-allowed;
-                }
-                .modal-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background-color: rgba(0, 0, 0, 0.6);
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 1000;
-                }
-                .modal-content {
-                    background-color: #fff;
-                    padding: 30px;
-                    border-radius: 10px;
-                    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-                    text-align: center;
-                    max-width: 450px;
-                    width: 90%;
-                    animation: fadeIn 0.3s ease-out;
-                }
-                .modal-header {
-                    font-size: 1.5em;
-                    color: #34495e;
-                    margin-bottom: 20px;
-                }
-                .modal-message {
-                    font-size: 1.1em;
-                    margin-bottom: 25px;
-                    color: #333;
-                }
-                .modal-actions {
-                    display: flex;
-                    justify-content: center;
-                    gap: 20px;
-                }
-                .modal-confirm-button {
-                    background-color: #28a745; 
-                    color: white;
-                    padding: 12px 25px;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 1em;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease, transform 0.2s ease;
-                }
-                .modal-cancel-button {
-                    background-color: #6c757d;
-                    color: white;
-                    padding: 12px 25px;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 1em;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease, transform 0.2s ease;
-                }
-                .alert-box-success {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    background-color: #28a745;
-                    color: white;
-                    padding: 15px 25px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                    z-index: 1001;
-                    animation: slideIn 0.5s forwards, fadeOut 3s forwards;
-                }
-                @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes fadeOut {
-                    0% { opacity: 1; }
-                    85% { opacity: 1; }
-                    100% { opacity: 0; }
-                }
-                .pagination-container {
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    margin-top: 20px;
-                    gap: 10px;
-                }
-                .pagination-button {
-                    padding: 8px 15px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 1em;
-                    transition: background-color 0.3s ease;
-                }
-                .page-number {
-                    font-size: 1em;
-                    font-weight: bold;
-                    color: #555;
-                }
-                
-                @media (max-width: 768px) {
-                    .input-group {
-                        flex-direction: column;
-                        align-items: stretch;
-                    }
-                    .input-field {
-                        width: 100%;
-                    }
-                    .primary-button {
-                        width: 100%;
-                    }
-                }
-            `}</style>
         </div>
     );
 };
-
 
 export default PuntoVenta;
