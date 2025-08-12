@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
-import { useSales } from './SalesContext';
+import { useSales } from './SalesContext'; 
 import Swal from 'sweetalert2';
 
 const TalleOptions = [
@@ -65,7 +65,7 @@ const PuntoVenta = () => {
 
     const [productos, setProductos] = useState([]);
     const [metodosPago, setMetodosPago] = useState([]);
-    const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
+    const [metodoPagoSeleccionado, setMetodosPagoSeleccionado] = useState('');
     const [busquedaProducto, setBusquedaProducto] = useState('');
     const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
@@ -262,14 +262,15 @@ const PuntoVenta = () => {
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
-                    
-                    showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
-                    
-                    const ventaCompleta = {
-                        ...response.data,
-                        items: activeCart.items
-                    };
 
+                    // Obtener los datos completos de la venta recién creada
+                    const ventaCompletaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${response.data.id}/`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    });
+                    const ventaCompleta = ventaCompletaResponse.data;
+                    
+                    showCustomAlert('Venta procesada con éxito. ID: ' + ventaCompleta.id, 'success');
+                    
                     finalizeCart(activeCartId);
                     setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
                     setDescuentoPorcentaje(0);
