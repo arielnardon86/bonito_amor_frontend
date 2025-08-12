@@ -256,7 +256,7 @@ const PuntoVenta = () => {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
 
-                    // CORRECCIÓN: Usar el ID de la respuesta para obtener los detalles de la venta
+                    // Obtener los datos completos de la venta recién creada
                     const ventaCompletaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${response.data.id}/`, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
@@ -277,7 +277,6 @@ const PuntoVenta = () => {
                         cancelButtonText: 'No',
                     }).then((printResult) => {
                         if (printResult.isConfirmed) {
-                            // CORRECCIÓN: Pasar el objeto de venta completo
                             navigate('/recibo', { state: { venta: ventaCompleta } });
                         }
                     });
