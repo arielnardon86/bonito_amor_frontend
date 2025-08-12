@@ -262,15 +262,15 @@ const PuntoVenta = () => {
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
-                    
-                    showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
-                    
-                    // Obtener los datos completos de la venta recién creada para el recibo
+
+                    // Obtener los datos completos de la venta recién creada
                     const ventaCompletaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${response.data.id}/`, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
                     const ventaCompleta = ventaCompletaResponse.data;
-
+                    
+                    showCustomAlert('Venta procesada con éxito. ID: ' + ventaCompleta.id, 'success');
+                    
                     finalizeCart(activeCartId);
                     setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
                     setDescuentoPorcentaje(0);
@@ -314,21 +314,13 @@ const PuntoVenta = () => {
 
     const handleDeleteActiveCart = () => {
         if (activeCart) {
-            Swal.fire({
-                title: '¿Estás seguro?',
-                text: `¿Quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    deleteCart(activeCartId);
-                    showCustomAlert('Venta eliminada.', 'info');
-                }
+            setConfirmMessage(`¿Estás seguro de que quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`);
+            setConfirmAction(() => () => {
+                deleteCart(activeCartId);
+                showCustomAlert('Venta eliminada.', 'info');
+                setShowConfirmModal(false);
             });
+            setShowConfirmModal(true);
         }
     };
 
@@ -390,17 +382,17 @@ const PuntoVenta = () => {
             <h1 style={styles.header}>Punto de Venta ({selectedStoreSlug})</h1>
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Gestión de Ventas Activas</h3>
-                <div style={styles.cartSelectionContainer}>
+                <div className="cart-selection-container">
                     {carts.map((cart, index) => (
                         <button
                             key={cart.id}
                             onClick={() => selectCart(cart.id)}
-                            style={cart.id === activeCartId ? styles.activeCartButton : styles.inactiveCartButton}
+                            className={cart.id === activeCartId ? 'active-cart-button' : 'inactive-cart-button'}
                         >
                             {cart.alias || `Venta ${index + 1}`}
                         </button>
                     ))}
-                    <button onClick={() => setShowNewCartModal(true)} style={styles.newCartButton}>
+                    <button onClick={() => setShowNewCartModal(true)} className="new-cart-button">
                         + Nueva Venta
                     </button>
                 </div>
@@ -416,7 +408,7 @@ const PuntoVenta = () => {
                                 onChange={(e) => updateCartAlias(activeCartId, e.target.value)}
                                 style={styles.input}
                             />
-                            <button onClick={handleDeleteActiveCart} style={styles.deleteCartButton}>
+                            <button onClick={handleDeleteActiveCart} className="delete-cart-button">
                                 Eliminar Venta
                             </button>
                         </div>
@@ -436,10 +428,10 @@ const PuntoVenta = () => {
                             style={styles.input}
                         />
                         <div style={styles.modalActions}>
-                            <button onClick={() => setShowNewCartModal(false)} style={styles.modalCancelButton}>
+                            <button onClick={() => setShowNewCartModal(false)} className="modal-cancel-button">
                                 Cancelar
                             </button>
-                            <button onClick={handleCreateNewCartWithAlias} style={styles.modalConfirmButton}>
+                            <button onClick={handleCreateNewCartWithAlias} className="modal-confirm-button">
                                 Crear Venta
                             </button>
                         </div>
@@ -458,7 +450,7 @@ const PuntoVenta = () => {
                         onKeyPress={(e) => { if (e.key === 'Enter') handleBuscarProducto(); }}
                         style={styles.input}
                     />
-                    <button onClick={handleBuscarProducto} style={styles.primaryButton}>
+                    <button onClick={handleBuscarProducto} className="primary-button">
                         Buscar
                     </button>
                 </div>
@@ -474,7 +466,7 @@ const PuntoVenta = () => {
                             <button
                                 onClick={() => handleAddProductoEnVenta(productoSeleccionado, 1)}
                                 disabled={productoSeleccionado.stock === 0}
-                                style={styles.addProductButton}
+                                className="add-product-button"
                             >
                                 {productoSeleccionado.stock === 0 ? 'Sin Stock' : 'Añadir 1 Ud.'}
                             </button>
@@ -487,48 +479,50 @@ const PuntoVenta = () => {
                 <h3 style={styles.sectionHeader}>Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
                 {activeCart && activeCart.items.length > 0 ? (
                     <>
-                        <table style={styles.table}>
-                            <thead>
-                                <tr style={styles.tableHeaderRow}>
-                                    <th style={styles.th}>Producto</th>
-                                    <th style={styles.th}>Talle</th>
-                                    <th style={styles.th}>Cantidad</th>
-                                    <th style={styles.th}>P. Unitario</th>
-                                    <th style={styles.th}>Subtotal</th>
-                                    <th style={styles.th}>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {activeCart.items.map((item) => (
-                                    <tr key={item.product.id} style={styles.tableRow}>
-                                        <td style={styles.td}>{item.product.nombre}</td>
-                                        <td style={styles.td}>{item.product.talle}</td>
-                                        <td style={styles.td}>
-                                            <div style={styles.quantityControl}>
-                                                <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton}>-</button>
-                                                <span style={styles.quantityText}>{item.quantity}</span>
-                                                <button onClick={() => handleAddProductoEnVenta(item.product, 1)} style={styles.quantityButton}>+</button>
-                                            </div>
-                                        </td>
-                                        <td style={styles.td}>${parseFloat(item.product.precio).toFixed(2)}</td>
-                                        <td style={styles.td}>${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
-                                        <td style={styles.td}>
-                                            <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} style={styles.removeButton}>
-                                                Quitar
-                                            </button>
-                                        </td>
+                        <div className="table-responsive">
+                            <table className="cart-table">
+                                <thead>
+                                    <tr className="table-header-row">
+                                        <th className="th">Producto</th>
+                                        <th className="th">Talle</th>
+                                        <th className="th">Cantidad</th>
+                                        <th className="th">P. Unitario</th>
+                                        <th className="th">Subtotal</th>
+                                        <th className="th">Acciones</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {activeCart.items.map((item) => (
+                                        <tr key={item.product.id} className="table-row">
+                                            <td className="td">{item.product.nombre}</td>
+                                            <td className="td">{item.product.talle}</td>
+                                            <td className="td">
+                                                <div className="quantity-control">
+                                                    <button onClick={() => handleDecrementQuantity(item.product.id)} className="quantity-button">-</button>
+                                                    <span className="quantity-text">{item.quantity}</span>
+                                                    <button onClick={() => handleAddProductoEnVenta(item.product, 1)} className="quantity-button">+</button>
+                                                </div>
+                                            </td>
+                                            <td className="td">${parseFloat(item.product.precio).toFixed(2)}</td>
+                                            <td className="td">${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
+                                            <td className="td">
+                                                <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} className="remove-button">
+                                                    Quitar
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                         <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4>
-                        <div style={styles.paymentMethodSelectContainer}>
-                            <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de Pago:</label>
+                        <div className="payment-method-select-container">
+                            <label htmlFor="metodoPago" className="payment-method-label">Método de Pago:</label>
                             <select
                                 id="metodoPago"
                                 value={metodoPagoSeleccionado}
                                 onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
-                                style={styles.input}
+                                className="input"
                             >
                                 <option value="">Selecciona un método de pago</option>
                                 {metodosPago.map(method => (
@@ -536,20 +530,20 @@ const PuntoVenta = () => {
                                 ))}
                             </select>
                         </div>
-                        <div style={styles.discountContainer}>
-                            <label htmlFor="descuento" style={styles.discountLabel}>Aplicar Descuento (%):</label>
+                        <div className="discount-container">
+                            <label htmlFor="descuento" className="discount-label">Aplicar Descuento (%):</label>
                             <input
                                 type="number"
                                 id="descuento"
                                 value={descuentoPorcentaje}
                                 onChange={(e) => setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-                                style={styles.discountInput}
+                                className="discount-input"
                                 min="0"
                                 max="100"
                             />
                         </div>
                         <h4 style={styles.finalTotalVenta}>Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4>
-                        <button onClick={handleProcesarVenta} style={styles.processSaleButton}>
+                        <button onClick={handleProcesarVenta} className="process-sale-button">
                             Procesar Venta
                         </button>
                     </>
@@ -565,7 +559,7 @@ const PuntoVenta = () => {
                         type="text"
                         placeholder="Buscar por nombre o talle..."
                         value={busquedaProducto}
-                        onChange={(e) => setBusquedaProducto(e.target.value)}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                         style={styles.input}
                     />
                 </div>
@@ -598,7 +592,7 @@ const PuntoVenta = () => {
                                                 <button
                                                     onClick={() => handleAddProductoEnVenta(product, 1)}
                                                     disabled={product.stock === 0}
-                                                    style={product.stock === 0 ? styles.disabledButton : styles.addButton}
+                                                    className={product.stock === 0 ? 'disabled-button' : 'add-button'}
                                                 >
                                                     {product.stock === 0 ? 'Sin Stock' : 'Añadir'}
                                                 </button>
@@ -630,21 +624,26 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {showConfirmModal && (
+            {showNewCartModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
-                        <p style={styles.modalMessage}>{confirmMessage}</p>
+                        <h3 style={styles.modalHeader}>Crear Nueva Venta</h3>
+                        <input
+                            type="text"
+                            placeholder="Alias para la venta (ej: Cliente A)"
+                            value={newCartAliasInput}
+                            onChange={(e) => setNewCartAliasInput(e.target.value)}
+                            style={styles.input}
+                        />
                         <div style={styles.modalActions}>
-                            <button onClick={confirmAction} style={styles.modalConfirmButton}>Sí</button>
-                            <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>No</button>
+                            <button onClick={() => setShowNewCartModal(false)} className="modal-cancel-button">
+                                Cancelar
+                            </button>
+                            <button onClick={handleCreateNewCartWithAlias} className="modal-confirm-button">
+                                Crear Venta
+                            </button>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {showAlertMessage && (
-                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
-                    <p>{alertMessage}</p>
                 </div>
             )}
         </div>
@@ -725,44 +724,6 @@ const styles = {
         textAlign: 'center',
         fontWeight: 'bold',
     },
-    cartSelectionContainer: {
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '10px',
-        marginBottom: '15px',
-        padding: '10px',
-        backgroundColor: '#eaf7ff',
-        borderRadius: '5px',
-        border: '1px dashed #a7d9ff',
-    },
-    activeCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease',
-    },
-    inactiveCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#f0f0f0',
-        color: '#333',
-        border: '1px solid #ccc',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        transition: 'background-color 0.3s ease',
-    },
-    newCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#28a745',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        transition: 'background-color 0.3s ease',
-    },
     activeCartInfo: {
         marginTop: '15px',
         padding: '15px',
@@ -779,15 +740,6 @@ const styles = {
         display: 'flex',
         gap: '10px',
         marginBottom: '10px',
-    },
-    deleteCartButton: {
-        padding: '8px 15px',
-        backgroundColor: '#dc3545',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        transition: 'background-color 0.3s ease',
     },
     inputGroup: {
         display: 'flex',

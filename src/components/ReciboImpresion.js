@@ -5,13 +5,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const ReciboImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { venta } = location.state || {};
+    const { venta } = location.state || {}; // Corrección: Recibe el objeto venta completo
     const reciboRef = useRef(null);
 
     useEffect(() => {
         if (reciboRef.current && venta && venta.detalles) {
             reciboRef.current.innerHTML = '';
             
+            // Corrige la lógica para manejar el objeto venta.detalles
             const totalSinDescuento = venta.detalles.reduce((acc, item) => acc + (item.cantidad * parseFloat(item.precio_unitario)), 0);
 
             reciboRef.current.innerHTML = `
