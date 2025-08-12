@@ -255,7 +255,11 @@ const PuntoVenta = () => {
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
-                    
+
+                    // Obtener los datos completos de la venta recién creada
+                    if (!response.data.id) {
+                        throw new Error('No se recibió el ID de la venta.');
+                    }
                     const ventaCompletaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${response.data.id}/`, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
