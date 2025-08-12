@@ -1029,7 +1029,7 @@ const PuntoVenta = () => {
                     font-weight: bold;
                     transition: background-color 0.3s ease, transform 0.2s ease;
                 }
-                .alert-box {
+                .alert-box-success {
                     position: fixed;
                     top: 20px;
                     right: 20px;
@@ -1039,7 +1039,40 @@ const PuntoVenta = () => {
                     border-radius: 8px;
                     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
                     z-index: 1001;
+                    animation: slideIn 0.5s forwards, fadeOut 3s forwards;
                 }
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes fadeOut {
+                    0% { opacity: 1; }
+                    85% { opacity: 1; }
+                    100% { opacity: 0; }
+                }
+                .pagination-container {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    margin-top: 20px;
+                    gap: 10px;
+                }
+                .pagination-button {
+                    padding: 8px 15px;
+                    background-color: #007bff;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 1em;
+                    transition: background-color 0.3s ease;
+                }
+                .page-number {
+                    font-size: 1em;
+                    font-weight: bold;
+                    color: #555;
+                }
+                
                 @media (max-width: 768px) {
                     .punto-venta-container { padding: 10px; }
                     .main-header { font-size: 1.8em; }
