@@ -1089,3 +1089,4 @@ const PuntoVenta = () => {
         </div>
     );
 };
+export default PuntoVenta;
