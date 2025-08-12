@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useSales } from './SalesContext'; 
-// NEW TALLE_OPTIONS
-const TALLE_OPTIONS = [
+
+const TalleOptions = [
     { value: 'UNICO', label: 'UNICO' },
     { value: 'XS', label: 'XS' },
     { value: 'S', label: 'S' },
@@ -32,7 +32,6 @@ const TALLE_OPTIONS = [
 ];
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
-// Función para normalizar la URL base, eliminando cualquier /api/ o barra final
 const normalizeApiUrl = (url) => {
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
@@ -43,11 +42,12 @@ const normalizeApiUrl = (url) => {
     }
     return normalizedUrl;
 };
-
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const PuntoVenta = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
+    const navigate = useNavigate();
+
     const {
         carts,
         activeCart,
@@ -149,7 +149,6 @@ const PuntoVenta = () => {
         }
 
         try {
-            // CORRECCIÓN: el endpoint en el backend es `/api/productos/buscar_por_barcode/`
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
@@ -237,27 +236,29 @@ const PuntoVenta = () => {
         setConfirmAction(() => async () => {
             setShowConfirmModal(false);
             try {
-                // Objeto de datos CORREGIDO para la petición a la API
                 const ventaData = {
-                    tienda_slug: selectedStoreSlug, // Usar el slug de la tienda
-                    metodo_pago: metodoPagoSeleccionado, // Usar el nombre del método de pago
+                    tienda_slug: selectedStoreSlug,
+                    metodo_pago: metodoPagoSeleccionado,
                     descuento_porcentaje: descuentoPorcentaje,
                     detalles: activeCart.items.map(item => ({
                         producto: item.product.id,
                         cantidad: item.quantity,
-                        precio_unitario: parseFloat(item.product.precio), // ¡CAMBIO CLAVE!
+                        precio_unitario: parseFloat(item.product.precio),
                     })),
                 };
 
                 const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
-
-                console.log('Venta procesada con éxito:', response.data);
+                
                 showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
                 finalizeCart(activeCartId);
                 setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
                 setDescuentoPorcentaje(0);
+
+                // REDIRIGIR A LA PÁGINA DE RECIBO CON LOS DATOS
+                navigate('/recibo', { state: { venta: response.data, items: activeCart.items, descuento: descuentoPorcentaje } });
+
             } catch (err) {
                 console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
                 showCustomAlert('Error al procesar la venta: ' + (err.response && err.response.data ? JSON.stringify(err.response.data) : err.message), 'error');
@@ -306,13 +307,13 @@ const PuntoVenta = () => {
 
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-    const nextPage = () => {
+    const nextPageHandler = () => {
         if (currentPage < totalPages) {
             setCurrentPage(currentPage + 1);
         }
     };
 
-    const prevPage = () => {
+    const prevPageHandler = () => {
         if (currentPage > 1) {
             setCurrentPage(currentPage - 1);
         }
@@ -487,6 +488,7 @@ const PuntoVenta = () => {
                                 onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
                                 style={styles.input}
                             >
+                                <option value="">Selecciona un método de pago</option>
                                 {metodosPago.map(method => (
                                     <option key={method.id} value={method.nombre}>{method.nombre}</option>
                                 ))}
@@ -519,7 +521,7 @@ const PuntoVenta = () => {
                 <div style={styles.inputGroup}>
                     <input
                         type="text"
-                        placeholder="Buscar por nombre, talle o código..."
+                        placeholder="Buscar por nombre o talle..."
                         value={busquedaProducto}
                         onChange={(e) => setBusquedaProducto(e.target.value)}
                         style={styles.input}
@@ -573,11 +575,11 @@ const PuntoVenta = () => {
 
                         {totalPages > 1 && (
                             <div style={styles.paginationContainer}>
-                                <button onClick={prevPage} disabled={currentPage === 1} style={styles.paginationButton}>
+                                <button onClick={prevPageHandler} disabled={currentPage === 1} style={styles.paginationButton}>
                                     Anterior
                                 </button>
                                 <span style={styles.pageNumber}>Página {currentPage} de {totalPages}</span>
-                                <button onClick={nextPage} disabled={currentPage === totalPages} style={styles.paginationButton}>
+                                <button onClick={nextPageHandler} disabled={currentPage === totalPages} style={styles.paginationButton}>
                                     Siguiente
                                 </button>
                             </div>
@@ -995,6 +997,7 @@ const styles = {
         position: 'fixed',
         top: '20px',
         right: '20px',
+        backgroundColor: '#28a745', 
         color: 'white',
         padding: '15px 25px',
         borderRadius: '8px',
@@ -1002,12 +1005,6 @@ const styles = {
         zIndex: 1001,
         opacity: 0,
         animation: 'fadeInOut 3s forwards',
-    },
-    '@keyframes fadeInOut': {
-        '0%': { opacity: 0, transform: 'translateY(-20px)' },
-        '10%': { opacity: 1, transform: 'translateY(0)' },
-        '90%': { opacity: 1, transform: 'translateY(0)' },
-        '100%': { opacity: 0, transform: 'translateY(-20px)' },
     },
     paginationContainer: {
         display: 'flex',
@@ -1023,13 +1020,13 @@ const styles = {
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        fontSize: '0.9em',
+        fontSize: '1em',
         transition: 'background-color 0.3s ease',
     },
     pageNumber: {
         fontSize: '1em',
-        color: '#555',
         fontWeight: 'bold',
+        color: '#555',
     },
 };
 

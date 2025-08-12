@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './AuthContext'; 
 import { SalesProvider } from './components/SalesContext'; 
 import EtiquetasImpresion from './components/EtiquetasImpresion';
+import ReciboImpresion from './components/ReciboImpresion'; // NUEVA IMPORTACIÓN
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
@@ -45,7 +46,7 @@ const Navbar = () => {
   }, [isOpen]);
 
   // Si estamos en la página de etiquetas, no mostramos la barra de navegación
-  if (location.pathname === '/etiquetas') {
+  if (location.pathname === '/etiquetas' || location.pathname === '/recibo') {
     return null;
   }
 
@@ -150,6 +151,7 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />
+              <Route path="/recibo" element={<ReciboImpresion />} /> {/* NUEVA RUTA PARA EL RECIBO */}
             </>
           )}
 
