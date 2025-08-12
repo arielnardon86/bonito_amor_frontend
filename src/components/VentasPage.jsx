@@ -865,4 +865,4 @@ const styles = {
     },
 };
 
-export default PuntoVenta;
+export default VentasPage;
