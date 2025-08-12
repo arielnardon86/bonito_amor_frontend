@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useSales } from './SalesContext'; 
+import Swal from 'sweetalert2';
 
 const TalleOptions = [
     { value: 'UNICO', label: 'UNICO' },
@@ -230,43 +231,61 @@ const PuntoVenta = () => {
 
         const finalTotal = calculateTotalWithDiscount();
 
-        setConfirmMessage(`¿Confirmas la venta por un total de $${finalTotal.toFixed(2)} con ${metodoPagoSeleccionado}?` +
-                          (descuentoPorcentaje > 0 ? ` (Descuento aplicado: ${descuentoPorcentaje}%)` : ''));
-        setConfirmAction(() => async () => {
-            setShowConfirmModal(false);
-            try {
-                const ventaData = {
-                    tienda_slug: selectedStoreSlug,
-                    metodo_pago: metodoPagoSeleccionado,
-                    descuento_porcentaje: descuentoPorcentaje,
-                    detalles: activeCart.items.map(item => ({
-                        producto: item.product.id,
-                        cantidad: item.quantity,
-                        precio_unitario: parseFloat(item.product.precio),
-                    })),
-                };
+        Swal.fire({
+            title: '¿Confirmar venta?',
+            html: `Confirmas la venta por un total de <strong>$${finalTotal.toFixed(2)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?` +
+                  (descuentoPorcentaje > 0 ? `<br>(Descuento aplicado: ${descuentoPorcentaje}%)` : ''),
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, confirmar',
+            cancelButtonText: 'Cancelar',
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const ventaData = {
+                        tienda_slug: selectedStoreSlug,
+                        metodo_pago: metodoPagoSeleccionado,
+                        descuento_porcentaje: descuentoPorcentaje,
+                        detalles: activeCart.items.map(item => ({
+                            producto: item.product.id,
+                            cantidad: item.quantity,
+                            precio_unitario: parseFloat(item.product.precio),
+                        })),
+                    };
 
-                const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                });
-                
-                showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
-                finalizeCart(activeCartId);
-                setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
-                setDescuentoPorcentaje(0);
+                    const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    });
+                    
+                    showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
+                    finalizeCart(activeCartId);
+                    setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
+                    setDescuentoPorcentaje(0);
 
-                // Preguntar si se desea imprimir el recibo
-                const confirmReceipt = window.confirm('Venta procesada. ¿Desea imprimir el recibo?');
-                if (confirmReceipt) {
-                    navigate('/recibo', { state: { venta: response.data, items: activeCart.items, descuento: descuentoPorcentaje } });
+                    Swal.fire({
+                        title: 'Venta procesada!',
+                        text: '¿Desea imprimir el recibo?',
+                        icon: 'success',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, imprimir',
+                        cancelButtonText: 'No',
+                    }).then((printResult) => {
+                        if (printResult.isConfirmed) {
+                            navigate('/recibo', { state: { venta: response.data, items: activeCart.items, descuento: descuentoPorcentaje } });
+                        }
+                    });
+
+                } catch (err) {
+                    console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'Error al procesar la venta: ' + (err.response && err.response.data ? JSON.stringify(err.response.data) : err.message),
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
                 }
-
-            } catch (err) {
-                console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
-                showCustomAlert('Error al procesar la venta: ' + (err.response && err.response.data ? JSON.stringify(err.response.data) : err.message), 'error');
             }
         });
-        setShowConfirmModal(true);
     };
 
     const handleCreateNewCartWithAlias = () => {
@@ -622,6 +641,9 @@ const styles = {
         borderRadius: '8px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         color: '#333',
+        '@media (max-width: 768px)': {
+            padding: '10px',
+        },
     },
     header: {
         textAlign: 'center',
@@ -629,6 +651,9 @@ const styles = {
         marginBottom: '30px',
         fontSize: '2.5em',
         fontWeight: 'bold',
+        '@media (max-width: 768px)': {
+            fontSize: '1.8em',
+        },
     },
     section: {
         backgroundColor: '#ffffff',
@@ -643,6 +668,9 @@ const styles = {
         marginBottom: '20px',
         borderBottom: '2px solid #eceff1',
         paddingBottom: '10px',
+        '@media (max-width: 768px)': {
+            fontSize: '1.4em',
+        },
     },
     loadingMessage: {
         padding: '20px',
@@ -783,16 +811,21 @@ const styles = {
         gap: '10px',
         marginTop: '10px',
     },
-    addProductButton: {
-        padding: '10px 20px',
-        backgroundColor: '#28a745',
+    addButton: {
+        padding: '5px 10px',
+        backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '3px',
         cursor: 'pointer',
-        fontSize: '1em',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease',
+    },
+    disabledButton: {
+        padding: '5px 10px',
+        backgroundColor: '#6c757d',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'not-allowed',
     },
     table: {
         width: '100%',
@@ -801,6 +834,11 @@ const styles = {
         borderRadius: '8px',
         overflow: 'hidden',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        '@media (max-width: 768px)': {
+            display: 'block',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+        },
     },
     tableHeaderRow: {
         backgroundColor: '#f2f2f2',

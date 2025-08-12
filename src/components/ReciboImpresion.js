@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const ReciboImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { venta, items, descuento } = location.state || {};
+    const { venta, items, descuento } = location.state || {}; // Corrección: Recibe el objeto venta completo
     const reciboRef = useRef(null);
 
     useEffect(() => {
@@ -13,14 +13,13 @@ const ReciboImpresion = () => {
             reciboRef.current.innerHTML = '';
             
             const totalSinDescuento = items.reduce((acc, item) => acc + (item.quantity * parseFloat(item.product.precio)), 0);
-            
+
             reciboRef.current.innerHTML = `
                 <div class="receipt">
                     <div class="header">
                         <h2>Comprobante de compra</h2>
-                        <p>Tienda: ${venta.tienda_nombre}</p>
-                        <p>Fecha: ${new Date(venta.fecha_venta).toLocaleString()}</p>
-                        <p>Atendido por: ${venta.usuario.username}</p>
+                        <p>Tienda: ${venta.tienda_nombre || 'N/A'}</p>
+                        <p>Fecha: ${new Date(venta.fecha_venta).toLocaleString() || 'N/A'}</p>
                         <hr>
                     </div>
                     <div class="items">

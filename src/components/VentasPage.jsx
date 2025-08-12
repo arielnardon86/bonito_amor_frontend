@@ -189,22 +189,7 @@ const VentasPage = () => {
     
     // Nueva función para reimprimir el recibo
     const handleReimprimirRecibo = (venta) => {
-        const items = venta.detalles.map(d => ({
-            product: {
-                nombre: d.producto_nombre,
-                talle: d.producto.talle,
-                precio: d.precio_unitario,
-            },
-            quantity: d.cantidad,
-        }));
-
-        navigate('/recibo', { 
-            state: { 
-                venta, 
-                items, 
-                descuento: venta.descuento_porcentaje 
-            } 
-        });
+        navigate('/recibo', { state: { venta } });
     };
 
     const applyFilters = () => {
@@ -296,6 +281,7 @@ const VentasPage = () => {
             ) : (
                 <>
                     {/* Tabla de Ventas */}
+                    <div className="table-responsive">
                     <table style={styles.table}>
                         <thead>
                             <tr style={styles.tableHeaderRow}>
@@ -322,27 +308,28 @@ const VentasPage = () => {
                                             {venta.anulada ? 'Sí' : 'No'}
                                         </td>
                                         <td style={styles.td}>
-                                            <button
-                                                onClick={() => setExpandedSaleId(expandedSaleId === venta.id ? null : venta.id)}
-                                                style={styles.detailButton}
-                                            >
-                                                {expandedSaleId === venta.id ? 'Ocultar Detalles' : 'Ver Detalles'}
-                                            </button>
-                                            {/* El botón de Anular Venta solo se muestra si la venta no está anulada Y no todos los detalles están anulados */}
-                                            {!venta.anulada && (
+                                            <div className="action-buttons">
                                                 <button
-                                                    onClick={() => handleAnularVenta(venta.id)}
-                                                    style={{ ...styles.anularButton, marginLeft: '10px' }}
+                                                    onClick={() => setExpandedSaleId(expandedSaleId === venta.id ? null : venta.id)}
+                                                    style={styles.detailButton}
                                                 >
-                                                    Anular Venta
+                                                    {expandedSaleId === venta.id ? 'Ocultar' : 'Ver'}
                                                 </button>
-                                            )}
-                                             <button
-                                                onClick={() => handleReimprimirRecibo(venta)}
-                                                style={{ ...styles.reprintButton, marginLeft: '10px' }}
-                                            >
-                                                Reimprimir Recibo
-                                            </button>
+                                                {!venta.anulada && (
+                                                    <button
+                                                        onClick={() => handleAnularVenta(venta.id)}
+                                                        style={styles.anularButton}
+                                                    >
+                                                        Anular
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => handleReimprimirRecibo(venta)}
+                                                    style={styles.reprintButton}
+                                                >
+                                                    Recibo
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     {/* Detalles de la venta expandidos */}
@@ -350,6 +337,7 @@ const VentasPage = () => {
                                         <tr>
                                             <td colSpan="7" style={styles.detailRow}>
                                                 <h4 style={styles.detailHeader}>Detalles de la Venta {venta.id}</h4>
+                                                <div className="detail-table-wrapper">
                                                 <table style={styles.detailTable}>
                                                     <thead>
                                                         <tr>
@@ -383,7 +371,7 @@ const VentasPage = () => {
                                                                                     onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
                                                                                     style={styles.anularDetalleButton}
                                                                                 >
-                                                                                    Anular Detalle
+                                                                                    Anular
                                                                                 </button>
                                                                             )}
                                                                         </td>
@@ -397,6 +385,7 @@ const VentasPage = () => {
                                                         )}
                                                     </tbody>
                                                 </table>
+                                                </div>
                                                 {venta.descuento_porcentaje > 0 && (
                                                     <p style={styles.discountDisplay}>
                                                         Descuento aplicado a la venta: {parseFloat(venta.descuento_porcentaje).toFixed(2)}%
@@ -409,6 +398,7 @@ const VentasPage = () => {
                             ))}
                         </tbody>
                     </table>
+                    </div>
 
                     {/* Controles de Paginación */}
                     <div style={styles.paginationContainer}>
@@ -455,6 +445,9 @@ const styles = {
         borderRadius: '8px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         color: '#333',
+        '@media (max-width: 768px)': {
+            padding: '10px',
+        },
     },
     header: {
         textAlign: 'center',
@@ -462,6 +455,9 @@ const styles = {
         marginBottom: '30px',
         fontSize: '2.5em',
         fontWeight: 'bold',
+        '@media (max-width: 768px)': {
+            fontSize: '1.8em',
+        },
     },
     section: {
         backgroundColor: '#ffffff',
@@ -476,6 +472,9 @@ const styles = {
         marginBottom: '20px',
         borderBottom: '2px solid #eceff1',
         paddingBottom: '10px',
+        '@media (max-width: 768px)': {
+            fontSize: '1.4em',
+        },
     },
     loadingMessage: {
         padding: '20px',
@@ -639,6 +638,11 @@ const styles = {
         borderRadius: '8px',
         overflow: 'hidden',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        '@media (max-width: 768px)': {
+            display: 'block',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+        },
     },
     tableHeaderRow: {
         backgroundColor: '#f2f2f2',
