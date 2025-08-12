@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const ReciboImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { venta } = location.state || {}; // Corrección: Recibe el objeto venta completo
+    const { venta } = location.state || {};
     const reciboRef = useRef(null);
 
     useEffect(() => {
