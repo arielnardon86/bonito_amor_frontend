@@ -142,64 +142,54 @@ const VentasPage = () => {
         }
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchVentas]); 
 
-    const handleAnularVenta = async (ventaId) => {
-        console.log("handleAnularVenta llamado para el ID:", ventaId);
-        if (!token) {
-            showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
-            return;
+const handleAnularVenta = async (ventaId) => {
+    if (!token) {
+        showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
+        return;
+    }
+
+    if (window.confirm('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.')) {
+        try {
+            await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_venta/`, {}, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            showCustomAlert('Venta anulada con éxito!', 'success');
+            fetchVentas(); 
+        } catch (err) {
+            showCustomAlert('Error al anular la venta: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
+            console.error('Error anulando venta:', err.response || err);
         }
+    }
+};
 
-        setConfirmMessage('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.');
-        setConfirmAction(() => async () => {
-            console.log("Acción de anular venta confirmada.");
-            setShowConfirmModal(false); 
-            try {
-                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_venta/`, {}, { 
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                showCustomAlert('Venta anulada con éxito!', 'success');
-                fetchVentas(); 
-            } catch (err) {
-                showCustomAlert('Error al anular la venta: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
-                console.error('Error anulando venta:', err.response || err);
-            }
-        });
-        setShowConfirmModal(true);
-    };
+const handleAnularDetalleVenta = async (ventaId, detalleId) => {
+    if (!token) {
+        showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
+        return;
+    }
+    
+    if (window.confirm('¿Estás seguro de que quieres ANULAR este producto de la venta? Esto revertirá el stock del producto.')) {
+        try {
+            const payload = { detalle_id: detalleId };
+            await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle_venta/`, payload, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            showCustomAlert('Producto de la venta anulado con éxito!', 'success');
+            
+            const currentExpandedSaleId = expandedSaleId; 
+            setExpandedSaleId(null); 
+            await fetchVentas(); 
+            setTimeout(() => {
+                setExpandedSaleId(currentExpandedSaleId); 
+            }, 50); 
 
-    const handleAnularDetalleVenta = async (ventaId, detalleId) => {
-        console.log("handleAnularDetalleVenta llamado para el ID de venta:", ventaId, "y detalle:", detalleId);
-        if (!token) {
-            showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
-            return;
+        } catch (err) {
+            showCustomAlert('Error al anular el detalle de la venta: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
+            console.error('Error anulando detalle de venta:', err.response || err);
         }
-        
-        setConfirmMessage('¿Estás seguro de que quieres ANULAR este producto de la venta? Esto revertirá el stock del producto.');
-        setConfirmAction(() => async () => {
-            console.log("Acción de anular detalle de venta confirmada.");
-            setShowConfirmModal(false); 
-            try {
-                const payload = { detalle_id: detalleId };
-                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle_venta/`, payload, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                showCustomAlert('Producto de la venta anulado con éxito!', 'success');
-                
-                const currentExpandedSaleId = expandedSaleId; 
-                setExpandedSaleId(null); 
-                await fetchVentas(); 
-                setTimeout(() => {
-                    setExpandedSaleId(currentExpandedSaleId); 
-                }, 50); 
-
-            } catch (err) {
-                showCustomAlert('Error al anular el detalle de la venta: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
-                console.error('Error anulando detalle de venta:', err.response || err);
-            }
-        });
-        setShowConfirmModal(true);
-    };
+    }
+};
     
     // Nueva función para reimprimir el recibo
     const handleReimprimirRecibo = (venta) => {
