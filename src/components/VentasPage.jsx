@@ -23,12 +23,13 @@ const normalizeApiUrl = (url) => {
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const VentasPage = () => {
-    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug } = useAuth(); 
+    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth(); 
     const navigate = useNavigate();
     
+    // Obtener la fecha actual para los filtros por defecto (día en curso)
     const today = new Date();
     const currentYear = today.getFullYear();
-    const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0');
+    const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0'); // Mes 0-11, por eso +1
     const currentDay = today.getDate().toString().padStart(2, '0');
     const defaultDate = `${currentYear}-${currentMonth}-${currentDay}`;
 
@@ -36,9 +37,10 @@ const VentasPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Establecer filterDate por defecto al día actual
     const [filterDate, setFilterDate] = useState(defaultDate);
     const [filterSellerId, setFilterSellerId] = useState('');
-    const [filterAnulada, setFilterAnulada] = useState('');
+    const [filterAnulada, setFilterAnulada] = useState(''); // Mantener como string 'true'/'false'/'', el backend lo convierte
 
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
