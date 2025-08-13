@@ -72,6 +72,14 @@ const PuntoVenta = () => {
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [error, setError] = useState(null);
 
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [confirmMessage, setConfirmMessage] = useState('');
+    const [confirmAction, setConfirmAction] = useState(() => () => {});
+
+    const [showAlertMessage, setShowAlertMessage] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+    const [alertType, setAlertType] = useState('success');
+
     const [showNewCartModal, setShowNewCartModal] = useState(false);
     const [newCartAliasInput, setNewCartAliasInput] = useState('');
 
@@ -81,15 +89,14 @@ const PuntoVenta = () => {
     const [productsPerPage] = useState(10);
 
     const showCustomAlert = (message, type = 'success') => {
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true,
-            icon: type,
-            title: message
-        });
+        setAlertMessage(message);
+        setAlertType(type);
+        setShowAlertMessage(true);
+        setTimeout(() => {
+            setShowAlertMessage(false);
+            setAlertMessage('');
+            setAlertType('success');
+        }, 3000);
     };
 
     useEffect(() => {
@@ -192,19 +199,13 @@ const PuntoVenta = () => {
 
     const handleRemoveProductoEnVenta = (productId) => {
         if (!activeCart) return;
-        Swal.fire({
-            title: '¿Estás seguro?',
-            text: "¿Quieres quitar este producto del carrito?",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, quitar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                removeProductFromCart(activeCartId, productId);
-                showCustomAlert('Producto eliminado del carrito.', 'info');
-            }
+        setConfirmMessage('¿Estás seguro de que quieres quitar este producto del carrito?');
+        setConfirmAction(() => () => {
+            removeProductFromCart(activeCartId, productId);
+            showCustomAlert('Producto eliminado del carrito.', 'info');
+            setShowConfirmModal(false);
         });
+        setShowConfirmModal(true);
     };
 
     const calculateTotalWithDiscount = useCallback(() => {
@@ -255,21 +256,8 @@ const PuntoVenta = () => {
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
-
-                    // CORRECCIÓN: Si el POST fue exitoso, el backend debería devolver el ID
-                    const ventaId = response.data.id;
-                    if (!ventaId) {
-                        throw new Error('No se recibió el ID de la venta en la respuesta del POST.');
-                    }
                     
-                    // Ahora hacemos una nueva solicitud GET para obtener los datos completos, incluyendo los nombres de los productos y la tienda
-                    const ventaCompletaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/`, {
-                        headers: { 'Authorization': `Bearer ${token}` },
-                    });
-                    const ventaCompleta = ventaCompletaResponse.data;
-                    
-                    showCustomAlert('Venta procesada con éxito. ID: ' + ventaCompleta.id, 'success');
-                    
+                    showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
                     finalizeCart(activeCartId);
                     setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
                     setDescuentoPorcentaje(0);
@@ -283,7 +271,7 @@ const PuntoVenta = () => {
                         cancelButtonText: 'No',
                     }).then((printResult) => {
                         if (printResult.isConfirmed) {
-                            navigate('/recibo', { state: { venta: ventaCompleta } });
+                            navigate('/recibo', { state: { venta: response.data, items: activeCart.items, descuento: descuentoPorcentaje } });
                         }
                     });
 
@@ -313,19 +301,13 @@ const PuntoVenta = () => {
 
     const handleDeleteActiveCart = () => {
         if (activeCart) {
-            Swal.fire({
-                title: '¿Estás seguro?',
-                text: `¿Quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    deleteCart(activeCartId);
-                    showCustomAlert('Venta eliminada.', 'info');
-                }
+            setConfirmMessage(`¿Estás seguro de que quieres eliminar la venta "${activeCart.alias || activeCart.name}"? Esta acción no se puede deshacer.`);
+            setConfirmAction(() => () => {
+                deleteCart(activeCartId);
+                showCustomAlert('Venta eliminada.', 'info');
+                setShowConfirmModal(false);
             });
+            setShowConfirmModal(true);
         }
     };
 
@@ -359,61 +341,61 @@ const PuntoVenta = () => {
     };
 
     if (authLoading || (isAuthenticated && !user)) {
-        return <div className="loading-message">Cargando datos de usuario...</div>;
+        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
     if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
-        return <div className="access-denied-message">Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
     }
 
     if (!selectedStoreSlug) {
         return (
-            <div className="no-store-selected-message">
+            <div style={styles.noStoreSelectedMessage}>
                 <h2>Por favor, selecciona una tienda en la barra de navegación para usar el punto de venta.</h2>
             </div>
         );
     }
 
     if (loadingProducts) {
-        return <div className="loading-message">Cargando productos y métodos de pago...</div>;
+        return <div style={styles.loadingMessage}>Cargando productos y métodos de pago...</div>;
     }
 
     if (error) {
-        return <div className="error-message">{error}</div>;
+        return <div style={styles.errorMessage}>{error}</div>;
     }
 
     return (
-        <div className="punto-venta-container">
-            <h1 className="main-header">Punto de Venta ({selectedStoreSlug})</h1>
-            <div className="section">
-                <h3 className="section-header">Gestión de Ventas Activas</h3>
-                <div className="cart-selection-container">
+        <div style={styles.container}>
+            <h1 style={styles.header}>Punto de Venta ({selectedStoreSlug})</h1>
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Gestión de Ventas Activas</h3>
+                <div style={styles.cartSelectionContainer}>
                     {carts.map((cart, index) => (
                         <button
                             key={cart.id}
                             onClick={() => selectCart(cart.id)}
-                            className={cart.id === activeCartId ? 'active-cart-button' : 'inactive-cart-button'}
+                            style={cart.id === activeCartId ? styles.activeCartButton : styles.inactiveCartButton}
                         >
                             {cart.alias || `Venta ${index + 1}`}
                         </button>
                     ))}
-                    <button onClick={() => setShowNewCartModal(true)} className="new-cart-button">
+                    <button onClick={() => setShowNewCartModal(true)} style={styles.newCartButton}>
                         + Nueva Venta
                     </button>
                 </div>
 
                 {activeCart && (
-                    <div className="active-cart-info">
-                        <h4 className="active-cart-title">Venta Activa: {activeCart.alias || activeCart.name}</h4>
-                        <div className="active-cart-actions">
+                    <div style={styles.activeCartInfo}>
+                        <h4 style={styles.activeCartTitle}>Venta Activa: {activeCart.alias || activeCart.name}</h4>
+                        <div style={styles.activeCartActions}>
                             <input
                                 type="text"
                                 placeholder="Nuevo Alias (opcional)"
                                 value={activeCart.alias || ''}
                                 onChange={(e) => updateCartAlias(activeCartId, e.target.value)}
-                                className="input-field"
+                                style={styles.input}
                             />
-                            <button onClick={handleDeleteActiveCart} className="delete-cart-button">
+                            <button onClick={handleDeleteActiveCart} style={styles.deleteCartButton}>
                                 Eliminar Venta
                             </button>
                         </div>
@@ -422,21 +404,21 @@ const PuntoVenta = () => {
             </div>
 
             {showNewCartModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h3 className="modal-header">Crear Nueva Venta</h3>
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3 style={styles.modalHeader}>Crear Nueva Venta</h3>
                         <input
                             type="text"
                             placeholder="Alias para la venta (ej: Cliente A)"
                             value={newCartAliasInput}
                             onChange={(e) => setNewCartAliasInput(e.target.value)}
-                            className="input-field"
+                            style={styles.input}
                         />
-                        <div className="modal-actions">
-                            <button onClick={() => setShowNewCartModal(false)} className="modal-cancel-button">
+                        <div style={styles.modalActions}>
+                            <button onClick={() => setShowNewCartModal(false)} style={styles.modalCancelButton}>
                                 Cancelar
                             </button>
-                            <button onClick={handleCreateNewCartWithAlias} className="modal-confirm-button">
+                            <button onClick={handleCreateNewCartWithAlias} style={styles.modalConfirmButton}>
                                 Crear Venta
                             </button>
                         </div>
@@ -444,34 +426,34 @@ const PuntoVenta = () => {
                 </div>
             )}
 
-            <div className="section">
-                <h3 className="section-header">Buscar Producto por Código de Barras</h3>
-                <div className="input-group">
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Buscar Producto por Código de Barras</h3>
+                <div style={styles.inputGroup}>
                     <input
                         type="text"
                         placeholder="Ingresa código de barras o nombre"
                         value={busquedaProducto}
                         onChange={(e) => setBusquedaProducto(e.target.value)}
                         onKeyPress={(e) => { if (e.key === 'Enter') handleBuscarProducto(); }}
-                        className="input-field"
+                        style={styles.input}
                     />
-                    <button onClick={handleBuscarProducto} className="primary-button">
+                    <button onClick={handleBuscarProducto} style={styles.primaryButton}>
                         Buscar
                     </button>
                 </div>
                 {productoSeleccionado && (
-                    <div className="found-product-card">
-                        <p className="found-product-text">
+                    <div style={styles.foundProductCard}>
+                        <p style={styles.foundProductText}>
                             <strong>Producto:</strong> {productoSeleccionado.nombre} ({productoSeleccionado.talle}) - ${parseFloat(productoSeleccionado.precio).toFixed(2)}
                         </p>
-                        <p className="found-product-text">
+                        <p style={styles.foundProductText}>
                             Stock Disponible: {productoSeleccionado.stock}
                         </p>
-                        <div className="product-actions">
+                        <div style={styles.productActions}>
                             <button
                                 onClick={() => handleAddProductoEnVenta(productoSeleccionado, 1)}
                                 disabled={productoSeleccionado.stock === 0}
-                                className="add-product-button"
+                                style={styles.addProductButton}
                             >
                                 {productoSeleccionado.stock === 0 ? 'Sin Stock' : 'Añadir 1 Ud.'}
                             </button>
@@ -480,54 +462,52 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            <div className="section">
-                <h3 className="section-header">Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
                 {activeCart && activeCart.items.length > 0 ? (
                     <>
-                        <div className="table-responsive">
-                            <table className="cart-table">
-                                <thead>
-                                    <tr className="table-header-row">
-                                        <th className="th">Producto</th>
-                                        <th className="th">Talle</th>
-                                        <th className="th">Cantidad</th>
-                                        <th className="th">P. Unitario</th>
-                                        <th className="th">Subtotal</th>
-                                        <th className="th">Acciones</th>
+                        <table style={styles.table}>
+                            <thead>
+                                <tr style={styles.tableHeaderRow}>
+                                    <th style={styles.th}>Producto</th>
+                                    <th style={styles.th}>Talle</th>
+                                    <th style={styles.th}>Cantidad</th>
+                                    <th style={styles.th}>P. Unitario</th>
+                                    <th style={styles.th}>Subtotal</th>
+                                    <th style={styles.th}>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {activeCart.items.map((item) => (
+                                    <tr key={item.product.id} style={styles.tableRow}>
+                                        <td style={styles.td}>{item.product.nombre}</td>
+                                        <td style={styles.td}>{item.product.talle}</td>
+                                        <td style={styles.td}>
+                                            <div style={styles.quantityControl}>
+                                                <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton}>-</button>
+                                                <span style={styles.quantityText}>{item.quantity}</span>
+                                                <button onClick={() => handleAddProductoEnVenta(item.product, 1)} style={styles.quantityButton}>+</button>
+                                            </div>
+                                        </td>
+                                        <td style={styles.td}>${parseFloat(item.product.precio).toFixed(2)}</td>
+                                        <td style={styles.td}>${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
+                                        <td style={styles.td}>
+                                            <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} style={styles.removeButton}>
+                                                Quitar
+                                            </button>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {activeCart.items.map((item) => (
-                                        <tr key={item.product.id} className="table-row">
-                                            <td className="td">{item.product.nombre}</td>
-                                            <td className="td">{item.product.talle}</td>
-                                            <td className="td">
-                                                <div className="quantity-control">
-                                                    <button onClick={() => handleDecrementQuantity(item.product.id)} className="quantity-button">-</button>
-                                                    <span className="quantity-text">{item.quantity}</span>
-                                                    <button onClick={() => handleAddProductoEnVenta(item.product, 1)} className="quantity-button">+</button>
-                                                </div>
-                                            </td>
-                                            <td className="td">${parseFloat(item.product.precio).toFixed(2)}</td>
-                                            <td className="td">${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
-                                            <td className="td">
-                                                <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} className="remove-button">
-                                                    Quitar
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <h4 className="total-venta">Subtotal: ${activeCart.total.toFixed(2)}</h4>
-                        <div className="payment-method-select-container">
-                            <label htmlFor="metodoPago" className="payment-method-label">Método de Pago:</label>
+                                ))}
+                            </tbody>
+                        </table>
+                        <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4>
+                        <div style={styles.paymentMethodSelectContainer}>
+                            <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de Pago:</label>
                             <select
                                 id="metodoPago"
                                 value={metodoPagoSeleccionado}
                                 onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
-                                className="input-field"
+                                style={styles.input}
                             >
                                 <option value="">Selecciona un método de pago</option>
                                 {metodosPago.map(method => (
@@ -535,94 +515,92 @@ const PuntoVenta = () => {
                                 ))}
                             </select>
                         </div>
-                        <div className="discount-container">
-                            <label htmlFor="descuento" className="discount-label">Aplicar Descuento (%):</label>
+                        <div style={styles.discountContainer}>
+                            <label htmlFor="descuento" style={styles.discountLabel}>Aplicar Descuento (%):</label>
                             <input
                                 type="number"
                                 id="descuento"
                                 value={descuentoPorcentaje}
                                 onChange={(e) => setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-                                className="discount-input"
+                                style={styles.discountInput}
                                 min="0"
                                 max="100"
                             />
                         </div>
-                        <h4 className="final-total-venta">Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4>
-                        <button onClick={handleProcesarVenta} className="process-sale-button">
+                        <h4 style={styles.finalTotalVenta}>Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4>
+                        <button onClick={handleProcesarVenta} style={styles.processSaleButton}>
                             Procesar Venta
                         </button>
                     </>
                 ) : (
-                    <p className="no-data-message">El carrito activo está vacío. Busca y añade productos.</p>
+                    <p style={styles.noDataMessage}>El carrito activo está vacío. Busca y añade productos.</p>
                 )}
             </div>
 
-            <div className="section">
-                <h3 className="section-header">Productos Disponibles</h3>
-                <div className="input-group">
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Productos Disponibles</h3>
+                <div style={styles.inputGroup}>
                     <input
                         type="text"
                         placeholder="Buscar por nombre o talle..."
                         value={busquedaProducto}
                         onChange={(e) => setBusquedaProducto(e.target.value)}
-                        className="input-field"
+                        style={styles.input}
                     />
                 </div>
 
                 {loadingProducts ? (
-                    <p className="loading-message">Cargando productos...</p>
+                    <p style={styles.loadingMessage}>Cargando productos...</p>
                 ) : error ? (
-                    <p className="error-message">{error}</p>
+                    <p style={styles.errorMessage}>{error}</p>
                 ) : (
                     <>
-                        <div className="table-responsive">
-                            <table className="products-table">
-                                <thead>
-                                    <tr className="table-header-row">
-                                        <th className="th">Nombre</th>
-                                        <th className="th">Talle</th>
-                                        <th className="th">Precio</th>
-                                        <th className="th">Stock</th>
-                                        <th className="th">Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {currentProducts.length > 0 ? (
-                                        currentProducts.map(product => (
-                                            <tr key={product.id} className="table-row">
-                                                <td className="td">{product.nombre}</td>
-                                                <td className="td">{product.talle}</td>
-                                                <td className="td">${parseFloat(product.precio).toFixed(2)}</td>
-                                                <td className="td">{product.stock}</td>
-                                                <td className="td">
-                                                    <button
-                                                        onClick={() => handleAddProductoEnVenta(product, 1)}
-                                                        disabled={product.stock === 0}
-                                                        className={product.stock === 0 ? 'disabled-button' : 'add-button'}
-                                                    >
-                                                        {product.stock === 0 ? 'Sin Stock' : 'Añadir'}
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="5" className="no-data-message">
-                                                No se encontraron productos con el filtro aplicado.
+                        <table style={styles.table}>
+                            <thead>
+                                <tr style={styles.tableHeaderRow}>
+                                    <th style={styles.th}>Nombre</th>
+                                    <th style={styles.th}>Talle</th>
+                                    <th style={styles.th}>Precio</th>
+                                    <th style={styles.th}>Stock</th>
+                                    <th style={styles.th}>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentProducts.length > 0 ? (
+                                    currentProducts.map(product => (
+                                        <tr key={product.id} style={styles.tableRow}>
+                                            <td style={styles.td}>{product.nombre}</td>
+                                            <td style={styles.td}>{product.talle}</td>
+                                            <td style={styles.td}>${parseFloat(product.precio).toFixed(2)}</td>
+                                            <td style={styles.td}>{product.stock}</td>
+                                            <td style={styles.td}>
+                                                <button
+                                                    onClick={() => handleAddProductoEnVenta(product, 1)}
+                                                    disabled={product.stock === 0}
+                                                    style={product.stock === 0 ? styles.disabledButton : styles.addButton}
+                                                >
+                                                    {product.stock === 0 ? 'Sin Stock' : 'Añadir'}
+                                                </button>
                                             </td>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="5" style={styles.noDataMessage}>
+                                            No se encontraron productos con el filtro aplicado.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
 
                         {totalPages > 1 && (
-                            <div className="pagination-container">
-                                <button onClick={prevPageHandler} disabled={currentPage === 1} className="pagination-button">
+                            <div style={styles.paginationContainer}>
+                                <button onClick={prevPageHandler} disabled={currentPage === 1} style={styles.paginationButton}>
                                     Anterior
                                 </button>
-                                <span className="page-number">Página {currentPage} de {totalPages}</span>
-                                <button onClick={nextPageHandler} disabled={currentPage === totalPages} className="pagination-button">
+                                <span style={styles.pageNumber}>Página {currentPage} de {totalPages}</span>
+                                <button onClick={nextPageHandler} disabled={currentPage === totalPages} style={styles.paginationButton}>
                                     Siguiente
                                 </button>
                             </div>
@@ -631,441 +609,460 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {showNewCartModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h3 className="modal-header">Crear Nueva Venta</h3>
-                        <input
-                            type="text"
-                            placeholder="Alias para la venta (ej: Cliente A)"
-                            value={newCartAliasInput}
-                            onChange={(e) => setNewCartAliasInput(e.target.value)}
-                            className="input-field"
-                        />
-                        <div className="modal-actions">
-                            <button onClick={() => setShowNewCartModal(false)} className="modal-cancel-button">
-                                Cancelar
-                            </button>
-                            <button onClick={handleCreateNewCartWithAlias} className="modal-confirm-button">
-                                Crear Venta
-                            </button>
+            {showConfirmModal && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <p style={styles.modalMessage}>{confirmMessage}</p>
+                        <div style={styles.modalActions}>
+                            <button onClick={confirmAction} style={styles.modalConfirmButton}>Sí</button>
+                            <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>No</button>
                         </div>
                     </div>
                 </div>
             )}
-            
-            <style>{`
-                .punto-venta-container {
-                    padding: 20px;
-                    font-family: Inter, sans-serif;
-                    max-width: 1200px;
-                    margin: 20px auto;
-                    background-color: #f8f9fa;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                    color: #333;
-                }
-                .main-header {
-                    text-align: center;
-                    color: #2c3e50;
-                    margin-bottom: 30px;
-                    font-size: 2.5em;
-                    font-weight: bold;
-                }
-                .section {
-                    background-color: #ffffff;
-                    padding: 25px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                    margin-bottom: 30px;
-                }
-                .section-header {
-                    font-size: 1.8em;
-                    color: #34495e;
-                    margin-bottom: 20px;
-                    border-bottom: 2px solid #eceff1;
-                    padding-bottom: 10px;
-                }
-                .loading-message {
-                    padding: 20px;
-                    text-align: center;
-                    color: #555;
-                    font-size: 1.1em;
-                }
-                .access-denied-message {
-                    color: #dc3545;
-                    margin-bottom: 10px;
-                    padding: 20px;
-                    border: 1px solid #dc3545;
-                    text-align: center;
-                    border-radius: 8px;
-                    background-color: #ffe3e6;
-                    font-weight: bold;
-                }
-                .no-store-selected-message {
-                    padding: 50px;
-                    text-align: center;
-                    color: #777;
-                    font-size: 1.2em;
-                }
-                .error-message {
-                    color: #dc3545;
-                    margin-bottom: 20px;
-                    border: 1px solid #dc3545;
-                    padding: 15px;
-                    border-radius: 8px;
-                    background-color: #ffe3e6;
-                    text-align: center;
-                    font-weight: bold;
-                }
-                .cart-selection-container {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 10px;
-                    margin-bottom: 15px;
-                    padding: 10px;
-                    background-color: #eaf7ff;
-                    border: 1px dashed #a7d9ff;
-                    border-radius: 5px;
-                }
-                .active-cart-button, .inactive-cart-button {
-                    padding: 8px 15px;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease;
-                }
-                .active-cart-button {
-                    background-color: #007bff;
-                    color: white;
-                }
-                .inactive-cart-button {
-                    background-color: #f0f0f0;
-                    color: #333;
-                    border: 1px solid #ccc;
-                }
-                .new-cart-button {
-                    padding: 8px 15px;
-                    background-color: #28a745;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    transition: background-color 0.3s ease;
-                }
-                .active-cart-info {
-                    margin-top: 15px;
-                    padding: 15px;
-                    background-color: #e6ffe6;
-                    border-radius: 8px;
-                    border: 1px solid #28a745;
-                }
-                .active-cart-title {
-                    margin-bottom: 10px;
-                    color: #28a745;
-                    font-size: 1.2em;
-                }
-                .active-cart-actions {
-                    display: flex;
-                    gap: 10px;
-                    margin-bottom: 10px;
-                }
-                .delete-cart-button {
-                    padding: 8px 15px;
-                    background-color: #dc3545;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    transition: background-color 0.3s ease;
-                }
-                .input-group {
-                    display: flex;
-                    gap: 10px;
-                    margin-bottom: 15px;
-                    align-items: center;
-                }
-                .input-field {
-                    flex-grow: 1;
-                    padding: 10px 12px;
-                    border: 1px solid #dcdcdc;
-                    border-radius: 5px;
-                    font-size: 1em;
-                    box-sizing: border-box;
-                }
-                .primary-button {
-                    padding: 10px 20px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 1em;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease;
-                }
-                .found-product-card {
-                    border: 1px solid #a7d9ff;
-                    padding: 15px;
-                    border-radius: 8px;
-                    background-color: #e7f0ff;
-                    margin-bottom: 15px;
-                }
-                .found-product-text {
-                    margin: 5px 0;
-                    color: #333;
-                    font-size: 1.05em;
-                }
-                .product-actions {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-top: 10px;
-                }
-                .add-product-button {
-                    padding: 10px 20px;
-                    background-color: #28a745;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 1em;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease;
-                }
-                .cart-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 15px;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                }
-                .table-header-row {
-                    background-color: #f2f2f2;
-                }
-                .th {
-                    padding: 12px 15px;
-                    border-bottom: 1px solid #ddd;
-                    text-align: left;
-                    font-weight: bold;
-                    font-size: 0.95em;
-                    color: #555;
-                }
-                .table-row {
-                    background-color: inherit;
-                    transition: background-color 0.2s ease;
-                }
-                .table-row:nth-child(even) {
-                    background-color: #f9f9f9;
-                }
-                .td {
-                    padding: 10px 15px;
-                    border-bottom: 1px solid #eee;
-                    vertical-align: middle;
-                    font-size: 0.9em;
-                }
-                .quantity-control {
-                    display: flex;
-                    align-items: center;
-                    gap: 5px;
-                }
-                .quantity-button {
-                    padding: 5px 10px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 3px;
-                    cursor: pointer;
-                    font-size: 0.9em;
-                    transition: background-color 0.3s ease;
-                }
-                .quantity-text {
-                    min-width: 20px;
-                    text-align: center;
-                    font-weight: bold;
-                }
-                .remove-button {
-                    padding: 6px 12px;
-                    background-color: #dc3545;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 0.85em;
-                    transition: background-color 0.3s ease;
-                }
-                .total-venta {
-                    text-align: right;
-                    margin-top: 20px;
-                    font-size: 1.5em;
-                    color: #28a745;
-                    font-weight: bold;
-                }
-                .final-total-venta {
-                    text-align: right;
-                    margin-top: 10px;
-                    font-size: 1.7em;
-                    color: #007bff;
-                    font-weight: bold;
-                }
-                .payment-method-select-container {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 10px;
-                    margin-top: 20px;
-                }
-                .payment-method-label {
-                    font-weight: bold;
-                    color: #555;
-                    font-size: 1em;
-                }
-                .discount-container {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 20px;
-                }
-                .discount-label {
-                    font-weight: bold;
-                    color: #555;
-                    font-size: 1em;
-                }
-                .discount-input {
-                    width: 80px;
-                    padding: 10px 12px;
-                    border: 1px solid #dcdcdc;
-                    border-radius: 5px;
-                    font-size: 1em;
-                    box-sizing: border-box;
-                    text-align: center;
-                }
-                .process-sale-button {
-                    width: 100%;
-                    padding: 15px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-size: 1.2em;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease;
-                }
-                .no-data-message {
-                    text-align: center;
-                    color: #777;
-                    font-style: italic;
-                    padding: 15px;
-                }
-                .add-button {
-                    padding: 5px 10px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 3px;
-                    cursor: pointer;
-                }
-                .disabled-button {
-                    padding: 5px 10px;
-                    background-color: #6c757d;
-                    color: white;
-                    border: none;
-                    border-radius: 3px;
-                    cursor: not-allowed;
-                }
-                .modal-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background-color: rgba(0, 0, 0, 0.6);
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 1000;
-                }
-                .modal-content {
-                    background-color: #fff;
-                    padding: 30px;
-                    border-radius: 10px;
-                    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-                    text-align: center;
-                    max-width: 450px;
-                    width: 90%;
-                    animation: fadeIn 0.3s ease-out;
-                }
-                .modal-header {
-                    font-size: 1.5em;
-                    color: #34495e;
-                    margin-bottom: 20px;
-                }
-                .modal-message {
-                    font-size: 1.1em;
-                    margin-bottom: 25px;
-                    color: #333;
-                }
-                .modal-actions {
-                    display: flex;
-                    justify-content: center;
-                    gap: 20px;
-                }
-                .modal-confirm-button {
-                    background-color: #28a745;
-                    color: white;
-                    padding: 12px 25px;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 1em;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease, transform 0.2s ease;
-                }
-                .modal-cancel-button {
-                    background-color: #6c757d;
-                    color: white;
-                    padding: 12px 25px;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 1em;
-                    font-weight: bold;
-                    transition: background-color 0.3s ease, transform 0.2s ease;
-                }
-                .alert-box {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    background-color: #28a745;
-                    color: white;
-                    padding: 15px 25px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                    z-index: 1001;
-                }
-                @media (max-width: 768px) {
-                    .punto-venta-container { padding: 10px; }
-                    .main-header { font-size: 1.8em; }
-                    .section-header { font-size: 1.4em; }
-                    .cart-selection-container, .active-cart-actions, .input-group, .payment-method-select-container, .discount-container, .modal-actions {
-                        flex-direction: column;
-                        align-items: stretch;
-                    }
-                    .active-cart-actions .input-field, .input-group .input-field, .payment-method-select-container .input-field, .discount-container .discount-input {
-                        width: 100%;
-                    }
-                    .primary-button, .add-product-button, .delete-cart-button, .process-sale-button, .modal-confirm-button, .modal-cancel-button {
-                        width: 100%;
-                        margin-top: 5px;
-                    }
-                    .table-responsive { overflow-x: auto; }
-                    .cart-table, .products-table { width: auto; white-space: nowrap; }
-                }
-            `}</style>
+
+            {showAlertMessage && (
+                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
+                    <p>{alertMessage}</p>
+                </div>
+            )}
         </div>
     );
 };
+
+
+const styles = {
+    container: {
+        padding: '20px',
+        fontFamily: 'Inter, sans-serif',
+        maxWidth: '1200px',
+        margin: '20px auto',
+        backgroundColor: '#f8f9fa',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        color: '#333',
+        '@media (max-width: 768px)': {
+            padding: '10px',
+        },
+    },
+    header: {
+        textAlign: 'center',
+        color: '#2c3e50',
+        marginBottom: '30px',
+        fontSize: '2.5em',
+        fontWeight: 'bold',
+        '@media (max-width: 768px)': {
+            fontSize: '1.8em',
+        },
+    },
+    section: {
+        backgroundColor: '#ffffff',
+        padding: '25px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        marginBottom: '30px',
+    },
+    sectionHeader: {
+        fontSize: '1.8em',
+        color: '#34495e',
+        marginBottom: '20px',
+        borderBottom: '2px solid #eceff1',
+        paddingBottom: '10px',
+        '@media (max-width: 768px)': {
+            fontSize: '1.4em',
+        },
+    },
+    loadingMessage: {
+        padding: '20px',
+        textAlign: 'center',
+        color: '#555',
+        fontSize: '1.1em',
+    },
+    accessDeniedMessage: {
+        color: '#dc3545',
+        marginBottom: '10px',
+        padding: '20px',
+        border: '1px solid #dc3545',
+        textAlign: 'center',
+        borderRadius: '8px',
+        backgroundColor: '#ffe3e6',
+        fontWeight: 'bold',
+    },
+    noStoreSelectedMessage: {
+        padding: '50px',
+        textAlign: 'center',
+        color: '#777',
+        fontSize: '1.2em',
+    },
+    errorMessage: {
+        color: '#dc3545',
+        marginBottom: '20px',
+        border: '1px solid #dc3545',
+        padding: '15px',
+        borderRadius: '8px',
+        backgroundColor: '#ffe3e6',
+        textAlign: 'center',
+        fontWeight: 'bold',
+    },
+    cartSelectionContainer: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '10px',
+        marginBottom: '15px',
+        padding: '10px',
+        backgroundColor: '#eaf7ff',
+        borderRadius: '5px',
+        border: '1px dashed #a7d9ff',
+    },
+    activeCartButton: {
+        padding: '8px 15px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
+    },
+    inactiveCartButton: {
+        padding: '8px 15px',
+        backgroundColor: '#f0f0f0',
+        color: '#333',
+        border: '1px solid #ccc',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    newCartButton: {
+        padding: '8px 15px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    activeCartInfo: {
+        marginTop: '15px',
+        padding: '15px',
+        backgroundColor: '#e6ffe6',
+        borderRadius: '8px',
+        border: '1px solid #28a745',
+    },
+    activeCartTitle: {
+        marginBottom: '10px',
+        color: '#28a745',
+        fontSize: '1.2em',
+    },
+    activeCartActions: {
+        display: 'flex',
+        gap: '10px',
+        marginBottom: '10px',
+    },
+    deleteCartButton: {
+        padding: '8px 15px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+    },
+    inputGroup: {
+        display: 'flex',
+        gap: '10px',
+        marginBottom: '15px',
+        alignItems: 'center',
+    },
+    input: {
+        flexGrow: 1,
+        padding: '10px 12px',
+        border: '1px solid #dcdcdc',
+        borderRadius: '5px',
+        fontSize: '1em',
+        boxSizing: 'border-box',
+    },
+    primaryButton: {
+        padding: '10px 20px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
+    },
+    foundProductCard: {
+        border: '1px solid #a7d9ff',
+        padding: '15px',
+        borderRadius: '8px',
+        backgroundColor: '#e7f0ff',
+        marginBottom: '15px',
+    },
+    foundProductText: {
+        margin: '5px 0',
+        color: '#333',
+        fontSize: '1.05em',
+    },
+    productActions: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        marginTop: '10px',
+    },
+    addButton: {
+        padding: '5px 10px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+    },
+    disabledButton: {
+        padding: '5px 10px',
+        backgroundColor: '#6c757d',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'not-allowed',
+    },
+    table: {
+        width: '100%',
+        borderCollapse: 'collapse',
+        marginTop: '15px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        '@media (max-width: 768px)': {
+            display: 'block',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+        },
+    },
+    tableHeaderRow: {
+        backgroundColor: '#f2f2f2',
+    },
+    th: {
+        padding: '12px 15px',
+        borderBottom: '1px solid #ddd',
+        textAlign: 'left',
+        fontWeight: 'bold',
+        fontSize: '0.95em',
+        color: '#555',
+    },
+    tableRow: {
+        backgroundColor: 'inherit',
+        transition: 'background-color 0.2s ease',
+        '&:nth-child(even)': {
+            backgroundColor: '#f9f9f9',
+        },
+    },
+    td: {
+        padding: '10px 15px',
+        borderBottom: '1px solid #eee',
+        verticalAlign: 'middle',
+        fontSize: '0.9em',
+    },
+    quantityControl: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+    },
+    quantityButton: {
+        padding: '5px 10px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        fontSize: '0.9em',
+        transition: 'background-color 0.3s ease',
+    },
+    quantityText: {
+        minWidth: '20px',
+        textAlign: 'center',
+        fontWeight: 'bold',
+    },
+    removeButton: {
+        padding: '6px 12px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '0.85em',
+        transition: 'background-color 0.3s ease',
+    },
+    totalVenta: {
+        textAlign: 'right',
+        marginTop: '20px',
+        fontSize: '1.5em',
+        color: '#28a745',
+        fontWeight: 'bold',
+    },
+    finalTotalVenta: { 
+        textAlign: 'right',
+        marginTop: '10px',
+        fontSize: '1.7em',
+        color: '#007bff',
+        fontWeight: 'bold',
+    },
+    paymentMethodSelectContainer: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        marginBottom: '10px', 
+        marginTop: '20px',
+    },
+    paymentMethodLabel: {
+        fontWeight: 'bold',
+        color: '#555',
+        fontSize: '1em',
+    },
+    discountContainer: { 
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        marginBottom: '20px',
+    },
+    discountInput: { 
+        width: '80px', 
+        padding: '10px 12px',
+        border: '1px solid #dcdcdc',
+        borderRadius: '5px',
+        fontSize: '1em',
+        boxSizing: 'border-box',
+        textAlign: 'center',
+    },
+    processSaleButton: {
+        width: '100%',
+        padding: '15px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontSize: '1.2em',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease',
+    },
+    noDataMessage: {
+        textAlign: 'center',
+        color: '#777',
+        fontStyle: 'italic',
+        padding: '15px',
+    },
+    addButton: {
+        padding: '5px 10px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+    },
+    disabledButton: {
+        padding: '5px 10px',
+        backgroundColor: '#6c757d',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'not-allowed',
+    },
+    modalOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        padding: '30px',
+        borderRadius: '10px',
+        boxShadow: '0 5px 15px rgba(0, 0, 0, 0.3)',
+        textAlign: 'center',
+        maxWidth: '450px',
+        width: '90%',
+        animation: 'fadeIn 0.3s ease-out',
+    },
+    modalHeader: {
+        fontSize: '1.5em',
+        color: '#34495e',
+        marginBottom: '20px',
+    },
+    modalMessage: {
+        fontSize: '1.1em',
+        marginBottom: '25px',
+        color: '#333',
+    },
+    modalActions: {
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '20px',
+    },
+    modalConfirmButton: {
+        backgroundColor: '#28a745', 
+        color: 'white',
+        padding: '12px 25px',
+        border: 'none',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease, transform 0.2s ease',
+    },
+    modalCancelButton: {
+        backgroundColor: '#6c757d',
+        color: 'white',
+        padding: '12px 25px',
+        border: 'none',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        transition: 'background-color 0.3s ease, transform 0.2s ease',
+    },
+    alertBox: {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        backgroundColor: '#28a745', 
+        color: 'white',
+        padding: '15px 25px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+        zIndex: 1001,
+        opacity: 0,
+        animation: 'fadeInOut 3s forwards',
+    },
+    paginationContainer: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '20px',
+        gap: '10px',
+    },
+    paginationButton: {
+        padding: '8px 15px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        transition: 'background-color 0.3s ease',
+    },
+    pageNumber: {
+        fontSize: '1em',
+        fontWeight: 'bold',
+        color: '#555',
+    },
+};
+
 export default PuntoVenta;
