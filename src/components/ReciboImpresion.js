@@ -1,4 +1,3 @@
-// BONITO_AMOR/frontend/src/components/ReciboImpresion.js
 import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -13,6 +12,19 @@ const ReciboImpresion = () => {
 
         if (reciboRef.current && venta && detalles && detalles.length > 0) {
             reciboRef.current.innerHTML = '';
+
+            // Función para formatear la fecha de manera segura
+            const formatFecha = (fecha) => {
+                try {
+                    const dateObj = new Date(fecha);
+                    if (!isNaN(dateObj.getTime())) {
+                        return dateObj.toLocaleString();
+                    }
+                } catch (e) {
+                    // Si el formato no es válido, se usa la cadena original como fallback
+                }
+                return fecha || 'N/A';
+            };
             
             const totalSinDescuento = detalles.reduce((acc, item) => {
                 const cantidad = item.cantidad || item.quantity;
@@ -24,8 +36,8 @@ const ReciboImpresion = () => {
                 <div class="receipt">
                     <div class="header">
                         <h2>Comprobante de compra</h2>
-                        <p>Tienda: ${venta.tienda_nombre || 'N/A'}</p>
-                        <p>Fecha: ${new Date(venta.fecha_venta).toLocaleString() || venta.fecha_venta || 'N/A'}</p>
+                        <p>Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
+                        <p>Fecha: ${formatFecha(venta.fecha_venta)}</p>
                         <hr>
                     </div>
                     <div class="items">
@@ -60,7 +72,7 @@ const ReciboImpresion = () => {
                     </div>
                     <div class="totals">
                         <p><strong>Subtotal:</strong> $${totalSinDescuento.toFixed(2)}</p>
-                        ${venta.descuento_porcentaje > 0 ? `<p><strong>Descuento:</strong> ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
+                        ${(venta.descuento_porcentaje || 0) > 0 ? `<p><strong>Descuento:</strong> ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
                         <p><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
                         <p><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
                         <hr>
@@ -71,7 +83,6 @@ const ReciboImpresion = () => {
                 </div>
             `;
         } else {
-             // Esto se asegura de que la página no se quede en blanco si falla la carga.
             reciboRef.current.innerHTML = `
                  <div style="text-align: center;">
                      <h1 style="color: #dc3545;">Error al generar el recibo.</h1>
