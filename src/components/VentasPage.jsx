@@ -149,7 +149,8 @@ const VentasPage = () => {
         setConfirmAction(() => async () => {
             setShowConfirmModal(false); 
             try {
-                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_venta/`, {}, {
+                // CORRECCIÓN: Se cambia 'anular_venta' a 'anular' para que coincida con el backend.
+                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular/`, {}, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 showCustomAlert('Venta anulada con éxito!', 'success');
@@ -174,7 +175,8 @@ const VentasPage = () => {
             setShowConfirmModal(false); 
             try {
                 const payload = { detalle_id: detalleId };
-                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle_venta/`, payload, {
+                // CORRECCIÓN: Se cambia 'anular_detalle_venta' a 'anular_detalle' para que coincida con el backend.
+                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle/`, payload, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
