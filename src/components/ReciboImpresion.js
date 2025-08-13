@@ -5,16 +5,25 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const ReciboImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { venta, items, descuento } = location.state || {}; // <-- Modificación aquí
+    // En lugar de desestructurar, obtenemos todo el estado para mayor flexibilidad
+    const { venta } = location.state || {}; 
     const reciboRef = useRef(null);
 
     useEffect(() => {
-        const datosDelRecibo = venta?.detalles || items; // <-- Modificación aquí
-        if (reciboRef.current && venta && datosDelRecibo) {
+        // Obtenemos los detalles de la venta.
+        // Asumimos que los detalles pueden venir de dos estructuras distintas.
+        const detalles = venta?.detalles;
+
+        if (reciboRef.current && venta && detalles && detalles.length > 0) {
             reciboRef.current.innerHTML = '';
             
-            // Corrige la lógica para manejar el objeto venta.detalles
-            const totalSinDescuento = datosDelRecibo.reduce((acc, item) => acc + (item.quantity * parseFloat(item.product.precio)), 0);
+            // Calculamos el subtotal de manera flexible
+            const totalSinDescuento = detalles.reduce((acc, item) => {
+                // Verificamos qué propiedades existen en el objeto de detalle para calcular correctamente
+                const cantidad = item.cantidad || item.quantity;
+                const precio = item.precio_unitario || item.product?.precio;
+                return acc + (cantidad * parseFloat(precio));
+            }, 0);
 
             reciboRef.current.innerHTML = `
                 <div class="receipt">
@@ -36,21 +45,28 @@ const ReciboImpresion = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${datosDelRecibo.map(item => `
+                                ${detalles.map(item => {
+                                    // Accedemos a las propiedades correctas según el objeto
+                                    const nombre = item.producto_nombre || item.product?.nombre || 'N/A';
+                                    const cantidad = item.cantidad || item.quantity;
+                                    const precio = item.precio_unitario || item.product?.precio;
+                                    const subtotal = cantidad * parseFloat(precio);
+                                    return `
                                     <tr>
-                                        <td>${item.quantity}</td>
-                                        <td>${item.product.nombre || 'N/A'}</td>
-                                        <td>$${parseFloat(item.product.precio).toFixed(2)}</td>
-                                        <td>$${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
+                                        <td>${cantidad}</td>
+                                        <td>${nombre}</td>
+                                        <td>$${parseFloat(precio).toFixed(2)}</td>
+                                        <td>$${subtotal.toFixed(2)}</td>
                                     </tr>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </tbody>
                         </table>
                         <hr>
                     </div>
                     <div class="totals">
                         <p><strong>Subtotal:</strong> $${totalSinDescuento.toFixed(2)}</p>
-                        ${descuento > 0 ? `<p><strong>Descuento:</strong> ${parseFloat(descuento).toFixed(2)}%</p>` : ''}
+                        ${venta.descuento_porcentaje > 0 ? `<p><strong>Descuento:</strong> ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
                         <p><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
                         <p><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
                         <hr>
@@ -61,21 +77,23 @@ const ReciboImpresion = () => {
                 </div>
             `;
         }
-    }, [venta, items, descuento]); // <-- Dependencias actualizadas aquí
+    }, [venta]);
 
     const handlePrint = () => {
         window.print();
     };
 
     const handleGoBack = () => {
-        navigate('/punto-venta');
+        // Redirigimos a la página de origen en lugar de una ruta fija
+        // Si no hay historial, por defecto a punto-venta
+        navigate(-1);
     };
 
     if (!venta) {
         return (
             <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>
                 <h1>No hay datos de venta para mostrar en el recibo.</h1>
-                <button onClick={handleGoBack} style={{ padding: '10px 20px', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '5px', backgroundColor: '#f0f0f0', marginTop: '20px' }}>Volver a Punto de Venta</button>
+                <button onClick={handleGoBack} style={{ padding: '10px 20px', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '5px', backgroundColor: '#f0f0f0', marginTop: '20px' }}>Volver</button>
             </div>
         );
     }
