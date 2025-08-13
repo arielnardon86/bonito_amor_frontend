@@ -40,24 +40,24 @@ const UserManagement = () => {
     const [editingUser, setEditingUser] = useState(null);
 
     // `fetchUsers` envuelto en useCallback para estabilidad en useEffect
-    const fetchUsers = useCallback(async () => {
-        setLoadingUsers(true);
-        setError('');
-        try {
-            // El backend ya filtra por la tienda del usuario autenticado
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                }
-            });
-            setUsers(response.data.results); 
-        } catch (err) {
-            console.error('Error fetching users:', err.response ? err.response.data : err.message);
-            setError('Error al cargar usuarios. Asegúrate de tener permisos de administrador.');
-        } finally {
-            setLoadingUsers(false);
-        }
-    }, []); 
+const fetchUsers = useCallback(async () => {
+    setLoadingUsers(true);
+    setError('');
+    try {
+        // Usamos el token del contexto de autenticación para la consistencia
+        const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        setUsers(response.data.results); 
+    } catch (err) {
+        console.error('Error fetching users:', err.response ? err.response.data : err.message);
+        setError('Error al cargar usuarios. Asegúrate de tener permisos de administrador.');
+    } finally {
+        setLoadingUsers(false);
+    }
+}, [token]);
 
 
     useEffect(() => {
