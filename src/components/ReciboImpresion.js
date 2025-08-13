@@ -5,24 +5,19 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const ReciboImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    // En lugar de desestructurar, obtenemos todo el estado para mayor flexibilidad
     const { venta } = location.state || {}; 
     const reciboRef = useRef(null);
 
     useEffect(() => {
-        // Obtenemos los detalles de la venta.
-        // Asumimos que los detalles pueden venir de dos estructuras distintas.
         const detalles = venta?.detalles;
 
         if (reciboRef.current && venta && detalles && detalles.length > 0) {
             reciboRef.current.innerHTML = '';
             
-            // Calculamos el subtotal de manera flexible
             const totalSinDescuento = detalles.reduce((acc, item) => {
-                // Verificamos qué propiedades existen en el objeto de detalle para calcular correctamente
                 const cantidad = item.cantidad || item.quantity;
                 const precio = item.precio_unitario || item.product?.precio;
-                return acc + (cantidad * parseFloat(precio));
+                return acc + (cantidad * parseFloat(precio || 0));
             }, 0);
 
             reciboRef.current.innerHTML = `
@@ -30,7 +25,7 @@ const ReciboImpresion = () => {
                     <div class="header">
                         <h2>Comprobante de compra</h2>
                         <p>Tienda: ${venta.tienda_nombre || 'N/A'}</p>
-                        <p>Fecha: ${new Date(venta.fecha_venta).toLocaleString() || 'N/A'}</p>
+                        <p>Fecha: ${new Date(venta.fecha_venta).toLocaleString() || venta.fecha_venta || 'N/A'}</p>
                         <hr>
                     </div>
                     <div class="items">
@@ -46,11 +41,10 @@ const ReciboImpresion = () => {
                             </thead>
                             <tbody>
                                 ${detalles.map(item => {
-                                    // Accedemos a las propiedades correctas según el objeto
                                     const nombre = item.producto_nombre || item.product?.nombre || 'N/A';
                                     const cantidad = item.cantidad || item.quantity;
                                     const precio = item.precio_unitario || item.product?.precio;
-                                    const subtotal = cantidad * parseFloat(precio);
+                                    const subtotal = cantidad * parseFloat(precio || 0);
                                     return `
                                     <tr>
                                         <td>${cantidad}</td>
@@ -76,16 +70,22 @@ const ReciboImpresion = () => {
                     </div>
                 </div>
             `;
+        } else {
+             // Esto se asegura de que la página no se quede en blanco si falla la carga.
+            reciboRef.current.innerHTML = `
+                 <div style="text-align: center;">
+                     <h1 style="color: #dc3545;">Error al generar el recibo.</h1>
+                     <p>No se encontraron datos de venta válidos.</p>
+                 </div>
+            `;
         }
-    }, [venta]);
+    }, [venta, navigate]);
 
     const handlePrint = () => {
         window.print();
     };
 
     const handleGoBack = () => {
-        // Redirigimos a la página de origen en lugar de una ruta fija
-        // Si no hay historial, por defecto a punto-venta
         navigate(-1);
     };
 
@@ -122,9 +122,6 @@ const ReciboImpresion = () => {
                         justify-content: center;
                         padding: 20px;
                         font-family: Arial, sans-serif;
-                    }
-                    .no-print-controls {
-                        margin-bottom: 20px;
                     }
                     .no-print-controls button {
                         padding: 10px 20px;
