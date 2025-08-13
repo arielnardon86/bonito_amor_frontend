@@ -1,4 +1,5 @@
 // BONITO_AMOR/frontend/src/components/VentasPage.jsx
+
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
@@ -147,7 +148,7 @@ const VentasPage = () => {
         setConfirmAction(() => async () => {
             setShowConfirmModal(false); 
             try {
-                await axios.patch(`${BASE_API_ENDPOINT}/ventas/${ventaId}/anular_venta/`, {}, {
+                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_venta/`, {}, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 showCustomAlert('Venta anulada con éxito!', 'success');
@@ -171,7 +172,7 @@ const VentasPage = () => {
             setShowConfirmModal(false); 
             try {
                 const payload = { detalle_id: detalleId };
-                await axios.patch(`${BASE_API_ENDPOINT}/ventas/${ventaId}/anular_detalle_venta/`, payload, {
+                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle_venta/`, payload, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
