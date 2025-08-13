@@ -139,6 +139,7 @@ const VentasPage = () => {
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchVentas]); 
 
     const handleAnularVenta = async (ventaId) => {
+        console.log('Botón Anular Venta presionado para ID:', ventaId);
         if (!token) {
             showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
             return;
@@ -162,6 +163,7 @@ const VentasPage = () => {
     };
 
     const handleAnularDetalleVenta = async (ventaId, detalleId) => {
+        console.log('Botón Anular Detalle Venta presionado para Venta ID:', ventaId, 'Detalle ID:', detalleId);
         if (!token) {
             showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
             return;
@@ -315,7 +317,10 @@ const VentasPage = () => {
                                                 </button>
                                                 {!venta.anulada && (
                                                     <button
-                                                        onClick={() => handleAnularVenta(venta.id)}
+                                                        onClick={() => {
+                                                            console.log('Intentando anular venta:', venta.id);
+                                                            handleAnularVenta(venta.id);
+                                                        }}
                                                         className="anular-button"
                                                     >
                                                         Anular
