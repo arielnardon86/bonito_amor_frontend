@@ -150,7 +150,7 @@ const handleAnularVenta = async (ventaId) => {
 
     if (window.confirm('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.')) {
         try {
-            await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_venta/`, {}, {
+            await axios.patch(`${BASE_API_ENDPOINT}/ventas/${ventaId}/anular_venta/`, {}, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             showCustomAlert('Venta anulada con éxito!', 'success');
@@ -171,7 +171,7 @@ const handleAnularDetalleVenta = async (ventaId, detalleId) => {
     if (window.confirm('¿Estás seguro de que quieres ANULAR este producto de la venta? Esto revertirá el stock del producto.')) {
         try {
             const payload = { detalle_id: detalleId };
-            await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular_detalle_venta/`, payload, {
+            await axios.patch(`${BASE_API_ENDPOINT}/ventas/${ventaId}/anular_detalle_venta/`, payload, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             

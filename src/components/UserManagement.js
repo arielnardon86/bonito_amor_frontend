@@ -44,7 +44,6 @@ const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
     setError('');
     try {
-        // Usamos el token del contexto de autenticación para la consistencia
         const response = await axios.get(`${BASE_API_ENDPOINT}/api/users/`, {
             headers: {
                 'Authorization': `Bearer ${token}`
