@@ -215,93 +215,94 @@ const PuntoVenta = () => {
         return (subtotal - discountAmount);
     }, [activeCart, descuentoPorcentaje]);
 
-const handleProcesarVenta = async () => {
-    if (!activeCart || activeCart.items.length === 0) {
-        showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
-        return;
-    }
-    if (!metodoPagoSeleccionado) {
-        showCustomAlert('Por favor, selecciona un método de pago.', 'error');
-        return;
-    }
-    if (!selectedStoreSlug) {
-        showCustomAlert('Por favor, selecciona una tienda.', 'error');
-        return;
-    }
-
-    const finalTotal = calculateTotalWithDiscount();
-
-    Swal.fire({
-        title: '¿Confirmar venta?',
-        html: `Confirmas la venta por un total de <strong>$${finalTotal.toFixed(2)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?` +
-                (descuentoPorcentaje > 0 ? `<br>(Descuento aplicado: ${descuentoPorcentaje}%)` : ''),
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, confirmar',
-        cancelButtonText: 'Cancelar',
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            try {
-                const ventaData = {
-                    tienda_slug: selectedStoreSlug,
-                    metodo_pago: metodoPagoSeleccionado,
-                    descuento_porcentaje: descuentoPorcentaje,
-                    detalles: activeCart.items.map(item => ({
-                        producto: item.product.id,
-                        cantidad: item.quantity,
-                        precio_unitario: parseFloat(item.product.precio),
-                    })),
-                };
-
-                const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                });
-                
-                showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
-                
-                // Construimos el objeto de venta completo del lado del frontend
-                const ventaParaRecibo = {
-                    ...response.data, // Tomamos el ID y la fecha del backend
-                    tienda_nombre: selectedStoreSlug,
-                    metodo_pago: metodoPagoSeleccionado,
-                    descuento_porcentaje: descuentoPorcentaje,
-                    total: finalTotal,
-                    detalles: activeCart.items.map(item => ({
-                        producto_nombre: item.product.nombre,
-                        cantidad: item.quantity,
-                        precio_unitario: parseFloat(item.product.precio)
-                    }))
-                };
-
-                finalizeCart(activeCartId);
-                setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
-                setDescuentoPorcentaje(0);
-
-                Swal.fire({
-                    title: 'Venta procesada!',
-                    text: '¿Desea imprimir el recibo?',
-                    icon: 'success',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, imprimir',
-                    cancelButtonText: 'No',
-                }).then((printResult) => {
-                    if (printResult.isConfirmed) {
-                        navigate('/recibo', { state: { venta: ventaParaRecibo } }); // <-- Pasamos el objeto completo
-                    }
-                });
-
-            } catch (err) {
-                console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
-                Swal.fire({
-                    title: 'Error!',
-                    text: 'Error al procesar la venta: ' + (err.response && err.response.data ? JSON.stringify(err.response.data) : err.message),
-                    icon: 'error',
-                    confirmButtonText: 'Ok'
-                });
-            }
+    const handleProcesarVenta = async () => {
+        if (!activeCart || activeCart.items.length === 0) {
+            showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
+            return;
         }
-    });
-};
+        if (!metodoPagoSeleccionado) {
+            showCustomAlert('Por favor, selecciona un método de pago.', 'error');
+            return;
+        }
+        if (!selectedStoreSlug) {
+            showCustomAlert('Por favor, selecciona una tienda.', 'error');
+            return;
+        }
+
+        const finalTotal = calculateTotalWithDiscount();
+
+        Swal.fire({
+            title: '¿Confirmar venta?',
+            html: `Confirmas la venta por un total de <strong>$${finalTotal.toFixed(2)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?` +
+                  (descuentoPorcentaje > 0 ? `<br>(Descuento aplicado: ${descuentoPorcentaje}%)` : ''),
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, confirmar',
+            cancelButtonText: 'Cancelar',
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const ventaData = {
+                        tienda_slug: selectedStoreSlug,
+                        metodo_pago: metodoPagoSeleccionado,
+                        descuento_porcentaje: descuentoPorcentaje,
+                        detalles: activeCart.items.map(item => ({
+                            producto: item.product.id,
+                            cantidad: item.quantity,
+                            precio_unitario: parseFloat(item.product.precio),
+                        })),
+                    };
+
+                    const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    });
+                    
+                    showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
+                    
+                    // Construimos el objeto de venta para el recibo con una fecha válida
+                    const ventaParaRecibo = {
+                        id: response.data.id,
+                        fecha_venta: new Date().toISOString(), // <-- Fecha garantizada como válida
+                        tienda_nombre: selectedStoreSlug,
+                        metodo_pago: metodoPagoSeleccionado,
+                        descuento_porcentaje: descuentoPorcentaje,
+                        total: finalTotal,
+                        detalles: activeCart.items.map(item => ({
+                            producto_nombre: item.product.nombre,
+                            cantidad: item.quantity,
+                            precio_unitario: parseFloat(item.product.precio)
+                        }))
+                    };
+
+                    finalizeCart(activeCartId);
+                    setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
+                    setDescuentoPorcentaje(0);
+
+                    Swal.fire({
+                        title: 'Venta procesada!',
+                        text: '¿Desea imprimir el recibo?',
+                        icon: 'success',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, imprimir',
+                        cancelButtonText: 'No',
+                    }).then((printResult) => {
+                        if (printResult.isConfirmed) {
+                            navigate('/recibo', { state: { venta: ventaParaRecibo } });
+                        }
+                    });
+
+                } catch (err) {
+                    console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'Error al procesar la venta: ' + (err.response && err.response.data ? JSON.stringify(err.response.data) : err.message),
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
+                }
+            }
+        });
+    };
 
     const handleCreateNewCartWithAlias = () => {
         if (newCartAliasInput.trim() === '') {
@@ -992,8 +993,8 @@ const styles = {
         bottom: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifycontent: 'center',
+        alignitems: 'center',
         zIndex: 1000,
     },
     modalContent: {

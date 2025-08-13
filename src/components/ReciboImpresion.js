@@ -1,3 +1,4 @@
+// BONITO_AMOR/frontend/src/components/ReciboImpresion.js
 import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -13,17 +14,10 @@ const ReciboImpresion = () => {
         if (reciboRef.current && venta && detalles && detalles.length > 0) {
             reciboRef.current.innerHTML = '';
 
-            // Función para formatear la fecha de manera segura
+            // Función de formateo de fecha más segura
             const formatFecha = (fecha) => {
-                try {
-                    const dateObj = new Date(fecha);
-                    if (!isNaN(dateObj.getTime())) {
-                        return dateObj.toLocaleString();
-                    }
-                } catch (e) {
-                    // Si el formato no es válido, se usa la cadena original como fallback
-                }
-                return fecha || 'N/A';
+                const dateObj = new Date(fecha);
+                return !isNaN(dateObj.getTime()) ? dateObj.toLocaleString() : fecha;
             };
             
             const totalSinDescuento = detalles.reduce((acc, item) => {
@@ -37,7 +31,7 @@ const ReciboImpresion = () => {
                     <div class="header">
                         <h2>Comprobante de compra</h2>
                         <p>Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
-                        <p>Fecha: ${formatFecha(venta.fecha_venta)}</p>
+                        <p>Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
                         <hr>
                     </div>
                     <div class="items">
