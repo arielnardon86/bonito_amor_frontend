@@ -416,6 +416,7 @@ const VentasPage = () => {
                 </>
             )}
 
+            {/* Código del modal de confirmación */}
             {showConfirmModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -701,6 +702,58 @@ const styles = {
         fontSize: '1em',
         fontWeight: 'bold',
         color: '#555',
+    },
+    // CORRECCIÓN CLAVE: Estilos del modal para que sea visible
+    modalOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000, 
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        padding: '30px',
+        borderRadius: '8px',
+        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+        maxWidth: '500px',
+        width: '90%',
+        textAlign: 'center',
+    },
+    modalMessage: {
+        fontSize: '1.1em',
+        marginBottom: '20px',
+        color: '#333',
+    },
+    modalActions: {
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '15px',
+    },
+    modalConfirmButton: {
+        padding: '10px 20px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        transition: 'background-color 0.3s ease',
+    },
+    modalCancelButton: {
+        padding: '10px 20px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        transition: 'background-color 0.3s ease',
     },
 };
 
