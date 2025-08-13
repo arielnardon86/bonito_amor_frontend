@@ -256,37 +256,35 @@ const PuntoVenta = () => {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
 
-                    // CORRECCIÓN: Si la venta se crea con éxito, el ID estará en la respuesta.
-                    const ventaId = response.data.id;
-                    if (!ventaId) {
+                    // Si el post fue exitoso, el backend debería devolver el ID
+                    if (response.data.id) {
+                        // Ahora hacemos una nueva solicitud GET para obtener los datos completos, incluyendo los nombres de los productos y la tienda
+                        const ventaCompletaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${response.data.id}/`, {
+                            headers: { 'Authorization': `Bearer ${token}` },
+                        });
+                        const ventaCompleta = ventaCompletaResponse.data;
+
+                        showCustomAlert('Venta procesada con éxito. ID: ' + ventaCompleta.id, 'success');
+                        
+                        finalizeCart(activeCartId);
+                        setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
+                        setDescuentoPorcentaje(0);
+
+                        Swal.fire({
+                            title: 'Venta procesada!',
+                            text: '¿Desea imprimir el recibo?',
+                            icon: 'success',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, imprimir',
+                            cancelButtonText: 'No',
+                        }).then((printResult) => {
+                            if (printResult.isConfirmed) {
+                                navigate('/recibo', { state: { venta: ventaCompleta } });
+                            }
+                        });
+                    } else {
                         throw new Error('No se recibió el ID de la venta en la respuesta del POST.');
                     }
-                    
-                    // Ahora hacemos una nueva solicitud GET para obtener los datos completos
-                    const ventaCompletaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/`, {
-                        headers: { 'Authorization': `Bearer ${token}` },
-                    });
-                    const ventaCompleta = ventaCompletaResponse.data;
-                    
-                    showCustomAlert('Venta procesada con éxito. ID: ' + ventaCompleta.id, 'success');
-                    
-                    finalizeCart(activeCartId);
-                    setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
-                    setDescuentoPorcentaje(0);
-
-                    Swal.fire({
-                        title: 'Venta procesada!',
-                        text: '¿Desea imprimir el recibo?',
-                        icon: 'success',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sí, imprimir',
-                        cancelButtonText: 'No',
-                    }).then((printResult) => {
-                        if (printResult.isConfirmed) {
-                            navigate('/recibo', { state: { venta: ventaCompleta } });
-                        }
-                    });
-
                 } catch (err) {
                     console.error('Error al procesar la venta:', err.response ? err.response.data : err.message);
                     Swal.fire({
