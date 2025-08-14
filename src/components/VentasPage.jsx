@@ -216,31 +216,31 @@ const VentasPage = () => {
 
 
     if (authLoading || (isAuthenticated && !user)) { 
-        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
+        return <div className="loading-message">Cargando datos de usuario...</div>;
     }
 
     if (!isAuthenticated || !user.is_superuser) { 
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.</div>;
+        return <div className="access-denied-message">Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.</div>;
     }
 
     if (!selectedStoreSlug) {
         return (
-            <div style={styles.noStoreSelectedMessage}>
+            <div className="no-store-selected-message">
                 <h2>Por favor, selecciona una tienda en la barra de navegación para ver las ventas.</h2>
             </div>
         );
     }
 
     if (loading) {
-        return <div style={styles.loadingMessage}>Cargando ventas de {selectedStoreSlug}...</div>;
+        return <div className="loading-message">Cargando ventas de {selectedStoreSlug}...</div>;
     }
 
     if (error) {
-        return <div style={styles.errorMessage}>{error}</div>;
+        return <div className="error-message">{error}</div>;
     }
 
     return (
-        <div style={styles.container}>
+        <div className="container">
             <h1>Listado de Ventas ({selectedStoreSlug})</h1>
 
             <div className="filters-container">
@@ -283,33 +283,33 @@ const VentasPage = () => {
             </div>
 
             {ventas.length === 0 ? (
-                <p style={styles.noDataMessage}>No hay ventas disponibles para esta tienda con los filtros aplicados.</p>
+                <p className="no-data-message">No hay ventas disponibles para esta tienda con los filtros aplicados.</p>
             ) : (
                 <>
                     <div className="table-responsive">
-                    <table style={styles.table}>
+                    <table className="table">
                         <thead>
-                            <tr style={styles.tableHeaderRow}>
-                                <th style={styles.th}>Fecha</th>
-                                <th style={styles.th}>Total</th>
-                                <th style={styles.th}>Vendedor</th>
-                                <th style={styles.th}>Método Pago</th>
-                                <th style={styles.th}>Anulada</th>
-                                <th style={styles.th}>Acciones</th>
+                            <tr className="table-header-row">
+                                <th className="th">Fecha</th>
+                                <th className="th">Total</th>
+                                <th className="th">Vendedor</th>
+                                <th className="th">Método Pago</th>
+                                <th className="th">Anulada</th>
+                                <th className="th">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {ventas.map(venta => (
                                 <React.Fragment key={venta.id}>
                                     <tr>
-                                        <td style={styles.td}>{new Date(venta.fecha_venta).toLocaleString()}</td>
-                                        <td style={styles.td}>${parseFloat(venta.total || 0).toFixed(2)}</td> 
-                                        <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
-                                        <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
-                                        <td style={styles.td}>
+                                        <td className="td">{new Date(venta.fecha_venta).toLocaleString()}</td>
+                                        <td className="td">${parseFloat(venta.total || 0).toFixed(2)}</td> 
+                                        <td className="td">{venta.usuario ? venta.usuario.username : 'N/A'}</td>
+                                        <td className="td">{venta.metodo_pago || 'N/A'}</td>
+                                        <td className="td">
                                             {venta.anulada ? 'Sí' : 'No'}
                                         </td>
-                                        <td style={styles.td}>
+                                        <td className="td">
                                             <div className="action-buttons">
                                                 <button
                                                     onClick={() => setExpandedSaleId(expandedSaleId === venta.id ? null : venta.id)}
@@ -339,18 +339,18 @@ const VentasPage = () => {
                                     </tr>
                                     {expandedSaleId === venta.id && venta.detalles && (
                                         <tr>
-                                            <td colSpan="6" style={styles.detailRow}>
-                                                <h4 style={styles.detailHeader}>Detalles de la Venta {venta.id}</h4>
+                                            <td colSpan="6" className="detail-row">
+                                                <h4 className="detail-header">Detalles de la Venta {venta.id}</h4>
                                                 <div className="detail-table-wrapper">
-                                                <table style={styles.detailTable}>
+                                                <table className="detail-table">
                                                     <thead>
                                                         <tr>
-                                                            <th style={styles.detailTh}>Producto</th>
-                                                            <th style={styles.th}>Cantidad</th>
-                                                            <th style={styles.th}>P. Unitario (con desc.)</th>
-                                                            <th style={styles.th}>Subtotal (con desc.)</th>
-                                                            <th style={styles.th}>Anulado</th>
-                                                            <th style={styles.th}>Acciones Detalle</th>
+                                                            <th className="detail-th">Producto</th>
+                                                            <th className="th">Cantidad</th>
+                                                            <th className="th">P. Unitario (con desc.)</th>
+                                                            <th className="th">Subtotal (con desc.)</th>
+                                                            <th className="th">Anulado</th>
+                                                            <th className="th">Acciones Detalle</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -364,16 +364,16 @@ const VentasPage = () => {
 
                                                                 return (
                                                                     <tr key={detalle.id}> 
-                                                                        <td style={styles.detailTd}>{detalle.producto_nombre}</td>
-                                                                        <td style={styles.detailTd}>{detalle.cantidad}</td>
-                                                                        <td style={styles.detailTd}>${precioUnitarioConDescuento.toFixed(2)}</td> 
-                                                                        <td style={styles.detailTd}>${subtotalConDescuento.toFixed(2)}</td> 
-                                                                        <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
-                                                                        <td style={styles.detailTd}>
+                                                                        <td className="detail-td">{detalle.producto_nombre}</td>
+                                                                        <td className="detail-td">{detalle.cantidad}</td>
+                                                                        <td className="detail-td">${precioUnitarioConDescuento.toFixed(2)}</td> 
+                                                                        <td className="detail-td">${subtotalConDescuento.toFixed(2)}</td> 
+                                                                        <td className="detail-td">{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
+                                                                        <td className="detail-td">
                                                                             {!venta.anulada && !detalle.anulado_individualmente && ( 
                                                                                 <button
                                                                                     onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
-                                                                                    style={styles.anularDetalleButton}
+                                                                                    className="anular-detalle-button"
                                                                                 >
                                                                                     Anular
                                                                                 </button>
@@ -384,14 +384,14 @@ const VentasPage = () => {
                                                             })
                                                         ) : (
                                                             <tr>
-                                                                <td colSpan="6" style={styles.noDataMessage}>No hay detalles para esta venta.</td>
+                                                                <td colSpan="6" className="no-data-message">No hay detalles para esta venta.</td>
                                                             </tr>
                                                         )}
                                                     </tbody>
                                                 </table>
                                                 </div>
                                                 {venta.descuento_porcentaje > 0 && (
-                                                    <p style={styles.discountDisplay}>
+                                                    <p className="discount-display">
                                                         Descuento aplicado a la venta: {parseFloat(venta.descuento_porcentaje).toFixed(2)}%
                                                     </p>
                                                 )}
@@ -404,357 +404,38 @@ const VentasPage = () => {
                     </table>
                     </div>
 
-                    <div style={styles.paginationContainer}>
-                        <button onClick={() => fetchVentas(prevPageUrl)} disabled={!prevPageUrl} style={styles.paginationButton}>
+                    <div className="pagination-container">
+                        <button onClick={() => fetchVentas(prevPageUrl)} disabled={!prevPageUrl} className="pagination-button">
                             Anterior
                         </button>
-                        <span style={styles.pageNumber}>Página {currentPageNumber}</span>
-                        <button onClick={() => fetchVentas(nextPageUrl)} disabled={!nextPageUrl} style={styles.paginationButton}>
+                        <span className="page-number">Página {currentPageNumber}</span>
+                        <button onClick={() => fetchVentas(nextPageUrl)} disabled={!nextPageUrl} className="pagination-button">
                             Siguiente
                         </button>
                     </div>
                 </>
             )}
 
-            {/* Código del modal de confirmación */}
             {showConfirmModal && (
-                <div style={styles.modalOverlay}>
-                    <div style={styles.modalContent}>
-                        <p style={styles.modalMessage}>{confirmMessage}</p>
-                        <div style={styles.modalActions}>
-                            <button onClick={confirmAction} style={styles.modalConfirmButton}>Sí</button>
-                            <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>No</button>
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <p className="modal-message">{confirmMessage}</p>
+                        <div className="modal-actions">
+                            <button onClick={confirmAction} className="modal-confirm-button">Sí</button>
+                            <button onClick={() => setShowConfirmModal(false)} className="modal-cancel-button">No</button>
                         </div>
                     </div>
                 </div>
             )}
 
             {showAlertMessage && (
-                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
+                <div className="alert-box" style={{ backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
                     <p>{alertMessage}</p>
                 </div>
             )}
-
-            <style>{`
-                .filters-container {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 15px;
-                    margin-bottom: 20px;
-                    padding: 15px;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    background-color: #f9f9f9;
-                    align-items: flex-end;
-                }
-                .filter-group {
-                    display: flex;
-                    flex-direction: column;
-                }
-                .filter-label {
-                    margin-bottom: 5px;
-                    font-weight: bold;
-                    color: #555;
-                }
-                .filter-input {
-                    padding: 8px;
-                    border: 1px solid #ccc;
-                    border-radius: 4px;
-                    min-width: 150px;
-                }
-                .filter-button {
-                    padding: 10px 15px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 14px;
-                    transition: background-color 0.3s ease;
-                }
-                .filter-button-secondary {
-                    padding: 10px 15px;
-                    background-color: #6c757d;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 14px;
-                    transition: background-color 0.3s ease;
-                }
-                .action-buttons {
-                    display: flex;
-                    gap: 5px;
-                    flex-wrap: wrap;
-                }
-                .detail-button, .anular-button, .reprint-button {
-                    padding: 6px 10px;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 0.9em;
-                    color: white;
-                    transition: background-color 0.3s ease;
-                }
-                .detail-button { background-color: #17a2b8; }
-                .anular-button { background-color: #dc3545; }
-                .reprint-button { background-color: #28a745; }
-
-                .table-responsive {
-                    overflow-x: auto;
-                }
-                @media (max-width: 768px) {
-                    .filters-container {
-                        flex-direction: column;
-                        align-items: stretch;
-                    }
-                    .filter-group {
-                        width: 100%;
-                    }
-                    .filter-input {
-                        width: 100%;
-                        box-sizing: border-box;
-                    }
-                    .action-buttons {
-                        flex-direction: column;
-                        gap: 8px;
-                    }
-                    .action-buttons button {
-                        width: 100%;
-                    }
-                    .detail-table-wrapper {
-                        overflow-x: auto;
-                    }
-                    .detail-table-wrapper table {
-                        width: 100%;
-                        white-space: nowrap;
-                    }
-                }
-            `}</style>
         </div>
     );
 };
 
-
-const styles = {
-    container: {
-        padding: '20px',
-        fontFamily: 'Inter, sans-serif',
-        maxWidth: '1200px',
-        margin: '20px auto',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        color: '#333',
-        '@media (max-width: 768px)': {
-            padding: '10px',
-        },
-    },
-    header: {
-        textAlign: 'center',
-        color: '#2c3e50',
-        marginBottom: '30px',
-        fontSize: '2.5em',
-        fontWeight: 'bold',
-        '@media (max-width: 768px)': {
-            fontSize: '1.8em',
-        },
-    },
-    section: {
-        backgroundColor: '#ffffff',
-        padding: '25px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        marginBottom: '30px',
-    },
-    sectionHeader: {
-        fontSize: '1.8em',
-        color: '#34495e',
-        marginBottom: '20px',
-        borderBottom: '2px solid #eceff1',
-        paddingBottom: '10px',
-        '@media (max-width: 768px)': {
-            fontSize: '1.4em',
-        },
-    },
-    loadingMessage: {
-        padding: '20px',
-        textAlign: 'center',
-        color: '#555',
-        fontSize: '1.1em',
-    },
-    accessDeniedMessage: {
-        color: '#dc3545',
-        marginBottom: '10px',
-        padding: '20px',
-        border: '1px solid #dc3545',
-        textAlign: 'center',
-        borderRadius: '8px',
-        backgroundColor: '#ffe3e6',
-        fontWeight: 'bold',
-    },
-    noStoreSelectedMessage: {
-        padding: '50px',
-        textAlign: 'center',
-        color: '#777',
-        fontSize: '1.2em',
-    },
-    errorMessage: {
-        color: '#dc3545',
-        marginBottom: '20px',
-        border: '1px solid #dc3545',
-        padding: '15px',
-        borderRadius: '8px',
-        backgroundColor: '#ffe3e6',
-        textAlign: 'center',
-        fontWeight: 'bold',
-    },
-    table: {
-        width: '100%',
-        borderCollapse: 'collapse',
-        marginTop: '15px',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        '@media (max-width: 768px)': {
-            display: 'block',
-            overflowX: 'auto',
-            whiteSpace: 'nowrap',
-        },
-    },
-    tableHeaderRow: {
-        backgroundColor: '#f2f2f2',
-    },
-    th: {
-        padding: '12px 15px',
-        borderBottom: '1px solid #ddd',
-        textAlign: 'left',
-        fontWeight: 'bold',
-        fontSize: '0.95em',
-        color: '#555',
-    },
-    tableRow: {
-        backgroundColor: 'inherit',
-        transition: 'background-color 0.2s ease',
-        '&:nth-child(even)': {
-            backgroundColor: '#f9f9f9',
-        },
-    },
-    td: {
-        padding: '10px 15px',
-        borderBottom: '1px solid #eee',
-        verticalAlign: 'middle',
-        fontSize: '0.9em',
-    },
-    detailRow: {
-        backgroundColor: '#fdfdfd',
-        padding: '15px',
-        borderTop: '2px solid #eee',
-    },
-    detailHeader: {
-        marginTop: '0',
-        marginBottom: '10px',
-        color: '#333',
-    },
-    detailTable: {
-        width: '100%',
-        borderCollapse: 'collapse',
-        marginTop: '10px',
-    },
-    detailTh: {
-        backgroundColor: '#e9ecef',
-        padding: '10px',
-        textAlign: 'left',
-        borderBottom: '1px solid #dee2e6',
-    },
-    detailTd: {
-        padding: '10px',
-        borderBottom: '1px solid #dee2e6',
-    },
-    anularDetalleButton: {
-        padding: '5px 8px',
-        backgroundColor: '#ffc107',
-        color: 'black',
-        border: 'none',
-        borderRadius: '3px',
-        cursor: 'pointer',
-        fontSize: '0.8em',
-        transition: 'background-color 0.3s ease',
-    },
-    paginationContainer: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: '20px',
-        gap: '10px',
-    },
-    paginationButton: {
-        padding: '8px 15px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontSize: '1em',
-        transition: 'background-color 0.3s ease',
-    },
-    pageNumber: {
-        fontSize: '1em',
-        fontWeight: 'bold',
-        color: '#555',
-    },
-    // CORRECCIÓN CLAVE: Estilos del modal para que sea visible
-    modalOverlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1000, 
-    },
-    modalContent: {
-        backgroundColor: 'white',
-        padding: '30px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-        maxWidth: '500px',
-        width: '90%',
-        textAlign: 'center',
-    },
-    modalMessage: {
-        fontSize: '1.1em',
-        marginBottom: '20px',
-        color: '#333',
-    },
-    modalActions: {
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '15px',
-    },
-    modalConfirmButton: {
-        padding: '10px 20px',
-        backgroundColor: '#28a745',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontSize: '1em',
-        transition: 'background-color 0.3s ease',
-    },
-    modalCancelButton: {
-        padding: '10px 20px',
-        backgroundColor: '#dc3545',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontSize: '1em',
-        transition: 'background-color 0.3s ease',
-    },
-};
 
 export default VentasPage;

@@ -1,42 +1,3 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* Store/frontend/src/App.css */
 
 body {
@@ -369,7 +330,188 @@ h2, h3 {
   border: 1px solid #e74c3c;
   border-radius: 5px;
 }
+/* Estilos para el contenedor de filtros */
+.filters-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    align-items: flex-end;
+}
 
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-label {
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.filter-input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-width: 150px;
+}
+
+.filter-button {
+    padding: 10px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.filter-button-secondary {
+    padding: 10px 15px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+/* Contenedor de acciones de la tabla */
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.detail-button, .anular-button, .reprint-button {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    color: white;
+    transition: background-color 0.3s ease;
+}
+
+.detail-button { background-color: #17a2b8; }
+.anular-button { background-color: #dc3545; }
+.reprint-button { background-color: #28a745; }
+/* Estilo del modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+}
+
+.modal-message {
+    font-size: 1.1em;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.modal-confirm-button {
+    padding: 10px 20px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.modal-cancel-button {
+    padding: 10px 20px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+/* Alerta flotante */
+.alert-box {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1001;
+    opacity: 0;
+    animation: fadeInOut 3s forwards;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-20px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-20px); }
+}
+
+/* Contenedor de paginación */
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    gap: 10px;
+}
+
+.pagination-button {
+    padding: 8px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.page-number {
+    font-size: 1em;
+    font-weight: bold;
+    color: #555;
+}
+
+/* Estilos de tabla responsive */
+.table-responsive {
+    overflow-x: auto;
+}
 @media (max-width: 768px) {
     .navbar {
         padding: 10px;
@@ -445,18 +587,51 @@ h2, h3 {
     .app-logo-image {
         height: 40px; /* Un poco más pequeño en móvil */
     }
+    
+    .container {
+        padding: 15px;
+        margin: 15px;
+    }
+    .producto-form, .barcode-input-form, .form-desktop, .filters-container {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .producto-form button:nth-of-type(1),
+    .producto-form button:nth-of-type(2),
+    .form-group, .input-group, .filter-group {
+        width: 100%;
+    }
+    .input, .filter-input, .select-input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .action-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .action-buttons button {
+        width: 100%;
+    }
+    .productos-table th, .productos-table td,
+    .carrito-table th, .carrito-table td,
+    .compras-table th, .compras-table td,
+    .ventas-table th, .ventas-table td {
+        font-size: 0.9em;
+        padding: 8px;
+    }
+    .detail-table-wrapper table {
+        width: 100%;
+        white-space: nowrap;
+    }
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 600px) {
   .container {
     padding: 15px;
-  }
-  .productos-table, .carrito-table {
-    font-size: 0.9em;
-  }
-  .productos-table th, .carrito-table th,
-  .productos-table td, .carrito-table td {
-    padding: 8px;
   }
 }
 

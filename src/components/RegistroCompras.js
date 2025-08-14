@@ -110,227 +110,106 @@ const RegistroCompras = () => {
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchCompras]);
 
     if (authLoading || (isAuthenticated && !user)) {
-        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
+        return <div className="loading-message">Cargando datos de usuario...</div>;
     }
 
     if (!isAuthenticated || (!user.is_superuser && !user.is_staff)) {
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo el personal autorizado puede ver esta página.</div>;
+        return <div className="access-denied-message">Acceso denegado. Solo el personal autorizado puede ver esta página.</div>;
     }
 
     if (!selectedStoreSlug) {
-        return <div style={styles.noStoreSelectedMessage}>Por favor, selecciona una tienda.</div>;
+        return <div className="no-store-selected-message">Por favor, selecciona una tienda.</div>;
     }
 
     if (loadingCompras) {
-        return <div style={styles.loadingMessage}>Cargando registros de egresos...</div>;
+        return <div className="loading-message">Cargando registros de egresos...</div>;
     }
 
     if (error) {
-        return <div style={styles.errorMessage}>{error}</div>;
+        return <div className="error-message">{error}</div>;
     }
 
     return (
-        <div style={styles.container}>
+        <div className="container">
             <h1>Registro de Egresos ({selectedStoreSlug})</h1>
 
             {/* Formulario de registro de nuevos egresos */}
-            <div style={styles.formContainer}>
+            <div className="form-container">
                 <h2>Registrar Egresos</h2>
-                <form onSubmit={handleCreateCompra} style={styles.form}>
-                    <div style={styles.formGroup}>
-                        <label style={styles.formLabel}>Fecha de egreso*</label>
+                <form onSubmit={handleCreateCompra} className="form-mobile">
+                    <div className="form-group">
+                        <label className="form-label">Fecha de egreso*</label>
                         <input
                             type="date"
                             value={newPurchaseDate}
                             onChange={(e) => setNewPurchaseDate(e.target.value)}
                             required
-                            style={styles.input}
+                            className="input-field"
                         />
                     </div>
-                    <div style={styles.formGroup}>
-                        <label style={styles.formLabel}>Monto*</label>
+                    <div className="form-group">
+                        <label className="form-label">Monto*</label>
                         <input
                             type="number"
                             value={newPurchaseTotal}
                             onChange={(e) => setNewPurchaseTotal(e.target.value)}
                             required
-                            style={styles.input}
+                            className="input-field"
                             step="0.01"
                             min="0"
                         />
                     </div>
-                    <div style={styles.formGroup}>
-                        <label style={styles.formLabel}>Concepto</label>
+                    <div className="form-group">
+                        <label className="form-label">Concepto</label>
                         <input
                             type="text"
                             value={newPurchaseConcept}
                             onChange={(e) => setNewPurchaseConcept(e.target.value)}
-                            style={styles.input}
+                            className="input-field"
                         />
                     </div>
-                    <div style={styles.formGroup}>
-                        <button type="submit" style={styles.submitButton}>Registrar Egreso</button>
+                    <div className="form-group">
+                        <button type="submit" className="submit-button-desktop">Registrar Egreso</button>
                     </div>
                 </form>
             </div>
 
             {/* Listado de egresos */}
-            <div style={styles.tableContainer}>
+            <div className="table-container">
                 <h2>Registro de Egresos</h2>
                 {compras.length > 0 ? (
-                    <table style={styles.table}>
-                        <thead>
-                            <tr>
-                                <th style={styles.th}>Fecha</th>
-                                <th style={styles.th}>Monto</th>
-                                <th style={styles.th}>Concepto</th>
-                                <th style={styles.th}>Registrado por</th>
-                                <th style={styles.th}>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {compras.map((compra) => (
-                                <tr key={compra.id}>
-                                    <td style={styles.td}>{new Date(compra.fecha_compra).toLocaleDateString()}</td>
-                                    <td style={styles.td}>${parseFloat(compra.total).toFixed(2)}</td>
-                                    <td style={styles.td}>{compra.proveedor || 'N/A'}</td>
-                                    <td style={styles.td}>{compra.usuario.username}</td>
-                                    <td style={styles.td}>
-                                        <button onClick={() => handleDeleteCompra(compra.id)} style={styles.deleteButton}>Eliminar</button>
-                                    </td>
+                    <div className="table-responsive">
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <th className="th">Fecha</th>
+                                    <th className="th">Monto</th>
+                                    <th className="th">Concepto</th>
+                                    <th className="th">Registrado por</th>
+                                    <th className="th">Acciones</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {compras.map((compra) => (
+                                    <tr key={compra.id}>
+                                        <td className="td">{new Date(compra.fecha_compra).toLocaleDateString()}</td>
+                                        <td className="td">${parseFloat(compra.total).toFixed(2)}</td>
+                                        <td className="td">{compra.proveedor || 'N/A'}</td>
+                                        <td className="td">{compra.usuario.username}</td>
+                                        <td className="td">
+                                            <button onClick={() => handleDeleteCompra(compra.id)} className="delete-button-desktop">Eliminar</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 ) : (
-                    <p style={styles.noDataMessage}>No hay egresos registrados para esta tienda.</p>
+                    <p className="no-data-message">No hay egresos registrados para esta tienda.</p>
                 )}
             </div>
         </div>
     );
-};
-
-const styles = {
-    container: {
-        padding: '20px',
-        fontFamily: 'Inter, sans-serif',
-        maxWidth: '1200px',
-        margin: '20px auto',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        color: '#333',
-    },
-    loadingMessage: {
-        padding: '20px',
-        textAlign: 'center',
-        color: '#555',
-        fontSize: '1.1em',
-    },
-    accessDeniedMessage: {
-        color: '#dc3545',
-        marginBottom: '10px',
-        padding: '20px',
-        border: '1px solid #dc3545',
-        textAlign: 'center',
-        borderRadius: '8px',
-        backgroundColor: '#ffe3e6',
-        fontWeight: 'bold',
-    },
-    noStoreSelectedMessage: {
-        padding: '50px',
-        textAlign: 'center',
-        color: '#777',
-        fontSize: '1.2em',
-    },
-    errorMessage: {
-        color: '#dc3545',
-        marginBottom: '20px',
-        border: '1px solid #dc3545',
-        padding: '15px',
-        borderRadius: '8px',
-        backgroundColor: '#ffe3e6',
-        textAlign: 'center',
-        fontWeight: 'bold',
-    },
-    formContainer: {
-        backgroundColor: '#ffffff',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        marginBottom: '30px',
-    },
-    form: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '20px',
-    },
-    formGroup: {
-        width: '100%',
-    },
-    formLabel: {
-        display: 'block',
-        marginBottom: '5px',
-        fontWeight: 'bold',
-        color: '#555',
-    },
-    input: {
-        width: '100%',
-        padding: '10px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-    },
-    submitButton: {
-        padding: '12px 20px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontWeight: 'bold',
-        transition: 'background-color 0.3s ease',
-        width: '100%',
-    },
-    tableContainer: {
-        backgroundColor: '#ffffff',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        overflowX: 'auto',
-    },
-    table: {
-        width: '100%',
-        borderCollapse: 'collapse',
-        textAlign: 'left',
-    },
-    th: {
-        padding: '12px',
-        borderBottom: '2px solid #dee2e6',
-        backgroundColor: '#f2f2f2',
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    td: {
-        padding: '12px',
-        borderBottom: '1px solid #e9ecef',
-        verticalAlign: 'middle',
-    },
-    deleteButton: {
-        padding: '8px 12px',
-        backgroundColor: '#dc3545',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontWeight: 'bold',
-        transition: 'background-color 0.2s ease',
-    },
-    noDataMessage: {
-        textAlign: 'center',
-        marginTop: '20px',
-        color: '#777',
-        fontStyle: 'italic',
-    },
 };
 
 export default RegistroCompras;

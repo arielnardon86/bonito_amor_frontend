@@ -60,18 +60,18 @@ const EtiquetasImpresion = () => {
 
     if (productosParaImprimir.length === 0) {
         return (
-            <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>
+            <div className="container" style={mobileStyles.noLabelsContainer}>
                 <h1>No hay etiquetas para imprimir.</h1>
-                <button onClick={handleGoBack} style={{ padding: '10px 20px', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '5px', backgroundColor: '#f0f0f0', marginTop: '20px' }}>Volver a Gestión de Productos</button>
+                <button onClick={handleGoBack} style={mobileStyles.backButton}>Volver a Gestión de Productos</button>
             </div>
         );
     }
 
     return (
-        <div className="container" style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-            <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-                <button onClick={handleGoBack} style={{ padding: '10px 20px', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '5px', backgroundColor: '#f0f0f0' }}>Volver</button>
-                <button onClick={handlePrint} style={{ padding: '10px 20px', cursor: 'pointer', border: 'none', borderRadius: '5px', backgroundColor: '#28a745', color: 'white' }}>Imprimir</button>
+        <div className="container" style={mobileStyles.labelsContainer}>
+            <div className="no-print" style={mobileStyles.printControls}>
+                <button onClick={handleGoBack} style={mobileStyles.backButton}>Volver</button>
+                <button onClick={handlePrint} style={mobileStyles.printButton}>Imprimir</button>
             </div>
 
             <div className="label-container" ref={labelsRef}>
@@ -146,5 +146,39 @@ const EtiquetasImpresion = () => {
         </div>
     );
 };
+
+// Se movieron los estilos en línea a un objeto para mejor manejo.
+const mobileStyles = {
+    noLabelsContainer: {
+        textAlign: 'center', 
+        marginTop: '50px' 
+    },
+    labelsContainer: {
+        padding: '20px', 
+        fontFamily: 'Arial, sans-serif' 
+    },
+    printControls: {
+        display: 'flex', 
+        justifyContent: 'center', 
+        gap: '10px', 
+        marginBottom: '20px'
+    },
+    backButton: {
+        padding: '10px 20px', 
+        cursor: 'pointer', 
+        border: '1px solid #ccc', 
+        borderRadius: '5px', 
+        backgroundColor: '#f0f0f0'
+    },
+    printButton: {
+        padding: '10px 20px', 
+        cursor: 'pointer', 
+        border: 'none', 
+        borderRadius: '5px', 
+        backgroundColor: '#28a745', 
+        color: 'white'
+    },
+};
+
 
 export default EtiquetasImpresion;
