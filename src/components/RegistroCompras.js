@@ -191,7 +191,7 @@ const RegistroCompras = () => {
                         <tbody>
                             {compras.map((compra) => (
                                 <tr key={compra.id}>
-                                    <td style={styles.td}>{compra.fecha_compra}</td>
+                                    <td style={styles.td}>{new Date(compra.fecha_compra).toLocaleDateString()}</td>
                                     <td style={styles.td}>${parseFloat(compra.total).toFixed(2)}</td>
                                     <td style={styles.td}>{compra.proveedor || 'N/A'}</td>
                                     <td style={styles.td}>{compra.usuario.username}</td>
@@ -262,13 +262,11 @@ const styles = {
     },
     form: {
         display: 'flex',
-        flexWrap: 'wrap',
+        flexDirection: 'column',
         gap: '20px',
-        alignItems: 'flex-end',
     },
     formGroup: {
-        flex: 1,
-        minWidth: '200px',
+        width: '100%',
     },
     formLabel: {
         display: 'block',
