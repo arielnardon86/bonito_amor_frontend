@@ -213,45 +213,45 @@ const Productos = () => {
     };
 
     if (authLoading || (isAuthenticated && !user)) {
-        return <div className="loading-message">Cargando datos de usuario...</div>;
+        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
     if (!isAuthenticated || !user.is_superuser) {
-        return <div className="access-denied-message">Acceso denegado. Solo los superusuarios pueden ver/gestionar productos.</div>;
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar productos.</div>;
     }
     if (!selectedStoreSlug) {
         return (
-            <div className="no-store-selected-message">
+            <div style={styles.noStoreSelectedMessage}>
                 <h2>Por favor, selecciona una tienda en la barra de navegación para ver los productos.</h2>
             </div>
         );
     }
     
     return (
-        <div className="container">
-            <div className="header">
-                <h1 className="title">Gestión de Productos ({selectedStoreSlug})</h1>
+        <div style={styles.container}>
+            <div style={styles.header}>
+                <h1 style={styles.title}>Gestión de Productos ({selectedStoreSlug})</h1>
             </div>
             
-            <div className="section">
-                <h2 className="section-title">Agregar Nuevo Producto</h2>
-                <form onSubmit={handleCreateProduct} className="form-desktop">
-                    <div className="input-group">
-                        <label className="label">Nombre</label>
+            <div style={styles.section}>
+                <h2 style={styles.sectionTitle}>Agregar Nuevo Producto</h2>
+                <form onSubmit={handleCreateProduct} style={styles.form}>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Nombre</label>
                         <input
                             type="text"
                             value={newProduct.nombre}
                             onChange={(e) => setNewProduct({ ...newProduct, nombre: e.target.value })}
-                            className="input-field"
+                            style={styles.input}
                             required
                         />
                     </div>
-                    <div className="input-group">
-                        <label className="label">Talle</label>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Talle</label>
                         <select
                             value={newProduct.talle}
                             onChange={(e) => setNewProduct({ ...newProduct, talle: e.target.value })}
-                            className="input-field"
+                            style={styles.input}
                             required
                         >
                             {TalleOptions.map(option => (
@@ -259,80 +259,80 @@ const Productos = () => {
                             ))}
                         </select>
                     </div>
-                    <div className="input-group">
-                        <label className="label">Precio</label>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Precio</label>
                         <input
                             type="number"
                             value={newProduct.precio}
                             onChange={(e) => setNewProduct({ ...newProduct, precio: e.target.value })}
-                            className="input-field"
+                            style={styles.input}
                             required
                         />
                     </div>
-                    <div className="input-group">
-                        <label className="label">Stock</label>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Stock</label>
                         <input
                             type="number"
                             value={newProduct.stock}
                             onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                            className="input-field"
+                            style={styles.input}
                             required
                         />
                     </div>
-                    <div className="input-group">
-                        <label className="label">Código de barras (si no se completa, se genera automáticamente)</label>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Código de barras (si no se completa, se genera automáticamente)</label>
                         <input
                             type="text"
                             value={newProduct.codigo_barras}
                             onChange={(e) => setNewProduct({ ...newProduct, codigo_barras: e.target.value })}
-                            className="input-field"
+                            style={styles.input}
                         />
                     </div>
-                    <button type="submit" className="submit-button" disabled={loadingProducts}>
+                    <button type="submit" style={styles.submitButton} disabled={loadingProducts}>
                         {loadingProducts ? 'Creando...' : 'Crear Producto'}
                     </button>
                 </form>
             </div>
             
-            <div className="section">
-                <div className="table-header">
-                    <h2 className="section-title">Listado de Productos</h2>
-                    <button onClick={handleImprimirEtiquetas} className="print-button">Imprimir Etiquetas</button>
+            <div style={styles.section}>
+                <div style={styles.tableHeader}>
+                    <h2 style={styles.sectionTitle}>Listado de Productos</h2>
+                    <button onClick={handleImprimirEtiquetas} style={styles.printButton}>Imprimir Etiquetas</button>
                 </div>
-                <div className="filters-container">
+                <div style={styles.filtersContainer}>
                     <input
                         type="text"
                         placeholder="Buscar por nombre o talle..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="filter-input"
+                        style={styles.filterInput}
                     />
-                    <button onClick={() => fetchProductos()} className="search-button">Buscar</button>
+                    <button onClick={() => fetchProductos()} style={styles.searchButton}>Buscar</button>
                 </div>
                 
                 {loadingProducts ? (
-                    <div className="loading-message">Cargando productos...</div>
+                    <div style={styles.loadingMessage}>Cargando productos...</div>
                 ) : error ? (
-                    <div className="error-message">{error}</div>
+                    <div style={styles.errorMessage}>{error}</div>
                 ) : (
                     <>
-                        <div className="table-responsive">
-                            <table className="table">
+                        <div style={styles.tableResponsive}>
+                            <table style={styles.table}>
                                 <thead>
                                     <tr>
-                                        <th className="th">Seleccionar</th>
-                                        <th className="th">Cantidad de etiquetas</th>
-                                        <th className="th">Nombre</th>
-                                        <th className="th">Talle</th>
-                                        <th className="th">Precio</th>
-                                        <th className="th">Stock</th>
-                                        <th className="th">Acciones</th>
+                                        <th style={styles.th}>Seleccionar</th>
+                                        <th style={styles.th}>Cantidad de etiquetas</th>
+                                        <th style={styles.th}>Nombre</th>
+                                        <th style={styles.th}>Talle</th>
+                                        <th style={styles.th}>Precio</th>
+                                        <th style={styles.th}>Stock</th>
+                                        <th style={styles.th}>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {productos.map(producto => (
                                         <tr key={producto.id}>
-                                            <td className="td">
+                                            <td style={styles.td}>
                                                 <input 
                                                     type="checkbox" 
                                                     checked={!!etiquetasSeleccionadas[producto.id]} 
@@ -348,29 +348,29 @@ const Productos = () => {
                                                     }}
                                                 />
                                             </td>
-                                            <td className="td">
+                                            <td style={styles.td}>
                                                 <input
                                                     type="number"
                                                     min="0"
                                                     value={etiquetasSeleccionadas[producto.id] || ''}
                                                     onChange={(e) => handleEtiquetasChange(producto.id, parseInt(e.target.value, 10) || 0)}
-                                                    className="etiquetas-input"
+                                                    style={styles.etiquetasInput}
                                                     disabled={!etiquetasSeleccionadas[producto.id]}
                                                 />
                                             </td>
-                                            <td className="td">{producto.nombre}</td>
-                                            <td className="td">{producto.talle}</td>
-                                            <td className="td">${parseFloat(producto.precio).toFixed(2)}</td>
-                                            <td className="td">{producto.stock}</td>
-                                            <td className="td">
+                                            <td style={styles.td}>{producto.nombre}</td>
+                                            <td style={styles.td}>{producto.talle}</td>
+                                            <td style={styles.td}>${parseFloat(producto.precio).toFixed(2)}</td>
+                                            <td style={styles.td}>{producto.stock}</td>
+                                            <td style={styles.td}>
                                                 <button onClick={() => {
                                                     setEditProduct({ ...producto });
                                                     setShowEditModal(true);
-                                                }} className="edit-button">Editar</button>
+                                                }} style={styles.editButton}>Editar</button>
                                                 <button onClick={() => {
                                                     setProductToDelete(producto);
                                                     setShowDeleteModal(true);
-                                                }} className="delete-button">Eliminar</button>
+                                                }} style={styles.deleteButton}>Eliminar</button>
                                             </td>
                                         </tr>
                                     ))}
@@ -378,22 +378,22 @@ const Productos = () => {
                             </table>
                         </div>
                         
-                        <div className="pagination-container">
+                        <div style={styles.paginationContainer}>
                             <button onClick={() => {
                                 if (prevPage) {
                                     const pageNumber = new URLSearchParams(new URL(prevPage).search).get('page');
                                     setCurrentPage(pageNumber ? parseInt(pageNumber, 10) : 1);
                                     fetchProductos(prevPage);
                                 }
-                            }} disabled={!prevPage} className="pagination-button">Anterior</button>
-                            <span className="page-number">Página {currentPage} de {totalPages}</span>
+                            }} disabled={!prevPage} style={styles.paginationButton}>Anterior</button>
+                            <span style={styles.pageNumber}>Página {currentPage} de {totalPages}</span>
                             <button onClick={() => {
                                 if (nextPage) {
                                     const pageNumber = new URLSearchParams(new URL(nextPage).search).get('page');
                                     setCurrentPage(parseInt(pageNumber, 10));
                                     fetchProductos(nextPage);
                                 }
-                            }} disabled={!nextPage} className="pagination-button">Siguiente</button>
+                            }} disabled={!nextPage} style={styles.paginationButton}>Siguiente</button>
                         </div>
                     </>
                 )}
@@ -401,39 +401,39 @@ const Productos = () => {
 
             {/* Modal para editar producto */}
             {showEditModal && editProduct && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
                         <h3>Editar Producto</h3>
-                        <div className="input-group-modal">
-                            <label className="label">Nombre:</label>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Nombre:</label>
                             <input
                                 type="text"
                                 value={editProduct.nombre}
                                 onChange={(e) => setEditProduct({ ...editProduct, nombre: e.target.value })}
-                                className="modal-input"
+                                style={styles.modalInput}
                             />
                         </div>
-                        <div className="input-group-modal">
-                            <label className="label">Precio:</label>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Precio:</label>
                             <input
                                 type="number"
                                 value={editProduct.precio}
                                 onChange={(e) => setEditProduct({ ...editProduct, precio: e.target.value })}
-                                className="modal-input"
+                                style={styles.modalInput}
                             />
                         </div>
-                        <div className="input-group-modal">
-                            <label className="label">Stock:</label>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Stock:</label>
                             <input
                                 type="number"
                                 value={editProduct.stock}
                                 onChange={(e) => setEditProduct({ ...editProduct, stock: e.target.value })}
-                                className="modal-input"
+                                style={styles.modalInput}
                             />
                         </div>
-                        <div className="modal-actions">
-                            <button onClick={handleEditProduct} className="modal-confirm-button">Guardar</button>
-                            <button onClick={() => setShowEditModal(false)} className="modal-cancel-button">Cancelar</button>
+                        <div style={styles.modalActions}>
+                            <button onClick={handleEditProduct} style={styles.modalConfirmButton}>Guardar</button>
+                            <button onClick={() => setShowEditModal(false)} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
                 </div>
@@ -441,18 +441,97 @@ const Productos = () => {
             
             {/* Modal de confirmación para eliminar */}
             {showDeleteModal && productToDelete && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
                         <h3>Confirmar Eliminación</h3>
                         <p>¿Estás seguro de que quieres eliminar el producto <strong>{productToDelete.nombre}</strong>?</p>
-                        <div className="modal-actions">
-                            <button onClick={() => handleDeleteProduct(productToDelete.id)} className="modal-confirm-button">Eliminar</button>
-                            <button onClick={() => setShowDeleteModal(false)} className="modal-cancel-button">Cancelar</button>
+                        <div style={styles.modalActions}>
+                            <button onClick={() => handleDeleteProduct(productToDelete.id)} style={styles.modalConfirmButton}>Eliminar</button>
+                            <button onClick={() => setShowDeleteModal(false)} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
                 </div>
             )}
+            <style>
+                {`
+                @media (max-width: 768px) {
+                    .form {
+                        flex-direction: column;
+                        gap: 15px;
+                    }
+                    .input-group, .submit-button {
+                        width: 100%;
+                    }
+                    .table-header {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 10px;
+                    }
+                    .filters-container {
+                        flex-direction: column;
+                        gap: 10px;
+                    }
+                    .filter-input, .search-button {
+                        width: 100%;
+                    }
+                    .table-responsive {
+                        overflow-x: auto;
+                    }
+                    table {
+                        width: 100%;
+                        display: block;
+                        overflow-x: auto;
+                        white-space: nowrap;
+                    }
+                    .pagination-container {
+                        flex-direction: column;
+                        gap: 10px;
+                    }
+                    .pagination-button {
+                        width: 100%;
+                    }
+                }
+                `}
+            </style>
         </div>
     );
+};
+const styles = {
+    container: { padding: '20px', fontFamily: 'Arial, sans-serif' },
+    header: { textAlign: 'center' },
+    title: { color: '#2c3e50', fontSize: '2.5em' },
+    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' },
+    sectionTitle: { color: '#34495e', borderBottom: '1px solid #eee', paddingBottom: '10px' },
+    form: { display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-end' },
+    inputGroup: { flex: '1 1 200px', display: 'flex', flexDirection: 'column' },
+    label: { marginBottom: '5px', fontWeight: 'bold' },
+    input: { padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
+    submitButton: { padding: '10px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', alignSelf: 'flex-end' },
+    tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
+    printButton: { padding: '10px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    filtersContainer: { display: 'flex', gap: '10px', marginBottom: '20px' },
+    filterInput: { flex: '1', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
+    searchButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    loadingMessage: { textAlign: 'center', color: '#777' },
+    errorMessage: { color: '#dc3545', padding: '10px', backgroundColor: '#ffe3e6', border: '1px solid #dc3545', borderRadius: '5px' },
+    tableResponsive: { overflowX: 'auto' },
+    table: { width: '100%', borderCollapse: 'collapse' },
+    th: { padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left', backgroundColor: '#f2f2f2' },
+    td: { padding: '10px', borderBottom: '1px solid #ddd' },
+    etiquetasInput: { width: '50px' },
+    editButton: { padding: '5px 10px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' },
+    deleteButton: { padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    paginationContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', gap: '10px' },
+    paginationButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    pageNumber: { fontSize: '1em', fontWeight: 'bold' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+    modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center', width: '90%', maxWidth: '500px' },
+    inputGroupModal: { marginBottom: '15px' },
+    modalInput: { width: '100%', padding: '8px', boxSizing: 'border-box' },
+    modalActions: { display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' },
+    modalConfirmButton: { padding: '10px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    modalCancelButton: { padding: '10px 15px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    accessDeniedMessage: { color: '#dc3545', textAlign: 'center', fontWeight: 'bold' },
+    noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },
 };
 export default Productos;

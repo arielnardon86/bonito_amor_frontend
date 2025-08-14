@@ -216,49 +216,49 @@ const VentasPage = () => {
 
 
     if (authLoading || (isAuthenticated && !user)) { 
-        return <div className="loading-message">Cargando datos de usuario...</div>;
+        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
     if (!isAuthenticated || !user.is_superuser) { 
-        return <div className="access-denied-message">Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.</div>;
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.</div>;
     }
 
     if (!selectedStoreSlug) {
         return (
-            <div className="no-store-selected-message">
+            <div style={styles.noStoreSelectedMessage}>
                 <h2>Por favor, selecciona una tienda en la barra de navegación para ver las ventas.</h2>
             </div>
         );
     }
 
     if (loading) {
-        return <div className="loading-message">Cargando ventas de {selectedStoreSlug}...</div>;
+        return <div style={styles.loadingMessage}>Cargando ventas de {selectedStoreSlug}...</div>;
     }
 
     if (error) {
-        return <div className="error-message">{error}</div>;
+        return <div style={styles.errorMessage}>{error}</div>;
     }
 
     return (
-        <div className="container">
+        <div style={styles.container}>
             <h1>Listado de Ventas ({selectedStoreSlug})</h1>
 
-            <div className="filters-container">
-                <div className="filter-group">
-                    <label className="filter-label">Fecha:</label>
+            <div style={styles.filtersContainer}>
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Fecha:</label>
                     <input
                         type="date"
                         value={filterDate}
                         onChange={(e) => setFilterDate(e.target.value)}
-                        className="filter-input"
+                        style={styles.filterInput}
                     />
                 </div>
-                <div className="filter-group">
-                    <label className="filter-label">Vendedor:</label>
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Vendedor:</label>
                     <select
                         value={filterSellerId}
                         onChange={(e) => setFilterSellerId(e.target.value)}
-                        className="filter-input"
+                        style={styles.filterInput}
                     >
                         <option value="">Todos</option>
                         {sellers.map(seller => (
@@ -266,54 +266,54 @@ const VentasPage = () => {
                         ))}
                     </select>
                 </div>
-                <div className="filter-group">
-                    <label className="filter-label">Anulada:</label>
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Anulada:</label>
                     <select
                         value={filterAnulada}
                         onChange={(e) => setFilterAnulada(e.target.value)}
-                        className="filter-input"
+                        style={styles.filterInput}
                     >
                         <option value="">Todas</option>
                         <option value="false">No Anuladas</option> 
                         <option value="true">Anuladas</option>    
                     </select>
                 </div>
-                <button onClick={applyFilters} className="filter-button">Aplicar Filtros</button>
-                <button onClick={clearFilters} className="filter-button-secondary">Limpiar Filtros</button>
+                <button onClick={applyFilters} style={styles.filterButton}>Aplicar Filtros</button>
+                <button onClick={clearFilters} style={styles.filterButtonSecondary}>Limpiar Filtros</button>
             </div>
 
             {ventas.length === 0 ? (
-                <p className="no-data-message">No hay ventas disponibles para esta tienda con los filtros aplicados.</p>
+                <p style={styles.noDataMessage}>No hay ventas disponibles para esta tienda con los filtros aplicados.</p>
             ) : (
                 <>
-                    <div className="table-responsive">
-                    <table className="table">
+                    <div style={styles.tableResponsive}>
+                    <table style={styles.table}>
                         <thead>
-                            <tr className="table-header-row">
-                                <th className="th">Fecha</th>
-                                <th className="th">Total</th>
-                                <th className="th">Vendedor</th>
-                                <th className="th">Método Pago</th>
-                                <th className="th">Anulada</th>
-                                <th className="th">Acciones</th>
+                            <tr style={styles.tableHeaderRow}>
+                                <th style={styles.th}>Fecha</th>
+                                <th style={styles.th}>Total</th>
+                                <th style={styles.th}>Vendedor</th>
+                                <th style={styles.th}>Método Pago</th>
+                                <th style={styles.th}>Anulada</th>
+                                <th style={styles.th}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {ventas.map(venta => (
                                 <React.Fragment key={venta.id}>
                                     <tr>
-                                        <td className="td">{new Date(venta.fecha_venta).toLocaleString()}</td>
-                                        <td className="td">${parseFloat(venta.total || 0).toFixed(2)}</td> 
-                                        <td className="td">{venta.usuario ? venta.usuario.username : 'N/A'}</td>
-                                        <td className="td">{venta.metodo_pago || 'N/A'}</td>
-                                        <td className="td">
+                                        <td style={styles.td}>{new Date(venta.fecha_venta).toLocaleString()}</td>
+                                        <td style={styles.td}>${parseFloat(venta.total || 0).toFixed(2)}</td> 
+                                        <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
+                                        <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
+                                        <td style={styles.td}>
                                             {venta.anulada ? 'Sí' : 'No'}
                                         </td>
-                                        <td className="td">
-                                            <div className="action-buttons">
+                                        <td style={styles.td}>
+                                            <div style={styles.actionButtons}>
                                                 <button
                                                     onClick={() => setExpandedSaleId(expandedSaleId === venta.id ? null : venta.id)}
-                                                    className="detail-button"
+                                                    style={styles.detailButton}
                                                 >
                                                     {expandedSaleId === venta.id ? 'Ocultar' : 'Ver'}
                                                 </button>
@@ -323,14 +323,14 @@ const VentasPage = () => {
                                                             console.log('Intentando anular venta:', venta.id);
                                                             handleAnularVenta(venta.id);
                                                         }}
-                                                        className="anular-button"
+                                                        style={styles.anularButton}
                                                     >
                                                         Anular
                                                     </button>
                                                 )}
                                                 <button
                                                     onClick={() => handleReimprimirRecibo(venta)}
-                                                    className="reprint-button"
+                                                    style={styles.reprintButton}
                                                 >
                                                     Recibo
                                                 </button>
@@ -339,18 +339,18 @@ const VentasPage = () => {
                                     </tr>
                                     {expandedSaleId === venta.id && venta.detalles && (
                                         <tr>
-                                            <td colSpan="6" className="detail-row">
-                                                <h4 className="detail-header">Detalles de la Venta {venta.id}</h4>
-                                                <div className="detail-table-wrapper">
-                                                <table className="detail-table">
+                                            <td colSpan="6" style={styles.detailRow}>
+                                                <h4 style={styles.detailHeader}>Detalles de la Venta {venta.id}</h4>
+                                                <div style={styles.detailTableWrapper}>
+                                                <table style={styles.detailTable}>
                                                     <thead>
                                                         <tr>
-                                                            <th className="detail-th">Producto</th>
-                                                            <th className="th">Cantidad</th>
-                                                            <th className="th">P. Unitario (con desc.)</th>
-                                                            <th className="th">Subtotal (con desc.)</th>
-                                                            <th className="th">Anulado</th>
-                                                            <th className="th">Acciones Detalle</th>
+                                                            <th style={styles.detailTh}>Producto</th>
+                                                            <th style={styles.th}>Cantidad</th>
+                                                            <th style={styles.th}>P. Unitario (con desc.)</th>
+                                                            <th style={styles.th}>Subtotal (con desc.)</th>
+                                                            <th style={styles.th}>Anulado</th>
+                                                            <th style={styles.th}>Acciones Detalle</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -364,16 +364,16 @@ const VentasPage = () => {
 
                                                                 return (
                                                                     <tr key={detalle.id}> 
-                                                                        <td className="detail-td">{detalle.producto_nombre}</td>
-                                                                        <td className="detail-td">{detalle.cantidad}</td>
-                                                                        <td className="detail-td">${precioUnitarioConDescuento.toFixed(2)}</td> 
-                                                                        <td className="detail-td">${subtotalConDescuento.toFixed(2)}</td> 
-                                                                        <td className="detail-td">{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
-                                                                        <td className="detail-td">
+                                                                        <td style={styles.detailTd}>{detalle.producto_nombre}</td>
+                                                                        <td style={styles.detailTd}>{detalle.cantidad}</td>
+                                                                        <td style={styles.detailTd}>${precioUnitarioConDescuento.toFixed(2)}</td> 
+                                                                        <td style={styles.detailTd}>${subtotalConDescuento.toFixed(2)}</td> 
+                                                                        <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
+                                                                        <td style={styles.detailTd}>
                                                                             {!venta.anulada && !detalle.anulado_individualmente && ( 
                                                                                 <button
                                                                                     onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
-                                                                                    className="anular-detalle-button"
+                                                                                    style={styles.anularDetalleButton}
                                                                                 >
                                                                                     Anular
                                                                                 </button>
@@ -384,14 +384,14 @@ const VentasPage = () => {
                                                             })
                                                         ) : (
                                                             <tr>
-                                                                <td colSpan="6" className="no-data-message">No hay detalles para esta venta.</td>
+                                                                <td colSpan="6" style={styles.noDataMessage}>No hay detalles para esta venta.</td>
                                                             </tr>
                                                         )}
                                                     </tbody>
                                                 </table>
                                                 </div>
                                                 {venta.descuento_porcentaje > 0 && (
-                                                    <p className="discount-display">
+                                                    <p style={styles.discountDisplay}>
                                                         Descuento aplicado a la venta: {parseFloat(venta.descuento_porcentaje).toFixed(2)}%
                                                     </p>
                                                 )}
@@ -404,12 +404,12 @@ const VentasPage = () => {
                     </table>
                     </div>
 
-                    <div className="pagination-container">
-                        <button onClick={() => fetchVentas(prevPageUrl)} disabled={!prevPageUrl} className="pagination-button">
+                    <div style={styles.paginationContainer}>
+                        <button onClick={() => fetchVentas(prevPageUrl)} disabled={!prevPageUrl} style={styles.paginationButton}>
                             Anterior
                         </button>
-                        <span className="page-number">Página {currentPageNumber}</span>
-                        <button onClick={() => fetchVentas(nextPageUrl)} disabled={!nextPageUrl} className="pagination-button">
+                        <span style={styles.pageNumber}>Página {currentPageNumber}</span>
+                        <button onClick={() => fetchVentas(nextPageUrl)} disabled={!nextPageUrl} style={styles.paginationButton}>
                             Siguiente
                         </button>
                     </div>
@@ -417,25 +417,354 @@ const VentasPage = () => {
             )}
 
             {showConfirmModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <p className="modal-message">{confirmMessage}</p>
-                        <div className="modal-actions">
-                            <button onClick={confirmAction} className="modal-confirm-button">Sí</button>
-                            <button onClick={() => setShowConfirmModal(false)} className="modal-cancel-button">No</button>
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <p style={styles.modalMessage}>{confirmMessage}</p>
+                        <div style={styles.modalActions}>
+                            <button onClick={confirmAction} style={styles.modalConfirmButton}>Sí</button>
+                            <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>No</button>
                         </div>
                     </div>
                 </div>
             )}
 
             {showAlertMessage && (
-                <div className="alert-box" style={{ backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
+                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
                     <p>{alertMessage}</p>
                 </div>
             )}
+            <style>
+                {`
+                @media (max-width: 768px) {
+                    .filters-container {
+                        flex-direction: column;
+                        align-items: stretch;
+                        gap: 10px;
+                    }
+                    .filter-group {
+                        width: 100%;
+                    }
+                    .filter-input {
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
+                    .action-buttons {
+                        flex-direction: column;
+                        gap: 8px;
+                    }
+                    .action-buttons button {
+                        width: 100%;
+                    }
+                    .table-responsive {
+                        overflow-x: auto;
+                    }
+                    table {
+                        width: 100%;
+                        display: block;
+                        overflow-x: auto;
+                        white-space: nowrap;
+                    }
+                    .detail-table-wrapper table {
+                        width: 100%;
+                        white-space: nowrap;
+                    }
+                    .pagination-container {
+                        flex-direction: column;
+                        gap: 10px;
+                    }
+                    .pagination-button {
+                        width: 100%;
+                    }
+                }
+                `}
+            </style>
         </div>
     );
 };
 
+
+const styles = {
+    container: {
+        padding: '20px',
+        fontFamily: 'Inter, sans-serif',
+        maxWidth: '1200px',
+        margin: '20px auto',
+        backgroundColor: '#f8f9fa',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        color: '#333',
+    },
+    header: {
+        textAlign: 'center',
+        color: '#2c3e50',
+        marginBottom: '30px',
+        fontSize: '2.5em',
+        fontWeight: 'bold',
+    },
+    loadingMessage: {
+        padding: '20px',
+        textAlign: 'center',
+        color: '#555',
+        fontSize: '1.1em',
+    },
+    accessDeniedMessage: {
+        color: '#dc3545',
+        marginBottom: '10px',
+        padding: '20px',
+        border: '1px solid #dc3545',
+        textAlign: 'center',
+        borderRadius: '8px',
+        backgroundColor: '#ffe3e6',
+        fontWeight: 'bold',
+    },
+    noStoreSelectedMessage: {
+        padding: '50px',
+        textAlign: 'center',
+        color: '#777',
+        fontSize: '1.2em',
+    },
+    errorMessage: {
+        color: '#dc3545',
+        marginBottom: '20px',
+        border: '1px solid #dc3545',
+        padding: '15px',
+        borderRadius: '8px',
+        backgroundColor: '#ffe3e6',
+        textAlign: 'center',
+        fontWeight: 'bold',
+    },
+    filtersContainer: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '15px',
+        marginBottom: '20px',
+        padding: '15px',
+        border: '1px solid #e0e0e0',
+        borderRadius: '8px',
+        backgroundColor: '#f9f9f9',
+        alignItems: 'flex-end',
+    },
+    filterGroup: {
+        display: 'flex',
+        flexDirection: 'column',
+    },
+    filterLabel: {
+        marginBottom: '5px',
+        fontWeight: 'bold',
+        color: '#555',
+    },
+    filterInput: {
+        padding: '8px',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+        minWidth: '150px',
+    },
+    filterButton: {
+        padding: '10px 15px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '14px',
+        transition: 'background-color 0.3s ease',
+    },
+    filterButtonSecondary: {
+        padding: '10px 15px',
+        backgroundColor: '#6c757d',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '14px',
+        transition: 'background-color 0.3s ease',
+    },
+    actionButtons: {
+        display: 'flex',
+        gap: '5px',
+        flexWrap: 'wrap',
+    },
+    detailButton: {
+        padding: '6px 10px',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '0.9em',
+        color: 'white',
+        transition: 'background-color 0.3s ease',
+        backgroundColor: '#17a2b8',
+    },
+    anularButton: {
+        padding: '6px 10px',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '0.9em',
+        color: 'white',
+        transition: 'background-color 0.3s ease',
+        backgroundColor: '#dc3545',
+    },
+    reprintButton: {
+        padding: '6px 10px',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '0.9em',
+        color: 'white',
+        transition: 'background-color 0.3s ease',
+        backgroundColor: '#28a745',
+    },
+    tableResponsive: {
+        overflowX: 'auto',
+    },
+    table: {
+        width: '100%',
+        borderCollapse: 'collapse',
+        marginTop: '15px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    },
+    tableHeaderRow: {
+        backgroundColor: '#f2f2f2',
+    },
+    th: {
+        padding: '12px 15px',
+        borderBottom: '1px solid #ddd',
+        textAlign: 'left',
+        fontWeight: 'bold',
+        fontSize: '0.95em',
+        color: '#555',
+    },
+    td: {
+        padding: '10px 15px',
+        borderBottom: '1px solid #eee',
+        verticalAlign: 'middle',
+        fontSize: '0.9em',
+    },
+    detailRow: {
+        backgroundColor: '#fdfdfd',
+        padding: '15px',
+        borderTop: '2px solid #eee',
+    },
+    detailHeader: {
+        marginTop: '0',
+        marginBottom: '10px',
+        color: '#333',
+    },
+    detailTableWrapper: {
+        overflowX: 'auto',
+    },
+    detailTable: {
+        width: '100%',
+        borderCollapse: 'collapse',
+        marginTop: '10px',
+    },
+    detailTh: {
+        backgroundColor: '#e9ecef',
+        padding: '10px',
+        textAlign: 'left',
+        borderBottom: '1px solid #dee2e6',
+    },
+    detailTd: {
+        padding: '10px',
+        borderBottom: '1px solid #dee2e6',
+    },
+    anularDetalleButton: {
+        padding: '5px 8px',
+        backgroundColor: '#ffc107',
+        color: 'black',
+        border: 'none',
+        borderRadius: '3px',
+        cursor: 'pointer',
+        fontSize: '0.8em',
+        transition: 'background-color 0.3s ease',
+    },
+    paginationContainer: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '20px',
+        gap: '10px',
+    },
+    paginationButton: {
+        padding: '8px 15px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        transition: 'background-color 0.3s ease',
+    },
+    pageNumber: {
+        fontSize: '1em',
+        fontWeight: 'bold',
+        color: '#555',
+    },
+    modalOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        padding: '30px',
+        borderRadius: '8px',
+        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+        maxWidth: '500px',
+        width: '90%',
+        textAlign: 'center',
+    },
+    modalMessage: {
+        fontSize: '1.1em',
+        marginBottom: '20px',
+        color: '#333',
+    },
+    modalActions: {
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '15px',
+    },
+    modalConfirmButton: {
+        padding: '10px 20px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        transition: 'background-color 0.3s ease',
+    },
+    modalCancelButton: {
+        padding: '10px 20px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        transition: 'background-color 0.3s ease',
+    },
+    alertBox: {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        color: 'white',
+        padding: '15px 25px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+        zIndex: 1001,
+        opacity: 0,
+        animation: 'fadeInOut 3s forwards',
+    },
+};
 
 export default VentasPage;

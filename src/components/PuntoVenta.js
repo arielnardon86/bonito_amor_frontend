@@ -357,61 +357,61 @@ const PuntoVenta = () => {
     };
 
     if (authLoading || (isAuthenticated && !user)) {
-        return <div className="loading-message">Cargando datos de usuario...</div>;
+        return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
     if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
-        return <div className="access-denied-message">Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
     }
 
     if (!selectedStoreSlug) {
         return (
-            <div className="no-store-selected-message">
+            <div style={styles.noStoreSelectedMessage}>
                 <h2>Por favor, selecciona una tienda en la barra de navegación para usar el punto de venta.</h2>
             </div>
         );
     }
 
     if (loadingProducts) {
-        return <div className="loading-message">Cargando productos y métodos de pago...</div>;
+        return <div style={styles.loadingMessage}>Cargando productos y métodos de pago...</div>;
     }
 
     if (error) {
-        return <div className="error-message">{error}</div>;
+        return <div style={styles.errorMessage}>{error}</div>;
     }
 
     return (
-        <div className="container">
-            <h1 className="header">Punto de Venta ({selectedStoreSlug})</h1>
-            <div className="section">
-                <h3 className="section-header">Gestión de Ventas Activas</h3>
-                <div className="cart-selection-container">
+        <div style={styles.container}>
+            <h1 style={styles.header}>Punto de Venta ({selectedStoreSlug})</h1>
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Gestión de Ventas Activas</h3>
+                <div style={styles.cartSelectionContainer}>
                     {carts.map((cart, index) => (
                         <button
                             key={cart.id}
                             onClick={() => selectCart(cart.id)}
-                            className={cart.id === activeCartId ? 'active-cart-button' : 'inactive-cart-button'}
+                            style={cart.id === activeCartId ? styles.activeCartButton : styles.inactiveCartButton}
                         >
                             {cart.alias || `Venta ${index + 1}`}
                         </button>
                     ))}
-                    <button onClick={() => setShowNewCartModal(true)} className="new-cart-button">
+                    <button onClick={() => setShowNewCartModal(true)} style={styles.newCartButton}>
                         + Nueva Venta
                     </button>
                 </div>
 
                 {activeCart && (
-                    <div className="active-cart-info">
-                        <h4 className="active-cart-title">Venta Activa: {activeCart.alias || activeCart.name}</h4>
-                        <div className="active-cart-actions">
+                    <div style={styles.activeCartInfo}>
+                        <h4 style={styles.activeCartTitle}>Venta Activa: {activeCart.alias || activeCart.name}</h4>
+                        <div style={styles.activeCartActions}>
                             <input
                                 type="text"
                                 placeholder="Nuevo Alias (opcional)"
                                 value={activeCart.alias || ''}
                                 onChange={(e) => updateCartAlias(activeCartId, e.target.value)}
-                                className="input-field"
+                                style={styles.inputField}
                             />
-                            <button onClick={handleDeleteActiveCart} className="delete-cart-button">
+                            <button onClick={handleDeleteActiveCart} style={styles.deleteCartButton}>
                                 Eliminar Venta
                             </button>
                         </div>
@@ -420,21 +420,21 @@ const PuntoVenta = () => {
             </div>
 
             {showNewCartModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h3 className="modal-header">Crear Nueva Venta</h3>
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3 style={styles.modalHeader}>Crear Nueva Venta</h3>
                         <input
                             type="text"
                             placeholder="Alias para la venta (ej: Cliente A)"
                             value={newCartAliasInput}
                             onChange={(e) => setNewCartAliasInput(e.target.value)}
-                            className="input-field"
+                            style={styles.inputField}
                         />
-                        <div className="modal-actions">
-                            <button onClick={() => setShowNewCartModal(false)} className="modal-cancel-button">
+                        <div style={styles.modalActions}>
+                            <button onClick={() => setShowNewCartModal(false)} style={styles.modalCancelButton}>
                                 Cancelar
                             </button>
-                            <button onClick={handleCreateNewCartWithAlias} className="modal-confirm-button">
+                            <button onClick={handleCreateNewCartWithAlias} style={styles.modalConfirmButton}>
                                 Crear Venta
                             </button>
                         </div>
@@ -442,34 +442,34 @@ const PuntoVenta = () => {
                 </div>
             )}
 
-            <div className="section">
-                <h3 className="section-header">Buscar Producto por Código de Barras</h3>
-                <div className="input-group">
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Buscar Producto por Código de Barras</h3>
+                <div style={styles.inputGroup}>
                     <input
                         type="text"
                         placeholder="Ingresa código de barras o nombre"
                         value={busquedaProducto}
                         onChange={(e) => setBusquedaProducto(e.target.value)}
                         onKeyPress={(e) => { if (e.key === 'Enter') handleBuscarProducto(); }}
-                        className="input-field"
+                        style={styles.inputField}
                     />
-                    <button onClick={handleBuscarProducto} className="primary-button">
+                    <button onClick={handleBuscarProducto} style={styles.primaryButton}>
                         Buscar
                     </button>
                 </div>
                 {productoSeleccionado && (
-                    <div className="found-product-card">
-                        <p className="found-product-text">
+                    <div style={styles.foundProductCard}>
+                        <p style={styles.foundProductText}>
                             <strong>Producto:</strong> {productoSeleccionado.nombre} ({productoSeleccionado.talle}) - ${parseFloat(productoSeleccionado.precio).toFixed(2)}
                         </p>
-                        <p className="found-product-text">
+                        <p style={styles.foundProductText}>
                             Stock Disponible: {productoSeleccionado.stock}
                         </p>
-                        <div className="product-actions">
+                        <div style={styles.productActions}>
                             <button
                                 onClick={() => handleAddProductoEnVenta(productoSeleccionado, 1)}
                                 disabled={productoSeleccionado.stock === 0}
-                                className={productoSeleccionado.stock === 0 ? 'disabled-button' : 'add-product-button'}
+                                style={productoSeleccionado.stock === 0 ? styles.disabledButton : styles.addProductButton}
                             >
                                 {productoSeleccionado.stock === 0 ? 'Sin Stock' : 'Añadir 1 Ud.'}
                             </button>
@@ -478,38 +478,38 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            <div className="section">
-                <h3 className="section-header">Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
                 {activeCart && activeCart.items.length > 0 ? (
                     <>
-                        <div className="table-responsive">
-                            <table className="table">
+                        <div style={styles.tableResponsive}>
+                            <table style={styles.table}>
                                 <thead>
-                                    <tr className="table-header-row">
-                                        <th className="th">Producto</th>
-                                        <th className="th">Talle</th>
-                                        <th className="th">Cantidad</th>
-                                        <th className="th">P. Unitario</th>
-                                        <th className="th">Subtotal</th>
-                                        <th className="th">Acciones</th>
+                                    <tr style={styles.tableHeaderRow}>
+                                        <th style={styles.th}>Producto</th>
+                                        <th style={styles.th}>Talle</th>
+                                        <th style={styles.th}>Cantidad</th>
+                                        <th style={styles.th}>P. Unitario</th>
+                                        <th style={styles.th}>Subtotal</th>
+                                        <th style={styles.th}>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {activeCart.items.map((item) => (
-                                        <tr key={item.product.id} className="table-row">
-                                            <td className="td">{item.product.nombre}</td>
-                                            <td className="td">{item.product.talle}</td>
-                                            <td className="td">
-                                                <div className="quantity-control">
-                                                    <button onClick={() => handleDecrementQuantity(item.product.id)} className="quantity-button">-</button>
-                                                    <span className="quantity-text">{item.quantity}</span>
-                                                    <button onClick={() => handleAddProductoEnVenta(item.product, 1)} className="quantity-button">+</button>
+                                        <tr key={item.product.id} style={styles.tableRow}>
+                                            <td style={styles.td}>{item.product.nombre}</td>
+                                            <td style={styles.td}>{item.product.talle}</td>
+                                            <td style={styles.td}>
+                                                <div style={styles.quantityControl}>
+                                                    <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton}>-</button>
+                                                    <span style={styles.quantityText}>{item.quantity}</span>
+                                                    <button onClick={() => handleAddProductoEnVenta(item.product, 1)} style={styles.quantityButton}>+</button>
                                                 </div>
                                             </td>
-                                            <td className="td">${parseFloat(item.product.precio).toFixed(2)}</td>
-                                            <td className="td">${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
-                                            <td className="td">
-                                                <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} className="remove-button">
+                                            <td style={styles.td}>${parseFloat(item.product.precio).toFixed(2)}</td>
+                                            <td style={styles.td}>${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
+                                            <td style={styles.td}>
+                                                <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} style={styles.removeButton}>
                                                     Quitar
                                                 </button>
                                             </td>
@@ -518,14 +518,14 @@ const PuntoVenta = () => {
                                 </tbody>
                             </table>
                         </div>
-                        <h4 className="total-venta">Subtotal: ${activeCart.total.toFixed(2)}</h4>
-                        <div className="payment-method-select-container">
-                            <label htmlFor="metodoPago" className="payment-method-label">Método de Pago:</label>
+                        <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4>
+                        <div style={styles.paymentMethodSelectContainer}>
+                            <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de Pago:</label>
                             <select
                                 id="metodoPago"
                                 value={metodoPagoSeleccionado}
                                 onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
-                                className="input-field"
+                                style={styles.inputField}
                             >
                                 <option value="">Selecciona un método de pago</option>
                                 {metodosPago.map(method => (
@@ -533,70 +533,70 @@ const PuntoVenta = () => {
                                 ))}
                             </select>
                         </div>
-                        <div className="discount-container">
-                            <label htmlFor="descuento" className="discount-label">Aplicar Descuento (%):</label>
+                        <div style={styles.discountContainer}>
+                            <label htmlFor="descuento" style={styles.discountLabel}>Aplicar Descuento (%):</label>
                             <input
                                 type="number"
                                 id="descuento"
                                 value={descuentoPorcentaje}
                                 onChange={(e) => setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-                                className="discount-input"
+                                style={styles.discountInput}
                                 min="0"
                                 max="100"
                             />
                         </div>
-                        <h4 className="final-total-venta">Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4>
-                        <button onClick={handleProcesarVenta} className="process-sale-button">
+                        <h4 style={styles.finalTotalVenta}>Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4>
+                        <button onClick={handleProcesarVenta} style={styles.processSaleButton}>
                             Procesar Venta
                         </button>
                     </>
                 ) : (
-                    <p className="no-data-message">El carrito activo está vacío. Busca y añade productos.</p>
+                    <p style={styles.noDataMessage}>El carrito activo está vacío. Busca y añade productos.</p>
                 )}
             </div>
 
-            <div className="section">
-                <h3 className="section-header">Productos Disponibles</h3>
-                <div className="input-group">
+            <div style={styles.section}>
+                <h3 style={styles.sectionHeader}>Productos Disponibles</h3>
+                <div style={styles.inputGroup}>
                     <input
                         type="text"
                         placeholder="Buscar por nombre o talle..."
                         value={busquedaProducto}
                         onChange={(e) => setBusquedaProducto(e.target.value)}
-                        className="input-field"
+                        style={styles.inputField}
                     />
                 </div>
 
                 {loadingProducts ? (
-                    <p className="loading-message">Cargando productos...</p>
+                    <p style={styles.loadingMessage}>Cargando productos...</p>
                 ) : error ? (
-                    <p className="error-message">{error}</p>
+                    <p style={styles.errorMessage}>{error}</p>
                 ) : (
                     <>
-                        <div className="table-responsive">
-                            <table className="table">
+                        <div style={styles.tableResponsive}>
+                            <table style={styles.table}>
                                 <thead>
-                                    <tr className="table-header-row">
-                                        <th className="th">Nombre</th>
-                                        <th className="th">Talle</th>
-                                        <th className="th">Precio</th>
-                                        <th className="th">Stock</th>
-                                        <th className="th">Acción</th>
+                                    <tr style={styles.tableHeaderRow}>
+                                        <th style={styles.th}>Nombre</th>
+                                        <th style={styles.th}>Talle</th>
+                                        <th style={styles.th}>Precio</th>
+                                        <th style={styles.th}>Stock</th>
+                                        <th style={styles.th}>Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {currentProducts.length > 0 ? (
                                         currentProducts.map(product => (
-                                            <tr key={product.id} className="table-row">
-                                                <td className="td">{product.nombre}</td>
-                                                <td className="td">{product.talle}</td>
-                                                <td className="td">${parseFloat(product.precio).toFixed(2)}</td>
-                                                <td className="td">{product.stock}</td>
-                                                <td className="td">
+                                            <tr key={product.id} style={styles.tableRow}>
+                                                <td style={styles.td}>{product.nombre}</td>
+                                                <td style={styles.td}>{product.talle}</td>
+                                                <td style={styles.td}>${parseFloat(product.precio).toFixed(2)}</td>
+                                                <td style={styles.td}>{product.stock}</td>
+                                                <td style={styles.td}>
                                                     <button
                                                         onClick={() => handleAddProductoEnVenta(product, 1)}
                                                         disabled={product.stock === 0}
-                                                        className={product.stock === 0 ? 'disabled-button' : 'add-button'}
+                                                        style={product.stock === 0 ? styles.disabledButton : styles.addButton}
                                                     >
                                                         {product.stock === 0 ? 'Sin Stock' : 'Añadir'}
                                                     </button>
@@ -605,7 +605,7 @@ const PuntoVenta = () => {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="5" className="no-data-message">
+                                            <td colSpan="5" style={styles.noDataMessage}>
                                                 No se encontraron productos con el filtro aplicado.
                                             </td>
                                         </tr>
@@ -615,12 +615,12 @@ const PuntoVenta = () => {
                         </div>
 
                         {totalPages > 1 && (
-                            <div className="pagination-container">
-                                <button onClick={prevPageHandler} disabled={currentPage === 1} className="pagination-button">
+                            <div style={styles.paginationContainer}>
+                                <button onClick={prevPageHandler} disabled={currentPage === 1} style={styles.paginationButton}>
                                     Anterior
                                 </button>
-                                <span className="page-number">Página {currentPage} de {totalPages}</span>
-                                <button onClick={nextPageHandler} disabled={currentPage === totalPages} className="pagination-button">
+                                <span style={styles.pageNumber}>Página {currentPage} de {totalPages}</span>
+                                <button onClick={nextPageHandler} disabled={currentPage === totalPages} style={styles.paginationButton}>
                                     Siguiente
                                 </button>
                             </div>
@@ -630,24 +630,153 @@ const PuntoVenta = () => {
             </div>
 
             {showConfirmModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <p className="modal-message">{confirmMessage}</p>
-                        <div className="modal-actions">
-                            <button onClick={confirmAction} className="modal-confirm-button">Sí</button>
-                            <button onClick={() => setShowConfirmModal(false)} className="modal-cancel-button">No</button>
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <p style={styles.modalMessage}>{confirmMessage}</p>
+                        <div style={styles.modalActions}>
+                            <button onClick={confirmAction} style={styles.modalConfirmButton}>Sí</button>
+                            <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>No</button>
                         </div>
                     </div>
                 </div>
             )}
 
             {showAlertMessage && (
-                <div className="alert-box" style={{ backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
+                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
                     <p>{alertMessage}</p>
                 </div>
             )}
+            <style>
+                {`
+                @media (max-width: 768px) {
+                    .cart-selection-container {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 10px;
+                        justify-content: center;
+                    }
+                    .active-cart-button, .inactive-cart-button, .new-cart-button {
+                        flex: 1 1 auto;
+                        width: auto;
+                    }
+                    .active-cart-info {
+                        flex-direction: column;
+                    }
+                    .active-cart-actions {
+                        flex-direction: column;
+                        gap: 10px;
+                    }
+                    .input-group {
+                        flex-direction: column;
+                    }
+                    .input-field {
+                        width: 100%;
+                    }
+                    .primary-button {
+                        width: 100%;
+                    }
+                    .found-product-card {
+                        flex-direction: column;
+                    }
+                    .product-actions {
+                        flex-direction: column;
+                        width: 100%;
+                    }
+                    .table-responsive {
+                        overflow-x: auto;
+                    }
+                    table {
+                        width: 100%;
+                        display: block;
+                        overflow-x: auto;
+                        white-space: nowrap;
+                    }
+                    .payment-method-select-container,
+                    .discount-container {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        margin-top: 15px;
+                    }
+                    .payment-method-label,
+                    .discount-label {
+                        margin-bottom: 5px;
+                    }
+                    .input-field,
+                    .discount-input {
+                        width: 100%;
+                    }
+                    .process-sale-button {
+                        width: 100%;
+                        margin-top: 20px;
+                    }
+                    .pagination-container {
+                        flex-direction: column;
+                        gap: 10px;
+                    }
+                    .pagination-button {
+                        width: 100%;
+                    }
+                }
+                `}
+            </style>
         </div>
     );
+};
+
+const styles = {
+    container: { padding: '20px', fontFamily: 'Arial, sans-serif' },
+    header: { textAlign: 'center', color: '#2c3e50' },
+    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' },
+    sectionHeader: { color: '#34495e', borderBottom: '1px solid #eee', paddingBottom: '10px' },
+    loadingMessage: { textAlign: 'center', color: '#777' },
+    accessDeniedMessage: { color: '#dc3545', textAlign: 'center' },
+    noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },
+    errorMessage: { color: '#dc3545', padding: '10px', backgroundColor: '#ffe3e6', border: '1px solid #dc3545', borderRadius: '5px' },
+    cartSelectionContainer: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' },
+    activeCartButton: { padding: '10px 15px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    inactiveCartButton: { padding: '10px 15px', backgroundColor: '#ecf0f1', color: '#333', border: '1px solid #ccc', borderRadius: '5px', cursor: 'pointer' },
+    newCartButton: { padding: '10px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    activeCartInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' },
+    activeCartTitle: { margin: 0, color: '#3498db' },
+    activeCartActions: { display: 'flex', gap: '10px' },
+    inputField: { padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
+    deleteCartButton: { backgroundColor: '#e74c3c', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+    modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' },
+    modalHeader: { margin: '0 0 15px 0' },
+    modalActions: { display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' },
+    modalConfirmButton: { padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    modalCancelButton: { padding: '8px 15px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    inputGroup: { display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' },
+    primaryButton: { padding: '10px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    foundProductCard: { border: '1px solid #ccc', padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' },
+    foundProductText: { margin: 0 },
+    productActions: { display: 'flex', gap: '10px' },
+    addProductButton: { padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    disabledButton: { padding: '8px 15px', backgroundColor: '#ccc', color: '#666', border: 'none', borderRadius: '4px', cursor: 'not-allowed' },
+    tableResponsive: { overflowX: 'auto' },
+    table: { width: '100%', borderCollapse: 'collapse', marginTop: '15px' },
+    tableHeaderRow: { backgroundColor: '#f2f2f2' },
+    th: { padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' },
+    tableRow: { '&:nth-child(even)': { backgroundColor: '#f9f9f9' } },
+    td: { padding: '10px', borderBottom: '1px solid #eee', verticalAlign: 'middle' },
+    quantityControl: { display: 'flex', alignItems: 'center', gap: '5px' },
+    quantityButton: { padding: '4px 8px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' },
+    quantityText: { padding: '0 5px' },
+    removeButton: { padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    totalVenta: { textAlign: 'right', fontSize: '1.2em', color: '#333' },
+    paymentMethodSelectContainer: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' },
+    paymentMethodLabel: { fontWeight: 'bold' },
+    discountContainer: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' },
+    discountLabel: { fontWeight: 'bold' },
+    discountInput: { width: '80px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
+    finalTotalVenta: { textAlign: 'right', fontSize: '1.5em', color: '#28a745' },
+    processSaleButton: { display: 'block', width: '100%', padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', marginTop: '20px' },
+    addButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#777' },
+    paginationContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', gap: '10px' },
+    paginationButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    pageNumber: { fontSize: '1em', fontWeight: 'bold', color: '#555' },
 };
 
 export default PuntoVenta;
