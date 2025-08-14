@@ -25,7 +25,7 @@ const RegistroCompras = () => {
     const [error, setError] = useState(null);
     const [newPurchaseDate, setNewPurchaseDate] = useState('');
     const [newPurchaseTotal, setNewPurchaseTotal] = useState('');
-    const [newPurchaseSupplier, setNewPurchaseSupplier] = useState('');
+    const [newPurchaseConcept, setNewPurchaseConcept] = useState('');
 
     const fetchCompras = useCallback(async () => {
         if (!token || !selectedStoreSlug) {
@@ -43,7 +43,7 @@ const RegistroCompras = () => {
             });
             setCompras(response.data.results);
         } catch (err) {
-            setError('Error al cargar las compras: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setError('Error al cargar los egresos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             console.error('Error fetching purchases:', err.response || err.message);
         } finally {
             setLoadingCompras(false);
@@ -54,14 +54,14 @@ const RegistroCompras = () => {
         e.preventDefault();
         
         if (!newPurchaseDate || !newPurchaseTotal || !selectedStoreSlug) {
-            alert("Por favor, completa la fecha y el total de la compra.");
+            alert("Por favor, completa la fecha y el total del egreso.");
             return;
         }
 
         const purchaseData = {
             fecha_compra: newPurchaseDate,
             total: newPurchaseTotal,
-            proveedor: newPurchaseSupplier,
+            proveedor: newPurchaseConcept, // El backend espera 'proveedor' para el concepto
             tienda_slug: selectedStoreSlug,
         };
 
@@ -72,27 +72,27 @@ const RegistroCompras = () => {
                     'Content-Type': 'application/json',
                 }
             });
-            alert('Compra registrada exitosamente.');
+            alert('Egreso registrado exitosamente.');
             fetchCompras();
             setNewPurchaseDate('');
             setNewPurchaseTotal('');
-            setNewPurchaseSupplier('');
+            setNewPurchaseConcept('');
         } catch (err) {
-            setError('Error al registrar la compra: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setError('Error al registrar el egreso: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             console.error("Error creating purchase:", err.response || err.message);
         }
     };
     
     const handleDeleteCompra = async (compraId) => {
-        if (window.confirm('¿Estás seguro de que quieres eliminar esta compra?')) {
+        if (window.confirm('¿Estás seguro de que quieres eliminar este egreso?')) {
             try {
                 await axios.delete(`${BASE_API_ENDPOINT}/api/compras/${compraId}/`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                alert('Compra eliminada exitosamente.');
+                alert('Egreso eliminado exitosamente.');
                 fetchCompras();
             } catch (err) {
-                setError('Error al eliminar la compra: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+                setError('Error al eliminar el egreso: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
                 console.error("Error deleting purchase:", err.response || err.message);
             }
         }
@@ -122,7 +122,7 @@ const RegistroCompras = () => {
     }
 
     if (loadingCompras) {
-        return <div style={styles.loadingMessage}>Cargando registros de compras...</div>;
+        return <div style={styles.loadingMessage}>Cargando registros de egresos...</div>;
     }
 
     if (error) {
@@ -131,14 +131,14 @@ const RegistroCompras = () => {
 
     return (
         <div style={styles.container}>
-            <h1>Registro de Compras ({selectedStoreSlug})</h1>
+            <h1>Registro de Egresos ({selectedStoreSlug})</h1>
 
-            {/* Formulario de registro de nuevas compras */}
+            {/* Formulario de registro de nuevos egresos */}
             <div style={styles.formContainer}>
-                <h2>Registrar Nueva Compra</h2>
+                <h2>Registrar Egresos</h2>
                 <form onSubmit={handleCreateCompra} style={styles.form}>
                     <div style={styles.formGroup}>
-                        <label style={styles.formLabel}>Fecha de Compra*</label>
+                        <label style={styles.formLabel}>Fecha de egreso*</label>
                         <input
                             type="date"
                             value={newPurchaseDate}
@@ -148,7 +148,7 @@ const RegistroCompras = () => {
                         />
                     </div>
                     <div style={styles.formGroup}>
-                        <label style={styles.formLabel}>Total*</label>
+                        <label style={styles.formLabel}>Monto*</label>
                         <input
                             type="number"
                             value={newPurchaseTotal}
@@ -160,31 +160,30 @@ const RegistroCompras = () => {
                         />
                     </div>
                     <div style={styles.formGroup}>
-                        <label style={styles.formLabel}>Proveedor</label>
+                        <label style={styles.formLabel}>Concepto</label>
                         <input
                             type="text"
-                            value={newPurchaseSupplier}
-                            onChange={(e) => setNewPurchaseSupplier(e.target.value)}
+                            value={newPurchaseConcept}
+                            onChange={(e) => setNewPurchaseConcept(e.target.value)}
                             style={styles.input}
                         />
                     </div>
                     <div style={styles.formGroup}>
-                        <button type="submit" style={styles.submitButton}>Registrar Compra</button>
+                        <button type="submit" style={styles.submitButton}>Registrar Egreso</button>
                     </div>
                 </form>
             </div>
 
-            {/* Listado de compras */}
+            {/* Listado de egresos */}
             <div style={styles.tableContainer}>
-                <h2>Compras Registradas</h2>
+                <h2>Registro de Egresos</h2>
                 {compras.length > 0 ? (
                     <table style={styles.table}>
                         <thead>
                             <tr>
-                                <th style={styles.th}>ID</th>
                                 <th style={styles.th}>Fecha</th>
-                                <th style={styles.th}>Total</th>
-                                <th style={styles.th}>Proveedor</th>
+                                <th style={styles.th}>Monto</th>
+                                <th style={styles.th}>Concepto</th>
                                 <th style={styles.th}>Registrado por</th>
                                 <th style={styles.th}>Acciones</th>
                             </tr>
@@ -192,7 +191,6 @@ const RegistroCompras = () => {
                         <tbody>
                             {compras.map((compra) => (
                                 <tr key={compra.id}>
-                                    <td style={styles.td}>{compra.id}</td>
                                     <td style={styles.td}>{compra.fecha_compra}</td>
                                     <td style={styles.td}>${parseFloat(compra.total).toFixed(2)}</td>
                                     <td style={styles.td}>{compra.proveedor || 'N/A'}</td>
@@ -205,7 +203,7 @@ const RegistroCompras = () => {
                         </tbody>
                     </table>
                 ) : (
-                    <p style={styles.noDataMessage}>No hay compras registradas para esta tienda.</p>
+                    <p style={styles.noDataMessage}>No hay egresos registrados para esta tienda.</p>
                 )}
             </div>
         </div>
