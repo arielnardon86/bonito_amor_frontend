@@ -1,4 +1,3 @@
-// BONITO_AMOR/frontend/src/components/Productos.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
@@ -455,39 +454,37 @@ const Productos = () => {
             <style>
                 {`
                 @media (max-width: 768px) {
-                    .form {
+                    [style*="form"] {
                         flex-direction: column;
                         gap: 15px;
                     }
-                    .input-group, .submit-button {
+                    [style*="inputGroup"], [style*="submitButton"] {
                         width: 100%;
                     }
-                    .table-header {
+                    [style*="tableHeader"] {
                         flex-direction: column;
                         align-items: flex-start;
                         gap: 10px;
                     }
-                    .filters-container {
+                    [style*="filtersContainer"] {
                         flex-direction: column;
                         gap: 10px;
                     }
-                    .filter-input, .search-button {
+                    [style*="filterInput"], [style*="searchButton"] {
                         width: 100%;
                     }
-                    .table-responsive {
+                    [style*="tableResponsive"] {
                         overflow-x: auto;
                     }
                     table {
                         width: 100%;
-                        display: block;
-                        overflow-x: auto;
                         white-space: nowrap;
                     }
-                    .pagination-container {
+                    [style*="paginationContainer"] {
                         flex-direction: column;
                         gap: 10px;
                     }
-                    .pagination-button {
+                    [style*="paginationButton"] {
                         width: 100%;
                     }
                 }

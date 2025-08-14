@@ -1,4 +1,3 @@
-// BONITO_AMOR/frontend/src/components/RegistroCompras.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
@@ -211,26 +210,26 @@ const RegistroCompras = () => {
             <style>
                 {`
                 @media (max-width: 768px) {
-                    .form-container {
+                    [style*="formContainer"] {
                         width: 100%;
                     }
-                    .form {
+                    [style*="form"] {
                         flex-direction: column;
                     }
-                    .form-group {
+                    [style*="formGroup"] {
                         min-width: unset;
                     }
-                    .submit-button {
+                    [style*="submitButton"] {
                         width: 100%;
                     }
-                    .table-container {
+                    [style*="tableContainer"] {
                         overflow-x: auto;
                     }
-                    .table {
+                    [style*="table"] {
                         width: 100%;
                         white-space: nowrap;
                     }
-                    .delete-button {
+                    [style*="deleteButton"] {
                         width: 100%;
                     }
                 }

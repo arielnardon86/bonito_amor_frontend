@@ -650,24 +650,24 @@ const PuntoVenta = () => {
                 {`
                 @media (max-width: 768px) {
                     .cart-selection-container {
-                        display: flex;
-                        flex-wrap: wrap;
+                        flex-direction: column;
                         gap: 10px;
-                        justify-content: center;
                     }
                     .active-cart-button, .inactive-cart-button, .new-cart-button {
-                        flex: 1 1 auto;
-                        width: auto;
+                        width: 100%;
                     }
                     .active-cart-info {
                         flex-direction: column;
+                        align-items: flex-start;
+                        gap: 10px;
                     }
                     .active-cart-actions {
                         flex-direction: column;
-                        gap: 10px;
+                        width: 100%;
                     }
                     .input-group {
                         flex-direction: column;
+                        gap: 10px;
                     }
                     .input-field {
                         width: 100%;
@@ -677,6 +677,8 @@ const PuntoVenta = () => {
                     }
                     .found-product-card {
                         flex-direction: column;
+                        align-items: flex-start;
+                        gap: 10px;
                     }
                     .product-actions {
                         flex-direction: column;
@@ -687,27 +689,17 @@ const PuntoVenta = () => {
                     }
                     table {
                         width: 100%;
-                        display: block;
-                        overflow-x: auto;
                         white-space: nowrap;
                     }
                     .payment-method-select-container,
                     .discount-container {
                         flex-direction: column;
                         align-items: flex-start;
-                        margin-top: 15px;
-                    }
-                    .payment-method-label,
-                    .discount-label {
-                        margin-bottom: 5px;
-                    }
-                    .input-field,
-                    .discount-input {
+                        gap: 5px;
                         width: 100%;
                     }
                     .process-sale-button {
                         width: 100%;
-                        margin-top: 20px;
                     }
                     .pagination-container {
                         flex-direction: column;

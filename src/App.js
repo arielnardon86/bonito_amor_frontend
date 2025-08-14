@@ -123,21 +123,21 @@ const navbarStyles = {
         transition: 'all 0.3s ease-out',
     },
     navLinksActive: {
-        '@media (max-width: 768px)': {
-            flexDirection: 'column',
-            width: '100%',
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            backgroundColor: '#f8f8f8',
-            borderTop: '1px solid #ccc',
-            padding: '1rem 0',
-            transform: 'translateY(0)',
-            opacity: 1,
-            pointerEvents: 'all',
-            transition: 'transform 0.3s ease-out, opacity 0.3s ease-out',
-            display: 'flex',
-        }
+      '@media (max-width: 768px)': {
+        flexDirection: 'column',
+        width: '100%',
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        backgroundColor: '#f8f8f8',
+        borderTop: '1px solid #ccc',
+        padding: '1rem 0',
+        transform: 'translateY(0)',
+        opacity: 1,
+        pointerEvents: 'all',
+        transition: 'transform 0.3s ease-out, opacity 0.3s ease-out',
+        display: 'flex',
+      }
     },
     navLinksLi: {
         margin: '0 15px',
