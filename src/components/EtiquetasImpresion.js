@@ -20,12 +20,15 @@ const EtiquetasImpresion = () => {
                     
                     const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                     try {
+                        // Ajuste del código de barras para una impresión térmica más robusta
                         JsBarcode(svgElement, String(producto.codigo_barras), {
                             format: 'EAN13',
                             displayValue: true,
-                            fontSize: 12,
-                            width: 1,
-                            height: 30
+                            fontSize: 10, // Un tamaño de fuente que se ajusta a la impresión de recibos
+                            width: 1.5, // Aumentamos el ancho de las barras para mejor legibilidad en la impresión térmica
+                            height: 30,
+                            margin: 0,
+                            displayValue: false,
                         });
                     } catch (e) {
                         console.error('Error generando código de barras:', e);
@@ -35,8 +38,8 @@ const EtiquetasImpresion = () => {
                     }
 
                     tempDiv.innerHTML = `
-                        <p><strong>${producto.nombre}</strong></p>
-                        <p>Talle: ${producto.talle}</p>
+                        <p class="product-name">${producto.nombre}</p>
+                        <p class="product-talle">Talle: ${producto.talle}</p>
                         <div class="barcode-wrapper"></div>
                         <p class="price">Precio: $${parseFloat(producto.precio).toFixed(2)}</p>
                     `;
@@ -98,7 +101,6 @@ const EtiquetasImpresion = () => {
                         display: inline-block;
                         width: 72mm;
                         text-align: center;
-                        font-size: 10px;
                         page-break-inside: avoid;
                         box-sizing: border-box;
                         vertical-align: top;
@@ -106,12 +108,16 @@ const EtiquetasImpresion = () => {
                     }
                     .label p {
                         margin: 0;
-                        font-size: 8px;
-                        line-height: 1;
+                        font-size: 2.1mm; /* Ajustado para coincidir con la Fuente B de 1.1x2.1mm */
+                        line-height: 1.2;
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
                         max-width: 100%;
+                    }
+                    .label .product-name {
+                        font-weight: bold;
+                        font-size: 3.0mm; /* Ajustado para ser más grande, similar a la Fuente A */
                     }
                     .label .barcode-wrapper {
                         margin-top: 2px;
@@ -119,7 +125,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label .price {
                         font-weight: bold;
-                        font-size: 10px;
+                        font-size: 3.0mm;
                         margin-top: 2px;
                     }
                     @media print {
