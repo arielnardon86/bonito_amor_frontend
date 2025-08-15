@@ -29,20 +29,20 @@ const ReciboImpresion = () => {
             reciboRef.current.innerHTML = `
                 <div class="receipt">
                     <div class="header">
-                        <h2>Comprobante de compra</h2>
+                        <h2 style="font-size: 4mm;">Comprobante de compra</h2>
                         <p>Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
                         <p>Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
                         <hr>
                     </div>
                     <div class="items">
-                        <h3>Productos:</h3>
+                        <h3 style="font-size: 3mm;">Productos:</h3>
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Cant.</th>
-                                    <th>Descripción</th>
-                                    <th>Precio</th>
-                                    <th>Subtotal</th>
+                                    <th style="font-size: 2.5mm;">Cant.</th>
+                                    <th style="font-size: 2.5mm;">Descripción</th>
+                                    <th style="font-size: 2.5mm;">Precio</th>
+                                    <th style="font-size: 2.5mm;">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -53,10 +53,10 @@ const ReciboImpresion = () => {
                                     const subtotal = cantidad * parseFloat(precio || 0);
                                     return `
                                     <tr>
-                                        <td>${cantidad}</td>
-                                        <td>${nombre}</td>
-                                        <td>$${parseFloat(precio).toFixed(2)}</td>
-                                        <td>$${subtotal.toFixed(2)}</td>
+                                        <td style="font-size: 2.5mm;">${cantidad}</td>
+                                        <td style="font-size: 2.5mm;">${nombre}</td>
+                                        <td style="font-size: 2.5mm;">$${parseFloat(precio).toFixed(2)}</td>
+                                        <td style="font-size: 2.5mm;">$${subtotal.toFixed(2)}</td>
                                     </tr>
                                     `;
                                 }).join('')}
@@ -65,14 +65,14 @@ const ReciboImpresion = () => {
                         <hr>
                     </div>
                     <div class="totals">
-                        <p><strong>Subtotal:</strong> $${totalSinDescuento.toFixed(2)}</p>
-                        ${(venta.descuento_porcentaje || 0) > 0 ? `<p><strong>Descuento:</strong> ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
-                        <p><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
-                        <p><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
+                        <p style="font-size: 3mm;"><strong>Subtotal:</strong> $${totalSinDescuento.toFixed(2)}</p>
+                        ${(venta.descuento_porcentaje || 0) > 0 ? `<p style="font-size: 3mm;"><strong>Descuento:</strong> ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
+                        <p style="font-size: 4mm;"><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
+                        <p style="font-size: 3mm;"><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
                         <hr>
                     </div>
                     <div class="footer">
-                        <p>¡Gracias por su compra!</p>
+                        <p style="font-size: 3mm;">¡Gracias por su compra!</p>
                     </div>
                 </div>
             `;
