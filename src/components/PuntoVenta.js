@@ -85,8 +85,51 @@ const PuntoVenta = () => {
 
     const [descuentoPorcentaje, setDescuentoPorcentaje] = useState(0);
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const [productsPerPage] = useState(10);
+    // Estado para la paginación de la API
+    const [pageInfo, setPageInfo] = useState({
+        next: null,
+        previous: null,
+        count: 0,
+        currentPage: 1,
+        totalPages: 1,
+    });
+    
+    // Nueva función para obtener productos con paginación
+    const fetchProductos = useCallback(async (page = 1, searchQuery = '') => {
+        if (!token || !selectedStoreSlug) {
+            setLoadingProducts(false);
+            return;
+        }
+
+        setLoadingProducts(true);
+        setError(null);
+
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: {
+                    tienda_slug: selectedStoreSlug,
+                    search: searchQuery,
+                    page: page,
+                },
+            });
+
+            setProductos(response.data.results);
+            const productsPerPage = response.data.results.length > 0 ? response.data.results.length : 1;
+            setPageInfo({
+                next: response.data.next,
+                previous: response.data.previous,
+                count: response.data.count,
+                currentPage: page,
+                totalPages: Math.ceil(response.data.count / productsPerPage), // Corregido: totalPages se calcula con el total de elementos
+            });
+        } catch (err) {
+            console.error("Error al cargar productos:", err.response ? err.response.data : err.message);
+            setError('Error al cargar productos.');
+        } finally {
+            setLoadingProducts(false);
+        }
+    }, [token, selectedStoreSlug]);
 
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
@@ -108,12 +151,9 @@ const PuntoVenta = () => {
             setLoadingProducts(true);
             setError(null);
             try {
-                const productosResponse = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    params: { tienda_slug: selectedStoreSlug }
-                });
-                setProductos(productosResponse.data.results || productosResponse.data);
-
+                // Llama a la nueva función de paginación
+                await fetchProductos(1, '');
+                
                 const metodosPagoResponse = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
@@ -137,7 +177,7 @@ const PuntoVenta = () => {
             setLoadingProducts(false);
             setError("Por favor, inicia sesión y selecciona una tienda para gestionar el punto de venta.");
         }
-    }, [token, selectedStoreSlug, authLoading, isAuthenticated, user]);
+    }, [token, selectedStoreSlug, authLoading, isAuthenticated, user, fetchProductos]);
 
     const handleBuscarProducto = async () => {
         if (!busquedaProducto) {
@@ -327,6 +367,7 @@ const PuntoVenta = () => {
         }
     };
 
+    // Filtra productos localmente según la búsqueda
     const filteredProductosDisponibles = productos.filter(product => {
         const searchTermLower = busquedaProducto.toLowerCase();
         return (
@@ -336,23 +377,21 @@ const PuntoVenta = () => {
         );
     });
 
-    const indexOfLastProduct = currentPage * productsPerPage;
-    const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+    // Nueva lógica de paginación del lado del frontend
+    const indexOfLastProduct = pageInfo.currentPage * 10; // La API usa PAGE_SIZE 10, lo mantenemos consistente.
+    const indexOfFirstProduct = indexOfLastProduct - 10;
     const currentProducts = filteredProductosDisponibles.slice(indexOfFirstProduct, indexOfLastProduct);
 
-    const totalPages = Math.ceil(filteredProductosDisponibles.length / productsPerPage);
-
-    const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
+    // handlers de paginación que se vinculan con el backend
     const nextPageHandler = () => {
-        if (currentPage < totalPages) {
-            setCurrentPage(currentPage + 1);
+        if (pageInfo.next) {
+            fetchProductos(pageInfo.currentPage + 1, busquedaProducto);
         }
     };
 
     const prevPageHandler = () => {
-        if (currentPage > 1) {
-            setCurrentPage(currentPage - 1);
+        if (pageInfo.previous) {
+            fetchProductos(pageInfo.currentPage - 1, busquedaProducto);
         }
     };
 
@@ -563,8 +602,17 @@ const PuntoVenta = () => {
                         placeholder="Buscar por nombre o talle..."
                         value={busquedaProducto}
                         onChange={(e) => setBusquedaProducto(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                // Llama a la función de búsqueda de API
+                                fetchProductos(1, busquedaProducto);
+                            }
+                        }}
                         style={styles.inputField}
                     />
+                     <button onClick={() => fetchProductos(1, busquedaProducto)} style={styles.primaryButton}>
+                        Buscar
+                    </button>
                 </div>
 
                 {loadingProducts ? (
@@ -585,8 +633,8 @@ const PuntoVenta = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {currentProducts.length > 0 ? (
-                                        currentProducts.map(product => (
+                                    {productos.length > 0 ? (
+                                        productos.map(product => (
                                             <tr key={product.id} style={styles.tableRow}>
                                                 <td style={styles.td}>{product.nombre}</td>
                                                 <td style={styles.td}>{product.talle}</td>
@@ -614,13 +662,13 @@ const PuntoVenta = () => {
                             </table>
                         </div>
 
-                        {totalPages > 1 && (
+                        {pageInfo.totalPages > 1 && (
                             <div style={styles.paginationContainer}>
-                                <button onClick={prevPageHandler} disabled={currentPage === 1} style={styles.paginationButton}>
+                                <button onClick={prevPageHandler} disabled={!pageInfo.previous} style={styles.paginationButton}>
                                     Anterior
                                 </button>
-                                <span style={styles.pageNumber}>Página {currentPage} de {totalPages}</span>
-                                <button onClick={nextPageHandler} disabled={currentPage === totalPages} style={styles.paginationButton}>
+                                <span style={styles.pageNumber}>Página {pageInfo.currentPage} de {pageInfo.totalPages}</span>
+                                <button onClick={nextPageHandler} disabled={!pageInfo.next} style={styles.paginationButton}>
                                     Siguiente
                                 </button>
                             </div>
