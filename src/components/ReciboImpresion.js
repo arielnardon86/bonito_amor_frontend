@@ -29,20 +29,20 @@ const ReciboImpresion = () => {
             reciboRef.current.innerHTML = `
                 <div class="receipt">
                     <div class="header">
-                        <h2 style="font-size: 4mm;">Comprobante de compra</h2>
-                        <p>Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
-                        <p>Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
+                        <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Comprobante de compra</h2>
+                        <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
+                        <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
                         <hr>
                     </div>
                     <div class="items">
-                        <h3 style="font-size: 3mm;">Productos:</h3>
+                        <h3 style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Productos:</h3>
                         <table>
                             <thead>
                                 <tr>
-                                    <th style="font-size: 2.5mm;">Cant.</th>
-                                    <th style="font-size: 2.5mm;">Descripción</th>
-                                    <th style="font-size: 2.5mm;">Precio</th>
-                                    <th style="font-size: 2.5mm;">Subtotal</th>
+                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Cant.</th>
+                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Descripción</th>
+                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Precio</th>
+                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -53,10 +53,10 @@ const ReciboImpresion = () => {
                                     const subtotal = cantidad * parseFloat(precio || 0);
                                     return `
                                     <tr>
-                                        <td style="font-size: 2.5mm;">${cantidad}</td>
-                                        <td style="font-size: 2.5mm;">${nombre}</td>
-                                        <td style="font-size: 2.5mm;">$${parseFloat(precio).toFixed(2)}</td>
-                                        <td style="font-size: 2.5mm;">$${subtotal.toFixed(2)}</td>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${cantidad}</td>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${nombre}</td>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">$${parseFloat(precio).toFixed(2)}</td>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">$${subtotal.toFixed(2)}</td>
                                     </tr>
                                     `;
                                 }).join('')}
@@ -65,14 +65,14 @@ const ReciboImpresion = () => {
                         <hr>
                     </div>
                     <div class="totals">
-                        <p style="font-size: 3mm;"><strong>Subtotal:</strong> $${totalSinDescuento.toFixed(2)}</p>
-                        ${(venta.descuento_porcentaje || 0) > 0 ? `<p style="font-size: 3mm;"><strong>Descuento:</strong> ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
-                        <p style="font-size: 4mm;"><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
-                        <p style="font-size: 3mm;"><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
+                        <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Subtotal:</strong> $${totalSinDescuento.toFixed(2)}</p>
+                        ${(venta.descuento_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
+                        <p style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
+                        <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
                         <hr>
                     </div>
                     <div class="footer">
-                        <p style="font-size: 3mm;">¡Gracias por su compra!</p>
+                        <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">¡Gracias por su compra!</p>
                     </div>
                 </div>
             `;
@@ -155,6 +155,9 @@ const ReciboImpresion = () => {
                         text-align: center;
                         margin: 0;
                         font-size: 14px;
+                        font-weight: bold; /* Asegura que los títulos sean gruesos */
+                        color: #000; /* Asegura el color negro */
+                        -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
                     }
                     .receipt hr {
                         border-top: 1px dashed #000;
@@ -162,6 +165,9 @@ const ReciboImpresion = () => {
                     }
                     .receipt p {
                         margin: 2px 0;
+                        font-weight: bold; /* Asegura que el texto normal sea grueso */
+                        color: #000; /* Asegura el color negro */
+                        -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
                     }
                     .receipt table {
                         width: 100%;
@@ -170,6 +176,9 @@ const ReciboImpresion = () => {
                     .receipt th, .receipt td {
                         padding: 1px;
                         text-align: left;
+                        font-weight: bold; /* Asegura que los datos de la tabla sean gruesos */
+                        color: #000; /* Asegura el color negro */
+                        -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
                     }
                     .receipt th {
                         border-bottom: 1px solid #000;

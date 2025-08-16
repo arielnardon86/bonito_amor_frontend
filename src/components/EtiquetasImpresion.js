@@ -114,6 +114,9 @@ const EtiquetasImpresion = () => {
                         overflow: hidden;
                         text-overflow: ellipsis;
                         max-width: 100%;
+                        font-weight: bold; /* Añadido para hacer el texto más oscuro */
+                        color: #000; /* Asegura el color negro */
+                        -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
                     }
                     .label .product-name {
                         font-weight: bold;
