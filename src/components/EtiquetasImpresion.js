@@ -24,9 +24,9 @@ const EtiquetasImpresion = () => {
                         JsBarcode(svgElement, String(producto.codigo_barras), {
                             format: 'EAN13',
                             displayValue: true,
-                            fontSize: 8, // Ajustado para el nuevo tamaño de etiqueta
-                            width: 1.2, // Ajustado el ancho de las barras
-                            height: 20, // Altura reducida para ajustarse a 44mm
+                            fontSize: 8, // Un tamaño de fuente que se ajusta a la impresión de recibos
+                            width: 1.5, // Aumentamos el ancho de las barras para mejor legibilidad en la impresión térmica
+                            height: 20,
                             margin: 0,
                             displayValue: false,
                         });
@@ -73,8 +73,8 @@ const EtiquetasImpresion = () => {
     return (
         <div className="container" style={mobileStyles.labelsContainer}>
             <div className="no-print" style={mobileStyles.printControls}>
-                <button onClick={handleGoBack}>Volver</button>
-                <button onClick={handlePrint}>Imprimir</button>
+                <button onClick={handleGoBack} style={mobileStyles.backButton}>Volver</button>
+                <button onClick={handlePrint} style={mobileStyles.printButton}>Imprimir</button>
             </div>
 
             <div className="label-container" ref={labelsRef}>
@@ -84,20 +84,60 @@ const EtiquetasImpresion = () => {
             <style>
                 {`
                     @page {
-                        size: 55mm 44mm; /* Ancho x Alto */
+                        size: 55mm 44mm; /* Ancho x Alto de la etiqueta */
                         margin: 0;
                     }
+                    
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        -webkit-print-color-adjust: exact;
+                        
+                        /* Elimina encabezado y pie de página en Chrome */
+                        @media print {
+                            body, html {
+                                margin: 0;
+                                padding: 0;
+                            }
+                            @page {
+                                size: 55mm 44mm;
+                                margin: 0;
+                            }
+                            @page :left {
+                                margin: 0;
+                            }
+                            @page :right {
+                                margin: 0;
+                            }
+                            @page :first {
+                                margin: 0;
+                            }
+                            body {
+                                margin: 0;
+                            }
+                            @page { 
+                                size: 55mm 44mm;
+                                @top-left { content: none; }
+                                @top-center { content: none; }
+                                @top-right { content: none; }
+                                @bottom-left { content: none; }
+                                @bottom-center { content: none; }
+                                @bottom-right { content: none; }
+                            }
+                        }
+                    }
+
                     .label-container {
                         display: flex;
                         flex-wrap: wrap;
                         justify-content: flex-start;
                         align-items: flex-start;
-                        width: 55mm; /* Ancho de la página */
+                        width: 55mm;
                         box-sizing: border-box;
                     }
                     .label {
-                        width: 55mm; /* Ancho de cada etiqueta */
-                        height: 44mm; /* Altura de cada etiqueta */
+                        width: 55mm;
+                        height: 44mm;
                         padding: 2mm;
                         display: inline-block;
                         text-align: center;
@@ -108,7 +148,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label p {
                         margin: 0;
-                        font-size: 2mm; /* Tamaño de fuente más pequeño para un mejor ajuste */
+                        font-size: 2mm;
                         line-height: 1.2;
                         white-space: nowrap;
                         overflow: hidden;
@@ -120,7 +160,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label .product-name {
                         font-weight: bold;
-                        font-size: 2.5mm; /* Tamaño un poco más grande para el nombre del producto */
+                        font-size: 2.5mm;
                     }
                     .label .barcode-wrapper {
                         margin-top: 2px;
@@ -132,22 +172,8 @@ const EtiquetasImpresion = () => {
                         margin-top: 2px;
                     }
                     @media print {
-                        body {
-                            margin: 0;
-                            padding: 0;
-                            -webkit-print-color-adjust: exact;
-                        }
                         .no-print {
                             display: none !important;
-                        }
-                        .label-container {
-                            width: 100%;
-                            display: block;
-                        }
-                        .label {
-                            width: 100%;
-                            margin-left: 0;
-                            margin-right: 0;
                         }
                     }
                 `}
@@ -191,3 +217,4 @@ const mobileStyles = {
 
 
 export default EtiquetasImpresion;
+ 
