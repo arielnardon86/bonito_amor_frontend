@@ -24,9 +24,9 @@ const EtiquetasImpresion = () => {
                         JsBarcode(svgElement, String(producto.codigo_barras), {
                             format: 'EAN13',
                             displayValue: true,
-                            fontSize: 10, // Un tamaño de fuente que se ajusta a la impresión de recibos
-                            width: 1.5, // Aumentamos el ancho de las barras para mejor legibilidad en la impresión térmica
-                            height: 30,
+                            fontSize: 8, // Ajustado para el nuevo tamaño de etiqueta
+                            width: 1.2, // Ajustado el ancho de las barras
+                            height: 20, // Altura reducida para ajustarse a 44mm
                             margin: 0,
                             displayValue: false,
                         });
@@ -73,8 +73,8 @@ const EtiquetasImpresion = () => {
     return (
         <div className="container" style={mobileStyles.labelsContainer}>
             <div className="no-print" style={mobileStyles.printControls}>
-                <button onClick={handleGoBack} style={mobileStyles.backButton}>Volver</button>
-                <button onClick={handlePrint} style={mobileStyles.printButton}>Imprimir</button>
+                <button onClick={handleGoBack}>Volver</button>
+                <button onClick={handlePrint}>Imprimir</button>
             </div>
 
             <div className="label-container" ref={labelsRef}>
@@ -84,7 +84,7 @@ const EtiquetasImpresion = () => {
             <style>
                 {`
                     @page {
-                        size: 72mm auto;
+                        size: 55mm 44mm; /* Ancho x Alto */
                         margin: 0;
                     }
                     .label-container {
@@ -92,14 +92,14 @@ const EtiquetasImpresion = () => {
                         flex-wrap: wrap;
                         justify-content: flex-start;
                         align-items: flex-start;
-                        width: 72mm;
+                        width: 55mm; /* Ancho de la página */
                         box-sizing: border-box;
                     }
                     .label {
+                        width: 55mm; /* Ancho de cada etiqueta */
+                        height: 44mm; /* Altura de cada etiqueta */
                         padding: 2mm;
-                        margin-bottom: 2mm;
                         display: inline-block;
-                        width: 72mm;
                         text-align: center;
                         page-break-inside: avoid;
                         box-sizing: border-box;
@@ -108,19 +108,19 @@ const EtiquetasImpresion = () => {
                     }
                     .label p {
                         margin: 0;
-                        font-size: 2.1mm; /* Ajustado para coincidir con la Fuente B de 1.1x2.1mm */
+                        font-size: 2mm; /* Tamaño de fuente más pequeño para un mejor ajuste */
                         line-height: 1.2;
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
                         max-width: 100%;
-                        font-weight: bold; /* Añadido para hacer el texto más oscuro */
-                        color: #000; /* Asegura el color negro */
-                        -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
+                        font-weight: bold;
+                        color: #000;
+                        -webkit-font-smoothing: none;
                     }
                     .label .product-name {
                         font-weight: bold;
-                        font-size: 3.0mm; /* Ajustado para ser más grande, similar a la Fuente A */
+                        font-size: 2.5mm; /* Tamaño un poco más grande para el nombre del producto */
                     }
                     .label .barcode-wrapper {
                         margin-top: 2px;
@@ -128,7 +128,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label .price {
                         font-weight: bold;
-                        font-size: 3.0mm;
+                        font-size: 3mm;
                         margin-top: 2px;
                     }
                     @media print {
