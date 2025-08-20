@@ -6,7 +6,7 @@ import JsBarcode from 'jsbarcode';
 const EtiquetasImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    // AQUI: La variable se declara correctamente, tomando el estado de la ubicación
+    // Esta es la línea de código que debe estar aquí
     const productosParaImprimir = location.state?.productosParaImprimir || [];
     const labelsRef = useRef(null);
 
@@ -62,7 +62,6 @@ const EtiquetasImpresion = () => {
         navigate('/productos');
     };
 
-    // AQUI: El componente utiliza la variable declarada al inicio
     if (productosParaImprimir.length === 0) {
         return (
             <div className="container" style={mobileStyles.noLabelsContainer}>
