@@ -83,29 +83,26 @@ const EtiquetasImpresion = () => {
 
             <style>
                 {`
-                    /* Configura el tamaño de la página para la impresión de etiquetas */
-                    @page {
-                        size: 55mm 44mm;
-                        margin: 0;
-                    }
-
                     body {
                         margin: 0;
                         padding: 0;
                         -webkit-print-color-adjust: exact;
                     }
 
+                    /* Modificado: el contenedor ahora tiene un ancho fijo y se centra */
                     .label-container {
                         display: flex;
                         flex-wrap: wrap;
                         justify-content: flex-start;
                         align-items: flex-start;
-                        width: 55mm;
+                        width: 72mm; /* Ancho que se ajusta a la impresora de 80mm */
+                        margin: 0 auto; /* Centra el contenedor en la página */
                         box-sizing: border-box;
                     }
+                    /* Las etiquetas individuales mantienen el tamaño de 55x44mm */
                     .label {
                         width: 55mm;
-                        height: 44mm; /* Altura de la etiqueta para evitar cortes */
+                        height: 44mm; 
                         padding: 2mm;
                         display: inline-block;
                         text-align: center;
@@ -113,6 +110,7 @@ const EtiquetasImpresion = () => {
                         box-sizing: border-box;
                         vertical-align: top;
                         overflow: hidden;
+                        margin: 0 auto; /* Centra el contenido de la etiqueta dentro del contenedor */
                     }
                     .label p {
                         margin: 0;
