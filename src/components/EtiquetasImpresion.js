@@ -84,47 +84,14 @@ const EtiquetasImpresion = () => {
             <style>
                 {`
                     @page {
-                        size: 55mm 44mm; /* Ancho x Alto de la etiqueta */
+                        size: 55mm 44mm;
                         margin: 0;
                     }
-                    
+
                     body {
                         margin: 0;
                         padding: 0;
                         -webkit-print-color-adjust: exact;
-                        
-                        /* Elimina encabezado y pie de página en Chrome */
-                        @media print {
-                            body, html {
-                                margin: 0;
-                                padding: 0;
-                            }
-                            @page {
-                                size: 55mm 44mm;
-                                margin: 0;
-                            }
-                            @page :left {
-                                margin: 0;
-                            }
-                            @page :right {
-                                margin: 0;
-                            }
-                            @page :first {
-                                margin: 0;
-                            }
-                            body {
-                                margin: 0;
-                            }
-                            @page { 
-                                size: 55mm 44mm;
-                                @top-left { content: none; }
-                                @top-center { content: none; }
-                                @top-right { content: none; }
-                                @bottom-left { content: none; }
-                                @bottom-center { content: none; }
-                                @bottom-right { content: none; }
-                            }
-                        }
                     }
 
                     .label-container {
@@ -137,7 +104,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label {
                         width: 55mm;
-                        height: 44mm;
+                        height: 44mm; /* Altura de la etiqueta para evitar cortes */
                         padding: 2mm;
                         display: inline-block;
                         text-align: center;
@@ -174,6 +141,23 @@ const EtiquetasImpresion = () => {
                     @media print {
                         .no-print {
                             display: none !important;
+                        }
+                        
+                        body, html {
+                            margin: 0;
+                            padding: 0;
+                        }
+
+                        @page { 
+                            size: 55mm 44mm;
+                            margin: 0;
+                            /* Eliminar encabezados y pies de página */
+                            @top-left { content: none; }
+                            @top-center { content: none; }
+                            @top-right { content: none; }
+                            @bottom-left { content: none; }
+                            @bottom-center { content: none; }
+                            @bottom-right { content: none; }
                         }
                     }
                 `}
@@ -217,4 +201,3 @@ const mobileStyles = {
 
 
 export default EtiquetasImpresion;
- 
