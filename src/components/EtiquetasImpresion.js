@@ -6,6 +6,7 @@ import JsBarcode from 'jsbarcode';
 const EtiquetasImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    // AQUI: La variable se declara correctamente, tomando el estado de la ubicación
     const productosParaImprimir = location.state?.productosParaImprimir || [];
     const labelsRef = useRef(null);
 
@@ -61,6 +62,7 @@ const EtiquetasImpresion = () => {
         navigate('/productos');
     };
 
+    // AQUI: El componente utiliza la variable declarada al inicio
     if (productosParaImprimir.length === 0) {
         return (
             <div className="container" style={mobileStyles.noLabelsContainer}>
@@ -99,10 +101,9 @@ const EtiquetasImpresion = () => {
                         box-sizing: border-box;
                     }
 
-                    /* Nuevo: Se ajusta la altura de la etiqueta para incluir el espacio de corte */
                     .label {
                         width: 55mm;
-                        height: 49mm; /* 44mm de etiqueta + 5mm de separación */
+                        height: 49mm; 
                         padding: 2mm;
                         display: inline-block;
                         text-align: center;
@@ -150,7 +151,6 @@ const EtiquetasImpresion = () => {
                             padding: 0;
                         }
 
-                        /* Esta regla elimina los encabezados y pies de página */
                         @page { 
                             margin: 0;
                             @top-left { content: none; }
