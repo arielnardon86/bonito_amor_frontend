@@ -6,7 +6,7 @@ import JsBarcode from 'jsbarcode';
 const EtiquetasImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    // Esta es la línea de código que debe estar aquí
+    // La variable se declara correctamente con la 'P' mayúscula
     const productosParaImprimir = location.state?.productosParaImprimir || [];
     const labelsRef = useRef(null);
 
@@ -52,7 +52,7 @@ const EtiquetasImpresion = () => {
                 }
             });
         }
-    }, [productosParaImpresion]);
+    }, [productosParaImprimir]); // Aquí también se corrige el nombre de la variable
 
     const handlePrint = () => {
         window.print();
