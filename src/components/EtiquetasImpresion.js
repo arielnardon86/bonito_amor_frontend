@@ -89,29 +89,33 @@ const EtiquetasImpresion = () => {
                         -webkit-print-color-adjust: exact;
                     }
 
-                    /* Modificado: el contenedor ahora tiene un ancho fijo y se centra */
+                    /* El contenedor se mantiene en el ancho del rollo de 80mm */
                     .label-container {
                         display: flex;
                         flex-wrap: wrap;
                         justify-content: flex-start;
                         align-items: flex-start;
-                        width: 72mm; /* Ancho que se ajusta a la impresora de 80mm */
-                        margin: 0 auto; /* Centra el contenedor en la página */
+                        width: 72mm; 
+                        margin: 0 auto; 
                         box-sizing: border-box;
                     }
-                    /* Las etiquetas individuales mantienen el tamaño de 55x44mm */
+
+                    /* Se añaden las reglas para controlar el salto de página */
                     .label {
                         width: 55mm;
                         height: 44mm; 
                         padding: 2mm;
                         display: inline-block;
                         text-align: center;
-                        page-break-inside: avoid;
+                        page-break-before: auto; /* Permite un salto de página antes, si es necesario */
+                        page-break-after: always; /* Fuerzo un salto de página después de cada etiqueta */
+                        page-break-inside: avoid; /* Evito que el contenido de la etiqueta se parta */
                         box-sizing: border-box;
                         vertical-align: top;
                         overflow: hidden;
-                        margin: 0 auto; /* Centra el contenido de la etiqueta dentro del contenedor */
+                        margin: 0 auto;
                     }
+
                     .label p {
                         margin: 0;
                         font-size: 2mm;
