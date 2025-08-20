@@ -51,7 +51,7 @@ const EtiquetasImpresion = () => {
                 }
             });
         }
-    }, [productosParaImprimir]);
+    }, [productosParaImpresion]);
 
     const handlePrint = () => {
         window.print();
@@ -89,7 +89,6 @@ const EtiquetasImpresion = () => {
                         -webkit-print-color-adjust: exact;
                     }
 
-                    /* El contenedor se mantiene en el ancho del rollo de 80mm */
                     .label-container {
                         display: flex;
                         flex-wrap: wrap;
@@ -100,16 +99,16 @@ const EtiquetasImpresion = () => {
                         box-sizing: border-box;
                     }
 
-                    /* Se añaden las reglas para controlar el salto de página */
+                    /* Nuevo: Se ajusta la altura de la etiqueta para incluir el espacio de corte */
                     .label {
                         width: 55mm;
-                        height: 44mm; 
+                        height: 49mm; /* 44mm de etiqueta + 5mm de separación */
                         padding: 2mm;
                         display: inline-block;
                         text-align: center;
-                        page-break-before: auto; /* Permite un salto de página antes, si es necesario */
-                        page-break-after: always; /* Fuerzo un salto de página después de cada etiqueta */
-                        page-break-inside: avoid; /* Evito que el contenido de la etiqueta se parta */
+                        page-break-before: auto;
+                        page-break-after: always;
+                        page-break-inside: avoid;
                         box-sizing: border-box;
                         vertical-align: top;
                         overflow: hidden;
