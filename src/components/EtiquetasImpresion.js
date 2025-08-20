@@ -83,6 +83,7 @@ const EtiquetasImpresion = () => {
 
             <style>
                 {`
+                    /* Configura el tamaño de la página para la impresión de etiquetas */
                     @page {
                         size: 55mm 44mm;
                         margin: 0;
@@ -148,10 +149,9 @@ const EtiquetasImpresion = () => {
                             padding: 0;
                         }
 
+                        /* Esta regla elimina los encabezados y pies de página */
                         @page { 
-                            size: 55mm 44mm;
                             margin: 0;
-                            /* Eliminar encabezados y pies de página */
                             @top-left { content: none; }
                             @top-center { content: none; }
                             @top-right { content: none; }
