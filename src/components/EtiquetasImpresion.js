@@ -6,7 +6,6 @@ import JsBarcode from 'jsbarcode';
 const EtiquetasImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    // La variable se declara correctamente con la 'P' mayúscula
     const productosParaImprimir = location.state?.productosParaImprimir || [];
     const labelsRef = useRef(null);
 
@@ -21,15 +20,14 @@ const EtiquetasImpresion = () => {
                     
                     const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                     try {
-                        // Ajuste del código de barras para una impresión térmica más robusta
+                        // Aumentamos el ancho de las barras para una impresión más oscura
                         JsBarcode(svgElement, String(producto.codigo_barras), {
                             format: 'EAN13',
-                            displayValue: true,
-                            fontSize: 8, // Un tamaño de fuente que se ajusta a la impresión de recibos
-                            width: 1.5, // Aumentamos el ancho de las barras para mejor legibilidad en la impresión térmica
+                            displayValue: false, // Ocultar el valor del código para más espacio
+                            fontSize: 8,
+                            width: 2, // Valor incrementado para un código de barras más oscuro
                             height: 20,
                             margin: 0,
-                            displayValue: false,
                         });
                     } catch (e) {
                         console.error('Error generando código de barras:', e);
@@ -52,7 +50,7 @@ const EtiquetasImpresion = () => {
                 }
             });
         }
-    }, [productosParaImprimir]); // Aquí también se corrige el nombre de la variable
+    }, [productosParaImprimir]);
 
     const handlePrint = () => {
         window.print();
@@ -93,7 +91,7 @@ const EtiquetasImpresion = () => {
                     .label-container {
                         display: flex;
                         flex-wrap: wrap;
-                        justify-content: flex-start;
+                        justify-content: center; /* Centrar las etiquetas en el rollo de 80mm */
                         align-items: flex-start;
                         width: 72mm; 
                         margin: 0 auto; 
@@ -101,8 +99,8 @@ const EtiquetasImpresion = () => {
                     }
 
                     .label {
-                        width: 55mm;
-                        height: 49mm; 
+                        width: 50mm;
+                        height: 40mm; 
                         padding: 2mm;
                         display: inline-block;
                         text-align: center;
@@ -123,7 +121,7 @@ const EtiquetasImpresion = () => {
                         overflow: hidden;
                         text-overflow: ellipsis;
                         max-width: 100%;
-                        font-weight: bold;
+                        font-weight: bold; /* Hacer el texto más oscuro */
                         color: #000;
                         -webkit-font-smoothing: none;
                     }
