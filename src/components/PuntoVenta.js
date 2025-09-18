@@ -83,9 +83,8 @@ const PuntoVenta = () => {
     const [showNewCartModal, setShowNewCartModal] = useState(false);
     const [newCartAliasInput, setNewCartAliasInput] = useState('');
 
-    const [descuentoPorcentaje, setDescuentoPorcentaje] = useState(0);
-    // NUEVO: Estado para el descuento por monto
-    const [descuentoMonto, setDescuentoMonto] = useState(0);
+    const [descuentoPorcentaje, setDescuentoPorcentaje] = useState('');
+    const [descuentoMonto, setDescuentoMonto] = useState(''); 
 
     // Estado para la paginación de la API
     const [pageInfo, setPageInfo] = useState({
