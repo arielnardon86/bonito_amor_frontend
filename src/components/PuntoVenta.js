@@ -7,6 +7,7 @@ import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
 
 const TalleOptions = [
+    { value: 'N/A', label: 'N/A' },
     { value: 'UNICO', label: 'UNICO' },
     { value: 'XS', label: 'XS' },
     { value: 'S', label: 'S' },
