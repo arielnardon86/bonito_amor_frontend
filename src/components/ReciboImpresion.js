@@ -20,7 +20,7 @@ const ReciboImpresion = () => {
                 return !isNaN(dateObj.getTime()) ? dateObj.toLocaleString() : fecha;
             };
             
-            const totalSinDescuento = detalles.reduce((acc, item) => {
+            const subtotal = detalles.reduce((acc, item) => {
                 const cantidad = item.cantidad || item.quantity;
                 const precio = item.precio_unitario || item.product?.precio;
                 return acc + (cantidad * parseFloat(precio || 0));
@@ -65,8 +65,9 @@ const ReciboImpresion = () => {
                         <hr>
                     </div>
                     <div class="totals">
-                        <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Subtotal:</strong> $${totalSinDescuento.toFixed(2)}</p>
-                        ${(venta.descuento_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
+                        <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Subtotal:</strong> $${subtotal.toFixed(2)}</p>
+                        ${(venta.descuento_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento por porcentaje:</strong> ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
+                        ${(venta.descuento_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento por monto:</strong> $${parseFloat(venta.descuento_monto).toFixed(2)}</p>` : ''}
                         <p style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
                         <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
                         <hr>

@@ -1,3 +1,4 @@
+// BONITO_AMOR/frontend/src/components/VentasPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
@@ -386,9 +387,13 @@ const VentasPage = () => {
                                                     </tbody>
                                                 </table>
                                                 </div>
-                                                {venta.descuento_porcentaje > 0 && (
+                                                {/* MODIFICADO: Muestra el tipo de descuento aplicado */}
+                                                {(venta.descuento_porcentaje > 0 || venta.descuento_monto > 0) && (
                                                     <p style={styles.discountDisplay}>
-                                                        Descuento aplicado a la venta: {parseFloat(venta.descuento_porcentaje).toFixed(2)}%
+                                                        {venta.descuento_monto > 0 ? 
+                                                            `Descuento aplicado a la venta: $${parseFloat(venta.descuento_monto).toFixed(2)}` :
+                                                            `Descuento aplicado a la venta: ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%`
+                                                        }
                                                     </p>
                                                 )}
                                             </td>
@@ -758,6 +763,12 @@ const styles = {
         zIndex: 1001,
         opacity: 0,
         animation: 'fadeInOut 3s forwards',
+    },
+    discountDisplay: {
+        textAlign: 'right',
+        fontStyle: 'italic',
+        marginTop: '10px',
+        color: '#555',
     },
 };
 

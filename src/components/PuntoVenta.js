@@ -84,6 +84,8 @@ const PuntoVenta = () => {
     const [newCartAliasInput, setNewCartAliasInput] = useState('');
 
     const [descuentoPorcentaje, setDescuentoPorcentaje] = useState(0);
+    // NUEVO: Estado para el descuento por monto
+    const [descuentoMonto, setDescuentoMonto] = useState(0);
 
     // Estado para la paginación de la API
     const [pageInfo, setPageInfo] = useState({
@@ -121,7 +123,7 @@ const PuntoVenta = () => {
                 previous: response.data.previous,
                 count: response.data.count,
                 currentPage: page,
-                totalPages: Math.ceil(response.data.count / productsPerPage), // Corregido: totalPages se calcula con el total de elementos
+                totalPages: Math.ceil(response.data.count / 10), 
             });
         } catch (err) {
             console.error("Error al cargar productos:", err.response ? err.response.data : err.message);
@@ -248,12 +250,20 @@ const PuntoVenta = () => {
         setShowConfirmModal(true);
     };
 
+    // MODIFICADO: Lógica para calcular el total con el nuevo descuento por monto
     const calculateTotalWithDiscount = useCallback(() => {
         if (!activeCart) return 0;
         let subtotal = activeCart.items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.product.precio)), 0);
-        const discountAmount = subtotal * (descuentoPorcentaje / 100);
-        return (subtotal - discountAmount);
-    }, [activeCart, descuentoPorcentaje]);
+        let finalTotal = subtotal;
+
+        if (descuentoMonto > 0) {
+            finalTotal = Math.max(0, subtotal - descuentoMonto);
+        } else if (descuentoPorcentaje > 0) {
+            const discountAmount = subtotal * (descuentoPorcentaje / 100);
+            finalTotal = subtotal - discountAmount;
+        }
+        return finalTotal;
+    }, [activeCart, descuentoPorcentaje, descuentoMonto]);
 
     const handleProcesarVenta = async () => {
         if (!activeCart || activeCart.items.length === 0) {
@@ -271,10 +281,13 @@ const PuntoVenta = () => {
 
         const finalTotal = calculateTotalWithDiscount();
 
+        // MODIFICADO: Mensaje de confirmación para incluir el descuento por monto
+        const discountMessage = descuentoMonto > 0 ? `<br>(Descuento por monto aplicado: $${parseFloat(descuentoMonto).toFixed(2)})` :
+                                descuentoPorcentaje > 0 ? `<br>(Descuento por porcentaje aplicado: ${parseFloat(descuentoPorcentaje).toFixed(2)}%)` : '';
+
         Swal.fire({
             title: '¿Confirmar venta?',
-            html: `Confirmas la venta por un total de <strong>$${finalTotal.toFixed(2)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?` +
-                  (descuentoPorcentaje > 0 ? `<br>(Descuento aplicado: ${descuentoPorcentaje}%)` : ''),
+            html: `Confirmas la venta por un total de <strong>$${finalTotal.toFixed(2)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?` + discountMessage,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Sí, confirmar',
@@ -286,6 +299,7 @@ const PuntoVenta = () => {
                         tienda_slug: selectedStoreSlug,
                         metodo_pago: metodoPagoSeleccionado,
                         descuento_porcentaje: descuentoPorcentaje,
+                        descuento_monto: descuentoMonto, // NUEVO: Incluimos el descuento por monto
                         detalles: activeCart.items.map(item => ({
                             producto: item.product.id,
                             cantidad: item.quantity,
@@ -302,10 +316,11 @@ const PuntoVenta = () => {
                     // Construimos el objeto de venta para el recibo con una fecha válida
                     const ventaParaRecibo = {
                         id: response.data.id,
-                        fecha_venta: new Date().toISOString(), // <-- Fecha garantizada como válida
+                        fecha_venta: new Date().toISOString(),
                         tienda_nombre: selectedStoreSlug,
                         metodo_pago: metodoPagoSeleccionado,
                         descuento_porcentaje: descuentoPorcentaje,
+                        descuento_monto: descuentoMonto, // NUEVO: Pasamos el descuento por monto
                         total: finalTotal,
                         detalles: activeCart.items.map(item => ({
                             producto_nombre: item.product.nombre,
@@ -317,6 +332,7 @@ const PuntoVenta = () => {
                     finalizeCart(activeCartId);
                     setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
                     setDescuentoPorcentaje(0);
+                    setDescuentoMonto(0); // NUEVO: Reiniciamos el descuento por monto
 
                     Swal.fire({
                         title: 'Venta procesada!',
@@ -378,7 +394,7 @@ const PuntoVenta = () => {
     });
 
     // Nueva lógica de paginación del lado del frontend
-    const indexOfLastProduct = pageInfo.currentPage * 10; // La API usa PAGE_SIZE 10, lo mantenemos consistente.
+    const indexOfLastProduct = pageInfo.currentPage * 10; 
     const indexOfFirstProduct = indexOfLastProduct - 10;
     const currentProducts = filteredProductosDisponibles.slice(indexOfFirstProduct, indexOfLastProduct);
 
@@ -573,12 +589,30 @@ const PuntoVenta = () => {
                             </select>
                         </div>
                         <div style={styles.discountContainer}>
-                            <label htmlFor="descuento" style={styles.discountLabel}>Aplicar Descuento (%):</label>
+                            {/* NUEVO: Campo para descuento por monto */}
+                            <label htmlFor="descuentoMonto" style={styles.discountLabel}>Aplicar Descuento (Monto):</label>
                             <input
                                 type="number"
-                                id="descuento"
+                                id="descuentoMonto"
+                                value={descuentoMonto}
+                                onChange={(e) => {
+                                    setDescuentoMonto(Math.max(0, parseFloat(e.target.value) || 0));
+                                    setDescuentoPorcentaje(0); // Reinicia el descuento por porcentaje
+                                }}
+                                style={styles.discountInput}
+                                min="0"
+                            />
+                            <span style={{ margin: '0 10px', fontWeight: 'bold' }}>O</span>
+                            {/* CAMBIO: Lógica para reiniciar el descuento por monto cuando se modifica el porcentaje */}
+                            <label htmlFor="descuentoPorcentaje" style={styles.discountLabel}>Aplicar Descuento (%):</label>
+                            <input
+                                type="number"
+                                id="descuentoPorcentaje"
                                 value={descuentoPorcentaje}
-                                onChange={(e) => setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+                                onChange={(e) => {
+                                    setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)));
+                                    setDescuentoMonto(0); // Reinicia el descuento por monto
+                                }}
                                 style={styles.discountInput}
                                 min="0"
                                 max="100"
@@ -664,12 +698,12 @@ const PuntoVenta = () => {
 
                         {pageInfo.totalPages > 1 && (
                             <div style={styles.paginationContainer}>
-                                <button onClick={prevPageHandler} disabled={!pageInfo.previous} style={styles.paginationButton}>
-                                    Anterior
-                                </button>
-                                <span style={styles.pageNumber}>Página {pageInfo.currentPage} de {pageInfo.totalPages}</span>
                                 <button onClick={nextPageHandler} disabled={!pageInfo.next} style={styles.paginationButton}>
                                     Siguiente
+                                </button>
+                                <span style={styles.pageNumber}>Página {pageInfo.currentPage} de {pageInfo.totalPages}</span>
+                                <button onClick={prevPageHandler} disabled={!pageInfo.previous} style={styles.paginationButton}>
+                                    Anterior
                                 </button>
                             </div>
                         )}
