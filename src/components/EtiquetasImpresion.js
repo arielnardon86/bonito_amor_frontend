@@ -24,9 +24,9 @@ const EtiquetasImpresion = () => {
                             format: 'EAN13',
                             displayValue: false, 
                             fontSize: 8,
-                            width: 1.5, // <- AJUSTE: Aumentado de 1 a 1.5 para barras más gruesas
-                            height: 50,
-                            margin: 0,
+                            width: 2, // <- AJUSTADO: Aumentado para barras más gruesas
+                            height: 60, // <- AJUSTADO: Aumentado para mejor legibilidad del escáner
+                            margin: 5, // <- AÑADIDO: Margen para la zona tranquila
                         });
                     } catch (e) {
                         console.error('Error generando código de barras:', e);
@@ -98,8 +98,8 @@ const EtiquetasImpresion = () => {
                     }
 
                     .label {
-                        width: 37mm;
-                        height: 37mm;
+                        width: 37mm; 
+                        height: 37mm; 
                         padding: 2mm;
                         display: inline-block;
                         text-align: center;
