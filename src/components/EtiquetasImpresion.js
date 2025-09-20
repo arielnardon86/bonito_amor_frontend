@@ -24,8 +24,8 @@ const EtiquetasImpresion = () => {
                             format: 'EAN13',
                             displayValue: false, 
                             fontSize: 8,
-                            width: 1, // <- CAMBIO: Valor reducido a 1 para barras más finas
-                            height: 50, // <- CAMBIO: Valor aumentado a 50 para mejor lectura
+                            width: 1.5, // <- AJUSTE: Aumentado de 1 a 1.5 para barras más gruesas
+                            height: 50,
                             margin: 0,
                         });
                     } catch (e) {
@@ -98,8 +98,8 @@ const EtiquetasImpresion = () => {
                     }
 
                     .label {
-                        width: 37mm; // <- CAMBIO: Ancho ajustado a 37mm
-                        height: 37mm; // <- CAMBIO: Alto ajustado a 37mm
+                        width: 37mm;
+                        height: 37mm;
                         padding: 2mm;
                         display: inline-block;
                         text-align: center;
