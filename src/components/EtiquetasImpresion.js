@@ -6,14 +6,13 @@ import JsBarcode from 'jsbarcode';
 const EtiquetasImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    // La variable se declara correctamente con la 'P' mayúscula
     const productosParaImprimir = location.state?.productosParaImprimir || [];
     const labelsRef = useRef(null);
 
     useEffect(() => {
         if (productosParaImprimir.length > 0 && labelsRef.current) {
             labelsRef.current.innerHTML = '';
-
+            
             productosParaImprimir.forEach((producto) => {
                 for (let i = 0; i < producto.labelQuantity; i++) {
                     const tempDiv = document.createElement('div');
@@ -21,15 +20,13 @@ const EtiquetasImpresion = () => {
                     
                     const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                     try {
-                        // Ajuste del código de barras para una impresión térmica más robusta
                         JsBarcode(svgElement, String(producto.codigo_barras), {
                             format: 'EAN13',
-                            displayValue: true,
-                            fontSize: 8, // Un tamaño de fuente que se ajusta a la impresión de recibos
-                            width: 2.5, // Aumentamos el ancho de las barras para mejor legibilidad en la impresión térmica
-                            height: 20,
+                            displayValue: false, 
+                            fontSize: 8,
+                            width: 1, // <- CAMBIO: Valor reducido a 1 para barras más finas
+                            height: 50, // <- CAMBIO: Valor aumentado a 50 para mejor lectura
                             margin: 0,
-                            displayValue: false,
                         });
                     } catch (e) {
                         console.error('Error generando código de barras:', e);
@@ -93,7 +90,7 @@ const EtiquetasImpresion = () => {
                     .label-container {
                         display: flex;
                         flex-wrap: wrap;
-                        justify-content: flex-start;
+                        justify-content: center;
                         align-items: flex-start;
                         width: 72mm; 
                         margin: 0 auto; 
@@ -101,9 +98,9 @@ const EtiquetasImpresion = () => {
                     }
 
                     .label {
-                        width: 40mm;
-                        height: 40mm; 
-                        padding: 1mm;
+                        width: 37mm; // <- CAMBIO: Ancho ajustado a 37mm
+                        height: 37mm; // <- CAMBIO: Alto ajustado a 37mm
+                        padding: 2mm;
                         display: inline-block;
                         text-align: center;
                         page-break-before: auto;
@@ -113,12 +110,11 @@ const EtiquetasImpresion = () => {
                         vertical-align: top;
                         overflow: hidden;
                         margin: 0 auto;
-                        color: #000;
-                        -webkit-font-smoothing: none;
                     }
 
                     .label p {
                         margin: 0;
+                        font-size: 2mm;
                         line-height: 1.2;
                         white-space: nowrap;
                         overflow: hidden;
@@ -130,10 +126,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label .product-name {
                         font-weight: bold;
-                        font-size: 2mm;
-                    }
-                    .label .product-talle {
-                        font-size: 1.8mm;
+                        font-size: 2.5mm;
                     }
                     .label .barcode-wrapper {
                         margin-top: 2px;
@@ -141,7 +134,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label .price {
                         font-weight: bold;
-                        font-size: 2.5mm;
+                        font-size: 3mm;
                         margin-top: 2px;
                     }
                     @media print {
@@ -170,7 +163,6 @@ const EtiquetasImpresion = () => {
     );
 };
 
-// Se movieron los estilos en línea a un objeto para mejor manejo.
 const mobileStyles = {
     noLabelsContainer: {
         textAlign: 'center', 
@@ -202,6 +194,5 @@ const mobileStyles = {
         color: 'white'
     },
 };
-
 
 export default EtiquetasImpresion;
