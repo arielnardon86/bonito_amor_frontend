@@ -24,9 +24,9 @@ const EtiquetasImpresion = () => {
                             format: 'EAN13',
                             displayValue: false, 
                             fontSize: 8,
-                            width: 3, // <- CAMBIO: Aumentado para un grosor máximo
-                            height: 60, // <- CAMBIO: Mantenido para mejor lectura
-                            margin: 5,
+                            width: 3, 
+                            height: 60,
+                            margin: 0, // <- CAMBIO: Quitamos el margen de JsBarcode, lo manejaremos con CSS
                         });
                     } catch (e) {
                         console.error('Error generando código de barras:', e);
@@ -100,7 +100,7 @@ const EtiquetasImpresion = () => {
                     .label {
                         width: 37mm; 
                         height: 37mm; 
-                        padding: 2mm;
+                        padding: 1mm 2mm; /* <- CAMBIO: Reducimos padding vertical, mantenemos horizontal */
                         display: inline-block;
                         text-align: center;
                         page-break-before: auto;
@@ -108,14 +108,14 @@ const EtiquetasImpresion = () => {
                         page-break-inside: avoid;
                         box-sizing: border-box;
                         vertical-align: top;
-                        overflow: hidden;
+                        overflow: hidden; /* Aseguramos que nada se salga */
                         margin: 0 auto;
                     }
 
                     .label p {
                         margin: 0;
-                        font-size: 2mm;
-                        line-height: 1.2;
+                        font-size: 2mm; /* <- CAMBIO: Reducimos un poco la fuente del texto si es necesario */
+                        line-height: 1.1; /* <- CAMBIO: Ajustamos line-height para optimizar espacio */
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
@@ -126,17 +126,30 @@ const EtiquetasImpresion = () => {
                     }
                     .label .product-name {
                         font-weight: bold;
-                        font-size: 2.5mm;
+                        font-size: 2.2mm; /* <- CAMBIO: Ligeramente más pequeña para ganar espacio */
+                    }
+                    .label .product-talle {
+                        font-size: 2mm; /* <- CAMBIO: Ligeramente más pequeña para ganar espacio */
                     }
                     .label .barcode-wrapper {
                         margin-top: 2px;
                         margin-bottom: 2px;
+                        padding: 0 1mm; /* <- AÑADIDO: Añadimos padding horizontal para la zona quieta */
                     }
                     .label .price {
                         font-weight: bold;
                         font-size: 3mm;
                         margin-top: 2px;
                     }
+                    
+                    /* Aseguramos que el SVG se ajuste bien al contenedor */
+                    .label .barcode-wrapper svg {
+                        max-width: 100%;
+                        height: auto;
+                        display: block; /* Para eliminar cualquier espacio extra debajo del SVG */
+                        margin: 0 auto;
+                    }
+
                     @media print {
                         .no-print {
                             display: none !important;
