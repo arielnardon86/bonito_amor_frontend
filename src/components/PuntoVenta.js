@@ -7,7 +7,6 @@ import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
 
 const TalleOptions = [
-    { value: 'N/A', label: 'N/A' },
     { value: 'UNICO', label: 'UNICO' },
     { value: 'XS', label: 'XS' },
     { value: 'S', label: 'S' },
@@ -85,9 +84,8 @@ const PuntoVenta = () => {
     const [newCartAliasInput, setNewCartAliasInput] = useState('');
 
     const [descuentoPorcentaje, setDescuentoPorcentaje] = useState('');
-    const [descuentoMonto, setDescuentoMonto] = useState(''); 
+    const [descuentoMonto, setDescuentoMonto] = useState('');
 
-    // Estado para la paginación de la API
     const [pageInfo, setPageInfo] = useState({
         next: null,
         previous: null,
@@ -96,7 +94,6 @@ const PuntoVenta = () => {
         totalPages: 1,
     });
     
-    // Nueva función para obtener productos con paginación
     const fetchProductos = useCallback(async (page = 1, searchQuery = '') => {
         if (!token || !selectedStoreSlug) {
             setLoadingProducts(false);
@@ -153,7 +150,6 @@ const PuntoVenta = () => {
             setLoadingProducts(true);
             setError(null);
             try {
-                // Llama a la nueva función de paginación
                 await fetchProductos(1, '');
                 
                 const metodosPagoResponse = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
@@ -196,8 +192,17 @@ const PuntoVenta = () => {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
             });
-            setProductoSeleccionado(response.data);
-            showCustomAlert('Producto encontrado.', 'success');
+            
+            const productoEncontrado = response.data;
+            setProductoSeleccionado(productoEncontrado);
+            
+            // Lógica para añadir automáticamente el producto al carrito después de escanearlo
+            if (productoEncontrado) {
+                handleAddProductoEnVenta(productoEncontrado, 1);
+            }
+
+            showCustomAlert('Producto encontrado y añadido al carrito.', 'success');
+
         } catch (err) {
             console.error("Error al buscar producto:", err.response ? err.response.data : err.message);
             setProductoSeleccionado(null);
@@ -250,16 +255,15 @@ const PuntoVenta = () => {
         setShowConfirmModal(true);
     };
 
-    // MODIFICADO: Lógica para calcular el total con el nuevo descuento por monto
     const calculateTotalWithDiscount = useCallback(() => {
         if (!activeCart) return 0;
         let subtotal = activeCart.items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.product.precio)), 0);
         let finalTotal = subtotal;
 
-        if (descuentoMonto > 0) {
-            finalTotal = Math.max(0, subtotal - descuentoMonto);
-        } else if (descuentoPorcentaje > 0) {
-            const discountAmount = subtotal * (descuentoPorcentaje / 100);
+        if (parseFloat(descuentoMonto) > 0) {
+            finalTotal = Math.max(0, subtotal - parseFloat(descuentoMonto));
+        } else if (parseFloat(descuentoPorcentaje) > 0) {
+            const discountAmount = subtotal * (parseFloat(descuentoPorcentaje) / 100);
             finalTotal = subtotal - discountAmount;
         }
         return finalTotal;
@@ -281,9 +285,8 @@ const PuntoVenta = () => {
 
         const finalTotal = calculateTotalWithDiscount();
 
-        // MODIFICADO: Mensaje de confirmación para incluir el descuento por monto
-        const discountMessage = descuentoMonto > 0 ? `<br>(Descuento por monto aplicado: $${parseFloat(descuentoMonto).toFixed(2)})` :
-                                descuentoPorcentaje > 0 ? `<br>(Descuento por porcentaje aplicado: ${parseFloat(descuentoPorcentaje).toFixed(2)}%)` : '';
+        const discountMessage = parseFloat(descuentoMonto) > 0 ? `<br>(Descuento por monto aplicado: $${parseFloat(descuentoMonto).toFixed(2)})` :
+                                parseFloat(descuentoPorcentaje) > 0 ? `<br>(Descuento por porcentaje aplicado: ${parseFloat(descuentoPorcentaje).toFixed(2)}%)` : '';
 
         Swal.fire({
             title: '¿Confirmar venta?',
@@ -298,8 +301,8 @@ const PuntoVenta = () => {
                     const ventaData = {
                         tienda_slug: selectedStoreSlug,
                         metodo_pago: metodoPagoSeleccionado,
-                        descuento_porcentaje: descuentoPorcentaje,
-                        descuento_monto: descuentoMonto, // NUEVO: Incluimos el descuento por monto
+                        descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
+                        descuento_monto: parseFloat(descuentoMonto) || 0,
                         detalles: activeCart.items.map(item => ({
                             producto: item.product.id,
                             cantidad: item.quantity,
@@ -313,14 +316,13 @@ const PuntoVenta = () => {
                     
                     showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
                     
-                    // Construimos el objeto de venta para el recibo con una fecha válida
                     const ventaParaRecibo = {
                         id: response.data.id,
                         fecha_venta: new Date().toISOString(),
                         tienda_nombre: selectedStoreSlug,
                         metodo_pago: metodoPagoSeleccionado,
-                        descuento_porcentaje: descuentoPorcentaje,
-                        descuento_monto: descuentoMonto, // NUEVO: Pasamos el descuento por monto
+                        descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
+                        descuento_monto: parseFloat(descuentoMonto) || 0,
                         total: finalTotal,
                         detalles: activeCart.items.map(item => ({
                             producto_nombre: item.product.nombre,
@@ -331,8 +333,8 @@ const PuntoVenta = () => {
 
                     finalizeCart(activeCartId);
                     setMetodoPagoSeleccionado(metodosPago.length > 0 ? metodosPago[0].nombre : '');
-                    setDescuentoPorcentaje(0);
-                    setDescuentoMonto(0); // NUEVO: Reiniciamos el descuento por monto
+                    setDescuentoPorcentaje('');
+                    setDescuentoMonto('');
 
                     Swal.fire({
                         title: 'Venta procesada!',
@@ -383,7 +385,6 @@ const PuntoVenta = () => {
         }
     };
 
-    // Filtra productos localmente según la búsqueda
     const filteredProductosDisponibles = productos.filter(product => {
         const searchTermLower = busquedaProducto.toLowerCase();
         return (
@@ -393,12 +394,10 @@ const PuntoVenta = () => {
         );
     });
 
-    // Nueva lógica de paginación del lado del frontend
     const indexOfLastProduct = pageInfo.currentPage * 10; 
     const indexOfFirstProduct = indexOfLastProduct - 10;
     const currentProducts = filteredProductosDisponibles.slice(indexOfFirstProduct, indexOfLastProduct);
 
-    // handlers de paginación que se vinculan con el backend
     const nextPageHandler = () => {
         if (pageInfo.next) {
             fetchProductos(pageInfo.currentPage + 1, busquedaProducto);
@@ -589,7 +588,6 @@ const PuntoVenta = () => {
                             </select>
                         </div>
                         <div style={styles.discountContainer}>
-                            {/* NUEVO: Campo para descuento por monto */}
                             <label htmlFor="descuentoMonto" style={styles.discountLabel}>Aplicar Descuento (Monto):</label>
                             <input
                                 type="number"
@@ -597,13 +595,12 @@ const PuntoVenta = () => {
                                 value={descuentoMonto}
                                 onChange={(e) => {
                                     setDescuentoMonto(Math.max(0, parseFloat(e.target.value) || 0));
-                                    setDescuentoPorcentaje(0); // Reinicia el descuento por porcentaje
+                                    setDescuentoPorcentaje(''); 
                                 }}
                                 style={styles.discountInput}
                                 min="0"
                             />
                             <span style={{ margin: '0 10px', fontWeight: 'bold' }}>O</span>
-                            {/* CAMBIO: Lógica para reiniciar el descuento por monto cuando se modifica el porcentaje */}
                             <label htmlFor="descuentoPorcentaje" style={styles.discountLabel}>Aplicar Descuento (%):</label>
                             <input
                                 type="number"
@@ -611,7 +608,7 @@ const PuntoVenta = () => {
                                 value={descuentoPorcentaje}
                                 onChange={(e) => {
                                     setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)));
-                                    setDescuentoMonto(0); // Reinicia el descuento por monto
+                                    setDescuentoMonto('');
                                 }}
                                 style={styles.discountInput}
                                 min="0"
@@ -638,7 +635,6 @@ const PuntoVenta = () => {
                         onChange={(e) => setBusquedaProducto(e.target.value)}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
-                                // Llama a la función de búsqueda de API
                                 fetchProductos(1, busquedaProducto);
                             }
                         }}
