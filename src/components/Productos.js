@@ -1,3 +1,4 @@
+// Productos.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
@@ -20,7 +21,6 @@ const normalizeApiUrl = (url) => {
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const TalleOptions = [
-    { value: 'N/A', label: 'N/A' },
     { value: 'UNICO', label: 'UNICO' },
     { value: 'XS', label: 'XS' },
     { value: 'S', label: 'S' },
@@ -63,20 +63,18 @@ const Productos = () => {
         nombre: '',
         talle: 'UNICO',
         precio: '',
+        costo: '', // NUEVO CAMPO
         stock: '',
         codigo_barras: '',
     });
     
-    // Estados para la edición y eliminación
     const [editProduct, setEditProduct] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [productToDelete, setProductToDelete] = useState(null);
 
-    // Estado para la impresión de etiquetas
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
 
-    // Generador de código de barras EAN-13 para Argentina
     const generarCodigoDeBarrasEAN13 = () => {
         let code = '779' + Math.floor(100000000 + Math.random() * 900000000).toString();
         let sum = 0;
@@ -107,7 +105,7 @@ const Productos = () => {
             setProductos(response.data.results);
             setNextPage(response.data.next);
             setPrevPage(response.data.previous);
-            setTotalPages(Math.ceil(response.data.count / 10)); // Asumiendo 10 por página
+            setTotalPages(Math.ceil(response.data.count / 10));
             setLoadingProducts(false);
         } catch (err) {
             setError('Error al cargar productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
@@ -136,12 +134,12 @@ const Productos = () => {
             codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
             tienda_slug: selectedStoreSlug,
         };
-
+        
         try {
             await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productToCreate, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            setNewProduct({ nombre: '', talle: 'UNICO', precio: '', stock: '', codigo_barras: '' });
+            setNewProduct({ nombre: '', talle: 'UNICO', precio: '', costo: '', stock: '', codigo_barras: '' }); // Reset del formulario
             fetchProductos();
         } catch (err) {
             setError('Error al crear producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
@@ -149,7 +147,6 @@ const Productos = () => {
         }
     };
     
-    // Maneja la edición completa del producto
     const handleEditProduct = async () => {
         setLoadingProducts(true);
         setError(null);
@@ -170,7 +167,6 @@ const Productos = () => {
         }
     };
     
-    // Maneja la eliminación del producto
     const handleDeleteProduct = async (id) => {
         setLoadingProducts(true);
         setError(null);
@@ -269,6 +265,16 @@ const Productos = () => {
                             required
                         />
                     </div>
+                    {/* NUEVO CAMPO DE COSTO */}
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Costo (Opcional)</label>
+                        <input
+                            type="number"
+                            value={newProduct.costo}
+                            onChange={(e) => setNewProduct({ ...newProduct, costo: e.target.value })}
+                            style={styles.input}
+                        />
+                    </div>
                     <div style={styles.inputGroup}>
                         <label style={styles.label}>Stock</label>
                         <input
@@ -325,6 +331,7 @@ const Productos = () => {
                                         <th style={styles.th}>Nombre</th>
                                         <th style={styles.th}>Talle</th>
                                         <th style={styles.th}>Precio</th>
+                                        <th style={styles.th}>Costo</th>
                                         <th style={styles.th}>Stock</th>
                                         <th style={styles.th}>Acciones</th>
                                     </tr>
@@ -361,6 +368,7 @@ const Productos = () => {
                                             <td style={styles.td}>{producto.nombre}</td>
                                             <td style={styles.td}>{producto.talle}</td>
                                             <td style={styles.td}>${parseFloat(producto.precio).toFixed(2)}</td>
+                                            <td style={styles.td}>${parseFloat(producto.costo || 0).toFixed(2)}</td> {/* Muestra el costo */}
                                             <td style={styles.td}>{producto.stock}</td>
                                             <td style={styles.td}>
                                                 <button onClick={() => {
@@ -419,6 +427,16 @@ const Productos = () => {
                                 type="number"
                                 value={editProduct.precio}
                                 onChange={(e) => setEditProduct({ ...editProduct, precio: e.target.value })}
+                                style={styles.modalInput}
+                            />
+                        </div>
+                        {/* NUEVO CAMPO EN EL MODAL */}
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Costo:</label>
+                            <input
+                                type="number"
+                                value={editProduct.costo || ''}
+                                onChange={(e) => setEditProduct({ ...editProduct, costo: e.target.value })}
                                 style={styles.modalInput}
                             />
                         </div>
