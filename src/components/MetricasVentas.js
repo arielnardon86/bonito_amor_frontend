@@ -21,7 +21,7 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const MetricasVentas = () => {
     const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth();
     const [metrics, setMetrics] = useState(null);
-    const [inventoryMetrics, setInventoryMetrics] = useState(null); // Nuevo estado para las métricas de inventario
+    const [inventoryMetrics, setInventoryMetrics] = useState(null); 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -285,7 +285,7 @@ const MetricasVentas = () => {
                 </div>
                  <div style={styles.card}>
                     <h3 style={styles.cardTitle}>Monto Total del Stock</h3>
-                    <p style={styles.cardValue}>${parseFloat(inventoryMetrics?.total_monto_stock || 0).toFixed(2)}</p>
+                    <p style={styles.cardValue}>${parseFloat(inventoryMetrics?.total_monto_stock_precio || 0).toFixed(2)}</p>
                 </div>
             </div>
 
