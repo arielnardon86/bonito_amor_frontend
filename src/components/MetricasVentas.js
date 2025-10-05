@@ -21,7 +21,7 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const MetricasVentas = () => {
     const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth();
     const [metrics, setMetrics] = useState(null);
-    const [inventoryMetrics, setInventoryMetrics] = useState(null); 
+    const [inventoryMetrics, setInventoryMetrics] = useState(null); // Nuevo estado para las métricas de inventario
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
