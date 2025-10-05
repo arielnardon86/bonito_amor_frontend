@@ -21,6 +21,7 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const MetricasVentas = () => {
     const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth();
     const [metrics, setMetrics] = useState(null);
+    const [inventoryMetrics, setInventoryMetrics] = useState(null); // Nuevo estado para las métricas de inventario
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -77,6 +78,21 @@ const MetricasVentas = () => {
         }
     }, [token, selectedStoreSlug, filterYear, filterMonth, filterDay, filterSellerId, filterPaymentMethod]);
     
+    // Nueva función para obtener métricas de inventario
+    const fetchInventoryMetrics = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/inventario/metrics/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: {
+                    tienda_slug: selectedStoreSlug
+                }
+            });
+            setInventoryMetrics(response.data);
+        } catch (err) {
+            console.error('Error fetching inventory metrics:', err.response || err.message);
+        }
+    }, [token, selectedStoreSlug]);
 
     const fetchSellers = useCallback(async () => {
         if (!token || !selectedStoreSlug) return; 
@@ -107,6 +123,7 @@ const MetricasVentas = () => {
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
             fetchMetrics();
+            fetchInventoryMetrics(); // Llamar a la nueva función de métricas de inventario
             fetchSellers();
             fetchPaymentMethods();
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
@@ -115,7 +132,7 @@ const MetricasVentas = () => {
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false);
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchMetrics, fetchSellers, fetchPaymentMethods]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchMetrics, fetchSellers, fetchPaymentMethods, fetchInventoryMetrics]);
     
     const handleApplyFilters = () => {
         setFilterYear(pendingFilterYear);
@@ -238,7 +255,7 @@ const MetricasVentas = () => {
 
             <div style={styles.chartExplanation}>
                 <p>Aquí puedes visualizar las métricas clave de tu tienda. Utiliza los filtros para analizar datos por año, mes, día, vendedor o método de pago.</p>
-                <p>La **Rentabilidad Bruta** se calcula como el Total de Ventas menos el Total de Compras registradas en el período seleccionado. El **Margen de Rentabilidad** es la Rentabilidad Bruta como porcentaje del Total de Ventas.</p>
+                <p>La **Rentabilidad Bruta** se calcula como el Total de Ventas menos el **Costo de los Productos Vendidos**. El **Margen de Rentabilidad** es la Rentabilidad Bruta como porcentaje del Total de Ventas.</p>
             </div>
 
             <div style={styles.summaryCards}>
@@ -247,12 +264,8 @@ const MetricasVentas = () => {
                     <p style={styles.cardValue}>${parseFloat(metrics?.total_ventas_periodo || 0).toFixed(2)}</p>
                 </div>
                 <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Total Productos Vendidos</h3>
-                    <p style={styles.cardValue}>{metrics?.total_productos_vendidos_periodo || 0}</p>
-                </div>
-                <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Total Egresos</h3>
-                    <p style={styles.cardValue}>${parseFloat(metrics?.total_compras_periodo || 0).toFixed(2)}</p>
+                    <h3 style={styles.cardTitle}>Costo de productos vendidos</h3>
+                    <p style={styles.cardValue}>${parseFloat(metrics?.total_costo_periodo || 0).toFixed(2)}</p>
                 </div>
                 <div style={styles.card}>
                     <h3 style={styles.cardTitle}>Rentabilidad Bruta</h3>
@@ -261,6 +274,15 @@ const MetricasVentas = () => {
                 <div style={styles.card}>
                     <h3 style={styles.cardTitle}>Margen de Rentabilidad</h3>
                     <p style={styles.cardValue}>{parseFloat(metrics?.margen_rentabilidad_periodo || 0).toFixed(2)}%</p>
+                </div>
+                {/* Nuevas métricas de inventario */}
+                <div style={styles.card}>
+                    <h3 style={styles.cardTitle}>Stock Total (Cantidad)</h3>
+                    <p style={styles.cardValue}>{inventoryMetrics?.total_stock || 0}</p>
+                </div>
+                 <div style={styles.card}>
+                    <h3 style={styles.cardTitle}>Monto Total del Stock</h3>
+                    <p style={styles.cardValue}>${parseFloat(inventoryMetrics?.total_monto_stock || 0).toFixed(2)}</p>
                 </div>
             </div>
 
@@ -377,7 +399,7 @@ const styles = {
         margin: '20px auto',
         backgroundColor: '#f8f9fa',
         borderRadius: '8px',
-        boxShadow: '0 4px 12px (0,0,0,0.1)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         color: '#333',
     },
     loadingMessage: {
