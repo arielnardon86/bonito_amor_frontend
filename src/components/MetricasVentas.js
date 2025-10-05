@@ -1,4 +1,4 @@
-// BONITO_AMOR/frontend/src/components/MetricasVentas.js
+//BONITO_AMOR/frontend/src/components/MetricasVentas.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
@@ -32,14 +32,14 @@ const MetricasVentas = () => {
 
     // Filtros aplicados
     const [filterYear, setFilterYear] = useState(currentYear);
-    const [filterMonth, setFilterMonth] = useState(''); 
+    const [filterMonth, setFilterMonth] = useState(currentMonth); // <- CAMBIO: Inicializa con el mes actual
     const [filterDay, setFilterDay] = useState('');     
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
 
     // Filtros pendientes (para los inputs)
     const [pendingFilterYear, setPendingFilterYear] = useState(currentYear);
-    const [pendingFilterMonth, setPendingFilterMonth] = useState('');
+    const [pendingFilterMonth, setPendingFilterMonth] = useState(currentMonth); // <- CAMBIO: Inicializa con el mes actual
     const [pendingFilterDay, setPendingFilterDay] = useState('');
     const [pendingFilterSellerId, setPendingFilterSellerId] = useState('');
     const [pendingFilterPaymentMethod, setPendingFilterPaymentMethod] = useState('');
@@ -147,13 +147,13 @@ const MetricasVentas = () => {
         const currentYear = today.getFullYear().toString();
         
         setPendingFilterYear(currentYear);
-        setPendingFilterMonth('');
+        setPendingFilterMonth(currentMonth); // <- CAMBIO: Reinicia al mes actual
         setPendingFilterDay('');
         setPendingFilterSellerId('');
         setPendingFilterPaymentMethod('');
         
         setFilterYear(currentYear);
-        setFilterMonth('');
+        setFilterMonth(currentMonth); // <- CAMBIO: Reinicia al mes actual
         setFilterDay('');
         setFilterSellerId('');
         setFilterPaymentMethod('');
@@ -255,7 +255,7 @@ const MetricasVentas = () => {
 
             <div style={styles.chartExplanation}>
                 <p>Aquí puedes visualizar las métricas clave de tu tienda. Utiliza los filtros para analizar datos por año, mes, día, vendedor o método de pago.</p>
-                <p>La **Rentabilidad Bruta** se calcula como el Total de Ventas menos el Costo de los Productos Vendidos. El **Margen de Rentabilidad** es la Rentabilidad Bruta como porcentaje del Total de Ventas.</p>
+                <p>La **Rentabilidad Bruta** se calcula como el Total de Ventas menos el Costo de los Productos Vendidos y los egresos del período. El **Margen de Rentabilidad** es la Rentabilidad Bruta como porcentaje del Total de Ventas.</p>
             </div>
 
             <div style={styles.summaryCards}>
@@ -266,6 +266,10 @@ const MetricasVentas = () => {
                 <div style={styles.card}>
                     <h3 style={styles.cardTitle}>Costo de productos vendidos</h3>
                     <p style={styles.cardValue}>${parseFloat(metrics?.total_costo_vendido_periodo || 0).toFixed(2)}</p>
+                </div>
+                <div style={styles.card}>
+                    <h3 style={styles.cardTitle}>Total Egresos</h3>
+                    <p style={styles.cardValue}>${parseFloat(metrics?.total_compras_periodo || 0).toFixed(2)}</p>
                 </div>
                 <div style={styles.card}>
                     <h3 style={styles.cardTitle}>Rentabilidad Bruta</h3>
@@ -398,7 +402,7 @@ const styles = {
         margin: '20px auto',
         backgroundColor: '#f8f9fa',
         borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        boxShadow: '0 4px 12px (0,0,0,0.1)',
         color: '#333',
     },
     loadingMessage: {
