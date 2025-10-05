@@ -275,14 +275,13 @@ const MetricasVentas = () => {
                     <h3 style={styles.cardTitle}>Margen de Rentabilidad</h3>
                     <p style={styles.cardValue}>{parseFloat(metrics?.margen_rentabilidad_periodo || 0).toFixed(2)}%</p>
                 </div>
-                {/* Nuevas métricas de inventario */}
                 <div style={styles.card}>
                     <h3 style={styles.cardTitle}>Stock Total (Cantidad)</h3>
                     <p style={styles.cardValue}>{inventoryMetrics?.total_stock || 0}</p>
                 </div>
                  <div style={styles.card}>
                     <h3 style={styles.cardTitle}>Monto Total del Stock</h3>
-                    <p style={styles.cardValue}>${parseFloat(inventoryMetrics?.total_monto_stock || 0).toFixed(2)}</p>
+                    <p style={styles.cardValue}>${parseFloat(inventoryMetrics?.total_monto_stock_precio || 0).toFixed(2)}</p>
                 </div>
             </div>
 
