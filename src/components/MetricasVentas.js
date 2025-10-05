@@ -21,7 +21,7 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const MetricasVentas = () => {
     const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth();
     const [metrics, setMetrics] = useState(null);
-    const [inventoryMetrics, setInventoryMetrics] = useState(null); // Nuevo estado para las métricas de inventario
+    const [inventoryMetrics, setInventoryMetrics] = useState(null); 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -32,14 +32,14 @@ const MetricasVentas = () => {
 
     // Filtros aplicados
     const [filterYear, setFilterYear] = useState(currentYear);
-    const [filterMonth, setFilterMonth] = useState(currentMonth); 
+    const [filterMonth, setFilterMonth] = useState(''); 
     const [filterDay, setFilterDay] = useState('');     
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
 
     // Filtros pendientes (para los inputs)
     const [pendingFilterYear, setPendingFilterYear] = useState(currentYear);
-    const [pendingFilterMonth, setPendingFilterMonth] = useState(currentMonth);
+    const [pendingFilterMonth, setPendingFilterMonth] = useState('');
     const [pendingFilterDay, setPendingFilterDay] = useState('');
     const [pendingFilterSellerId, setPendingFilterSellerId] = useState('');
     const [pendingFilterPaymentMethod, setPendingFilterPaymentMethod] = useState('');
@@ -255,7 +255,7 @@ const MetricasVentas = () => {
 
             <div style={styles.chartExplanation}>
                 <p>Aquí puedes visualizar las métricas clave de tu tienda. Utiliza los filtros para analizar datos por año, mes, día, vendedor o método de pago.</p>
-                <p>La **Rentabilidad Bruta** se calcula como el Total de Ventas menos el **Costo de los Productos Vendidos**. El **Margen de Rentabilidad** es la Rentabilidad Bruta como porcentaje del Total de Ventas.</p>
+                <p>La **Rentabilidad Bruta** se calcula como el Total de Ventas menos el Costo de los Productos Vendidos. El **Margen de Rentabilidad** es la Rentabilidad Bruta como porcentaje del Total de Ventas.</p>
             </div>
 
             <div style={styles.summaryCards}>
