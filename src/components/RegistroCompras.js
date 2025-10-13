@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
+import Swal from 'sweetalert2'; // <-- NUEVO: Importamos SweetAlert2
 
 const API_BASE_URL = process.env.REACT_APP_API_URL; 
 
@@ -25,8 +26,11 @@ const RegistroCompras = () => {
     const [newPurchaseDate, setNewPurchaseDate] = useState('');
     const [newPurchaseTotal, setNewPurchaseTotal] = useState('');
     const [newPurchaseConcept, setNewPurchaseConcept] = useState('');
+    const [nextPageUrl, setNextPageUrl] = useState(null);
+    const [prevPageUrl, setPrevPageUrl] = useState(null);
+    const [currentPageNumber, setCurrentPageNumber] = useState(1);
 
-    const fetchCompras = useCallback(async () => {
+    const fetchCompras = useCallback(async (pageUrl = `${BASE_API_ENDPOINT}/api/compras/`) => {
         if (!token || !selectedStoreSlug) {
             setLoadingCompras(false);
             return;
@@ -34,13 +38,23 @@ const RegistroCompras = () => {
 
         setLoadingCompras(true);
         try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/compras/`, {
+            const response = await axios.get(pageUrl, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: {
-                    tienda_slug: selectedStoreSlug
+                    tienda_slug: selectedStoreSlug,
                 }
             });
             setCompras(response.data.results);
+            setNextPageUrl(response.data.next);
+            setPrevPageUrl(response.data.previous);
+            
+            if (pageUrl.includes('page=')) {
+                const urlParams = new URLSearchParams(new URL(pageUrl).search);
+                setCurrentPageNumber(parseInt(urlParams.get('page')) || 1);
+            } else {
+                setCurrentPageNumber(1);
+            }
+
         } catch (err) {
             setError('Error al cargar los egresos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             console.error('Error fetching purchases:', err.response || err.message);
@@ -53,48 +67,72 @@ const RegistroCompras = () => {
         e.preventDefault();
         
         if (!newPurchaseDate || !newPurchaseTotal || !selectedStoreSlug) {
-            alert("Por favor, completa la fecha y el total del egreso.");
+            Swal.fire('Error', 'Por favor, completa la fecha y el total del egreso.', 'error');
             return;
         }
 
-        const purchaseData = {
-            fecha_compra: newPurchaseDate,
-            total: newPurchaseTotal,
-            proveedor: newPurchaseConcept, // El backend espera 'proveedor' para el concepto
-            tienda_slug: selectedStoreSlug,
-        };
-
-        try {
-            await axios.post(`${BASE_API_ENDPOINT}/api/compras/`, purchaseData, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
+        Swal.fire({
+            title: '¿Confirmar registro?',
+            text: `Se registrará un egreso de $${newPurchaseTotal} en la fecha ${newPurchaseDate}.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, registrar',
+            cancelButtonText: 'Cancelar',
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const purchaseData = {
+                    fecha_compra: newPurchaseDate,
+                    total: newPurchaseTotal,
+                    proveedor: newPurchaseConcept,
+                    tienda_slug: selectedStoreSlug,
+                };
+        
+                try {
+                    await axios.post(`${BASE_API_ENDPOINT}/api/compras/`, purchaseData, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    Swal.fire('¡Registrado!', 'El egreso se ha registrado exitosamente.', 'success');
+                    fetchCompras();
+                    setNewPurchaseDate('');
+                    setNewPurchaseTotal('');
+                    setNewPurchaseConcept('');
+                } catch (err) {
+                    Swal.fire('Error', 'Error al registrar el egreso: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
+                    setError('Error al registrar el egreso: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+                    console.error("Error creating purchase:", err.response || err.message);
                 }
-            });
-            alert('Egreso registrado exitosamente.');
-            fetchCompras();
-            setNewPurchaseDate('');
-            setNewPurchaseTotal('');
-            setNewPurchaseConcept('');
-        } catch (err) {
-            setError('Error al registrar el egreso: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
-            console.error("Error creating purchase:", err.response || err.message);
-        }
+            }
+        });
     };
     
     const handleDeleteCompra = async (compraId) => {
-        if (window.confirm('¿Estás seguro de que quieres eliminar este egreso?')) {
-            try {
-                await axios.delete(`${BASE_API_ENDPOINT}/api/compras/${compraId}/`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                alert('Egreso eliminado exitosamente.');
-                fetchCompras();
-            } catch (err) {
-                setError('Error al eliminar el egreso: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
-                console.error("Error deleting purchase:", err.response || err.message);
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: 'Estás a punto de eliminar este egreso. Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    await axios.delete(`${BASE_API_ENDPOINT}/api/compras/${compraId}/`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    Swal.fire('¡Eliminado!', 'El egreso ha sido eliminado.', 'success');
+                    fetchCompras();
+                } catch (err) {
+                    Swal.fire('Error', 'Error al eliminar el egreso: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
+                    setError('Error al eliminar el egreso: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+                    console.error("Error deleting purchase:", err.response || err.message);
+                }
             }
-        }
+        });
     };
 
     useEffect(() => {
@@ -206,6 +244,15 @@ const RegistroCompras = () => {
                 ) : (
                     <p style={styles.noDataMessage}>No hay egresos registrados para esta tienda.</p>
                 )}
+                <div style={styles.paginationContainer}>
+                    <button onClick={() => fetchCompras(prevPageUrl)} disabled={!prevPageUrl} style={styles.paginationButton}>
+                        Anterior
+                    </button>
+                    <span style={styles.pageNumber}>Página {currentPageNumber}</span>
+                    <button onClick={() => fetchCompras(nextPageUrl)} disabled={!nextPageUrl} style={styles.paginationButton}>
+                        Siguiente
+                    </button>
+                </div>
             </div>
             <style>
                 {`
@@ -366,6 +413,29 @@ const styles = {
         color: '#777',
         fontStyle: 'italic',
     },
+    paginationContainer: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '20px',
+        gap: '10px',
+    },
+    paginationButton: {
+        padding: '8px 15px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        fontSize: '1em',
+        transition: 'background-color 0.3s ease',
+    },
+    pageNumber: {
+        fontSize: '1em',
+        fontWeight: 'bold',
+        color: '#555',
+        margin: '0 10px',
+    }
 };
 
 export default RegistroCompras;
