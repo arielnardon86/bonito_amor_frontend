@@ -21,7 +21,7 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const MetricasVentas = () => {
     const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth();
     const [metrics, setMetrics] = useState(null);
-    const [inventoryMetrics, setInventoryMetrics] = useState(null); // Nuevo estado para las métricas de inventario
+    const [inventoryMetrics, setInventoryMetrics] = useState(null); 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -32,14 +32,14 @@ const MetricasVentas = () => {
 
     // Filtros aplicados
     const [filterYear, setFilterYear] = useState(currentYear);
-    const [filterMonth, setFilterMonth] = useState(currentMonth); // <- CAMBIO: Inicializa con el mes actual
+    const [filterMonth, setFilterMonth] = useState(currentMonth); 
     const [filterDay, setFilterDay] = useState('');     
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
 
     // Filtros pendientes (para los inputs)
     const [pendingFilterYear, setPendingFilterYear] = useState(currentYear);
-    const [pendingFilterMonth, setPendingFilterMonth] = useState(currentMonth); // <- CAMBIO: Inicializa con el mes actual
+    const [pendingFilterMonth, setPendingFilterMonth] = useState(currentMonth); 
     const [pendingFilterDay, setPendingFilterDay] = useState('');
     const [pendingFilterSellerId, setPendingFilterSellerId] = useState('');
     const [pendingFilterPaymentMethod, setPendingFilterPaymentMethod] = useState('');
@@ -78,7 +78,6 @@ const MetricasVentas = () => {
         }
     }, [token, selectedStoreSlug, filterYear, filterMonth, filterDay, filterSellerId, filterPaymentMethod]);
     
-    // Nueva función para obtener métricas de inventario
     const fetchInventoryMetrics = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
         try {
@@ -123,7 +122,7 @@ const MetricasVentas = () => {
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
             fetchMetrics();
-            fetchInventoryMetrics(); // Llamar a la nueva función de métricas de inventario
+            fetchInventoryMetrics(); 
             fetchSellers();
             fetchPaymentMethods();
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
@@ -145,15 +144,16 @@ const MetricasVentas = () => {
     const handleClearFilters = () => {
         const today = new Date();
         const currentYear = today.getFullYear().toString();
+        const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0');
         
         setPendingFilterYear(currentYear);
-        setPendingFilterMonth(currentMonth); // <- CAMBIO: Reinicia al mes actual
+        setPendingFilterMonth(currentMonth); 
         setPendingFilterDay('');
         setPendingFilterSellerId('');
         setPendingFilterPaymentMethod('');
         
         setFilterYear(currentYear);
-        setFilterMonth(currentMonth); // <- CAMBIO: Reinicia al mes actual
+        setFilterMonth(currentMonth); 
         setFilterDay('');
         setFilterSellerId('');
         setFilterPaymentMethod('');
@@ -255,7 +255,7 @@ const MetricasVentas = () => {
 
             <div style={styles.chartExplanation}>
                 <p>Aquí puedes visualizar las métricas clave de tu tienda. Utiliza los filtros para analizar datos por año, mes, día, vendedor o método de pago.</p>
-                <p>La **Rentabilidad Bruta** se calcula como el Total de Ventas menos el Costo de los Productos Vendidos y los egresos del período. El **Margen de Rentabilidad** es la Rentabilidad Bruta como porcentaje del Total de Ventas.</p>
+                <p>La **Rentabilidad Bruta** se calcula como el Total de Ventas menos el Costo de los Productos Vendidos, los egresos del período **y los aranceles de ventas financieras**. El **Margen de Rentabilidad** es la Rentabilidad Bruta como porcentaje del Total de Ventas.</p>
             </div>
 
             <div style={styles.summaryCards}>
@@ -271,6 +271,12 @@ const MetricasVentas = () => {
                     <h3 style={styles.cardTitle}>Total Egresos</h3>
                     <p style={styles.cardValue}>${parseFloat(metrics?.total_compras_periodo || 0).toFixed(2)}</p>
                 </div>
+                
+                <div style={styles.card}>
+                    <h3 style={styles.cardTitle}>Arancel Total Ventas</h3>
+                    <p style={styles.cardValue}>${parseFloat(metrics?.total_arancel_ventas || 0).toFixed(2)}</p>
+                </div>
+
                 <div style={styles.card}>
                     <h3 style={styles.cardTitle}>Rentabilidad Bruta</h3>
                     <p style={styles.cardValue}>${parseFloat(metrics?.rentabilidad_bruta_periodo || 0).toFixed(2)}</p>
