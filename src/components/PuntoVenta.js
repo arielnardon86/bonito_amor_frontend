@@ -110,14 +110,33 @@ const PuntoVenta = () => {
         }, 3000);
     };
 
+    // FUNCIÓN 0: Fetch de Métodos de Pago
+    const fetchMetodosPago = useCallback(async () => {
+        if (!token) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const methods = response.data.results || response.data;
+            setMetodosPago(methods);
+            // Establecer el método por defecto si existe 'Efectivo', sino el primero
+            const efectivo = methods.find(m => m.nombre === 'Efectivo');
+            setMetodoPagoSeleccionado(efectivo ? efectivo.nombre : (methods.length > 0 ? methods[0].nombre : ''));
+            return methods; // Retornar para el useEffect principal
+
+        } catch (err) {
+            console.error("Error al cargar métodos de pago:", err.response ? err.response.data : err.message);
+            setError('Error al cargar métodos de pago.');
+            throw err;
+        }
+    }, [token]);
+
     // FUNCIÓN 1: Fetch de Productos
     const fetchProductos = useCallback(async (page = 1, searchQuery = '') => {
         if (!token || !selectedStoreSlug) {
-            setLoadingProducts(false);
             return;
         }
 
-        setLoadingProducts(true);
         setError(null);
 
         try {
@@ -131,19 +150,18 @@ const PuntoVenta = () => {
             });
 
             setProductos(response.data.results);
-            const productsPerPage = response.data.results.length > 0 ? response.data.results.length : 1;
-            setPageInfo({
+            setPageInfo(prev => ({
+                ...prev,
                 next: response.data.next,
                 previous: response.data.previous,
                 count: response.data.count,
                 currentPage: page,
                 totalPages: Math.ceil(response.data.count / 10), 
-            });
+            }));
         } catch (err) {
             console.error("Error al cargar productos:", err.response ? err.response.data : err.message);
             setError('Error al cargar productos.');
-        } finally {
-            setLoadingProducts(false);
+            throw err;
         }
     }, [token, selectedStoreSlug]);
 
@@ -159,9 +177,49 @@ const PuntoVenta = () => {
             setArancelesTienda(fetchedAranceles);
         } catch (err) {
             console.error("Error al cargar aranceles:", err.response ? err.response.data : err.message);
+            // No propagamos el error de aranceles, es menos crítico que la carga inicial
         }
     }, [token, selectedStoreSlug]);
 
+    // **********************************************
+    // EFECTO PRINCIPAL CORREGIDO (RESUELVE EL BLOQUEO)
+    // **********************************************
+    useEffect(() => {
+        const loadInitialData = async () => {
+            if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
+                setLoadingProducts(true);
+                setError(null);
+                try {
+                    // Cargar datos necesarios en orden o simultáneamente
+                    await Promise.all([
+                        fetchMetodosPago(),
+                        fetchAranceles()
+                    ]);
+                    // Cargar productos después de los demás (usamos el estado busquedaProducto)
+                    await fetchProductos(1, busquedaProducto); 
+                    
+                } catch (err) {
+                    // Si alguna promesa falla, el bloque catch se ejecuta y el loading termina
+                    console.error("Fallo al inicializar datos:", err);
+                    setError(prev => prev || 'Fallo crítico al iniciar el Punto de Venta.');
+                } finally {
+                    // ESTO SIEMPRE SE EJECUTA, asegurando que el estado de carga termine
+                    setLoadingProducts(false);
+                }
+            } else if (!authLoading && (!isAuthenticated || !user || !(user.is_superuser || user.is_staff))) {
+                setError("Acceso denegado. No tienes permisos para usar el punto de venta.");
+                setLoadingProducts(false);
+            } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
+                 // Si está autenticado pero falta la tienda, se permite salir del estado de carga
+                 setLoadingProducts(false);
+            }
+        };
+        loadInitialData();
+        
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, token, 
+        fetchMetodosPago, fetchAranceles, fetchProductos]); 
+    // **********************************************
+    // **********************************************
 
     // FUNCIÓN 3: Cálculo del Total con Descuento
     const calculateTotalWithDiscount = useCallback(() => {
@@ -232,16 +290,30 @@ const PuntoVenta = () => {
         }
 
         try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
-            });
+            // Primero, intentar buscar por código de barras
+            let response;
+            try {
+                 response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
+                });
+            } catch (error) {
+                // Si la búsqueda por código de barras falla (404), intentamos buscar por nombre/talle
+                if (error.response && error.response.status === 404) {
+                    // Esto recarga el listado de productos, y el usuario puede seleccionar
+                    // del listado inferior, que ya está filtrado por el input.
+                    await fetchProductos(1, busquedaProducto); 
+                    showCustomAlert('Búsqueda por nombre/talle aplicada al listado de abajo.', 'info');
+                    setProductoSeleccionado(null);
+                    return;
+                }
+                throw error; // Propagar otros errores (e.g., 500, 400)
+            }
             
             const productoEncontrado = response.data;
             setProductoSeleccionado(productoEncontrado);
             
             if (productoEncontrado) {
-                // Usamos la función callback
                 handleAddProductoEnVenta(productoEncontrado, 1);
             }
 
@@ -252,7 +324,7 @@ const PuntoVenta = () => {
             setProductoSeleccionado(null);
             showCustomAlert('Producto no encontrado o error en la búsqueda.', 'error');
         }
-    }, [busquedaProducto, selectedStoreSlug, token, showCustomAlert, handleAddProductoEnVenta]);
+    }, [busquedaProducto, selectedStoreSlug, token, showCustomAlert, handleAddProductoEnVenta, fetchProductos]);
 
     // FUNCIÓN 7: Decrementar Cantidad (usada en la tabla)
     const handleDecrementQuantity = useCallback((productId) => {
@@ -442,10 +514,6 @@ const PuntoVenta = () => {
             (product.talle && product.talle.toLowerCase().includes(searchTermLower))
         );
     });
-
-    const indexOfLastProduct = pageInfo.currentPage * 10; 
-    const indexOfFirstProduct = indexOfLastProduct - 10;
-    const currentProducts = filteredProductosDisponibles.slice(indexOfFirstProduct, indexOfLastProduct);
 
     const nextPageHandler = () => {
         if (pageInfo.next) {
