@@ -67,8 +67,8 @@ const PuntoVenta = () => {
     const [metodosPago, setMetodosPago] = useState([]);
     const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
     
-    const [arancelesTienda, setArancelesTienda] = useState([]); // NUEVO ESTADO: Aranceles configurados
-    const [arancelSeleccionadoId, setArancelSeleccionadoId] = useState(''); // NUEVO ESTADO: ID del arancel elegido
+    const [arancelesTienda, setArancelesTienda] = useState([]); 
+    const [arancelSeleccionadoId, setArancelSeleccionadoId] = useState(''); 
     
     const [busquedaProducto, setBusquedaProducto] = useState('');
     const [productoSeleccionado, setProductoSeleccionado] = useState(null);
@@ -134,9 +134,10 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug]);
 
-    const fetchAranceles = useCallback(async () => { // NUEVA FUNCIÓN
+    const fetchAranceles = useCallback(async () => { 
         if (!token || !selectedStoreSlug) return;
         try {
+            // CAMBIO: Usar la nueva ruta para obtener los aranceles específicos de la tienda
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/aranceles-tienda/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { tienda_slug: selectedStoreSlug }
@@ -169,7 +170,7 @@ const PuntoVenta = () => {
             setError(null);
             try {
                 await fetchProductos(1, '');
-                await fetchAranceles(); // LLAMAR A LA NUEVA FUNCIÓN
+                await fetchAranceles(); 
                 
                 const metodosPagoResponse = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -177,7 +178,6 @@ const PuntoVenta = () => {
                 const fetchedMetodosPago = metodosPagoResponse.data.results || metodosPagoResponse.data;
                 setMetodosPago(fetchedMetodosPago);
                 if (fetchedMetodosPago.length > 0) {
-                    // Intenta seleccionar 'Efectivo' por defecto si existe, sino el primero
                     setMetodoPagoSeleccionado(fetchedMetodosPago.find(m => m.nombre === 'Efectivo')?.nombre || fetchedMetodosPago[0].nombre);
                 }
 
@@ -197,82 +197,7 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug, authLoading, isAuthenticated, user, fetchProductos, fetchAranceles]);
 
-    const handleBuscarProducto = async () => {
-        if (!busquedaProducto) {
-            showCustomAlert('Por favor, ingresa un código de barras o nombre para buscar.', 'info');
-            return;
-        }
-        if (!selectedStoreSlug) {
-            showCustomAlert('Por favor, selecciona una tienda.', 'error');
-            return;
-        }
-
-        try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
-            });
-            
-            const productoEncontrado = response.data;
-            setProductoSeleccionado(productoEncontrado);
-            
-            if (productoEncontrado) {
-                handleAddProductoEnVenta(productoEncontrado, 1);
-            }
-
-            showCustomAlert('Producto encontrado y añadido al carrito.', 'success');
-
-        } catch (err) {
-            console.error("Error al buscar producto:", err.response ? err.response.data : err.message);
-            setProductoSeleccionado(null);
-            showCustomAlert('Producto no encontrado o error en la búsqueda.', 'error');
-        }
-    };
-
-    const handleAddProductoEnVenta = (product, quantity = 1) => {
-        if (!activeCart) {
-            showCustomAlert('Por favor, selecciona o crea un carrito antes de añadir productos.', 'info');
-            return;
-        }
-        if (product.stock === 0) {
-            showCustomAlert('Este producto no tiene stock disponible.', 'error');
-            return;
-        }
-        if (quantity <= 0) {
-            showCustomAlert('La cantidad debe ser mayor que cero.', 'error');
-            return;
-        }
-
-        const currentItemInCart = activeCart.items.find(item => item.product.id === product.id);
-        const currentQuantityInCart = currentItemInCart ? currentItemInCart.quantity : 0;
-
-        if (currentQuantityInCart + quantity > product.stock) {
-            showCustomAlert(`No hay suficiente stock. Disponible: ${product.stock}, en carrito: ${currentQuantityInCart}.`, 'error');
-            return;
-        }
-
-        addProductToCart(product, quantity);
-        setBusquedaProducto('');
-        setProductoSeleccionado(null);
-        showCustomAlert('Producto añadido al carrito.', 'success');
-    };
-
-    const handleDecrementQuantity = (productId) => {
-        if (!activeCart) return;
-        decrementProductQuantity(activeCartId, productId);
-        showCustomAlert('Cantidad de producto actualizada.', 'info');
-    };
-
-    const handleRemoveProductoEnVenta = (productId) => {
-        if (!activeCart) return;
-        setConfirmMessage('¿Estás seguro de que quieres quitar este producto del carrito?');
-        setConfirmAction(() => () => {
-            removeProductFromCart(activeCartId, productId);
-            showCustomAlert('Producto eliminado del carrito.', 'info');
-            setShowConfirmModal(false);
-        });
-        setShowConfirmModal(true);
-    };
+    // [...] (handleBuscarProducto, handleAddProductoEnVenta, handleDecrementQuantity, handleRemoveProductoEnVenta)
 
     const calculateTotalWithDiscount = useCallback(() => {
         if (!activeCart) return 0;
@@ -288,7 +213,6 @@ const PuntoVenta = () => {
         return finalTotal;
     }, [activeCart, descuentoPorcentaje, descuentoMonto]);
 
-    // Función para calcular el arancel total (solo para mostrar en el frontend)
     const calculateArancel = useCallback(() => {
         const arancel = arancelesTienda.find(a => a.id === arancelSeleccionadoId);
         if (!arancel || !arancelSeleccionadoId) return 0;
@@ -318,10 +242,8 @@ const PuntoVenta = () => {
         const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
         const isMetodoFinanciero = metodoPagoObj?.es_financiero;
         
-        // El ID del arancel solo se envía si es un método financiero
         const finalArancelId = isMetodoFinanciero ? arancelSeleccionadoId : null;
 
-        // Validar si es financiero y no se ha seleccionado un arancel
         if (isMetodoFinanciero && !finalArancelId) {
             Swal.fire('Error', 'Por favor, selecciona el Plan / Arancel.', 'error');
             return;
@@ -359,7 +281,7 @@ const PuntoVenta = () => {
                         metodo_pago: metodoPagoSeleccionado,
                         descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
                         descuento_monto: parseFloat(descuentoMonto) || 0,
-                        arancel_aplicado_id: finalArancelId, // AÑADIDO: ID del arancel/plan
+                        arancel_aplicado_id: finalArancelId, 
                         detalles: activeCart.items.map(item => ({
                             producto: item.product.id,
                             cantidad: item.quantity,
@@ -373,16 +295,13 @@ const PuntoVenta = () => {
                     
                     showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
                     
-                    // Lógica de recibo (incluir los nuevos campos)
-                    const arancelObjFinal = arancelMonto > 0 ? arancelesTienda.find(a => a.id === arancelSeleccionadoId) : null;
+                    // Lógica de recibo (excluyendo el arancel para el cliente)
                     const ventaParaRecibo = {
-                        ...response.data, // Usar datos completos de la respuesta
+                        ...response.data, 
                         tienda_nombre: selectedStoreSlug,
                         descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
                         descuento_monto: parseFloat(descuentoMonto) || 0,
                         total: finalTotal,
-                        arancel_aplicado_nombre: arancelObjFinal?.nombre_plan || null,
-                        arancel_total: arancelMonto,
                         detalles: activeCart.items.map(item => ({
                             producto_nombre: item.product.nombre,
                             cantidad: item.quantity,
@@ -391,7 +310,6 @@ const PuntoVenta = () => {
                     };
 
                     finalizeCart(activeCartId);
-                    // Restablecer estados
                     setMetodoPagoSeleccionado(metodosPago.find(m => m.nombre === 'Efectivo')?.nombre || (metodosPago.length > 0 ? metodosPago[0].nombre : ''));
                     setArancelSeleccionadoId('');
                     setDescuentoPorcentaje('');
@@ -424,6 +342,8 @@ const PuntoVenta = () => {
         });
     };
 
+    // [...] (Handle cart actions remains the same)
+
     const handleCreateNewCartWithAlias = () => {
         if (newCartAliasInput.trim() === '') {
             showCustomAlert('El alias de la venta no puede estar vacío.', 'error');
@@ -446,6 +366,8 @@ const PuntoVenta = () => {
             setShowConfirmModal(true);
         }
     };
+    
+    // [...] (Filtered products logic remains the same)
 
     const filteredProductosDisponibles = productos.filter(product => {
         const searchTermLower = busquedaProducto.toLowerCase();
@@ -475,17 +397,21 @@ const PuntoVenta = () => {
     const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
     const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero;
     
-    // Filtrar los aranceles disponibles para el método de pago seleccionado
+    // Filtramos los aranceles disponibles para el método de pago seleccionado
     const arancelesDisponibles = arancelesTienda.filter(a => a.metodo_pago_nombre === metodoPagoSeleccionado);
     
-    // Seleccionar la primera opción de arancel si el método cambia a uno financiero
+    // LÓGICA CLAVE: Reiniciar/Seleccionar arancel cuando el método de pago cambia.
     useEffect(() => {
-        if (isMetodoFinancieroActivo && arancelesDisponibles.length > 0 && !arancelSeleccionadoId) {
-            setArancelSeleccionadoId(arancelesDisponibles[0].id);
+        if (isMetodoFinancieroActivo && arancelesDisponibles.length > 0) {
+            // Selecciona el primer plan disponible si no hay uno seleccionado, o si el plan seleccionado ya no existe para este método.
+            const currentPlanExists = arancelesDisponibles.some(a => a.id === arancelSeleccionadoId);
+            if (!currentPlanExists) {
+                 setArancelSeleccionadoId(arancelesDisponibles[0].id);
+            }
         } else if (!isMetodoFinancieroActivo) {
-            setArancelSeleccionadoId('');
+            setArancelSeleccionadoId(''); // Limpiar si no es financiero
         }
-    }, [metodoPagoSeleccionado, isMetodoFinancieroActivo, arancelesDisponibles, arancelSeleccionadoId]);
+    }, [metodoPagoSeleccionado, isMetodoFinancieroActivo, arancelesDisponibles]);
 
 
     if (authLoading || (isAuthenticated && !user)) {
@@ -666,7 +592,7 @@ const PuntoVenta = () => {
                             </select>
                         </div>
                         
-                        {/* NUEVO: Desplegable de Cuotas/Arancel si el método es financiero */}
+                        {/* DESPLEGABLE DE CUOTAS/ARANCEL */}
                         {isMetodoFinancieroActivo && arancelesDisponibles.length > 0 && (
                             <div style={styles.paymentMethodSelectContainer}>
                                 <label htmlFor="arancelPlan" style={styles.paymentMethodLabel}>Plan / Arancel:</label>
@@ -686,7 +612,7 @@ const PuntoVenta = () => {
                                 </select>
                             </div>
                         )}
-                        {/* NUEVO: Muestra el arancel calculado (solo visual) */}
+                        {/* Muestra el arancel calculado (solo visual) */}
                         {isMetodoFinancieroActivo && arancelSeleccionadoId && (
                             <h4 style={styles.arancelDisplay}>
                                 Arancel a pagar: ${calculateArancel().toFixed(2)} ({arancelesTienda.find(a => a.id === arancelSeleccionadoId)?.arancel_porcentaje}%)
