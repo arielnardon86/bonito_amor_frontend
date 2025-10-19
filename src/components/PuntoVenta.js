@@ -98,6 +98,19 @@ const PuntoVenta = () => {
         totalPages: 1,
     });
     
+    // Función de alerta (no necesita useCallback)
+    const showCustomAlert = (message, type = 'success') => {
+        setAlertMessage(message);
+        setAlertType(type);
+        setShowAlertMessage(true);
+        setTimeout(() => {
+            setShowAlertMessage(false);
+            setAlertMessage('');
+            setAlertType('success');
+        }, 3000);
+    };
+
+    // FUNCIÓN 1: Fetch de Productos
     const fetchProductos = useCallback(async (page = 1, searchQuery = '') => {
         if (!token || !selectedStoreSlug) {
             setLoadingProducts(false);
@@ -134,10 +147,10 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug]);
 
+    // FUNCIÓN 2: Fetch de Aranceles
     const fetchAranceles = useCallback(async () => { 
         if (!token || !selectedStoreSlug) return;
         try {
-            // CAMBIO: Usar la nueva ruta para obtener los aranceles específicos de la tienda
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/aranceles-tienda/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { tienda_slug: selectedStoreSlug }
@@ -149,56 +162,8 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug]);
 
-    const showCustomAlert = (message, type = 'success') => {
-        setAlertMessage(message);
-        setAlertType(type);
-        setShowAlertMessage(true);
-        setTimeout(() => {
-            setShowAlertMessage(false);
-            setAlertMessage('');
-            setAlertType('success');
-        }, 3000);
-    };
 
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!token || !selectedStoreSlug) {
-                setLoadingProducts(false);
-                return;
-            }
-            setLoadingProducts(true);
-            setError(null);
-            try {
-                await fetchProductos(1, '');
-                await fetchAranceles(); 
-                
-                const metodosPagoResponse = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                });
-                const fetchedMetodosPago = metodosPagoResponse.data.results || metodosPagoResponse.data;
-                setMetodosPago(fetchedMetodosPago);
-                if (fetchedMetodosPago.length > 0) {
-                    setMetodoPagoSeleccionado(fetchedMetodosPago.find(m => m.nombre === 'Efectivo')?.nombre || fetchedMetodosPago[0].nombre);
-                }
-
-            } catch (err) {
-                console.error("Error al cargar datos:", err.response ? err.response.data : err.message);
-                setError('Error al cargar productos o métodos de pago.');
-            } finally {
-                setLoadingProducts(false);
-            }
-        };
-
-        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
-            fetchData();
-        } else if (!authLoading && (!isAuthenticated || !user || (!(user.is_superuser || user.is_staff)))) {
-            setLoadingProducts(false);
-            setError("Por favor, inicia sesión y selecciona una tienda para gestionar el punto de venta.");
-        }
-    }, [token, selectedStoreSlug, authLoading, isAuthenticated, user, fetchProductos, fetchAranceles]);
-
-    // [...] (handleBuscarProducto, handleAddProductoEnVenta, handleDecrementQuantity, handleRemoveProductoEnVenta)
-
+    // FUNCIÓN 3: Cálculo del Total con Descuento
     const calculateTotalWithDiscount = useCallback(() => {
         if (!activeCart) return 0;
         let subtotal = activeCart.items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.product.precio)), 0);
@@ -213,6 +178,7 @@ const PuntoVenta = () => {
         return finalTotal;
     }, [activeCart, descuentoPorcentaje, descuentoMonto]);
 
+    // FUNCIÓN 4: Cálculo del Arancel (Solo para visualización)
     const calculateArancel = useCallback(() => {
         const arancel = arancelesTienda.find(a => a.id === arancelSeleccionadoId);
         if (!arancel || !arancelSeleccionadoId) return 0;
@@ -224,8 +190,112 @@ const PuntoVenta = () => {
         return arancelTotal;
     }, [arancelSeleccionadoId, arancelesTienda, calculateTotalWithDiscount]);
 
+    // FUNCIÓN 5: Lógica para Añadir Producto
+    const handleAddProductoEnVenta = useCallback((product, quantity = 1) => {
+        if (!activeCart) {
+            showCustomAlert('Por favor, selecciona o crea un carrito antes de añadir productos.', 'info');
+            return;
+        }
+        if (product.stock === 0) {
+            showCustomAlert('Este producto no tiene stock disponible.', 'error');
+            return;
+        }
+        if (quantity <= 0) {
+            showCustomAlert('La cantidad debe ser mayor que cero.', 'error');
+            return;
+        }
+
+        const currentItemInCart = activeCart.items.find(item => item.product.id === product.id);
+        const currentQuantityInCart = currentItemInCart ? currentItemInCart.quantity : 0;
+
+        if (currentQuantityInCart + quantity > product.stock) {
+            showCustomAlert(`No hay suficiente stock. Disponible: ${product.stock}, en carrito: ${currentQuantityInCart}.`, 'error');
+            return;
+        }
+
+        addProductToCart(product, quantity);
+        setBusquedaProducto('');
+        setProductoSeleccionado(null);
+        showCustomAlert('Producto añadido al carrito.', 'success');
+    }, [activeCart, addProductToCart, showCustomAlert]);
+
+
+    // FUNCIÓN 6: Búsqueda de Producto por Código de Barras
+    const handleBuscarProducto = useCallback(async () => {
+        if (!busquedaProducto) {
+            showCustomAlert('Por favor, ingresa un código de barras o nombre para buscar.', 'info');
+            return;
+        }
+        if (!selectedStoreSlug) {
+            showCustomAlert('Por favor, selecciona una tienda.', 'error');
+            return;
+        }
+
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
+            });
+            
+            const productoEncontrado = response.data;
+            setProductoSeleccionado(productoEncontrado);
+            
+            if (productoEncontrado) {
+                // Usamos la función callback
+                handleAddProductoEnVenta(productoEncontrado, 1);
+            }
+
+            showCustomAlert('Producto encontrado y añadido al carrito.', 'success');
+
+        } catch (err) {
+            console.error("Error al buscar producto:", err.response ? err.response.data : err.message);
+            setProductoSeleccionado(null);
+            showCustomAlert('Producto no encontrado o error en la búsqueda.', 'error');
+        }
+    }, [busquedaProducto, selectedStoreSlug, token, showCustomAlert, handleAddProductoEnVenta]);
+
+    // FUNCIÓN 7: Decrementar Cantidad (usada en la tabla)
+    const handleDecrementQuantity = useCallback((productId) => {
+        if (!activeCart) return;
+        decrementProductQuantity(activeCartId, productId);
+        showCustomAlert('Cantidad de producto actualizada.', 'info');
+    }, [activeCart, activeCartId, decrementProductQuantity, showCustomAlert]);
+
+    // FUNCIÓN 8: Eliminar Producto (usada en la tabla)
+    const handleRemoveProductoEnVenta = useCallback((productId) => {
+        if (!activeCart) return;
+        setConfirmMessage('¿Estás seguro de que quieres quitar este producto del carrito?');
+        setConfirmAction(() => () => {
+            removeProductFromCart(activeCartId, productId);
+            showCustomAlert('Producto eliminado del carrito.', 'info');
+            setShowConfirmModal(false);
+        });
+        setShowConfirmModal(true);
+    }, [activeCart, activeCartId, removeProductFromCart, showCustomAlert]);
+
+    // Lógica para determinar si el método seleccionado es financiero
+    const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
+    const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero;
+    
+    // Filtrar los aranceles disponibles para el método de pago seleccionado
+    const arancelesDisponibles = arancelesTienda.filter(a => a.metodo_pago_nombre === metodoPagoSeleccionado);
+    
+    // EFECTO CLAVE para la lógica del desplegable de aranceles
+    useEffect(() => {
+        if (isMetodoFinancieroActivo && arancelesDisponibles.length > 0) {
+            // Si hay planes disponibles y el ID seleccionado no existe (o está vacío), selecciona el primero.
+            const currentPlanExists = arancelesDisponibles.some(a => a.id === arancelSeleccionadoId);
+            if (!arancelSeleccionadoId || !currentPlanExists) {
+                 setArancelSeleccionadoId(arancelesDisponibles[0].id);
+            }
+        } else if (!isMetodoFinancieroActivo) {
+            setArancelSeleccionadoId(''); // Limpiar si no es financiero
+        }
+    }, [metodoPagoSeleccionado, isMetodoFinancieroActivo, arancelesDisponibles]);
+
 
     const handleProcesarVenta = async () => {
+        // ... (resto de la lógica de procesamiento de venta, se mantiene igual)
         if (!activeCart || activeCart.items.length === 0) {
             showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
             return;
@@ -295,7 +365,6 @@ const PuntoVenta = () => {
                     
                     showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
                     
-                    // Lógica de recibo (excluyendo el arancel para el cliente)
                     const ventaParaRecibo = {
                         ...response.data, 
                         tienda_nombre: selectedStoreSlug,
@@ -342,8 +411,6 @@ const PuntoVenta = () => {
         });
     };
 
-    // [...] (Handle cart actions remains the same)
-
     const handleCreateNewCartWithAlias = () => {
         if (newCartAliasInput.trim() === '') {
             showCustomAlert('El alias de la venta no puede estar vacío.', 'error');
@@ -366,8 +433,6 @@ const PuntoVenta = () => {
             setShowConfirmModal(true);
         }
     };
-    
-    // [...] (Filtered products logic remains the same)
 
     const filteredProductosDisponibles = productos.filter(product => {
         const searchTermLower = busquedaProducto.toLowerCase();
@@ -393,26 +458,6 @@ const PuntoVenta = () => {
             fetchProductos(pageInfo.currentPage - 1, busquedaProducto);
         }
     };
-
-    const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
-    const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero;
-    
-    // Filtramos los aranceles disponibles para el método de pago seleccionado
-    const arancelesDisponibles = arancelesTienda.filter(a => a.metodo_pago_nombre === metodoPagoSeleccionado);
-    
-    // LÓGICA CLAVE: Reiniciar/Seleccionar arancel cuando el método de pago cambia.
-    useEffect(() => {
-        if (isMetodoFinancieroActivo && arancelesDisponibles.length > 0) {
-            // Selecciona el primer plan disponible si no hay uno seleccionado, o si el plan seleccionado ya no existe para este método.
-            const currentPlanExists = arancelesDisponibles.some(a => a.id === arancelSeleccionadoId);
-            if (!currentPlanExists) {
-                 setArancelSeleccionadoId(arancelesDisponibles[0].id);
-            }
-        } else if (!isMetodoFinancieroActivo) {
-            setArancelSeleccionadoId(''); // Limpiar si no es financiero
-        }
-    }, [metodoPagoSeleccionado, isMetodoFinancieroActivo, arancelesDisponibles]);
-
 
     if (authLoading || (isAuthenticated && !user)) {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
