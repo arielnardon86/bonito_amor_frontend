@@ -367,7 +367,7 @@ const PuntoVenta = () => {
 
 
     const handleProcesarVenta = async () => {
-        // ... (resto de la lógica de procesamiento de venta, se mantiene igual)
+        
         if (!activeCart || activeCart.items.length === 0) {
             showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
             return;
@@ -385,6 +385,10 @@ const PuntoVenta = () => {
         const isMetodoFinanciero = metodoPagoObj?.es_financiero;
         
         const finalArancelId = isMetodoFinanciero ? arancelSeleccionadoId : null;
+        
+        // --- AÑADIDO: Obtener información completa del arancel del estado local ---
+        const arancelInfo = arancelesTienda.find(a => a.id === finalArancelId);
+        // -----------------------------------------------------------------------
 
         if (isMetodoFinanciero && !finalArancelId) {
             Swal.fire('Error', 'Por favor, selecciona el Plan / Arancel.', 'error');
@@ -397,7 +401,7 @@ const PuntoVenta = () => {
         let htmlMessage = `Confirmas la venta por un total de <strong>$${finalTotal.toFixed(2)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?`;
         
         if (arancelMonto > 0) {
-            const arancelInfo = arancelesTienda.find(a => a.id === arancelSeleccionadoId);
+            // Ya tenemos arancelInfo aquí.
             htmlMessage += `<br><br><strong>Plan/Arancel:</strong> ${arancelInfo.nombre_plan} (${parseFloat(arancelInfo.arancel_porcentaje).toFixed(2)}%)`;
             htmlMessage += `<br><strong>Monto del Arancel (Egreso):</strong> $${arancelMonto.toFixed(2)}`;
             htmlMessage += `<br>La Rentabilidad Bruta será impactada por este monto.`;
@@ -443,6 +447,14 @@ const PuntoVenta = () => {
                         descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
                         descuento_monto: parseFloat(descuentoMonto) || 0,
                         total: finalTotal,
+                        
+                        // === FIX PARA FECHA Y ARANCEL ===
+                        fecha_venta: response.data.fecha_venta, 
+                        metodo_pago: metodoPagoSeleccionado, // Asegurar que el método de pago está presente
+                        arancel_aplicado_nombre: arancelInfo?.nombre_plan || null,
+                        arancel_aplicado_porcentaje: arancelInfo?.arancel_porcentaje || null,
+                        // ===============================
+
                         detalles: activeCart.items.map(item => ({
                             producto_nombre: item.product.nombre,
                             cantidad: item.quantity,
