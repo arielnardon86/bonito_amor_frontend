@@ -448,15 +448,14 @@ const PuntoVenta = () => {
                         tienda_nombre: selectedStoreSlug,
                         descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
                         descuento_monto: parseFloat(descuentoMonto) || 0,
-                        total: finalTotal,
-                        
-                        // *** FIX ROBUSTO PARA FECHA (Issue 2) ***
-                        // Se utiliza 'fecha_venta' y se usa 'fecha' como fallback, asegurando la fecha.
-                        fecha_venta: response.data.fecha_venta || response.data.fecha, 
+                        total: finalTotal, // Usar el total calculado en el frontend que incluye el descuento
+
+                        // *** FIX ROBUSTO DE FECHA (Issue 2) ***
+                        // Usamos la fecha del backend, que es una cadena válida.
+                        fecha_venta: response.data.fecha_venta, 
                         // ****************************************
                         
                         // *** FIX PARA BLANK SCREEN (Issue 1) ***
-                        // Asegura que el nombre de usuario esté disponible para el recibo.
                         usuario_nombre: user?.first_name || user?.username || 'Usuario Desconocido',
                         // ***************************************
                         
