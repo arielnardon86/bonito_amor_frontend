@@ -442,18 +442,27 @@ const PuntoVenta = () => {
                     showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
                     
                     const ventaParaRecibo = {
+                        // Spread de todos los demás campos (id, totales del backend, etc.)
                         ...response.data, 
+                        
                         tienda_nombre: selectedStoreSlug,
                         descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
                         descuento_monto: parseFloat(descuentoMonto) || 0,
                         total: finalTotal,
                         
-                        // === FIX PARA FECHA Y ARANCEL ===
-                        fecha_venta: response.data.fecha_venta, 
-                        metodo_pago: metodoPagoSeleccionado, // Asegurar que el método de pago está presente
+                        // *** FIX ROBUSTO PARA FECHA (Issue 2) ***
+                        // Se utiliza 'fecha_venta' y se usa 'fecha' como fallback, asegurando la fecha.
+                        fecha_venta: response.data.fecha_venta || response.data.fecha, 
+                        // ****************************************
+                        
+                        // *** FIX PARA BLANK SCREEN (Issue 1) ***
+                        // Asegura que el nombre de usuario esté disponible para el recibo.
+                        usuario_nombre: user?.first_name || user?.username || 'Usuario Desconocido',
+                        // ***************************************
+                        
+                        metodo_pago: metodoPagoSeleccionado, 
                         arancel_aplicado_nombre: arancelInfo?.nombre_plan || null,
                         arancel_aplicado_porcentaje: arancelInfo?.arancel_porcentaje || null,
-                        // ===============================
 
                         detalles: activeCart.items.map(item => ({
                             producto_nombre: item.product.nombre,
