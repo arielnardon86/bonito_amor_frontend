@@ -344,8 +344,8 @@ const VentasPage = () => {
                                                         <tr>
                                                             <th style={styles.detailTh}>Producto</th>
                                                             <th style={styles.th}>Cantidad</th>
-                                                            <th style={styles.th}>P. Unitario (con desc.)</th>
-                                                            <th style={styles.th}>Subtotal (con desc.)</th>
+                                                            <th style={styles.th}>P. Unitario (Ajustado)</th>
+                                                            <th style={styles.th}>Subtotal (Ajustado)</th>
                                                             <th style={styles.th}>Anulado</th>
                                                             <th style={styles.th}>Acciones Detalle</th>
                                                         </tr>
@@ -354,17 +354,29 @@ const VentasPage = () => {
                                                         {venta.detalles.length > 0 ? (
                                                             venta.detalles.map(detalle => {
                                                                 const precioUnitarioOriginal = parseFloat(detalle.precio_unitario || 0);
-                                                                const descuentoAplicado = parseFloat(venta.descuento_porcentaje || 0);
+                                                                
+                                                                let adjustmentFactor = 1.0;
 
-                                                                const precioUnitarioConDescuento = precioUnitarioOriginal * (1 - descuentoAplicado / 100);
-                                                                const subtotalConDescuento = detalle.cantidad * precioUnitarioConDescuento;
+                                                                // Aplica factor de Recargo (suma) o Descuento (resta) si es porcentual
+                                                                if (parseFloat(venta.descuento_porcentaje || 0) > 0) {
+                                                                    adjustmentFactor = 1 - (parseFloat(venta.descuento_porcentaje) / 100);
+                                                                } else if (parseFloat(venta.recargo_porcentaje || 0) > 0) {
+                                                                    adjustmentFactor = 1 + (parseFloat(venta.recargo_porcentaje) / 100);
+                                                                }
+
+                                                                // Si el ajuste es por monto, no se altera el precio unitario individual
+                                                                const isAmountAdjustment = parseFloat(venta.descuento_monto || 0) > 0 || parseFloat(venta.recargo_monto || 0) > 0;
+                                                                
+                                                                const precioUnitarioAjustado = isAmountAdjustment ? precioUnitarioOriginal : precioUnitarioOriginal * adjustmentFactor;
+                                                                const subtotalAjustado = detalle.cantidad * precioUnitarioAjustado;
+
 
                                                                 return (
                                                                     <tr key={detalle.id}>
                                                                         <td style={styles.detailTd}>{detalle.producto_nombre}</td>
                                                                         <td style={styles.detailTd}>{detalle.cantidad}</td>
-                                                                        <td style={styles.detailTd}>${precioUnitarioConDescuento.toFixed(2)}</td>
-                                                                        <td style={styles.detailTd}>${subtotalConDescuento.toFixed(2)}</td>
+                                                                        <td style={styles.detailTd}>${precioUnitarioAjustado.toFixed(2)}</td>
+                                                                        <td style={styles.detailTd}>${subtotalAjustado.toFixed(2)}</td>
                                                                         <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
                                                                         <td style={styles.detailTd}>
                                                                             {!venta.anulada && !detalle.anulado_individualmente && (
@@ -387,10 +399,15 @@ const VentasPage = () => {
                                                     </tbody>
                                                 </table>
                                                 </div>
-                                                {/* MODIFICADO: Muestra el tipo de descuento aplicado */}
-                                                {(venta.descuento_porcentaje > 0 || venta.descuento_monto > 0) && (
+                                                
+                                                {/* MODIFICADO: Muestra el tipo de ajuste aplicado (descuento o recargo) */}
+                                                {(venta.descuento_porcentaje > 0 || venta.descuento_monto > 0 || venta.recargo_porcentaje > 0 || venta.recargo_monto > 0) && (
                                                     <p style={styles.discountDisplay}>
-                                                        {venta.descuento_monto > 0 ? 
+                                                        {venta.recargo_monto > 0 ? 
+                                                            `Recargo aplicado a la venta: $${parseFloat(venta.recargo_monto).toFixed(2)}` :
+                                                        venta.recargo_porcentaje > 0 ?
+                                                            `Recargo aplicado a la venta: ${parseFloat(venta.recargo_porcentaje).toFixed(2)}%` :
+                                                        venta.descuento_monto > 0 ? 
                                                             `Descuento aplicado a la venta: $${parseFloat(venta.descuento_monto).toFixed(2)}` :
                                                             `Descuento aplicado a la venta: ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%`
                                                         }

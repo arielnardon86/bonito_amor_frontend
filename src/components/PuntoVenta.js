@@ -1,3 +1,4 @@
+// components/PuntoVenta.js - CÓDIGO COMPLETO Y CORREGIDO
 // BONITO_AMOR/frontend/src/components/PuntoVenta.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -89,6 +90,11 @@ const PuntoVenta = () => {
 
     const [descuentoPorcentaje, setDescuentoPorcentaje] = useState('');
     const [descuentoMonto, setDescuentoMonto] = useState('');
+
+    // --- NUEVOS ESTADOS PARA RECARGO ---
+    const [recargoPorcentaje, setRecargoPorcentaje] = useState('');
+    const [recargoMonto, setRecargoMonto] = useState('');
+    // ------------------------------------
 
     const [pageInfo, setPageInfo] = useState({
         next: null,
@@ -221,32 +227,40 @@ const PuntoVenta = () => {
     // **********************************************
     // **********************************************
 
-    // FUNCIÓN 3: Cálculo del Total con Descuento
-    const calculateTotalWithDiscount = useCallback(() => {
+    // FUNCIÓN 3: Cálculo del Total con Ajuste (Descuento o Recargo)
+    const calculateFinalTotal = useCallback(() => {
         if (!activeCart) return 0;
         let subtotal = activeCart.items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.product.precio)), 0);
         let finalTotal = subtotal;
 
-        if (parseFloat(descuentoMonto) > 0) {
+        // ** LÓGICA DE CÁLCULO ACTUALIZADA PARA RECARGO **
+        if (parseFloat(recargoMonto) > 0) { // Prioridad 1: Recargo por Monto
+            finalTotal = subtotal + parseFloat(recargoMonto);
+        } else if (parseFloat(recargoPorcentaje) > 0) { // Prioridad 2: Recargo por Porcentaje
+            const markupAmount = subtotal * (parseFloat(recargoPorcentaje) / 100);
+            finalTotal = subtotal + markupAmount;
+        } else if (parseFloat(descuentoMonto) > 0) { // Prioridad 3: Descuento por Monto
             finalTotal = Math.max(0, subtotal - parseFloat(descuentoMonto));
-        } else if (parseFloat(descuentoPorcentaje) > 0) {
+        } else if (parseFloat(descuentoPorcentaje) > 0) { // Prioridad 4: Descuento por Porcentaje
             const discountAmount = subtotal * (parseFloat(descuentoPorcentaje) / 100);
             finalTotal = subtotal - discountAmount;
         }
+        // ************************************************
+        
         return finalTotal;
-    }, [activeCart, descuentoPorcentaje, descuentoMonto]);
+    }, [activeCart, descuentoPorcentaje, descuentoMonto, recargoMonto, recargoPorcentaje]);
 
     // FUNCIÓN 4: Cálculo del Arancel (Solo para visualización)
     const calculateArancel = useCallback(() => {
         const arancel = arancelesTienda.find(a => a.id === arancelSeleccionadoId);
         if (!arancel || !arancelSeleccionadoId) return 0;
 
-        const totalSinArancel = calculateTotalWithDiscount();
+        const totalConAjuste = calculateFinalTotal(); // <--- Usa el total final con descuento/recargo
         const porcentaje = parseFloat(arancel.arancel_porcentaje);
-        const arancelTotal = totalSinArancel * (porcentaje / 100);
+        const arancelTotal = totalConAjuste * (porcentaje / 100);
         
         return arancelTotal;
-    }, [arancelSeleccionadoId, arancelesTienda, calculateTotalWithDiscount]);
+    }, [arancelSeleccionadoId, arancelesTienda, calculateFinalTotal]);
 
     // FUNCIÓN 5: Lógica para Añadir Producto
     const handleAddProductoEnVenta = useCallback((product, quantity = 1) => {
@@ -395,7 +409,15 @@ const PuntoVenta = () => {
             return;
         }
         
-        const finalTotal = calculateTotalWithDiscount();
+        const isDiscountApplied = parseFloat(descuentoMonto) > 0 || parseFloat(descuentoPorcentaje) > 0;
+        const isSurchargeApplied = parseFloat(recargoMonto) > 0 || parseFloat(recargoPorcentaje) > 0;
+
+        if (isDiscountApplied && isSurchargeApplied) {
+            Swal.fire('Error', 'Solo se puede aplicar un tipo de ajuste (descuento o recargo) a la vez.', 'error');
+            return;
+        }
+
+        const finalTotal = calculateFinalTotal();
         const arancelMonto = calculateArancel(); 
 
         let htmlMessage = `Confirmas la venta por un total de <strong>$${finalTotal.toFixed(2)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?`;
@@ -407,10 +429,19 @@ const PuntoVenta = () => {
             htmlMessage += `<br>La Rentabilidad Bruta será impactada por este monto.`;
         }
 
-
-        const discountMessage = parseFloat(descuentoMonto) > 0 ? `<br>(Descuento por monto: $${parseFloat(descuentoMonto).toFixed(2)})` :
-                                parseFloat(descuentoPorcentaje) > 0 ? `<br>(Descuento por porcentaje: ${parseFloat(descuentoPorcentaje).toFixed(2)}%)` : '';
-        htmlMessage += discountMessage;
+        // --- MENSAJE DE AJUSTE (RECARGO O DESCUENTO) ---
+        let adjustmentMessage = '';
+        if (parseFloat(recargoMonto) > 0) {
+            adjustmentMessage = `<br>(Recargo por monto: $${parseFloat(recargoMonto).toFixed(2)})`;
+        } else if (parseFloat(recargoPorcentaje) > 0) {
+            adjustmentMessage = `<br>(Recargo por porcentaje: ${parseFloat(recargoPorcentaje).toFixed(2)}%)`;
+        } else if (parseFloat(descuentoMonto) > 0) {
+            adjustmentMessage = `<br>(Descuento por monto: $${parseFloat(descuentoMonto).toFixed(2)})`;
+        } else if (parseFloat(descuentoPorcentaje) > 0) {
+            adjustmentMessage = `<br>(Descuento por porcentaje: ${parseFloat(descuentoPorcentaje).toFixed(2)}%)`;
+        }
+        htmlMessage += adjustmentMessage;
+        // -----------------------------------------------
 
         Swal.fire({
             title: '¿Confirmar venta?',
@@ -425,8 +456,14 @@ const PuntoVenta = () => {
                     const ventaData = {
                         tienda_slug: selectedStoreSlug,
                         metodo_pago: metodoPagoSeleccionado,
+                        
+                        // --- CAMPOS DE AJUSTE ENVIADOS AL BACKEND ---
                         descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
                         descuento_monto: parseFloat(descuentoMonto) || 0,
+                        recargo_porcentaje: parseFloat(recargoPorcentaje) || 0,
+                        recargo_monto: parseFloat(recargoMonto) || 0,
+                        // ---------------------------------------------
+                        
                         arancel_aplicado_id: finalArancelId, 
                         detalles: activeCart.items.map(item => ({
                             producto: item.product.id,
@@ -448,7 +485,9 @@ const PuntoVenta = () => {
                         tienda_nombre: selectedStoreSlug,
                         descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
                         descuento_monto: parseFloat(descuentoMonto) || 0,
-                        total: finalTotal, // Usar el total calculado en el frontend que incluye el descuento
+                        recargo_porcentaje: parseFloat(recargoPorcentaje) || 0,
+                        recargo_monto: parseFloat(recargoMonto) || 0,
+                        total: finalTotal, // Usar el total calculado en el frontend que incluye el ajuste
 
                         // *** FIX ROBUSTO DE FECHA (Issue 2) ***
                         // Usamos la fecha del backend, que es una cadena válida.
@@ -473,8 +512,13 @@ const PuntoVenta = () => {
                     finalizeCart(activeCartId);
                     setMetodoPagoSeleccionado(metodosPago.find(m => m.nombre === 'Efectivo')?.nombre || (metodosPago.length > 0 ? metodosPago[0].nombre : ''));
                     setArancelSeleccionadoId('');
+                    
+                    // --- RESETEAR CAMPOS DE AJUSTE ---
                     setDescuentoPorcentaje('');
                     setDescuentoMonto('');
+                    setRecargoPorcentaje('');
+                    setRecargoMonto('');
+                    // ---------------------------------
                     
 
                     Swal.fire({
@@ -752,9 +796,42 @@ const PuntoVenta = () => {
                             </h4>
                         )}
 
-
+                        {/* --- NUEVOS INPUTS DE RECARGO --- */}
                         <div style={styles.discountContainer}>
-                            <label htmlFor="descuentoMonto" style={styles.discountLabel}>Aplicar Descuento (Monto):</label>
+                            <label htmlFor="recargoMonto" style={styles.discountLabel}>Aplicar **Recargo** (Monto):</label>
+                            <input
+                                type="number"
+                                id="recargoMonto"
+                                value={recargoMonto}
+                                onChange={(e) => {
+                                    setRecargoMonto(Math.max(0, parseFloat(e.target.value) || 0));
+                                    setRecargoPorcentaje(''); 
+                                    setDescuentoMonto('');    
+                                    setDescuentoPorcentaje('');
+                                }}
+                                style={styles.discountInput}
+                                min="0"
+                            />
+                            <span style={{ margin: '0 10px', fontWeight: 'bold' }}>O</span>
+                            <label htmlFor="recargoPorcentaje" style={styles.discountLabel}>Aplicar **Recargo** (%):</label>
+                            <input
+                                type="number"
+                                id="recargoPorcentaje"
+                                value={recargoPorcentaje}
+                                onChange={(e) => {
+                                    setRecargoPorcentaje(Math.max(0, parseFloat(e.target.value) || 0));
+                                    setRecargoMonto('');       
+                                    setDescuentoMonto('');     
+                                    setDescuentoPorcentaje('');
+                                }}
+                                style={styles.discountInput}
+                                min="0"
+                            />
+                        </div>
+                        
+                        {/* INPUTS DE DESCUENTO (Modificados para anular Recargo) */}
+                        <div style={styles.discountContainer}>
+                            <label htmlFor="descuentoMonto" style={styles.discountLabel}>Aplicar **Descuento** (Monto):</label>
                             <input
                                 type="number"
                                 id="descuentoMonto"
@@ -762,12 +839,14 @@ const PuntoVenta = () => {
                                 onChange={(e) => {
                                     setDescuentoMonto(Math.max(0, parseFloat(e.target.value) || 0));
                                     setDescuentoPorcentaje(''); 
+                                    setRecargoMonto('');       
+                                    setRecargoPorcentaje('');  
                                 }}
                                 style={styles.discountInput}
                                 min="0"
                             />
                             <span style={{ margin: '0 10px', fontWeight: 'bold' }}>O</span>
-                            <label htmlFor="descuentoPorcentaje" style={styles.discountLabel}>Aplicar Descuento (%):</label>
+                            <label htmlFor="descuentoPorcentaje" style={styles.discountLabel}>Aplicar **Descuento** (%):</label>
                             <input
                                 type="number"
                                 id="descuentoPorcentaje"
@@ -775,13 +854,17 @@ const PuntoVenta = () => {
                                 onChange={(e) => {
                                     setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)));
                                     setDescuentoMonto('');
+                                    setRecargoMonto('');       
+                                    setRecargoPorcentaje('');  
                                 }}
                                 style={styles.discountInput}
                                 min="0"
                                 max="100"
                             />
                         </div>
-                        <h4 style={styles.finalTotalVenta}>Total Final: ${calculateTotalWithDiscount().toFixed(2)}</h4>
+                        {/* --- FIN DE INPUTS DE RECARGO/DESCUENTO --- */}
+
+                        <h4 style={styles.finalTotalVenta}>Total Final: ${calculateFinalTotal().toFixed(2)}</h4>
                         <button onClick={handleProcesarVenta} style={styles.processSaleButton}>
                             Procesar Venta
                         </button>
