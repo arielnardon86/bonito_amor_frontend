@@ -66,11 +66,11 @@ const ReciboImpresion = () => {
                     </div>
                     <div class="totals">
                         <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Subtotal:</strong> $${subtotal.toFixed(2)}</p>
-                        ${(venta.descuento_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento por porcentaje:</strong> -${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
-                        ${(venta.descuento_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento por monto:</strong> -$${parseFloat(venta.descuento_monto).toFixed(2)}</p>` : ''}
+                        ${(venta.descuento_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> -${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
+                        ${(venta.descuento_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> -$${parseFloat(venta.descuento_monto).toFixed(2)}</p>` : ''}
                         
-                        ${(venta.recargo_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo por porcentaje:</strong> +${parseFloat(venta.recargo_porcentaje).toFixed(2)}%</p>` : ''}
-                        ${(venta.recargo_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo por monto:</strong> +$${parseFloat(venta.recargo_monto).toFixed(2)}</p>` : ''}
+                        ${(venta.recargo_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo:</strong> +${parseFloat(venta.recargo_porcentaje).toFixed(2)}%</p>` : ''}
+                        ${(venta.recargo_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo:</strong> +$${parseFloat(venta.recargo_monto).toFixed(2)}</p>` : ''}
                         
                         <p style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
                         <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
