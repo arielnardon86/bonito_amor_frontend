@@ -91,10 +91,10 @@ const PuntoVenta = () => {
     const [descuentoPorcentaje, setDescuentoPorcentaje] = useState('');
     const [descuentoMonto, setDescuentoMonto] = useState('');
 
-    // --- NUEVOS ESTADOS PARA RECARGO ---
     const [recargoPorcentaje, setRecargoPorcentaje] = useState('');
     const [recargoMonto, setRecargoMonto] = useState('');
-    // ------------------------------------
+
+    const [redondearMonto, setRedondearMonto] = useState(false);
 
     const [pageInfo, setPageInfo] = useState({
         next: null,
@@ -125,10 +125,9 @@ const PuntoVenta = () => {
             });
             const methods = response.data.results || response.data;
             setMetodosPago(methods);
-            // Establecer el método por defecto si existe 'Efectivo', sino el primero
             const efectivo = methods.find(m => m.nombre === 'Efectivo');
             setMetodoPagoSeleccionado(efectivo ? efectivo.nombre : (methods.length > 0 ? methods[0].nombre : ''));
-            return methods; // Retornar para el useEffect principal
+            return methods; 
 
         } catch (err) {
             console.error("Error al cargar métodos de pago:", err.response ? err.response.data : err.message);
@@ -142,9 +141,7 @@ const PuntoVenta = () => {
         if (!token || !selectedStoreSlug) {
             return;
         }
-
         setError(null);
-
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -154,7 +151,6 @@ const PuntoVenta = () => {
                     page: page,
                 },
             });
-
             setProductos(response.data.results);
             setPageInfo(prev => ({
                 ...prev,
@@ -183,12 +179,11 @@ const PuntoVenta = () => {
             setArancelesTienda(fetchedAranceles);
         } catch (err) {
             console.error("Error al cargar aranceles:", err.response ? err.response.data : err.message);
-            // No propagamos el error de aranceles, es menos crítico que la carga inicial
         }
     }, [token, selectedStoreSlug]);
 
     // **********************************************
-    // EFECTO PRINCIPAL CORREGIDO (RESUELVE EL BLOQUEO)
+    // EFECTO PRINCIPAL (Se mantiene igual)
     // **********************************************
     useEffect(() => {
         const loadInitialData = async () => {
@@ -196,66 +191,66 @@ const PuntoVenta = () => {
                 setLoadingProducts(true);
                 setError(null);
                 try {
-                    // Cargar datos necesarios en orden o simultáneamente
                     await Promise.all([
                         fetchMetodosPago(),
                         fetchAranceles()
                     ]);
-                    // Cargar productos después de los demás (usamos el estado busquedaProducto)
                     await fetchProductos(1, busquedaProducto); 
-                    
                 } catch (err) {
-                    // Si alguna promesa falla, el bloque catch se ejecuta y el loading termina
                     console.error("Fallo al inicializar datos:", err);
                     setError(prev => prev || 'Fallo crítico al iniciar el Punto de Venta.');
                 } finally {
-                    // ESTO SIEMPRE SE EJECUTA, asegurando que el estado de carga termine
                     setLoadingProducts(false);
                 }
             } else if (!authLoading && (!isAuthenticated || !user || !(user.is_superuser || user.is_staff))) {
                 setError("Acceso denegado. No tienes permisos para usar el punto de venta.");
                 setLoadingProducts(false);
             } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
-                 // Si está autenticado pero falta la tienda, se permite salir del estado de carga
                  setLoadingProducts(false);
             }
         };
         loadInitialData();
-        
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, token, 
         fetchMetodosPago, fetchAranceles, fetchProductos]); 
-    // **********************************************
-    // **********************************************
 
-    // FUNCIÓN 3: Cálculo del Total con Ajuste (Descuento o Recargo)
-    const calculateFinalTotal = useCallback(() => {
+    // --- FUNCIÓN HELPER (Calcula total CON ajustes de usuario, SIN redondeo) ---
+    const calculateTotalSinRedondeo = useCallback(() => {
         if (!activeCart) return 0;
         let subtotal = activeCart.items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.product.precio)), 0);
         let finalTotal = subtotal;
 
-        // ** LÓGICA DE CÁLCULO ACTUALIZADA PARA RECARGO **
-        if (parseFloat(recargoMonto) > 0) { // Prioridad 1: Recargo por Monto
+        if (parseFloat(recargoMonto) > 0) { 
             finalTotal = subtotal + parseFloat(recargoMonto);
-        } else if (parseFloat(recargoPorcentaje) > 0) { // Prioridad 2: Recargo por Porcentaje
+        } else if (parseFloat(recargoPorcentaje) > 0) {
             const markupAmount = subtotal * (parseFloat(recargoPorcentaje) / 100);
             finalTotal = subtotal + markupAmount;
-        } else if (parseFloat(descuentoMonto) > 0) { // Prioridad 3: Descuento por Monto
+        } else if (parseFloat(descuentoMonto) > 0) {
             finalTotal = Math.max(0, subtotal - parseFloat(descuentoMonto));
-        } else if (parseFloat(descuentoPorcentaje) > 0) { // Prioridad 4: Descuento por Porcentaje
+        } else if (parseFloat(descuentoPorcentaje) > 0) {
             const discountAmount = subtotal * (parseFloat(descuentoPorcentaje) / 100);
             finalTotal = subtotal - discountAmount;
         }
-        // ************************************************
         
         return finalTotal;
     }, [activeCart, descuentoPorcentaje, descuentoMonto, recargoMonto, recargoPorcentaje]);
+    
+    // --- FUNCIÓN 3: CALCULO FINAL (Usa la helper + redondeo) ---
+    const calculateFinalTotal = useCallback(() => {
+        let totalConAjuste = calculateTotalSinRedondeo();
+        
+        if (redondearMonto) {
+            totalConAjuste = Math.floor(totalConAjuste / 100) * 100;
+        }
+        
+        return totalConAjuste;
+    }, [calculateTotalSinRedondeo, redondearMonto]);
 
-    // FUNCIÓN 4: Cálculo del Arancel (Solo para visualización)
+    // FUNCIÓN 4: Cálculo del Arancel
     const calculateArancel = useCallback(() => {
         const arancel = arancelesTienda.find(a => a.id === arancelSeleccionadoId);
         if (!arancel || !arancelSeleccionadoId) return 0;
 
-        const totalConAjuste = calculateFinalTotal(); // <--- Usa el total final con descuento/recargo
+        const totalConAjuste = calculateFinalTotal(); 
         const porcentaje = parseFloat(arancel.arancel_porcentaje);
         const arancelTotal = totalConAjuste * (porcentaje / 100);
         
@@ -276,20 +271,17 @@ const PuntoVenta = () => {
             showCustomAlert('La cantidad debe ser mayor que cero.', 'error');
             return;
         }
-
         const currentItemInCart = activeCart.items.find(item => item.product.id === product.id);
         const currentQuantityInCart = currentItemInCart ? currentItemInCart.quantity : 0;
-
         if (currentQuantityInCart + quantity > product.stock) {
             showCustomAlert(`No hay suficiente stock. Disponible: ${product.stock}, en carrito: ${currentQuantityInCart}.`, 'error');
             return;
         }
-
         addProductToCart(product, quantity);
         setBusquedaProducto('');
         setProductoSeleccionado(null);
         showCustomAlert('Producto añadido al carrito.', 'success');
-    }, [activeCart, addProductToCart, showCustomAlert]);
+    }, [activeCart, addProductToCart]); // Removido showCustomAlert de dependencias
 
 
     // FUNCIÓN 6: Búsqueda de Producto por Código de Barras
@@ -302,9 +294,7 @@ const PuntoVenta = () => {
             showCustomAlert('Por favor, selecciona una tienda.', 'error');
             return;
         }
-
         try {
-            // Primero, intentar buscar por código de barras
             let response;
             try {
                  response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
@@ -312,42 +302,35 @@ const PuntoVenta = () => {
                     params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
                 });
             } catch (error) {
-                // Si la búsqueda por código de barras falla (404), intentamos buscar por nombre/talle
                 if (error.response && error.response.status === 404) {
-                    // Esto recarga el listado de productos, y el usuario puede seleccionar
-                    // del listado inferior, que ya está filtrado por el input.
                     await fetchProductos(1, busquedaProducto); 
                     showCustomAlert('Búsqueda por nombre/talle aplicada al listado de abajo.', 'info');
                     setProductoSeleccionado(null);
                     return;
                 }
-                throw error; // Propagar otros errores (e.g., 500, 400)
+                throw error; 
             }
-            
             const productoEncontrado = response.data;
             setProductoSeleccionado(productoEncontrado);
-            
             if (productoEncontrado) {
                 handleAddProductoEnVenta(productoEncontrado, 1);
             }
-
             showCustomAlert('Producto encontrado y añadido al carrito.', 'success');
-
         } catch (err) {
             console.error("Error al buscar producto:", err.response ? err.response.data : err.message);
             setProductoSeleccionado(null);
             showCustomAlert('Producto no encontrado o error en la búsqueda.', 'error');
         }
-    }, [busquedaProducto, selectedStoreSlug, token, showCustomAlert, handleAddProductoEnVenta, fetchProductos]);
+    }, [busquedaProducto, selectedStoreSlug, token, handleAddProductoEnVenta, fetchProductos]); // Removido showCustomAlert
 
-    // FUNCIÓN 7: Decrementar Cantidad (usada en la tabla)
+    // FUNCIÓN 7: Decrementar Cantidad
     const handleDecrementQuantity = useCallback((productId) => {
         if (!activeCart) return;
         decrementProductQuantity(activeCartId, productId);
         showCustomAlert('Cantidad de producto actualizada.', 'info');
-    }, [activeCart, activeCartId, decrementProductQuantity, showCustomAlert]);
+    }, [activeCart, activeCartId, decrementProductQuantity]); // Removido showCustomAlert
 
-    // FUNCIÓN 8: Eliminar Producto (usada en la tabla)
+    // FUNCIÓN 8: Eliminar Producto
     const handleRemoveProductoEnVenta = useCallback((productId) => {
         if (!activeCart) return;
         setConfirmMessage('¿Estás seguro de que quieres quitar este producto del carrito?');
@@ -357,7 +340,7 @@ const PuntoVenta = () => {
             setShowConfirmModal(false);
         });
         setShowConfirmModal(true);
-    }, [activeCart, activeCartId, removeProductFromCart, showCustomAlert]);
+    }, [activeCart, activeCartId, removeProductFromCart]); // Removido showCustomAlert
 
     // Lógica para determinar si el método seleccionado es financiero
     const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
@@ -369,7 +352,6 @@ const PuntoVenta = () => {
     // EFECTO CLAVE para la lógica del desplegable de aranceles
     useEffect(() => {
         if (isMetodoFinancieroActivo && arancelesDisponibles.length > 0) {
-            // Si hay planes disponibles y el ID seleccionado no existe (o está vacío), selecciona el primero.
             const currentPlanExists = arancelesDisponibles.some(a => a.id === arancelSeleccionadoId);
             if (!arancelSeleccionadoId || !currentPlanExists) {
                  setArancelSeleccionadoId(arancelesDisponibles[0].id);
@@ -377,9 +359,10 @@ const PuntoVenta = () => {
         } else if (!isMetodoFinancieroActivo) {
             setArancelSeleccionadoId(''); // Limpiar si no es financiero
         }
-    }, [metodoPagoSeleccionado, isMetodoFinancieroActivo, arancelesDisponibles]);
+    }, [metodoPagoSeleccionado, isMetodoFinancieroActivo, arancelesDisponibles, arancelSeleccionadoId]);
 
 
+    // --- FUNCIÓN handleProcesarVenta (LÓGICA DE REDONDEO INCLUIDA) ---
     const handleProcesarVenta = async () => {
         
         if (!activeCart || activeCart.items.length === 0) {
@@ -397,12 +380,8 @@ const PuntoVenta = () => {
 
         const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
         const isMetodoFinanciero = metodoPagoObj?.es_financiero;
-        
         const finalArancelId = isMetodoFinanciero ? arancelSeleccionadoId : null;
-        
-        // --- AÑADIDO: Obtener información completa del arancel del estado local ---
         const arancelInfo = arancelesTienda.find(a => a.id === finalArancelId);
-        // -----------------------------------------------------------------------
 
         if (isMetodoFinanciero && !finalArancelId) {
             Swal.fire('Error', 'Por favor, selecciona el Plan / Arancel.', 'error');
@@ -412,36 +391,82 @@ const PuntoVenta = () => {
         const isDiscountApplied = parseFloat(descuentoMonto) > 0 || parseFloat(descuentoPorcentaje) > 0;
         const isSurchargeApplied = parseFloat(recargoMonto) > 0 || parseFloat(recargoPorcentaje) > 0;
 
-        if (isDiscountApplied && isSurchargeApplied) {
-            Swal.fire('Error', 'Solo se puede aplicar un tipo de ajuste (descuento o recargo) a la vez.', 'error');
-            return;
+        if (redondearMonto && (isDiscountApplied || isSurchargeApplied)) {
+            const confirmOverride = await Swal.fire({
+                title: 'Aviso de Redondeo',
+                text: 'El redondeo se aplicará sobre el ajuste (descuento/recargo) que ya ingresaste. El monto final se recalculará.',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Continuar',
+                cancelButtonText: 'Cancelar'
+            });
+            if (!confirmOverride.isConfirmed) {
+                return; 
+            }
+        } else if (isDiscountApplied && isSurchargeApplied) {
+             Swal.fire('Error', 'Solo se puede aplicar un tipo de ajuste (descuento o recargo) a la vez.', 'error');
+             return;
         }
 
-        const finalTotal = calculateFinalTotal();
+        // --- LÓGICA DE CÁLCULO PARA BACKEND ---
+        const subtotalCrudo = activeCart.total; // Subtotal sin ajustes
+        const finalTotal = calculateFinalTotal(); // Total FINAL (con ajustes Y redondeo si aplica)
         const arancelMonto = calculateArancel(); 
+
+        let datosAjusteParaBackend = {
+            descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
+            descuento_monto: parseFloat(descuentoMonto) || 0,
+            recargo_porcentaje: parseFloat(recargoPorcentaje) || 0,
+            recargo_monto: parseFloat(recargoMonto) || 0,
+        };
+
+        if (redondearMonto) {
+            // Si hay redondeo, calculamos el ajuste total (negativo o positivo)
+            // y lo enviamos como UN solo campo (monto) al backend.
+            const ajusteTotalEfectivo = finalTotal - subtotalCrudo;
+
+            datosAjusteParaBackend = { // Reseteamos
+                descuento_porcentaje: 0,
+                descuento_monto: 0,
+                recargo_porcentaje: 0,
+                recargo_monto: 0,
+            };
+
+            if (ajusteTotalEfectivo < 0) {
+                datosAjusteParaBackend.descuento_monto = Math.abs(ajusteTotalEfectivo);
+            } else if (ajusteTotalEfectivo > 0) {
+                datosAjusteParaBackend.recargo_monto = ajusteTotalEfectivo;
+            }
+        }
+        // --- FIN LÓGICA CÁLCULO BACKEND ---
 
         let htmlMessage = `Confirmas la venta por un total de <strong>$${finalTotal.toFixed(2)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?`;
         
         if (arancelMonto > 0) {
-            // Ya tenemos arancelInfo aquí.
             htmlMessage += `<br><br><strong>Plan/Arancel:</strong> ${arancelInfo.nombre_plan} (${parseFloat(arancelInfo.arancel_porcentaje).toFixed(2)}%)`;
             htmlMessage += `<br><strong>Monto del Arancel (Egreso):</strong> $${arancelMonto.toFixed(2)}`;
-            htmlMessage += `<br>La Rentabilidad Bruta será impactada por este monto.`;
         }
 
-        // --- MENSAJE DE AJUSTE (RECARGO O DESCUENTO) ---
+        // Mensaje de ajuste (Recargo o Descuento)
         let adjustmentMessage = '';
-        if (parseFloat(recargoMonto) > 0) {
-            adjustmentMessage = `<br>(Recargo por monto: $${parseFloat(recargoMonto).toFixed(2)})`;
-        } else if (parseFloat(recargoPorcentaje) > 0) {
-            adjustmentMessage = `<br>(Recargo por porcentaje: ${parseFloat(recargoPorcentaje).toFixed(2)}%)`;
-        } else if (parseFloat(descuentoMonto) > 0) {
-            adjustmentMessage = `<br>(Descuento por monto: $${parseFloat(descuentoMonto).toFixed(2)})`;
-        } else if (parseFloat(descuentoPorcentaje) > 0) {
-            adjustmentMessage = `<br>(Descuento por porcentaje: ${parseFloat(descuentoPorcentaje).toFixed(2)}%)`;
+        if (datosAjusteParaBackend.recargo_monto > 0) {
+            adjustmentMessage = `<br>(Ajuste Total: +$${datosAjusteParaBackend.recargo_monto.toFixed(2)})`;
+        } else if (datosAjusteParaBackend.recargo_porcentaje > 0) {
+            adjustmentMessage = `<br>(Recargo: ${datosAjusteParaBackend.recargo_porcentaje.toFixed(2)}%)`;
+        } else if (datosAjusteParaBackend.descuento_monto > 0) {
+            adjustmentMessage = `<br>(Ajuste Total: -$${datosAjusteParaBackend.descuento_monto.toFixed(2)})`;
+        } else if (datosAjusteParaBackend.descuento_porcentaje > 0) {
+            adjustmentMessage = `<br>(Descuento: ${datosAjusteParaBackend.descuento_porcentaje.toFixed(2)}%)`;
         }
-        htmlMessage += adjustmentMessage;
-        // -----------------------------------------------
+        
+        if (redondearMonto) {
+             htmlMessage += `<br><strong>(Monto final redondeado a $${finalTotal.toFixed(2)})</strong>`;
+             if (adjustmentMessage) {
+                 htmlMessage += adjustmentMessage;
+             }
+        } else {
+            htmlMessage += adjustmentMessage;
+        }
 
         Swal.fire({
             title: '¿Confirmar venta?',
@@ -456,14 +481,7 @@ const PuntoVenta = () => {
                     const ventaData = {
                         tienda_slug: selectedStoreSlug,
                         metodo_pago: metodoPagoSeleccionado,
-                        
-                        // --- CAMPOS DE AJUSTE ENVIADOS AL BACKEND ---
-                        descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
-                        descuento_monto: parseFloat(descuentoMonto) || 0,
-                        recargo_porcentaje: parseFloat(recargoPorcentaje) || 0,
-                        recargo_monto: parseFloat(recargoMonto) || 0,
-                        // ---------------------------------------------
-                        
+                        ...datosAjusteParaBackend, // Se envían los datos calculados
                         arancel_aplicado_id: finalArancelId, 
                         detalles: activeCart.items.map(item => ({
                             producto: item.product.id,
@@ -479,29 +497,18 @@ const PuntoVenta = () => {
                     showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
                     
                     const ventaParaRecibo = {
-                        // Spread de todos los demás campos (id, totales del backend, etc.)
                         ...response.data, 
-                        
                         tienda_nombre: selectedStoreSlug,
-                        descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
-                        descuento_monto: parseFloat(descuentoMonto) || 0,
-                        recargo_porcentaje: parseFloat(recargoPorcentaje) || 0,
-                        recargo_monto: parseFloat(recargoMonto) || 0,
-                        total: finalTotal, // Usar el total calculado en el frontend que incluye el ajuste
-
-                        // *** FIX ROBUSTO DE FECHA (Issue 2) ***
-                        // Usamos la fecha del backend, que es una cadena válida.
+                        descuento_porcentaje: datosAjusteParaBackend.descuento_porcentaje,
+                        descuento_monto: datosAjusteParaBackend.descuento_monto,
+                        recargo_porcentaje: datosAjusteParaBackend.recargo_porcentaje,
+                        recargo_monto: datosAjusteParaBackend.recargo_monto,
+                        total: finalTotal, // El total final que VIO el usuario (redondeado o no)
                         fecha_venta: response.data.fecha_venta, 
-                        // ****************************************
-                        
-                        // *** FIX PARA BLANK SCREEN (Issue 1) ***
                         usuario_nombre: user?.first_name || user?.username || 'Usuario Desconocido',
-                        // ***************************************
-                        
                         metodo_pago: metodoPagoSeleccionado, 
                         arancel_aplicado_nombre: arancelInfo?.nombre_plan || null,
                         arancel_aplicado_porcentaje: arancelInfo?.arancel_porcentaje || null,
-
                         detalles: activeCart.items.map(item => ({
                             producto_nombre: item.product.nombre,
                             cantidad: item.quantity,
@@ -512,15 +519,12 @@ const PuntoVenta = () => {
                     finalizeCart(activeCartId);
                     setMetodoPagoSeleccionado(metodosPago.find(m => m.nombre === 'Efectivo')?.nombre || (metodosPago.length > 0 ? metodosPago[0].nombre : ''));
                     setArancelSeleccionadoId('');
-                    
-                    // --- RESETEAR CAMPOS DE AJUSTE ---
                     setDescuentoPorcentaje('');
                     setDescuentoMonto('');
                     setRecargoPorcentaje('');
                     setRecargoMonto('');
-                    // ---------------------------------
+                    setRedondearMonto(false);
                     
-
                     Swal.fire({
                         title: 'Venta procesada!',
                         text: '¿Desea imprimir el recibo?',
@@ -618,27 +622,30 @@ const PuntoVenta = () => {
     return (
         <div style={styles.container}>
             <h1 style={styles.header}>Punto de Venta ({selectedStoreSlug})</h1>
+            
+            {/* --- SECCIÓN GESTIÓN DE VENTAS --- */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Gestión de Ventas Activas</h3>
-                <div style={styles.cartSelectionContainer}>
+                <div style={styles.cartSelectionContainer} className="cart-selection-container">
                     {carts.map((cart, index) => (
                         <button
                             key={cart.id}
                             onClick={() => selectCart(cart.id)}
                             style={cart.id === activeCartId ? styles.activeCartButton : styles.inactiveCartButton}
+                            className={cart.id === activeCartId ? 'active-cart-button' : 'inactive-cart-button'}
                         >
                             {cart.alias || `Venta ${index + 1}`}
                         </button>
                     ))}
-                    <button onClick={() => setShowNewCartModal(true)} style={styles.newCartButton}>
+                    <button onClick={() => setShowNewCartModal(true)} style={styles.newCartButton} className="new-cart-button">
                         + Nueva Venta
                     </button>
                 </div>
 
                 {activeCart && (
-                    <div style={styles.activeCartInfo}>
+                    <div style={styles.activeCartInfo} className="active-cart-info">
                         <h4 style={styles.activeCartTitle}>Venta Activa: {activeCart.alias || activeCart.name}</h4>
-                        <div style={styles.activeCartActions}>
+                        <div style={styles.activeCartActions} className="active-cart-actions">
                             <input
                                 type="text"
                                 placeholder="Nuevo Alias (opcional)"
@@ -654,6 +661,7 @@ const PuntoVenta = () => {
                 )}
             </div>
 
+            {/* --- MODAL NUEVA VENTA --- */}
             {showNewCartModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -677,9 +685,10 @@ const PuntoVenta = () => {
                 </div>
             )}
 
+            {/* --- SECCIÓN BUSCAR PRODUCTO --- */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Buscar Producto por Código de Barras</h3>
-                <div style={styles.inputGroup}>
+                <div style={styles.inputGroup} className="input-group">
                     <input
                         type="text"
                         placeholder="Ingresa código de barras o nombre"
@@ -687,20 +696,21 @@ const PuntoVenta = () => {
                         onChange={(e) => setBusquedaProducto(e.target.value)}
                         onKeyPress={(e) => { if (e.key === 'Enter') handleBuscarProducto(); }}
                         style={styles.inputField}
+                        className="input-field"
                     />
-                    <button onClick={handleBuscarProducto} style={styles.primaryButton}>
+                    <button onClick={handleBuscarProducto} style={styles.primaryButton} className="primary-button">
                         Buscar
                     </button>
                 </div>
                 {productoSeleccionado && (
-                    <div style={styles.foundProductCard}>
+                    <div style={styles.foundProductCard} className="found-product-card">
                         <p style={styles.foundProductText}>
                             <strong>Producto:</strong> {productoSeleccionado.nombre} ({productoSeleccionado.talle}) - ${parseFloat(productoSeleccionado.precio).toFixed(2)}
                         </p>
                         <p style={styles.foundProductText}>
                             Stock Disponible: {productoSeleccionado.stock}
                         </p>
-                        <div style={styles.productActions}>
+                        <div style={styles.productActions} className="product-actions">
                             <button
                                 onClick={() => handleAddProductoEnVenta(productoSeleccionado, 1)}
                                 disabled={productoSeleccionado.stock === 0}
@@ -713,12 +723,13 @@ const PuntoVenta = () => {
                 )}
             </div>
 
+            {/* --- SECCIÓN DETALLE DEL CARRITO --- */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
                 {activeCart && activeCart.items.length > 0 ? (
                     <>
-                        <div style={styles.tableResponsive}>
-                            <table style={styles.table}>
+                        <div style={styles.tableResponsive} className="table-responsive">
+                            <table style={styles.table} className="table">
                                 <thead>
                                     <tr style={styles.tableHeaderRow}>
                                         <th style={styles.th}>Producto</th>
@@ -754,7 +765,7 @@ const PuntoVenta = () => {
                             </table>
                         </div>
                         <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4>
-                        <div style={styles.paymentMethodSelectContainer}>
+                        <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
                             <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de Pago:</label>
                             <select
                                 id="metodoPago"
@@ -771,7 +782,7 @@ const PuntoVenta = () => {
                         
                         {/* DESPLEGABLE DE CUOTAS/ARANCEL */}
                         {isMetodoFinancieroActivo && arancelesDisponibles.length > 0 && (
-                            <div style={styles.paymentMethodSelectContainer}>
+                            <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
                                 <label htmlFor="arancelPlan" style={styles.paymentMethodLabel}>Plan / Arancel:</label>
                                 <select
                                     id="arancelPlan"
@@ -789,83 +800,101 @@ const PuntoVenta = () => {
                                 </select>
                             </div>
                         )}
-                        {/* Muestra el arancel calculado (solo visual) */}
                         {isMetodoFinancieroActivo && arancelSeleccionadoId && (
                             <h4 style={styles.arancelDisplay}>
-                                Arancel a pagar: ${calculateArancel().toFixed(2)} ({arancelesTienda.find(a => a.id === arancelSeleccionadoId)?.arancel_porcentaje}%)
+                                Arancel a pagar: ${calculateArancel().toFixed(2)}
                             </h4>
                         )}
 
-                        {/* --- NUEVOS INPUTS DE RECARGO --- */}
-                        <div style={styles.discountContainer}>
-                            <label htmlFor="recargoMonto" style={styles.discountLabel}>Aplicar **Recargo** (Monto):</label>
-                            <input
-                                type="number"
-                                id="recargoMonto"
-                                value={recargoMonto}
-                                onChange={(e) => {
-                                    setRecargoMonto(Math.max(0, parseFloat(e.target.value) || 0));
-                                    setRecargoPorcentaje(''); 
-                                    setDescuentoMonto('');    
-                                    setDescuentoPorcentaje('');
-                                }}
-                                style={styles.discountInput}
-                                min="0"
-                            />
-                            <span style={{ margin: '0 10px', fontWeight: 'bold' }}>O</span>
-                            <label htmlFor="recargoPorcentaje" style={styles.discountLabel}>Aplicar **Recargo** (%):</label>
-                            <input
-                                type="number"
-                                id="recargoPorcentaje"
-                                value={recargoPorcentaje}
-                                onChange={(e) => {
-                                    setRecargoPorcentaje(Math.max(0, parseFloat(e.target.value) || 0));
-                                    setRecargoMonto('');       
-                                    setDescuentoMonto('');     
-                                    setDescuentoPorcentaje('');
-                                }}
-                                style={styles.discountInput}
-                                min="0"
-                            />
+                        {/* --- NUEVO LAYOUT DE AJUSTES --- */}
+                        <div style={styles.ajustesContainer} className="ajustesContainer">
+                            {/* GRUPO RECARGO */}
+                            <div style={styles.ajusteGrupo}>
+                                <label htmlFor="recargoMonto" style={styles.ajusteLabel}>Recargo $:</label>
+                                <input
+                                    type="number"
+                                    id="recargoMonto"
+                                    value={recargoMonto}
+                                    onChange={(e) => {
+                                        setRecargoMonto(Math.max(0, parseFloat(e.target.value) || 0));
+                                        setRecargoPorcentaje(''); 
+                                        setDescuentoMonto('');    
+                                        setDescuentoPorcentaje('');
+                                    }}
+                                    style={styles.ajusteInput}
+                                    min="0"
+                                />
+                                <span style={styles.ajusteSeparador}>O</span>
+                                <label htmlFor="recargoPorcentaje" style={styles.ajusteLabel}>%:</label>
+                                <input
+                                    type="number"
+                                    id="recargoPorcentaje"
+                                    value={recargoPorcentaje}
+                                    onChange={(e) => {
+                                        setRecargoPorcentaje(Math.max(0, parseFloat(e.target.value) || 0));
+                                        setRecargoMonto('');       
+                                        setDescuentoMonto('');     
+                                        setDescuentoPorcentaje('');
+                                    }}
+                                    style={styles.ajusteInput}
+                                    min="0"
+                                />
+                            </div>
+                            
+                            {/* GRUPO DESCUENTO */}
+                            <div style={styles.ajusteGrupo}>
+                                <label htmlFor="descuentoMonto" style={styles.ajusteLabel}>Descuento $:</label>
+                                <input
+                                    type="number"
+                                    id="descuentoMonto"
+                                    value={descuentoMonto}
+                                    onChange={(e) => {
+                                        setDescuentoMonto(Math.max(0, parseFloat(e.target.value) || 0));
+                                        setDescuentoPorcentaje(''); 
+                                        setRecargoMonto('');       
+                                        setRecargoPorcentaje('');  
+                                    }}
+                                    style={styles.ajusteInput}
+                                    min="0"
+                                />
+                                <span style={styles.ajusteSeparador}>O</span>
+                                <label htmlFor="descuentoPorcentaje" style={styles.ajusteLabel}>%:</label>
+                                <input
+                                    type="number"
+                                    id="descuentoPorcentaje"
+                                    value={descuentoPorcentaje}
+                                    onChange={(e) => {
+                                        setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)));
+                                        setDescuentoMonto('');
+                                        setRecargoMonto('');       
+                                        setRecargoPorcentaje('');  
+                                    }}
+                                    style={styles.ajusteInput}
+                                    min="0"
+                                    max="100"
+                                />
+                            </div>
                         </div>
-                        
-                        {/* INPUTS DE DESCUENTO (Modificados para anular Recargo) */}
-                        <div style={styles.discountContainer}>
-                            <label htmlFor="descuentoMonto" style={styles.discountLabel}>Aplicar **Descuento** (Monto):</label>
+                        {/* --- FIN NUEVO LAYOUT DE AJUSTES --- */}
+
+
+                        {/* --- CHECKBOX DE REDONDEO (MODIFICADO) --- */}
+                        <div style={{...styles.ajusteGrupo, marginTop: '10px', justifyContent: 'flex-start', border: 'none', padding: '0'}}> 
                             <input
-                                type="number"
-                                id="descuentoMonto"
-                                value={descuentoMonto}
-                                onChange={(e) => {
-                                    setDescuentoMonto(Math.max(0, parseFloat(e.target.value) || 0));
-                                    setDescuentoPorcentaje(''); 
-                                    setRecargoMonto('');       
-                                    setRecargoPorcentaje('');  
-                                }}
-                                style={styles.discountInput}
-                                min="0"
+                                type="checkbox"
+                                id="redondearMonto"
+                                checked={redondearMonto}
+                                onChange={(e) => setRedondearMonto(e.target.checked)}
+                                style={{ marginRight: '8px', cursor: 'pointer' }} // Estilo "chico"
                             />
-                            <span style={{ margin: '0 10px', fontWeight: 'bold' }}>O</span>
-                            <label htmlFor="descuentoPorcentaje" style={styles.discountLabel}>Aplicar **Descuento** (%):</label>
-                            <input
-                                type="number"
-                                id="descuentoPorcentaje"
-                                value={descuentoPorcentaje}
-                                onChange={(e) => {
-                                    setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)));
-                                    setDescuentoMonto('');
-                                    setRecargoMonto('');       
-                                    setRecargoPorcentaje('');  
-                                }}
-                                style={styles.discountInput}
-                                min="0"
-                                max="100"
-                            />
+                            <label htmlFor="redondearMonto" style={{...styles.ajusteLabel, cursor: 'pointer', fontSize: '0.9em'}}>
+                                Redondear total (múlt. 100 ↓)
+                            </label>
                         </div>
-                        {/* --- FIN DE INPUTS DE RECARGO/DESCUENTO --- */}
+                        {/* --- FIN CHECKBOX DE REDONDEO --- */}
 
                         <h4 style={styles.finalTotalVenta}>Total Final: ${calculateFinalTotal().toFixed(2)}</h4>
-                        <button onClick={handleProcesarVenta} style={styles.processSaleButton}>
+                        <button onClick={handleProcesarVenta} style={styles.processSaleButton} className="process-sale-button">
                             Procesar Venta
                         </button>
                     </>
@@ -874,9 +903,10 @@ const PuntoVenta = () => {
                 )}
             </div>
 
+            {/* --- SECCIÓN PRODUCTOS DISPONIBLES --- */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Productos Disponibles</h3>
-                <div style={styles.inputGroup}>
+                <div style={styles.inputGroup} className="input-group">
                     <input
                         type="text"
                         placeholder="Buscar por nombre o talle..."
@@ -888,8 +918,9 @@ const PuntoVenta = () => {
                             }
                         }}
                         style={styles.inputField}
+                        className="input-field"
                     />
-                     <button onClick={() => fetchProductos(1, busquedaProducto)} style={styles.primaryButton}>
+                     <button onClick={() => fetchProductos(1, busquedaProducto)} style={styles.primaryButton} className="primary-button">
                         Buscar
                     </button>
                 </div>
@@ -900,8 +931,8 @@ const PuntoVenta = () => {
                     <p style={styles.errorMessage}>{error}</p>
                 ) : (
                     <>
-                        <div style={styles.tableResponsive}>
-                            <table style={styles.table}>
+                        <div style={styles.tableResponsive} className="table-responsive">
+                            <table style={styles.table} className="table">
                                 <thead>
                                     <tr style={styles.tableHeaderRow}>
                                         <th style={styles.th}>Nombre</th>
@@ -942,12 +973,12 @@ const PuntoVenta = () => {
                         </div>
 
                         {pageInfo.totalPages > 1 && (
-                            <div style={styles.paginationContainer}>
-                                <button onClick={nextPageHandler} disabled={!pageInfo.next} style={styles.paginationButton}>
+                            <div style={styles.paginationContainer} className="pagination-container">
+                                <button onClick={nextPageHandler} disabled={!pageInfo.next} style={styles.paginationButton} className="pagination-button">
                                     Siguiente
                                 </button>
                                 <span style={styles.pageNumber}>Página {pageInfo.currentPage} de {pageInfo.totalPages}</span>
-                                <button onClick={prevPageHandler} disabled={!pageInfo.previous} style={styles.paginationButton}>
+                                <button onClick={prevPageHandler} disabled={!pageInfo.previous} style={styles.paginationButton} className="pagination-button">
                                     Anterior
                                 </button>
                             </div>
@@ -956,6 +987,7 @@ const PuntoVenta = () => {
                 )}
             </div>
 
+            {/* --- MODAL DE CONFIRMACIÓN --- */}
             {showConfirmModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -968,11 +1000,14 @@ const PuntoVenta = () => {
                 </div>
             )}
 
+            {/* --- ALERTA CUSTOM --- */}
             {showAlertMessage && (
                 <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
                     <p>{alertMessage}</p>
                 </div>
             )}
+            
+            {/* --- ESTILOS RESPONSIVE --- */}
             <style>
                 {`
                 @media (max-width: 768px) {
@@ -1014,16 +1049,19 @@ const PuntoVenta = () => {
                     .table-responsive {
                         overflow-x: auto;
                     }
-                    table {
+                    table.table {
                         width: 100%;
                         white-space: nowrap;
                     }
-                    .payment-method-select-container,
-                    .discount-container {
+                    .payment-method-select-container {
                         flex-direction: column;
                         align-items: flex-start;
                         gap: 5px;
                         width: 100%;
+                    }
+                    /* NUEVO ESTILO RESPONSIVE */
+                    .ajustesContainer {
+                        flex-direction: column !important;
                     }
                     .process-sale-button {
                         width: 100%;
@@ -1042,6 +1080,7 @@ const PuntoVenta = () => {
     );
 };
 
+// --- OBJETO DE ESTILOS (MODIFICADO) ---
 const styles = {
     container: { padding: '20px', fontFamily: 'Arial, sans-serif' },
     header: { textAlign: 'center', color: '#2c3e50' },
@@ -1058,10 +1097,10 @@ const styles = {
     activeCartInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' },
     activeCartTitle: { margin: 0, color: '#3498db' },
     activeCartActions: { display: 'flex', gap: '10px' },
-    inputField: { padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
+    inputField: { padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }, // Añadido boxSizing
     deleteCartButton: { backgroundColor: '#e74c3c', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-    modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' },
+    modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center', width: '90%', maxWidth: '400px' },
     modalHeader: { margin: '0 0 15px 0' },
     modalActions: { display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' },
     modalConfirmButton: { padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
@@ -1086,9 +1125,15 @@ const styles = {
     totalVenta: { textAlign: 'right', fontSize: '1.2em', color: '#333' },
     paymentMethodSelectContainer: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' },
     paymentMethodLabel: { fontWeight: 'bold' },
-    discountContainer: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' },
-    discountLabel: { fontWeight: 'bold' },
-    discountInput: { width: '80px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
+    
+    // --- NUEVOS ESTILOS PARA AJUSTES ---
+    ajustesContainer: { display: 'flex', justifyContent: 'space-between', gap: '15px', marginTop: '15px' },
+    ajusteGrupo: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '5px', backgroundColor: '#fff' },
+    ajusteLabel: { fontWeight: 'bold', fontSize: '0.9em' },
+    ajusteInput: { width: '70px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
+    ajusteSeparador: { fontWeight: 'bold', color: '#777' },
+    // --- FIN NUEVOS ESTILOS ---
+
     finalTotalVenta: { textAlign: 'right', fontSize: '1.5em', color: '#28a745' },
     processSaleButton: { display: 'block', width: '100%', padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', marginTop: '20px' },
     addButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
@@ -1097,6 +1142,16 @@ const styles = {
     paginationButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
     pageNumber: { fontSize: '1em', fontWeight: 'bold', color: '#555' },
     arancelDisplay: { textAlign: 'right', fontSize: '1em', color: '#e74c3c', marginTop: '5px' },
+    alertBox: {
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        padding: '15px 20px',
+        color: 'white',
+        borderRadius: '5px',
+        zIndex: 1001,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    },
 };
 
 export default PuntoVenta;
