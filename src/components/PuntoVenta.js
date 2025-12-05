@@ -1,4 +1,4 @@
-// components/PuntoVenta.js - CÓDIGO COMPLETO Y CORREGIDO
+// components/PuntoVenta.js
 // BONITO_AMOR/frontend/src/components/PuntoVenta.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +6,8 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useSales } from './SalesContext'; 
 import Swal from 'sweetalert2';
+
+// ... (TalleOptions se mantiene igual) ...
 
 const TalleOptions = [
     { value: 'UNICO', label: 'UNICO' },
@@ -71,7 +73,12 @@ const PuntoVenta = () => {
     const [arancelesTienda, setArancelesTienda] = useState([]); 
     const [arancelSeleccionadoId, setArancelSeleccionadoId] = useState(''); 
     
+    // ESTADO ORIGINAL (NO SE TOCA, SOLO PARA CÓDIGO DE BARRAS)
     const [busquedaProducto, setBusquedaProducto] = useState('');
+    
+    // CAMBIO 1: NUEVO ESTADO PARA EL FILTRO INSTANTÁNEO DE LA TABLA
+    const [filterTerm, setFilterTerm] = useState(''); 
+    
     const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
     const [loadingProducts, setLoadingProducts] = useState(true);
@@ -183,7 +190,7 @@ const PuntoVenta = () => {
     }, [token, selectedStoreSlug]);
 
     // **********************************************
-    // EFECTO PRINCIPAL (Se mantiene igual)
+    // EFECTO PRINCIPAL (Carga inicial)
     // **********************************************
     useEffect(() => {
         const loadInitialData = async () => {
@@ -195,7 +202,8 @@ const PuntoVenta = () => {
                         fetchMetodosPago(),
                         fetchAranceles()
                     ]);
-                    await fetchProductos(1, busquedaProducto); 
+                    // Se usa filterTerm para la carga inicial, para que esté en sync.
+                    await fetchProductos(1, filterTerm); 
                 } catch (err) {
                     console.error("Fallo al inicializar datos:", err);
                     setError(prev => prev || 'Fallo crítico al iniciar el Punto de Venta.');
@@ -211,8 +219,31 @@ const PuntoVenta = () => {
         };
         loadInitialData();
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, token, 
-        fetchMetodosPago, fetchAranceles, fetchProductos]); 
+        fetchMetodosPago, fetchAranceles, fetchProductos, filterTerm]);
 
+    // **********************************************
+    // CAMBIO 2: NUEVO EFECTO CON DEBOUNCE PARA filterTerm
+    // **********************************************
+    useEffect(() => {
+        setLoadingProducts(true);
+        const handler = setTimeout(() => {
+            if (selectedStoreSlug) { 
+                // Llama a fetchProductos con el término de filtro después del delay
+                fetchProductos(1, filterTerm)
+                    .catch(err => console.error("Error al filtrar productos:", err))
+                    .finally(() => setLoadingProducts(false));
+            } else {
+                 setLoadingProducts(false);
+            }
+        }, 500); // Debounce de 500ms
+        
+        // Función de limpieza para cancelar el timeout anterior si filterTerm cambia de nuevo
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [filterTerm, fetchProductos, selectedStoreSlug]);
+    // **********************************************
+    
     // --- FUNCIÓN HELPER (Calcula total CON ajustes de usuario, SIN redondeo) ---
     const calculateTotalSinRedondeo = useCallback(() => {
         if (!activeCart) return 0;
@@ -281,10 +312,10 @@ const PuntoVenta = () => {
         setBusquedaProducto('');
         setProductoSeleccionado(null);
         showCustomAlert('Producto añadido al carrito.', 'success');
-    }, [activeCart, addProductToCart]); // Removido showCustomAlert de dependencias
+    }, [activeCart, addProductToCart]); 
 
 
-    // FUNCIÓN 6: Búsqueda de Producto por Código de Barras
+    // FUNCIÓN 6: Búsqueda de Producto por Código de Barras (NO SE TOCA)
     const handleBuscarProducto = useCallback(async () => {
         if (!busquedaProducto) {
             showCustomAlert('Por favor, ingresa un código de barras o nombre para buscar.', 'info');
@@ -303,9 +334,11 @@ const PuntoVenta = () => {
                 });
             } catch (error) {
                 if (error.response && error.response.status === 404) {
-                    await fetchProductos(1, busquedaProducto); 
+                    // Si no es un barcode, busca por nombre/talle/código en el listado de abajo.
+                    setFilterTerm(busquedaProducto); // <-- Actualiza el filtro de la tabla
                     showCustomAlert('Búsqueda por nombre/talle aplicada al listado de abajo.', 'info');
                     setProductoSeleccionado(null);
+                    setBusquedaProducto(''); // Limpia el input principal
                     return;
                 }
                 throw error; 
@@ -315,20 +348,19 @@ const PuntoVenta = () => {
             if (productoEncontrado) {
                 handleAddProductoEnVenta(productoEncontrado, 1);
             }
-            showCustomAlert('Producto encontrado y añadido al carrito.', 'success');
         } catch (err) {
             console.error("Error al buscar producto:", err.response ? err.response.data : err.message);
             setProductoSeleccionado(null);
             showCustomAlert('Producto no encontrado o error en la búsqueda.', 'error');
         }
-    }, [busquedaProducto, selectedStoreSlug, token, handleAddProductoEnVenta, fetchProductos]); // Removido showCustomAlert
+    }, [busquedaProducto, selectedStoreSlug, token, handleAddProductoEnVenta]); 
 
     // FUNCIÓN 7: Decrementar Cantidad
     const handleDecrementQuantity = useCallback((productId) => {
         if (!activeCart) return;
         decrementProductQuantity(activeCartId, productId);
         showCustomAlert('Cantidad de producto actualizada.', 'info');
-    }, [activeCart, activeCartId, decrementProductQuantity]); // Removido showCustomAlert
+    }, [activeCart, activeCartId, decrementProductQuantity]); 
 
     // FUNCIÓN 8: Eliminar Producto
     const handleRemoveProductoEnVenta = useCallback((productId) => {
@@ -340,7 +372,7 @@ const PuntoVenta = () => {
             setShowConfirmModal(false);
         });
         setShowConfirmModal(true);
-    }, [activeCart, activeCartId, removeProductFromCart]); // Removido showCustomAlert
+    }, [activeCart, activeCartId, removeProductFromCart]); 
 
     // Lógica para determinar si el método seleccionado es financiero
     const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
@@ -574,24 +606,15 @@ const PuntoVenta = () => {
         }
     };
 
-    const filteredProductosDisponibles = productos.filter(product => {
-        const searchTermLower = busquedaProducto.toLowerCase();
-        return (
-            product.nombre.toLowerCase().includes(searchTermLower) ||
-            (product.codigo_barras && product.codigo_barras.toLowerCase().includes(searchTermLower)) ||
-            (product.talle && product.talle.toLowerCase().includes(searchTermLower))
-        );
-    });
-
     const nextPageHandler = () => {
         if (pageInfo.next) {
-            fetchProductos(pageInfo.currentPage + 1, busquedaProducto);
+            fetchProductos(pageInfo.currentPage + 1, filterTerm); // <-- Usa filterTerm
         }
     };
 
     const prevPageHandler = () => {
         if (pageInfo.previous) {
-            fetchProductos(pageInfo.currentPage - 1, busquedaProducto);
+            fetchProductos(pageInfo.currentPage - 1, filterTerm); // <-- Usa filterTerm
         }
     };
 
@@ -609,10 +632,6 @@ const PuntoVenta = () => {
                 <h2>Por favor, selecciona una tienda en la barra de navegación para usar el punto de venta.</h2>
             </div>
         );
-    }
-
-    if (loadingProducts) {
-        return <div style={styles.loadingMessage}>Cargando productos y métodos de pago...</div>;
     }
 
     if (error) {
@@ -685,7 +704,7 @@ const PuntoVenta = () => {
                 </div>
             )}
 
-            {/* --- SECCIÓN BUSCAR PRODUCTO --- */}
+            {/* --- SECCIÓN BUSCAR PRODUCTO POR CÓDIGO DE BARRAS (NO SE TOCA) --- */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Buscar Producto por Código de Barras</h3>
                 <div style={styles.inputGroup} className="input-group">
@@ -806,7 +825,7 @@ const PuntoVenta = () => {
                             </h4>
                         )}
 
-                        {/* --- NUEVO LAYOUT DE AJUSTES --- */}
+                        {/* --- LAYOUT DE AJUSTES --- */}
                         <div style={styles.ajustesContainer} className="ajustesContainer">
                             {/* GRUPO RECARGO */}
                             <div style={styles.ajusteGrupo}>
@@ -875,17 +894,17 @@ const PuntoVenta = () => {
                                 />
                             </div>
                         </div>
-                        {/* --- FIN NUEVO LAYOUT DE AJUSTES --- */}
+                        {/* --- FIN LAYOUT DE AJUSTES --- */}
 
 
-                        {/* --- CHECKBOX DE REDONDEO (MODIFICADO) --- */}
+                        {/* --- CHECKBOX DE REDONDEO --- */}
                         <div style={{...styles.ajusteGrupo, marginTop: '10px', justifyContent: 'flex-start', border: 'none', padding: '0'}}> 
                             <input
                                 type="checkbox"
                                 id="redondearMonto"
                                 checked={redondearMonto}
                                 onChange={(e) => setRedondearMonto(e.target.checked)}
-                                style={{ marginRight: '8px', cursor: 'pointer' }} // Estilo "chico"
+                                style={{ marginRight: '8px', cursor: 'pointer' }} 
                             />
                             <label htmlFor="redondearMonto" style={{...styles.ajusteLabel, cursor: 'pointer', fontSize: '0.9em'}}>
                                 Redondear total (múlt. 100 ↓)
@@ -903,26 +922,20 @@ const PuntoVenta = () => {
                 )}
             </div>
 
-            {/* --- SECCIÓN PRODUCTOS DISPONIBLES --- */}
+            {/* --- SECCIÓN PRODUCTOS DISPONIBLES (BUSQUEDA INSTANTÁNEA IMPLEMENTADA) --- */}
             <div style={styles.section}>
                 <h3 style={styles.sectionHeader}>Productos Disponibles</h3>
                 <div style={styles.inputGroup} className="input-group">
+                    {/* CAMBIO 3: USAR filterTerm Y REMOVER HANDLERS EXPLÍCITOS DE BUSQUEDA */}
                     <input
                         type="text"
                         placeholder="Buscar por nombre o talle..."
-                        value={busquedaProducto}
-                        onChange={(e) => setBusquedaProducto(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                fetchProductos(1, busquedaProducto);
-                            }
-                        }}
+                        value={filterTerm}
+                        onChange={(e) => setFilterTerm(e.target.value)}
                         style={styles.inputField}
                         className="input-field"
                     />
-                     <button onClick={() => fetchProductos(1, busquedaProducto)} style={styles.primaryButton} className="primary-button">
-                        Buscar
-                    </button>
+                    {/* El botón de Buscar ya no es necesario aquí */}
                 </div>
 
                 {loadingProducts ? (
@@ -1007,7 +1020,7 @@ const PuntoVenta = () => {
                 </div>
             )}
             
-            {/* --- ESTILOS RESPONSIVE --- */}
+            {/* --- ESTILOS RESPONSIVE (Se mantienen) --- */}
             <style>
                 {`
                 @media (max-width: 768px) {
@@ -1080,7 +1093,7 @@ const PuntoVenta = () => {
     );
 };
 
-// --- OBJETO DE ESTILOS (MODIFICADO) ---
+// --- OBJETO DE ESTILOS (Se mantiene) ---
 const styles = {
     container: { padding: '20px', fontFamily: 'Arial, sans-serif' },
     header: { textAlign: 'center', color: '#2c3e50' },
