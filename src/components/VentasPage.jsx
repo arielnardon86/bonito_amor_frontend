@@ -198,6 +198,40 @@ const VentasPage = () => {
         navigate('/recibo', { state: { venta } });
     };
 
+    const handleVerFactura = async (venta) => {
+        if (!token) {
+            showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
+            return;
+        }
+
+        try {
+            // Buscar la factura asociada a esta venta
+            const facturasResponse = await axios.get(`${BASE_API_ENDPOINT}/api/facturas/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { venta: venta.id }
+            });
+
+            const facturas = facturasResponse.data.results || facturasResponse.data || [];
+            if (facturas.length === 0) {
+                showCustomAlert('Esta venta no tiene factura asociada.', 'info');
+                return;
+            }
+
+            const factura = facturas[0];
+            
+            // Navegar a la página de factura
+            navigate('/factura', { 
+                state: { 
+                    factura: factura,
+                    venta: venta
+                } 
+            });
+        } catch (err) {
+            showCustomAlert('Error al obtener la factura: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
+            console.error('Error fetching factura:', err.response || err.message);
+        }
+    };
+
     const applyFilters = () => {
         fetchVentas();
     };
@@ -325,6 +359,18 @@ const VentasPage = () => {
                                                         Anular
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={() => handleVerFactura(venta)}
+                                                    style={{
+                                                        ...styles.facturaButton,
+                                                        opacity: (venta.tiene_factura || venta.facturada) ? 1 : 0.5,
+                                                        cursor: (venta.tiene_factura || venta.facturada) ? 'pointer' : 'not-allowed'
+                                                    }}
+                                                    disabled={!(venta.tiene_factura || venta.facturada)}
+                                                    title={(venta.tiene_factura || venta.facturada) ? "Ver factura" : "Esta venta no tiene factura asociada"}
+                                                >
+                                                    Factura
+                                                </button>
                                                 <button
                                                     onClick={() => handleReimprimirRecibo(venta)}
                                                     style={styles.reprintButton}
@@ -609,6 +655,16 @@ const styles = {
         color: 'white',
         transition: 'background-color 0.3s ease',
         backgroundColor: '#17a2b8',
+    },
+    facturaButton: {
+        padding: '8px 16px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '14px',
+        marginLeft: '5px',
     },
     anularButton: {
         padding: '6px 10px',

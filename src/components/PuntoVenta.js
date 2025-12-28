@@ -111,6 +111,8 @@ const PuntoVenta = () => {
         totalPages: 1,
     });
     
+    const [tiendaInfo, setTiendaInfo] = useState(null);
+    
     // Función de alerta (no necesita useCallback)
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
@@ -189,6 +191,46 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug]);
 
+    // FUNCIÓN 3: Fetch de Información de Tienda
+    const fetchTiendaInfo = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            // Manejar diferentes formatos de respuesta (array, objeto con results, o objeto único)
+            let tiendas = [];
+            if (Array.isArray(response.data)) {
+                tiendas = response.data;
+            } else if (response.data.results && Array.isArray(response.data.results)) {
+                tiendas = response.data.results;
+            } else if (response.data.nombre) {
+                // Es un objeto único de tienda
+                tiendas = [response.data];
+            }
+            
+            // Buscar la tienda por nombre (comparación flexible)
+            const tienda = tiendas.find(t => {
+                const nombreTienda = t.nombre ? t.nombre.trim() : '';
+                const slugTienda = selectedStoreSlug ? selectedStoreSlug.trim() : '';
+                // Comparación exacta y también sin case sensitivity
+                return nombreTienda === slugTienda || nombreTienda.toLowerCase() === slugTienda.toLowerCase();
+            });
+            
+            if (tienda) {
+                console.log('Tienda encontrada:', tienda.nombre, 'Tipo facturación:', tienda.tipo_facturacion);
+                setTiendaInfo(tienda);
+            } else {
+                console.warn('Tienda no encontrada. Buscando:', selectedStoreSlug, 'Tiendas disponibles:', tiendas.map(t => t.nombre));
+                setTiendaInfo(null);
+            }
+        } catch (err) {
+            console.error("Error al cargar información de tienda:", err.response ? err.response.data : err.message);
+            setTiendaInfo(null);
+        }
+    }, [token, selectedStoreSlug]);
+
     // **********************************************
     // EFECTO PRINCIPAL (Carga inicial)
     // **********************************************
@@ -200,7 +242,8 @@ const PuntoVenta = () => {
                 try {
                     await Promise.all([
                         fetchMetodosPago(),
-                        fetchAranceles()
+                        fetchAranceles(),
+                        fetchTiendaInfo()
                     ]);
                     // Se usa filterTerm para la carga inicial, para que esté en sync.
                     await fetchProductos(1, filterTerm); 
@@ -219,7 +262,7 @@ const PuntoVenta = () => {
         };
         loadInitialData();
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, token, 
-        fetchMetodosPago, fetchAranceles, fetchProductos, filterTerm]);
+        fetchMetodosPago, fetchAranceles, fetchTiendaInfo, fetchProductos, filterTerm]);
 
     // **********************************************
     // CAMBIO 2: NUEVO EFECTO CON DEBOUNCE PARA filterTerm
@@ -557,18 +600,158 @@ const PuntoVenta = () => {
                     setRecargoMonto('');
                     setRedondearMonto(false);
                     
-                    Swal.fire({
-                        title: 'Venta procesada!',
-                        text: '¿Desea imprimir el recibo?',
-                        icon: 'success',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sí, imprimir',
-                        cancelButtonText: 'No',
-                    }).then((printResult) => {
-                        if (printResult.isConfirmed) {
-                            navigate('/recibo', { state: { venta: ventaParaRecibo } });
+                    // Verificar si la tienda tiene facturación configurada
+                    // Asegurarnos de tener la información más actualizada de la tienda
+                    let tiendaActual = tiendaInfo;
+                    if (!tiendaActual || !tiendaActual.tipo_facturacion) {
+                        // Si no tenemos la info o no está actualizada, obtenerla ahora
+                        try {
+                            const tiendaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            
+                            // Manejar diferentes formatos de respuesta
+                            let tiendas = [];
+                            if (Array.isArray(tiendaResponse.data)) {
+                                tiendas = tiendaResponse.data;
+                            } else if (tiendaResponse.data.results && Array.isArray(tiendaResponse.data.results)) {
+                                tiendas = tiendaResponse.data.results;
+                            } else if (tiendaResponse.data.nombre) {
+                                tiendas = [tiendaResponse.data];
+                            }
+                            
+                            // Buscar la tienda por nombre
+                            tiendaActual = tiendas.find(t => {
+                                const nombreTienda = t.nombre ? t.nombre.trim() : '';
+                                const slugTienda = selectedStoreSlug ? selectedStoreSlug.trim() : '';
+                                return nombreTienda === slugTienda || nombreTienda.toLowerCase() === slugTienda.toLowerCase();
+                            });
+                            
+                            if (tiendaActual) {
+                                setTiendaInfo(tiendaActual);
+                            }
+                        } catch (err) {
+                            console.error("Error al obtener información de tienda:", err);
                         }
+                    }
+                    
+                    const tieneFacturacion = tiendaActual && tiendaActual.tipo_facturacion && tiendaActual.tipo_facturacion !== 'NINGUNA';
+                    
+                    // Debug log
+                    console.log('Información de facturación:', {
+                        tiendaActual,
+                        tipo_facturacion: tiendaActual?.tipo_facturacion,
+                        tieneFacturacion,
+                        selectedStoreSlug
                     });
+                    
+                    // Preguntar si quiere facturar (solo si tiene facturación configurada)
+                    if (tieneFacturacion) {
+                        Swal.fire({
+                            title: 'Venta procesada!',
+                            text: '¿Desea emitir una factura electrónica?',
+                            icon: 'success',
+                            showCancelButton: true,
+                            showDenyButton: true,
+                            confirmButtonText: 'Sí, facturar',
+                            denyButtonText: 'Solo recibo',
+                            cancelButtonText: 'No, nada',
+                        }).then(async (result) => {
+                            if (result.isConfirmed) {
+                                // Mostrar formulario para datos del cliente
+                                const { value: formValues } = await Swal.fire({
+                                    title: 'Datos del Cliente para Factura',
+                                    html: `
+                                        <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" required>
+                                        <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" type="text">
+                                        <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)">
+                                        <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #d9d9d9; border-radius: 0.1875em; font-size: 1.125em;">
+                                            <option value="CF" selected>Consumidor Final</option>
+                                            <option value="RI">Responsable Inscripto</option>
+                                            <option value="EX">Exento</option>
+                                            <option value="MT">Monotributo</option>
+                                            <option value="NR">No Responsable</option>
+                                        </select>
+                                    `,
+                                    focusConfirm: false,
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Emitir Factura',
+                                    cancelButtonText: 'Cancelar',
+                                    preConfirm: () => {
+                                        const nombre = document.getElementById('cliente_nombre').value;
+                                        const cuit = document.getElementById('cliente_cuit').value;
+                                        const domicilio = document.getElementById('cliente_domicilio').value;
+                                        const condicionIva = document.getElementById('cliente_condicion_iva').value;
+                                        
+                                        if (!nombre || nombre.trim() === '') {
+                                            Swal.showValidationMessage('El nombre del cliente es requerido');
+                                            return false;
+                                        }
+                                        
+                                        return {
+                                            cliente_nombre: nombre.trim(),
+                                            cliente_cuit: cuit.trim() || null,
+                                            cliente_domicilio: domicilio.trim() || null,
+                                            cliente_condicion_iva: condicionIva
+                                        };
+                                    }
+                                });
+
+                                if (formValues) {
+                                    try {
+                                        // Llamar al endpoint de facturación
+                                        const facturaResponse = await axios.post(
+                                            `${BASE_API_ENDPOINT}/api/ventas/${response.data.id}/emitir_factura/`,
+                                            {
+                                                venta_id: response.data.id,
+                                                ...formValues
+                                            },
+                                            {
+                                                headers: { 'Authorization': `Bearer ${token}` }
+                                            }
+                                        );
+                                        
+                                        // Obtener los datos completos de la factura desde la respuesta
+                                        const facturaData = facturaResponse.data.factura || facturaResponse.data;
+                                        
+                                        // Navegar directamente a la página de impresión de factura sin preguntar
+                                        navigate('/factura', { 
+                                            state: { 
+                                                factura: facturaData,
+                                                venta: ventaParaRecibo,
+                                                skipReciboPrompt: true
+                                            } 
+                                        });
+                                    } catch (facturaError) {
+                                        console.error('Error al emitir factura:', facturaError.response ? facturaError.response.data : facturaError.message);
+                                        Swal.fire({
+                                            title: 'Error al emitir factura',
+                                            html: facturaError.response && facturaError.response.data 
+                                                ? (facturaError.response.data.error || JSON.stringify(facturaError.response.data))
+                                                : facturaError.message,
+                                            icon: 'error',
+                                            confirmButtonText: 'Ok'
+                                        }).then(() => {
+                                            // Si falló la factura, ir directo al recibo
+                                            navigate('/recibo', { state: { venta: ventaParaRecibo } });
+                                        });
+                                    }
+                                } else {
+                                    // Si canceló el formulario de factura, ir directo al recibo
+                                    navigate('/recibo', { state: { venta: ventaParaRecibo } });
+                                }
+                            } else if (result.isDenied) {
+                                // Solo recibo - ir directo sin preguntar
+                                navigate('/recibo', { state: { venta: ventaParaRecibo } });
+                            } else if (result.isDismissed) {
+                                // Si canceló, no hacer nada (solo procesar venta)
+                            }
+                            // Si canceló, no hace nada
+                        });
+                    } else {
+                        // No tiene facturación configurada, ir directo al recibo
+                        navigate('/recibo', { state: { venta: ventaParaRecibo } });
+                    }
 
                 } catch (err) {
                     console.error('Error al procesar la venta:', err.response ? JSON.stringify(err.response.data) : err.message);
