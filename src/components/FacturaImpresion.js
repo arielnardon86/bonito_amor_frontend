@@ -225,6 +225,18 @@ const FacturaImpresion = () => {
         navigate('/punto-venta');
     };
 
+    const handleTicketCambio = () => {
+        if (!venta || !venta.id) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se encontró información de la venta'
+            });
+            return;
+        }
+        navigate('/ticket-cambio', { state: { venta } });
+    };
+
     return (
         <div style={{ padding: '20px' }}>
             <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
@@ -241,6 +253,20 @@ const FacturaImpresion = () => {
                     }}
                 >
                     Imprimir Factura
+                </button>
+                <button 
+                    onClick={handleTicketCambio}
+                    style={{
+                        padding: '10px 20px',
+                        fontSize: '16px',
+                        backgroundColor: '#17a2b8',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    Ticket de cambio
                 </button>
                 <button 
                     onClick={handleGoBack}

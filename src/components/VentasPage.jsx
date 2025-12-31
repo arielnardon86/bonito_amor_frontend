@@ -32,11 +32,14 @@ const VentasPage = () => {
     const [ventas, setVentas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [facturasPorVenta, setFacturasPorVenta] = useState({}); // Cache de facturas por venta
 
     const [filterDate, setFilterDate] = useState(defaultDate);
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterAnulada, setFilterAnulada] = useState('');
+    const [filterVentaId, setFilterVentaId] = useState('');
+    const barcodeInputRef = React.useRef(null);
+    const barcodeInputValueRef = React.useRef(''); // Referencia para mantener el valor sin re-renderizar
+    const isComposingRef = React.useRef(false); // Para manejar composición IME
 
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
@@ -79,9 +82,16 @@ const VentasPage = () => {
                 tienda_slug: selectedStoreSlug,
             };
 
-            if (filterDate) {
-                params.fecha_venta__date = filterDate;
+            // Si hay un ID de venta, no aplicar filtro de fecha
+            if (filterVentaId) {
+                params.id = filterVentaId;
+            } else {
+                // Solo aplicar filtro de fecha si no hay ID de venta
+                if (filterDate) {
+                    params.fecha_venta__date = filterDate;
+                }
             }
+            
             if (filterSellerId) {
                 params.usuario = filterSellerId;
             }
@@ -104,40 +114,13 @@ const VentasPage = () => {
             } else {
                 setCurrentPageNumber(1);
             }
-
-            // Cargar facturas para las ventas que tienen factura
-            const ventasConFactura = ventasData.filter(v => v.tiene_factura || v.facturada);
-            if (ventasConFactura.length > 0) {
-                const facturasPromises = ventasConFactura.map(async (venta) => {
-                    try {
-                        const facturasResponse = await axios.get(`${BASE_API_ENDPOINT}/api/facturas/`, {
-                            headers: { 'Authorization': `Bearer ${token}` },
-                            params: { venta: venta.id }
-                        });
-                        const facturas = facturasResponse.data.results || facturasResponse.data || [];
-                        return { ventaId: venta.id, factura: facturas[0] || null };
-                    } catch (err) {
-                        console.error(`Error fetching factura for venta ${venta.id}:`, err);
-                        return { ventaId: venta.id, factura: null };
-                    }
-                });
-
-                const facturasData = await Promise.all(facturasPromises);
-                const facturasMap = {};
-                facturasData.forEach(({ ventaId, factura }) => {
-                    if (factura) {
-                        facturasMap[ventaId] = factura;
-                    }
-                });
-                setFacturasPorVenta(facturasMap);
-            }
         } catch (err) {
             setError('Error al cargar las ventas: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             console.error('Error fetching ventas:', err.response || err.message);
         } finally {
             setLoading(false);
         }
-    }, [token, selectedStoreSlug, filterDate, filterSellerId, filterAnulada]);
+    }, [token, selectedStoreSlug, filterDate, filterSellerId, filterAnulada, filterVentaId]);
 
     const fetchSellers = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
@@ -165,6 +148,28 @@ const VentasPage = () => {
             setLoading(false);
         }
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchVentas]);
+
+    // Sincronizar el input directamente desde el DOM para evitar pérdida de caracteres
+    useEffect(() => {
+        const input = barcodeInputRef.current;
+        if (!input) return;
+
+        const handleInput = (e) => {
+            const val = e.target.value.replace(/-/g, '');
+            // Solo actualizar si el valor es diferente para evitar loops
+            if (val !== filterVentaId) {
+                setFilterVentaId(val);
+                barcodeInputValueRef.current = val;
+            }
+        };
+
+        // Usar addEventListener en lugar de React events para mejor control
+        input.addEventListener('input', handleInput);
+        
+        return () => {
+            input.removeEventListener('input', handleInput);
+        };
+    }, [filterVentaId]);
 
     const handleAnularVenta = async (ventaId) => {
         console.log('Botón Anular Venta presionado para ID:', ventaId);
@@ -261,81 +266,82 @@ const VentasPage = () => {
         }
     };
 
-    const handleAnularFactura = async (venta) => {
-        if (!token) {
-            showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
-            return;
-        }
-
-        try {
-            // Buscar la factura asociada a esta venta
-            const facturasResponse = await axios.get(`${BASE_API_ENDPOINT}/api/facturas/`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { venta: venta.id }
-            });
-
-            const facturas = facturasResponse.data.results || facturasResponse.data || [];
-            if (facturas.length === 0) {
-                showCustomAlert('Esta venta no tiene factura asociada.', 'info');
-                return;
-            }
-
-            const factura = facturas[0];
-
-            // Verificar que la factura pueda ser anulada
-            if (factura.estado === 'ANULADA') {
-                showCustomAlert('Esta factura ya está anulada.', 'info');
-                return;
-            }
-
-            if (factura.estado !== 'EMITIDA') {
-                showCustomAlert(`La factura no puede ser anulada. Estado actual: ${factura.estado}`, 'error');
-                return;
-            }
-
-            // Mostrar confirmación
-            setConfirmMessage(`¿Estás seguro de que quieres ANULAR esta factura electrónica?\n\nEsta acción:\n- Anulará la factura en AFIP (irreversible)\n- Cambiará el estado de la factura a ANULADA\n\nFactura: ${factura.tipo_comprobante} ${String(factura.punto_venta || 0).padStart(4, '0')}-${String(factura.numero_comprobante || 0).padStart(8, '0')}\nCAE: ${factura.cae || 'N/A'}`);
-            setConfirmAction(() => async () => {
-                setShowConfirmModal(false);
-                try {
-                    const response = await axios.post(
-                        `${BASE_API_ENDPOINT}/api/facturas/${factura.id}/anular/`,
-                        {},
-                        {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        }
-                    );
-
-                    if (response.status === 200) {
-                        showCustomAlert('Factura anulada exitosamente en AFIP.', 'success');
-                        // Recargar la lista de ventas para actualizar el estado
-                        fetchVentas();
-                    }
-                } catch (err) {
-                    const errorMsg = err.response?.data?.error || err.response?.data?.mensaje || err.message;
-                    showCustomAlert('Error al anular la factura: ' + errorMsg, 'error');
-                    console.error('Error anulando factura:', err.response || err);
-                }
-            });
-            setShowConfirmModal(true);
-        } catch (err) {
-            showCustomAlert('Error al obtener la factura: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
-            console.error('Error fetching factura:', err.response || err.message);
-        }
-    };
-
     const applyFilters = () => {
-        fetchVentas();
+        // Leer el valor directamente del DOM si el estado no está actualizado
+        let ventaIdParaBuscar = filterVentaId;
+        if (barcodeInputRef.current) {
+            const currentValue = barcodeInputRef.current.value.replace(/-/g, '');
+            if (currentValue !== filterVentaId) {
+                ventaIdParaBuscar = currentValue;
+                setFilterVentaId(currentValue);
+            }
+        }
+        
+        // Usar fetchVentas pero con el valor correcto
+        const buscarVentas = async () => {
+            if (!token || !selectedStoreSlug) return;
+            
+            setLoading(true);
+            setError(null);
+            try {
+                const url = `${BASE_API_ENDPOINT}/api/ventas/`;
+                const params = {
+                    tienda_slug: selectedStoreSlug,
+                };
+
+                // Si hay un ID de venta, no aplicar filtro de fecha
+                if (ventaIdParaBuscar) {
+                    params.id = ventaIdParaBuscar;
+                } else {
+                    // Solo aplicar filtro de fecha si no hay ID de venta
+                    if (filterDate) {
+                        params.fecha_venta__date = filterDate;
+                    }
+                }
+                
+                if (filterSellerId) {
+                    params.usuario = filterSellerId;
+                }
+                if (filterAnulada !== '') {
+                    params.anulada = filterAnulada;
+                }
+
+                const response = await axios.get(url, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    params: params
+                });
+
+                const ventasData = response.data.results || [];
+                setVentas(ventasData);
+                setNextPageUrl(response.data.next);
+                setPrevPageUrl(response.data.previous);
+                setCurrentPageNumber(1);
+            } catch (err) {
+                setError('Error al cargar las ventas: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+                console.error('Error fetching ventas:', err.response || err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        buscarVentas();
     };
 
     const clearFilters = () => {
         setFilterDate(defaultDate);
         setFilterSellerId('');
         setFilterAnulada('');
+        setFilterVentaId('');
+        // Limpiar el input no controlado
+        if (barcodeInputRef.current) {
+            barcodeInputRef.current.value = '';
+            barcodeInputValueRef.current = '';
+        }
         setTimeout(() => {
             fetchVentas();
         }, 0);
     };
+
 
 
     if (authLoading || (isAuthenticated && !user)) {
@@ -401,6 +407,23 @@ const VentasPage = () => {
                         <option value="true">Anuladas</option>
                     </select>
                 </div>
+                <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Buscar por ID de Venta (Código de barras):</label>
+                    <input
+                        ref={barcodeInputRef}
+                        type="text"
+                        defaultValue={filterVentaId}
+                        onKeyPress={(e) => { 
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                applyFilters();
+                            }
+                        }}
+                        placeholder="Escanear o ingresar código"
+                        style={styles.filterInput}
+                        autoComplete="off"
+                    />
+                </div>
                 <button onClick={applyFilters} style={styles.filterButton}>Aplicar Filtros</button>
                 <button onClick={clearFilters} style={styles.filterButtonSecondary}>Limpiar Filtros</button>
             </div>
@@ -463,15 +486,6 @@ const VentasPage = () => {
                                                 >
                                                     Factura
                                                 </button>
-                                                {(venta.tiene_factura || venta.facturada) && facturasPorVenta[venta.id] && facturasPorVenta[venta.id].estado === 'EMITIDA' && (
-                                                    <button
-                                                        onClick={() => handleAnularFactura(venta)}
-                                                        style={styles.anularFacturaButton}
-                                                        title="Anular factura electrónica en AFIP"
-                                                    >
-                                                        Anular Factura
-                                                    </button>
-                                                )}
                                                 <button
                                                     onClick={() => handleReimprimirRecibo(venta)}
                                                     style={styles.reprintButton}
@@ -852,16 +866,6 @@ const styles = {
         cursor: 'pointer',
         fontSize: '0.8em',
         transition: 'background-color 0.3s ease',
-    },
-    anularFacturaButton: {
-        padding: '6px 10px',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '0.9em',
-        color: 'white',
-        transition: 'background-color 0.3s ease',
-        backgroundColor: '#ff6b6b',
     },
     paginationContainer: {
         display: 'flex',

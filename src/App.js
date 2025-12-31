@@ -11,6 +11,7 @@ import { SalesProvider } from './components/SalesContext';
 import EtiquetasImpresion from './components/EtiquetasImpresion';
 import ReciboImpresion from './components/ReciboImpresion';
 import FacturaImpresion from './components/FacturaImpresion';
+import TicketCambioImpresion from './components/TicketCambioImpresion';
 
 import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
@@ -46,8 +47,8 @@ const Navbar = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [isOpen]);
 
-  // Si estamos en la página de etiquetas, recibo o factura, no mostramos la barra de navegación
-  if (location.pathname === '/etiquetas' || location.pathname === '/recibo' || location.pathname === '/factura') {
+  // Si estamos en la página de etiquetas, recibo, factura o ticket de cambio, no mostramos la barra de navegación
+  if (location.pathname === '/etiquetas' || location.pathname === '/recibo' || location.pathname === '/factura' || location.pathname === '/ticket-cambio') {
     return null;
   }
 
@@ -168,6 +169,7 @@ const AppContent = () => {
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />
               <Route path="/recibo" element={<ReciboImpresion />} />
               <Route path="/factura" element={<FacturaImpresion />} />
+              <Route path="/ticket-cambio" element={<TicketCambioImpresion />} />
             </>
           )}
 

@@ -99,6 +99,14 @@ const ReciboImpresion = () => {
         navigate(-1);
     };
 
+    const handleTicketCambio = () => {
+        if (!venta || !venta.id) {
+            alert('Error: No se encontró información de la venta');
+            return;
+        }
+        navigate('/ticket-cambio', { state: { venta } });
+    };
+
     if (!venta) {
         return (
             <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>
@@ -113,6 +121,7 @@ const ReciboImpresion = () => {
             <div className="no-print-controls">
                 <button onClick={handleGoBack}>Volver</button>
                 <button onClick={handlePrint}>Imprimir Recibo</button>
+                <button onClick={handleTicketCambio} style={{ backgroundColor: '#17a2b8', color: 'white' }}>Ticket de cambio</button>
             </div>
             
             <div className="receipt-printable-area" ref={reciboRef}>
