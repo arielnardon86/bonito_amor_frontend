@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const ReciboImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { venta } = location.state || {}; 
+    const { venta, fromCambioDevolucion } = location.state || {}; 
     const reciboRef = useRef(null);
 
     useEffect(() => {
@@ -26,12 +26,37 @@ const ReciboImpresion = () => {
                 return acc + (cantidad * parseFloat(precio || 0));
             }, 0);
 
+            const esNotaCredito = venta?.metodo_pago === 'Nota de Crédito' || venta?.metodo_pago_nombre === 'Nota de Crédito';
+            const esDiferenciaPendiente = venta?.es_diferencia_pendiente || venta?.cambio_devolucion_diferencia;
+            const tituloRecibo = esNotaCredito ? 'Nota de Crédito' : 'Comprobante de compra';
+            
+            // Calcular saldo a favor para mostrar en el recibo
+            let saldoAFavorMonto = 0;
+            if (venta.cambio_devolucion_info && parseFloat(venta.cambio_devolucion_info.saldo_a_favor || 0) > 0) {
+                saldoAFavorMonto = parseFloat(venta.cambio_devolucion_info.saldo_a_favor);
+            } else if (venta.cambio_devolucion_diferencia && parseFloat(venta.cambio_devolucion_diferencia.monto_devolucion || 0) > 0) {
+                // Para diferencia pendiente, usar monto_devolucion como saldo a favor
+                saldoAFavorMonto = parseFloat(venta.cambio_devolucion_diferencia.monto_devolucion);
+            } else if (venta.cambio_devolucion_diferencia && venta.cambio_devolucion_diferencia.saldo_a_favor && parseFloat(venta.cambio_devolucion_diferencia.saldo_a_favor) > 0) {
+                saldoAFavorMonto = parseFloat(venta.cambio_devolucion_diferencia.saldo_a_favor);
+            }
+            
+            // Información adicional si viene de un cambio/devolución
+            let infoCambioDevolucion = '';
+            if (esDiferenciaPendiente && venta?.cambio_devolucion_diferencia) {
+                const montoDevuelto = parseFloat(venta.cambio_devolucion_diferencia.monto_devolucion || 0);
+                if (montoDevuelto > 0) {
+                    infoCambioDevolucion = `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none; margin-top: 5px; padding: 5px; background-color: #e8f4f8; border-radius: 3px;"><strong>Nota:</strong> Esta venta corresponde a la diferencia de un cambio/devolución. Monto devuelto por cambio: $${montoDevuelto.toFixed(2)}</p>`;
+                }
+            }
+            
             reciboRef.current.innerHTML = `
                 <div class="receipt">
                     <div class="header">
-                        <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Comprobante de compra</h2>
+                        <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${tituloRecibo}</h2>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
+                        ${infoCambioDevolucion}
                         <hr>
                     </div>
                     <div class="items">
@@ -47,7 +72,11 @@ const ReciboImpresion = () => {
                             </thead>
                             <tbody>
                                 ${detalles.map(item => {
-                                    const nombre = item.producto_nombre || item.product?.nombre || 'N/A';
+                                    let nombre = item.producto_nombre || item.product?.nombre || 'N/A';
+                                    // Si el método de pago es "Nota de Crédito" y no hay producto, mostrar "Nota de Crédito"
+                                    if ((venta.metodo_pago === 'Nota de Crédito' || venta.metodo_pago_nombre === 'Nota de Crédito') && (!item.producto_nombre && !item.product?.nombre)) {
+                                        nombre = 'Nota de Crédito';
+                                    }
                                     const cantidad = item.cantidad || item.quantity;
                                     const precio = item.precio_unitario || item.product?.precio;
                                     const subtotal = cantidad * parseFloat(precio || 0);
@@ -55,7 +84,7 @@ const ReciboImpresion = () => {
                                     <tr>
                                         <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${cantidad}</td>
                                         <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${nombre}</td>
-                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">$${parseFloat(precio).toFixed(2)}</td>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">$${parseFloat(precio || 0).toFixed(2)}</td>
                                         <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">$${subtotal.toFixed(2)}</td>
                                     </tr>
                                     `;
@@ -68,6 +97,7 @@ const ReciboImpresion = () => {
                         <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Subtotal:</strong> $${subtotal.toFixed(2)}</p>
                         ${(venta.descuento_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> -${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
                         ${(venta.descuento_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> -$${parseFloat(venta.descuento_monto).toFixed(2)}</p>` : ''}
+                        ${saldoAFavorMonto > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Saldo a favor:</strong> -$${saldoAFavorMonto.toFixed(2)}</p>` : ''}
                         
                         ${(venta.recargo_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo:</strong> +${parseFloat(venta.recargo_porcentaje).toFixed(2)}%</p>` : ''}
                         ${(venta.recargo_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo:</strong> +$${parseFloat(venta.recargo_monto).toFixed(2)}</p>` : ''}
@@ -96,7 +126,12 @@ const ReciboImpresion = () => {
     };
 
     const handleGoBack = () => {
-        navigate(-1);
+        // Si es una nota de crédito, viene de un cambio/devolución, o tiene diferencia pendiente, volver al punto de venta
+        if (venta?.metodo_pago === 'Nota de Crédito' || venta?.es_diferencia_pendiente || fromCambioDevolucion) {
+            navigate('/punto-venta');
+        } else {
+            navigate(-1);
+        }
     };
 
     const handleTicketCambio = () => {
@@ -106,6 +141,8 @@ const ReciboImpresion = () => {
         }
         navigate('/ticket-cambio', { state: { venta } });
     };
+    
+    const esNotaCredito = venta?.metodo_pago === 'Nota de Crédito' || venta?.metodo_pago_nombre === 'Nota de Crédito';
 
     if (!venta) {
         return (
@@ -121,7 +158,9 @@ const ReciboImpresion = () => {
             <div className="no-print-controls">
                 <button onClick={handleGoBack}>Volver</button>
                 <button onClick={handlePrint}>Imprimir Recibo</button>
-                <button onClick={handleTicketCambio} style={{ backgroundColor: '#17a2b8', color: 'white' }}>Ticket de cambio</button>
+                {!esNotaCredito && (
+                    <button onClick={handleTicketCambio} style={{ backgroundColor: '#17a2b8', color: 'white' }}>Ticket de cambio</button>
+                )}
             </div>
             
             <div className="receipt-printable-area" ref={reciboRef}>

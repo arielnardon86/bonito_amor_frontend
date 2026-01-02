@@ -46,6 +46,8 @@ const VentasPage = () => {
     const [currentPageNumber, setCurrentPageNumber] = useState(1);
 
     const [expandedSaleId, setExpandedSaleId] = useState(null);
+    const [cambioDevolucionDetalle, setCambioDevolucionDetalle] = useState(null);
+    const [loadingCambioDevolucion, setLoadingCambioDevolucion] = useState(false);
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmMessage, setConfirmMessage] = useState('');
@@ -230,6 +232,52 @@ const VentasPage = () => {
 
     const handleReimprimirRecibo = (venta) => {
         navigate('/recibo', { state: { venta } });
+    };
+
+    const handleVerCambioDevolucion = async (cambioDevolucionId) => {
+        if (!token) {
+            showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
+            return;
+        }
+
+        setLoadingCambioDevolucion(true);
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/cambios-devoluciones/${cambioDevolucionId}/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setCambioDevolucionDetalle(response.data);
+        } catch (err) {
+            showCustomAlert('Error al obtener el cambio/devolución: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
+            console.error('Error fetching cambio/devolución:', err.response || err.message);
+        } finally {
+            setLoadingCambioDevolucion(false);
+        }
+    };
+
+    const handleAnularCambioDevolucion = async (cambioDevolucionId) => {
+        if (!token) {
+            showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
+            return;
+        }
+
+        setConfirmMessage('¿Estás seguro de que quieres CANCELAR este cambio/devolución? Esta acción revertirá los cambios de stock.');
+        setConfirmAction(() => async () => {
+            setShowConfirmModal(false);
+            try {
+                await axios.patch(`${BASE_API_ENDPOINT}/api/cambios-devoluciones/${cambioDevolucionId}/`, {
+                    estado: 'CANCELADO'
+                }, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                showCustomAlert('Cambio/Devolución cancelado con éxito!', 'success');
+                fetchVentas();
+                setCambioDevolucionDetalle(null);
+            } catch (err) {
+                showCustomAlert('Error al cancelar el cambio/devolución: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
+                console.error('Error cancelando cambio/devolución:', err.response || err);
+            }
+        });
+        setShowConfirmModal(true);
     };
 
     const handleVerFactura = async (venta) => {
@@ -447,8 +495,20 @@ const VentasPage = () => {
                         <tbody>
                             {ventas.map(venta => (
                                 <React.Fragment key={venta.id}>
-                                    <tr>
-                                        <td style={styles.td}>{new Date(venta.fecha_venta).toLocaleString()}</td>
+                                    <tr style={venta.es_nota_credito || venta.es_diferencia_pendiente ? { backgroundColor: '#e8f4f8' } : {}}>
+                                        <td style={styles.td}>
+                                            {new Date(venta.fecha_venta).toLocaleString()}
+                                            {venta.es_nota_credito && (
+                                                <span style={{ marginLeft: '10px', padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: '3px', fontSize: '0.75em' }}>
+                                                    Nota de Crédito
+                                                </span>
+                                            )}
+                                            {venta.es_diferencia_pendiente && (
+                                                <span style={{ marginLeft: '10px', padding: '2px 6px', backgroundColor: '#ffc107', color: 'black', borderRadius: '3px', fontSize: '0.75em' }}>
+                                                    Diferencia Pendiente
+                                                </span>
+                                            )}
+                                        </td>
                                         <td style={styles.td}>${parseFloat(venta.total || 0).toFixed(2)}</td>
                                         <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
                                         <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
@@ -492,6 +552,20 @@ const VentasPage = () => {
                                                 >
                                                     Recibo
                                                 </button>
+                                                {!venta.anulada && (
+                                                    <button
+                                                        onClick={() => {
+                                                            navigate('/cambio-devolucion', { state: { venta } });
+                                                        }}
+                                                        style={{
+                                                            ...styles.reprintButton,
+                                                            backgroundColor: '#17a2b8',
+                                                            marginLeft: '5px'
+                                                        }}
+                                                    >
+                                                        Cambio/Devolución
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -499,6 +573,66 @@ const VentasPage = () => {
                                         <tr>
                                             <td colSpan="6" style={styles.detailRow}>
                                                 <h4 style={styles.detailHeader}>Detalles de la Venta {venta.id}</h4>
+                                                
+                                                {/* Información de Cambio/Devolución si aplica */}
+                                                {venta.cambio_devolucion_nota_credito && (
+                                                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#d4edda', border: '1px solid #c3e6cb', borderRadius: '4px' }}>
+                                                        <h5 style={{ margin: '0 0 10px 0', color: '#155724' }}>Información de Nota de Crédito</h5>
+                                                        <p style={{ margin: '5px 0' }}>
+                                                            <strong>Origen:</strong> Cambio/Devolución #{venta.cambio_devolucion_nota_credito.id}
+                                                        </p>
+                                                        <p style={{ margin: '5px 0' }}>
+                                                            <strong>Venta Original:</strong> {venta.cambio_devolucion_nota_credito.venta_original_id}
+                                                        </p>
+                                                        <p style={{ margin: '5px 0' }}>
+                                                            <strong>Saldo a Favor:</strong> ${parseFloat(venta.cambio_devolucion_nota_credito.saldo_a_favor || 0).toFixed(2)}
+                                                        </p>
+                                                        <button
+                                                            onClick={() => handleVerCambioDevolucion(venta.cambio_devolucion_nota_credito.id)}
+                                                            style={{
+                                                                marginTop: '10px',
+                                                                padding: '5px 10px',
+                                                                backgroundColor: '#17a2b8',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            Ver Detalle del Cambio/Devolución
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                
+                                                {venta.cambio_devolucion_diferencia && (
+                                                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffeaa7', borderRadius: '4px' }}>
+                                                        <h5 style={{ margin: '0 0 10px 0', color: '#856404' }}>Información de Diferencia Pendiente</h5>
+                                                        <p style={{ margin: '5px 0' }}>
+                                                            <strong>Origen:</strong> Cambio/Devolución #{venta.cambio_devolucion_diferencia.id}
+                                                        </p>
+                                                        <p style={{ margin: '5px 0' }}>
+                                                            <strong>Venta Original:</strong> {venta.cambio_devolucion_diferencia.venta_original_id}
+                                                        </p>
+                                                        <p style={{ margin: '5px 0' }}>
+                                                            <strong>Monto Diferencia:</strong> ${parseFloat(venta.cambio_devolucion_diferencia.monto_diferencia || 0).toFixed(2)}
+                                                        </p>
+                                                        <button
+                                                            onClick={() => handleVerCambioDevolucion(venta.cambio_devolucion_diferencia.id)}
+                                                            style={{
+                                                                marginTop: '10px',
+                                                                padding: '5px 10px',
+                                                                backgroundColor: '#17a2b8',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            Ver Detalle del Cambio/Devolución
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                
                                                 <div style={styles.detailTableWrapper}>
                                                 <table style={styles.detailTable}>
                                                     <thead>
@@ -532,9 +666,27 @@ const VentasPage = () => {
                                                                 const subtotalAjustado = detalle.cantidad * precioUnitarioAjustado;
 
 
+                                                                // Para notas de crédito o cuando no hay producto, mostrar descripción apropiada
+                                                                let productoNombre = detalle.producto_nombre || '';
+                                                                if (!productoNombre || productoNombre === 'null' || productoNombre === 'None') {
+                                                                    if (venta.metodo_pago === 'Nota de Crédito' || venta.es_nota_credito) {
+                                                                        // Si hay cambio/devolución relacionado, mostrar productos devueltos
+                                                                        if (venta.cambio_devolucion_nota_credito && venta.cambio_devolucion_nota_credito.productos_devueltos && venta.cambio_devolucion_nota_credito.productos_devueltos.length > 0) {
+                                                                            const productos = venta.cambio_devolucion_nota_credito.productos_devueltos.map(p => `${p.cantidad}x ${p.nombre}`).join(', ');
+                                                                            productoNombre = `Nota de Crédito por devolución: ${productos}`;
+                                                                        } else if (venta.cambio_devolucion_nota_credito) {
+                                                                            productoNombre = 'Nota de Crédito (ver detalle del cambio/devolución arriba)';
+                                                                        } else {
+                                                                            productoNombre = 'Nota de Crédito';
+                                                                        }
+                                                                    } else {
+                                                                        productoNombre = 'Producto sin nombre';
+                                                                    }
+                                                                }
+
                                                                 return (
                                                                     <tr key={detalle.id}>
-                                                                        <td style={styles.detailTd}>{detalle.producto_nombre}</td>
+                                                                        <td style={styles.detailTd}>{productoNombre}</td>
                                                                         <td style={styles.detailTd}>{detalle.cantidad}</td>
                                                                         <td style={styles.detailTd}>${precioUnitarioAjustado.toFixed(2)}</td>
                                                                         <td style={styles.detailTd}>${subtotalAjustado.toFixed(2)}</td>
@@ -602,6 +754,137 @@ const VentasPage = () => {
                         <div style={styles.modalActions}>
                             <button onClick={confirmAction} style={styles.modalConfirmButton}>Sí</button>
                             <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>No</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* Modal de Detalle de Cambio/Devolución */}
+            {cambioDevolucionDetalle && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        padding: '20px',
+                        borderRadius: '8px',
+                        maxWidth: '800px',
+                        maxHeight: '90vh',
+                        overflowY: 'auto',
+                        width: '90%'
+                    }}>
+                        <h2 style={{ marginTop: 0 }}>Detalle del Cambio/Devolución</h2>
+                        
+                        <div style={{ marginBottom: '15px' }}>
+                            <p><strong>ID:</strong> {cambioDevolucionDetalle.id}</p>
+                            <p><strong>Tipo:</strong> {cambioDevolucionDetalle.tipo}</p>
+                            <p><strong>Estado:</strong> {cambioDevolucionDetalle.estado}</p>
+                            <p><strong>Fecha:</strong> {new Date(cambioDevolucionDetalle.fecha_creacion).toLocaleString()}</p>
+                            <p><strong>Venta Original:</strong> {cambioDevolucionDetalle.venta_original_id}</p>
+                            <p><strong>Monto Devolución:</strong> ${parseFloat(cambioDevolucionDetalle.monto_devolucion || 0).toFixed(2)}</p>
+                            <p><strong>Monto Nuevo:</strong> ${parseFloat(cambioDevolucionDetalle.monto_nuevo || 0).toFixed(2)}</p>
+                            <p><strong>Diferencia:</strong> ${parseFloat(cambioDevolucionDetalle.monto_diferencia || 0).toFixed(2)}</p>
+                            {parseFloat(cambioDevolucionDetalle.saldo_a_favor || 0) > 0 && (
+                                <p><strong>Saldo a Favor:</strong> ${parseFloat(cambioDevolucionDetalle.saldo_a_favor).toFixed(2)}</p>
+                            )}
+                        </div>
+                        
+                        {cambioDevolucionDetalle.detalles && cambioDevolucionDetalle.detalles.length > 0 && (
+                            <div style={{ marginBottom: '15px' }}>
+                                <h3>Detalles:</h3>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: '#f2f2f2' }}>
+                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Acción</th>
+                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Producto Devuelto</th>
+                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Producto Nuevo</th>
+                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Cantidad</th>
+                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Precio Devuelto</th>
+                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Precio Nuevo</th>
+                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Subtotal Devuelto</th>
+                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Subtotal Nuevo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {cambioDevolucionDetalle.detalles.map((detalle, index) => (
+                                            <tr key={index}>
+                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{detalle.accion}</td>
+                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                    {detalle.producto_devuelto_nombre || detalle.producto_original_nombre || '-'}
+                                                </td>
+                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                    {detalle.producto_nuevo_nombre || '-'}
+                                                </td>
+                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{detalle.cantidad}</td>
+                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                    {detalle.precio_unitario_devuelto ? `$${parseFloat(detalle.precio_unitario_devuelto).toFixed(2)}` : '-'}
+                                                </td>
+                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                    {detalle.precio_unitario_nuevo ? `$${parseFloat(detalle.precio_unitario_nuevo).toFixed(2)}` : '-'}
+                                                </td>
+                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                    ${parseFloat(detalle.subtotal_devuelto || 0).toFixed(2)}
+                                                </td>
+                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                    ${parseFloat(detalle.subtotal_nuevo || 0).toFixed(2)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                        
+                        {cambioDevolucionDetalle.nota_credito_generada && cambioDevolucionDetalle.venta_nota_credito_id && (
+                            <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#d4edda', borderRadius: '4px' }}>
+                                <p><strong>Nota de Crédito Generada:</strong> {cambioDevolucionDetalle.venta_nota_credito_id}</p>
+                            </div>
+                        )}
+                        
+                        {cambioDevolucionDetalle.diferencia_pendiente && cambioDevolucionDetalle.venta_diferencia_pendiente_id && (
+                            <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#fff3cd', borderRadius: '4px' }}>
+                                <p><strong>Venta Diferencia Pendiente:</strong> {cambioDevolucionDetalle.venta_diferencia_pendiente_id}</p>
+                            </div>
+                        )}
+                        
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                            {cambioDevolucionDetalle.estado !== 'CANCELADO' && (
+                                <button
+                                    onClick={() => handleAnularCambioDevolucion(cambioDevolucionDetalle.id)}
+                                    style={{
+                                        padding: '10px 15px',
+                                        backgroundColor: '#dc3545',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancelar Cambio/Devolución
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setCambioDevolucionDetalle(null)}
+                                style={{
+                                    padding: '10px 15px',
+                                    backgroundColor: '#6c757d',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Cerrar
+                            </button>
                         </div>
                     </div>
                 </div>
