@@ -396,9 +396,12 @@ const VentasPage = () => {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    if (!isAuthenticated || !user.is_superuser) {
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.</div>;
+    if (!isAuthenticated || (!user.is_superuser && !user.is_staff)) {
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los usuarios con permisos de staff pueden ver ventas.</div>;
     }
+    
+    // Verificar si es usuario staff (no superuser) para aplicar restricciones
+    const isStaffOnly = user.is_staff && !user.is_superuser;
 
     if (!selectedStoreSlug) {
         return (
@@ -421,40 +424,44 @@ const VentasPage = () => {
             <h1>Listado de Ventas ({selectedStoreSlug})</h1>
 
             <div style={styles.filtersContainer}>
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Fecha:</label>
-                    <input
-                        type="date"
-                        value={filterDate}
-                        onChange={(e) => setFilterDate(e.target.value)}
-                        style={styles.filterInput}
-                    />
-                </div>
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Vendedor:</label>
-                    <select
-                        value={filterSellerId}
-                        onChange={(e) => setFilterSellerId(e.target.value)}
-                        style={styles.filterInput}
-                    >
-                        <option value="">Todos</option>
-                        {sellers.map(seller => (
-                            <option key={seller.id} value={seller.id}>{seller.username} ({seller.first_name} {seller.last_name})</option>
-                        ))}
-                    </select>
-                </div>
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Anulada:</label>
-                    <select
-                        value={filterAnulada}
-                        onChange={(e) => setFilterAnulada(e.target.value)}
-                        style={styles.filterInput}
-                    >
-                        <option value="">Todas</option>
-                        <option value="false">No Anuladas</option>
-                        <option value="true">Anuladas</option>
-                    </select>
-                </div>
+                {!isStaffOnly && (
+                    <>
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Fecha:</label>
+                            <input
+                                type="date"
+                                value={filterDate}
+                                onChange={(e) => setFilterDate(e.target.value)}
+                                style={styles.filterInput}
+                            />
+                        </div>
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Vendedor:</label>
+                            <select
+                                value={filterSellerId}
+                                onChange={(e) => setFilterSellerId(e.target.value)}
+                                style={styles.filterInput}
+                            >
+                                <option value="">Todos</option>
+                                {sellers.map(seller => (
+                                    <option key={seller.id} value={seller.id}>{seller.username} ({seller.first_name} {seller.last_name})</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Anulada:</label>
+                            <select
+                                value={filterAnulada}
+                                onChange={(e) => setFilterAnulada(e.target.value)}
+                                style={styles.filterInput}
+                            >
+                                <option value="">Todas</option>
+                                <option value="false">No Anuladas</option>
+                                <option value="true">Anuladas</option>
+                            </select>
+                        </div>
+                    </>
+                )}
                 <div style={styles.filterGroup}>
                     <label style={styles.filterLabel}>Buscar por ID de Venta (Código de barras):</label>
                     <input
@@ -472,8 +479,10 @@ const VentasPage = () => {
                         autoComplete="off"
                     />
                 </div>
-                <button onClick={applyFilters} style={styles.filterButton}>Aplicar Filtros</button>
-                <button onClick={clearFilters} style={styles.filterButtonSecondary}>Limpiar Filtros</button>
+                <button onClick={applyFilters} style={styles.filterButton}>Buscar</button>
+                {!isStaffOnly && (
+                    <button onClick={clearFilters} style={styles.filterButtonSecondary}>Limpiar Filtros</button>
+                )}
             </div>
 
             {ventas.length === 0 ? (
@@ -523,7 +532,7 @@ const VentasPage = () => {
                                                 >
                                                     {expandedSaleId === venta.id ? 'Ocultar' : 'Ver'}
                                                 </button>
-                                                {!venta.anulada && (
+                                                {!venta.anulada && !isStaffOnly && (
                                                     <button
                                                         onClick={() => {
                                                             console.log('Intentando anular venta:', venta.id);
@@ -692,7 +701,7 @@ const VentasPage = () => {
                                                                         <td style={styles.detailTd}>${subtotalAjustado.toFixed(2)}</td>
                                                                         <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
                                                                         <td style={styles.detailTd}>
-                                                                            {!venta.anulada && !detalle.anulado_individualmente && (
+                                                                            {!venta.anulada && !detalle.anulado_individualmente && !isStaffOnly && (
                                                                                 <button
                                                                                     onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
                                                                                     style={styles.anularDetalleButton}

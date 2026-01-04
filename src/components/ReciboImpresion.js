@@ -56,6 +56,7 @@ const ReciboImpresion = () => {
                         <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${tituloRecibo}</h2>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
+                        <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">ID de Venta: ${venta.id || 'N/A'}</p>
                         ${infoCambioDevolucion}
                         <hr>
                     </div>
