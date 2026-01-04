@@ -20,8 +20,8 @@ const ReciboImpresion = () => {
                 return !isNaN(dateObj.getTime()) ? dateObj.toLocaleString() : fecha;
             };
             
-            // Función para generar código de barras EAN13 de 13 dígitos desde el UUID de la venta
-            const generarCodigoDeBarrasEAN13 = (ventaId) => {
+            // Función para generar código numérico de 13 dígitos desde el UUID de la venta (mismo que lee el código de barras)
+            const generarCodigoNumerico13Digitos = (ventaId) => {
                 // Generar un código numérico determinístico del UUID de la venta
                 const ventaIdSinGuiones = String(ventaId).replace(/-/g, '');
                 
@@ -44,8 +44,8 @@ const ReciboImpresion = () => {
                 return code + checksum.toString();
             };
             
-            // Generar código de barras de 13 dígitos
-            const codigoBarras = venta?.id ? generarCodigoDeBarrasEAN13(venta.id) : 'N/A';
+            // Generar código numérico de 13 dígitos (mismo que lee el código de barras)
+            const codigoNumerico = venta?.id ? generarCodigoNumerico13Digitos(venta.id) : 'N/A';
             
             const subtotal = detalles.reduce((acc, item) => {
                 const cantidad = item.cantidad || item.quantity;
@@ -83,7 +83,7 @@ const ReciboImpresion = () => {
                         <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${tituloRecibo}</h2>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
-                        <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">ID de Venta: ${codigoBarras}</p>
+                        <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">ID de Venta: ${codigoNumerico}</p>
                         ${infoCambioDevolucion}
                         <hr>
                     </div>
