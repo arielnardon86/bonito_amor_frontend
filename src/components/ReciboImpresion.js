@@ -20,6 +20,33 @@ const ReciboImpresion = () => {
                 return !isNaN(dateObj.getTime()) ? dateObj.toLocaleString() : fecha;
             };
             
+            // Función para generar código de barras EAN13 de 13 dígitos desde el UUID de la venta
+            const generarCodigoDeBarrasEAN13 = (ventaId) => {
+                // Generar un código numérico determinístico del UUID de la venta
+                const ventaIdSinGuiones = String(ventaId).replace(/-/g, '');
+                
+                // Crear un hash numérico del UUID
+                let hash = 0;
+                for (let i = 0; i < ventaIdSinGuiones.length; i++) {
+                    hash = (hash * 31 + ventaIdSinGuiones.charCodeAt(i)) % 1000000000;
+                }
+                
+                // Generar código base: 779 (Argentina) + 9 dígitos del hash
+                const hash9Digitos = String(Math.abs(hash)).padStart(9, '0').substring(0, 9);
+                let code = '779' + hash9Digitos;
+                
+                // Calcular dígito de control para EAN13
+                let sum = 0;
+                for (let i = 0; i < 12; i++) {
+                    sum += parseInt(code[i], 10) * (i % 2 === 0 ? 1 : 3);
+                }
+                const checksum = (10 - (sum % 10)) % 10;
+                return code + checksum.toString();
+            };
+            
+            // Generar código de barras de 13 dígitos
+            const codigoBarras = venta?.id ? generarCodigoDeBarrasEAN13(venta.id) : 'N/A';
+            
             const subtotal = detalles.reduce((acc, item) => {
                 const cantidad = item.cantidad || item.quantity;
                 const precio = item.precio_unitario || item.product?.precio;
@@ -56,7 +83,7 @@ const ReciboImpresion = () => {
                         <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${tituloRecibo}</h2>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
-                        <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">ID de Venta: ${venta.id || 'N/A'}</p>
+                        <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">ID de Venta: ${codigoBarras}</p>
                         ${infoCambioDevolucion}
                         <hr>
                     </div>

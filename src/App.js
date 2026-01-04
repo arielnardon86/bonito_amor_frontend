@@ -80,11 +80,14 @@ const Navbar = () => {
                 <li onClick={() => setIsOpen(false)}><Link to="/punto-venta">Punto de Venta</Link></li>
             )}
             
+            {user && (user.is_staff || user.is_superuser) && ( 
+                <li onClick={() => setIsOpen(false)}><Link to="/ventas">Listado de Ventas</Link></li>
+            )}
+            
             {user && user.is_superuser && ( 
                 <>
                     <li onClick={() => setIsOpen(false)}><Link to="/productos">Gestión de Productos</Link></li>
                     <li onClick={() => setIsOpen(false)}><Link to="/metricas-ventas">Métricas de Ventas</Link></li>
-                    <li onClick={() => setIsOpen(false)}><Link to="/ventas">Listado de Ventas</Link></li>
                     <li onClick={() => setIsOpen(false)}><Link to="/registro-compras">Registro de Egresos</Link></li>
                     <li onClick={() => setIsOpen(false)}><Link to="/panel-administracion-tienda">Panel de Administración</Link></li>
                 </>
