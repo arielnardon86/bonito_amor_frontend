@@ -428,7 +428,9 @@ const PuntoVenta = () => {
 
         const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
         const isMetodoFinanciero = metodoPagoObj?.es_financiero;
-        const finalArancelId = isMetodoFinanciero ? arancelSeleccionadoId : null;
+        // Normalizar: convertir cadena vacía a null
+        const arancelIdNormalizado = arancelSeleccionadoId && arancelSeleccionadoId.trim() !== '' ? arancelSeleccionadoId : null;
+        const finalArancelId = isMetodoFinanciero ? arancelIdNormalizado : null;
         const arancelInfo = arancelesTienda.find(a => a.id === finalArancelId);
 
         if (isMetodoFinanciero && !finalArancelId) {
@@ -530,7 +532,7 @@ const PuntoVenta = () => {
                         tienda_slug: selectedStoreSlug,
                         metodo_pago: metodoPagoSeleccionado,
                         ...datosAjusteParaBackend, // Se envían los datos calculados
-                        arancel_aplicado_id: finalArancelId, 
+                        arancel_aplicado_id: finalArancelId || null, // Asegurar que sea null si está vacío
                         detalles: activeCart.items.map(item => ({
                             producto: item.product.id,
                             cantidad: item.quantity,
