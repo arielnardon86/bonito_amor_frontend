@@ -26,6 +26,33 @@ const FacturaImpresion = () => {
                 }) : fecha;
             };
 
+            // Función para generar código numérico de 13 dígitos desde el UUID de la venta (mismo que lee el código de barras)
+            const generarCodigoNumerico13Digitos = (ventaId) => {
+                // Generar un código numérico determinístico del UUID de la venta
+                const ventaIdSinGuiones = String(ventaId).replace(/-/g, '');
+                
+                // Crear un hash numérico del UUID
+                let hash = 0;
+                for (let i = 0; i < ventaIdSinGuiones.length; i++) {
+                    hash = (hash * 31 + ventaIdSinGuiones.charCodeAt(i)) % 1000000000;
+                }
+                
+                // Generar código base: 779 (Argentina) + 9 dígitos del hash
+                const hash9Digitos = String(Math.abs(hash)).padStart(9, '0').substring(0, 9);
+                let code = '779' + hash9Digitos;
+                
+                // Calcular dígito de control para EAN13
+                let sum = 0;
+                for (let i = 0; i < 12; i++) {
+                    sum += parseInt(code[i], 10) * (i % 2 === 0 ? 1 : 3);
+                }
+                const checksum = (10 - (sum % 10)) % 10;
+                return code + checksum.toString();
+            };
+
+            // Generar código numérico de 13 dígitos (mismo que lee el código de barras)
+            const codigoNumerico = venta?.id ? generarCodigoNumerico13Digitos(venta.id) : 'N/A';
+
             // Formatear número de factura
             const formatearNumeroFactura = (puntoVenta, numero) => {
                 const pv = String(puntoVenta || 0).padStart(4, '0');
@@ -117,6 +144,7 @@ const FacturaImpresion = () => {
                     
                     <div class="invoice-info" style="margin-bottom: 5mm;">
                         <p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>Fecha:</strong> ${formatFecha(factura.fecha_emision)}</p>
+                        <p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>ID de Venta:</strong> ${codigoNumerico}</p>
                         <p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>Comprobante:</strong> ${String(factura.punto_venta || 0).padStart(4, '0')}-${String(factura.numero_comprobante || 0).padStart(8, '0')}</p>
                         ${factura.cae ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>CAE:</strong> ${factura.cae}</p>` : ''}
                         ${factura.fecha_vencimiento_cae ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>CAE Vto:</strong> ${new Date(factura.fecha_vencimiento_cae).toLocaleDateString('es-AR')}</p>` : ''}
