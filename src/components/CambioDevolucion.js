@@ -670,11 +670,17 @@ const CambioDevolucion = () => {
                 // Verificar si se generó la nota de crédito y tenemos el ID
                 if (cambioDevolucion.nota_credito_generada && cambioDevolucion.venta_nota_credito_id) {
                     try {
+                        const ventaId = cambioDevolucion.venta_nota_credito_id;
+                        console.log('Intentando obtener venta de nota de crédito con ID:', ventaId);
+                        console.log('URL completa:', `${BASE_API_ENDPOINT}/api/ventas/${ventaId}/`);
+                        
                         // Obtener los detalles completos de la venta de nota de crédito
                         const ventaNotaCreditoResponse = await axios.get(
-                            `${BASE_API_ENDPOINT}/api/ventas/${cambioDevolucion.venta_nota_credito_id}/`,
+                            `${BASE_API_ENDPOINT}/api/ventas/${ventaId}/`,
                             { headers: { 'Authorization': `Bearer ${token}` } }
                         );
+                        
+                        console.log('Venta de nota de crédito obtenida exitosamente:', ventaNotaCreditoResponse.data);
                         
                         const ventaNotaCredito = {
                             ...ventaNotaCreditoResponse.data,
@@ -743,10 +749,21 @@ const CambioDevolucion = () => {
         } catch (err) {
             console.error('Error al procesar cambio/devolución:', err);
             console.error('Error response:', err.response?.data);
+            console.error('Error status:', err.response?.status);
+            console.error('Error URL:', err.config?.url);
             
             let errorMessage = 'Error desconocido';
             
-            if (err.response?.data) {
+            // Si es un error 404, dar un mensaje más específico
+            if (err.response?.status === 404) {
+                if (err.config?.url?.includes('/api/ventas/')) {
+                    errorMessage = `No se pudo encontrar la venta de nota de crédito. ID: ${err.config.url.split('/').pop()}`;
+                } else if (err.config?.url?.includes('/api/cambios-devoluciones/')) {
+                    errorMessage = 'El endpoint de cambios/devoluciones no fue encontrado. Por favor, verifica la configuración del servidor.';
+                } else {
+                    errorMessage = `Recurso no encontrado: ${err.config?.url || 'URL desconocida'}`;
+                }
+            } else if (err.response?.data) {
                 // Intentar extraer mensajes de validación más específicos
                 const data = err.response.data;
                 
