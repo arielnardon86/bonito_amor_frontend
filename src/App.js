@@ -151,11 +151,21 @@ const AppContent = () => {
           )}
 
           {isAuthenticated && selectedStoreSlug && (user?.is_staff || user?.is_superuser) && (
-            <Route path="/ventas" element={
-              <ProtectedRoute staffOnly={true}>
-                <VentasPage />
-              </ProtectedRoute>
-            } />
+            <>
+              <Route path="/ventas" element={
+                <ProtectedRoute staffOnly={true}>
+                  <VentasPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/recibo" element={<ReciboImpresion />} />
+              <Route path="/factura" element={<FacturaImpresion />} />
+              <Route path="/ticket-cambio" element={<TicketCambioImpresion />} />
+              <Route path="/cambio-devolucion" element={
+                <ProtectedRoute staffOnly={true}>
+                  <CambioDevolucion />
+                </ProtectedRoute>
+              } />
+            </>
           )}
 
           {isAuthenticated && selectedStoreSlug && user?.is_superuser && (
@@ -176,14 +186,6 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />
-              <Route path="/recibo" element={<ReciboImpresion />} />
-              <Route path="/factura" element={<FacturaImpresion />} />
-              <Route path="/ticket-cambio" element={<TicketCambioImpresion />} />
-              <Route path="/cambio-devolucion" element={
-                <ProtectedRoute adminOnly={true}>
-                  <CambioDevolucion />
-                </ProtectedRoute>
-              } />
               <Route path="/panel-administracion-tienda" element={
                 <ProtectedRoute adminOnly={true}>
                   <PanelAdministracionTienda />
