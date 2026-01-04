@@ -150,6 +150,14 @@ const AppContent = () => {
             </>
           )}
 
+          {isAuthenticated && selectedStoreSlug && (user?.is_staff || user?.is_superuser) && (
+            <Route path="/ventas" element={
+              <ProtectedRoute staffOnly={true}>
+                <VentasPage />
+              </ProtectedRoute>
+            } />
+          )}
+
           {isAuthenticated && selectedStoreSlug && user?.is_superuser && (
             <>
               <Route path="/productos" element={
@@ -160,11 +168,6 @@ const AppContent = () => {
               <Route path="/metricas-ventas" element={
                 <ProtectedRoute adminOnly={true}>
                   <MetricasVentas />
-                </ProtectedRoute>
-              } />
-              <Route path="/ventas" element={
-                <ProtectedRoute adminOnly={true}>
-                  <VentasPage />
                 </ProtectedRoute>
               } />
               <Route path="/registro-compras" element={ 
