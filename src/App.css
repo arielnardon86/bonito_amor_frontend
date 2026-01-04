@@ -139,12 +139,24 @@ body {
 }
 
 @media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+
     .navbar {
         padding: 10px;
+        flex-wrap: wrap;
     }
 
     .navbar-header {
         gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .app-logo-image {
+        height: 40px;
+        max-width: 150px;
     }
 
     .store-name-desktop {
@@ -163,10 +175,14 @@ body {
         left: 0;
         background-color: #f8f8f8;
         border-top: 1px solid #ccc;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         
         transform: translateY(-100%);
         opacity: 0;
         pointer-events: none;
+        transition: all 0.3s ease;
+        max-height: calc(100vh - 70px);
+        overflow-y: auto;
     }
 
     .nav-links.active {
@@ -194,6 +210,7 @@ body {
         text-align: center;
         border-bottom: 1px solid #ccc;
         font-weight: bold;
+        font-size: 1em;
     }
 
     .nav-links li a,
@@ -202,26 +219,242 @@ body {
         padding: 15px;
         width: 100%;
         box-sizing: border-box;
+        font-size: 1em;
     }
 
     .welcome-message {
         display: block;
         margin-right: 0;
         margin-bottom: 10px;
+        text-align: center;
+        font-size: 0.95em;
     }
     
     .logout-button {
         width: calc(100% - 30px);
         margin: 0 auto;
-        padding: 15px;
+        padding: 12px;
+        font-size: 0.95em;
     }
     
+    /* Contenedor principal */
+    .container {
+        padding: 15px;
+        margin: 15px auto;
+        border-radius: 8px;
+    }
+
     /* Reglas para las tablas en mobile */
     .table-responsive {
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -15px;
+        padding: 0 15px;
     }
+
+    .productos-table, 
+    .carrito-table, 
+    .compras-table, 
+    .ventas-table {
+        font-size: 0.85em;
+        min-width: 600px;
+    }
+
     table {
         width: 100%;
         white-space: nowrap;
+    }
+
+    table th,
+    table td {
+        padding: 8px 4px;
+        font-size: 0.9em;
+    }
+
+    /* Botones en mobile */
+    button {
+        min-height: 44px; /* Tamaño mínimo para touch */
+        font-size: 0.95em;
+    }
+
+    /* Inputs en mobile */
+    input, select, textarea {
+        font-size: 16px; /* Previene zoom en iOS */
+        min-height: 44px;
+        padding: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        font-size: 13px;
+    }
+
+    .container {
+        padding: 10px;
+        margin: 10px;
+    }
+
+    .app-logo-image {
+        height: 35px;
+        max-width: 120px;
+    }
+
+    table {
+        font-size: 0.8em;
+    }
+
+    table th,
+    table td {
+        padding: 6px 3px;
+    }
+
+    button {
+        padding: 10px 15px;
+        font-size: 0.9em;
+    }
+}
+
+/* Mejoras para tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .container {
+        padding: 20px;
+        margin: 20px auto;
+    }
+}
+
+/* Mejoras generales para componentes */
+@media (max-width: 768px) {
+    /* Filtros responsivos */
+    .filters-container,
+    [style*="filtersContainer"] {
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+    
+    .filter-group,
+    [style*="filterGroup"] {
+        width: 100% !important;
+    }
+    
+    .filter-input,
+    .filter-select,
+    [style*="filterInput"] {
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+    
+    /* Botones de acción en móvil */
+    .action-buttons,
+    [style*="actionButtons"] {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .action-buttons button,
+    [style*="actionButtons"] button {
+        width: 100%;
+    }
+    
+    /* Formularios */
+    .form-grid,
+    [style*="formGrid"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Modales */
+    .modal-content,
+    [style*="modalContent"] {
+        width: 95% !important;
+        max-width: 95% !important;
+        margin: 10px !important;
+        padding: 15px !important;
+    }
+    
+    /* Paginación */
+    .pagination-container,
+    [style*="paginationContainer"] {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .pagination-button,
+    [style*="paginationButton"] {
+        width: 100%;
+    }
+    
+    /* Tablas responsive mejoradas */
+    .table-responsive,
+    [style*="tableResponsive"],
+    [style*="tableContainer"] {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        position: relative;
+    }
+    
+    .table-responsive::before,
+    [style*="tableResponsive"]::before {
+        content: '';
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        width: 100%;
+        height: 1px;
+    }
+    
+    /* Cards y contenedores de información */
+    .summary-cards,
+    [style*="summaryCards"],
+    [style*="cardsContainer"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Headers de sección */
+    .section-header,
+    [style*="sectionHeader"] {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 15px;
+    }
+    
+    /* Ajustes de fuente para mejor legibilidad */
+    h1 {
+        font-size: 1.5em;
+    }
+    
+    h2 {
+        font-size: 1.3em;
+    }
+    
+    h3 {
+        font-size: 1.1em;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 10px;
+        margin: 10px;
+    }
+    
+    h1 {
+        font-size: 1.3em;
+    }
+    
+    h2 {
+        font-size: 1.1em;
+    }
+    
+    table {
+        font-size: 0.8em;
+    }
+    
+    button {
+        padding: 12px 15px;
+        font-size: 0.9em;
+    }
+    
+    input, select, textarea {
+        font-size: 16px; /* Previene zoom automático en iOS */
     }
 }

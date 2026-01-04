@@ -38,13 +38,15 @@ function Login() {
   };
 
   return (
-    <div style={styles.container}>
-      <h2 style={styles.header}>Iniciar Sesión en {storeSlug ? storeSlug.replace(/-/g, ' ').toUpperCase() : 'Tu Tienda'}</h2>
+    <>
+      <style>{loginMobileStyles}</style>
+      <div style={styles.container} className="login-container">
+      <h2 style={styles.header} className="login-header">Iniciar Sesión en {storeSlug ? storeSlug.replace(/-/g, ' ').toUpperCase() : 'Tu Tienda'}</h2>
       
       {/* Eliminamos el mensaje de error anterior ya que usaremos SweetAlert */}
       {/* {(authError) && <p style={styles.error}>{authError}</p>} */}
 
-      <form onSubmit={handleSubmit} style={styles.form}>
+      <form onSubmit={handleSubmit} style={styles.form} className="login-form">
         <input
           type="text"
           placeholder="Nombre de usuario"
@@ -64,6 +66,7 @@ function Login() {
         <button type="submit" style={styles.button}>Iniciar Sesión</button>
       </form>
     </div>
+    </>
   );
 }
 
@@ -97,9 +100,11 @@ const styles = {
     },
     input: {
         padding: '12px',
-        fontSize: '1em',
+        fontSize: '16px', /* Previene zoom en iOS */
         border: '1px solid #ddd',
         borderRadius: '5px',
+        minHeight: '44px', /* Tamaño mínimo para touch */
+        boxSizing: 'border-box',
     },
     button: {
         padding: '12px',
@@ -110,6 +115,7 @@ const styles = {
         borderRadius: '5px',
         cursor: 'pointer',
         transition: 'background-color 0.3s ease',
+        minHeight: '44px', /* Tamaño mínimo para touch */
     },
     error: {
         color: '#dc3545',
@@ -117,5 +123,31 @@ const styles = {
         fontWeight: 'bold',
     },
 };
+
+// Estilos responsivos para Login
+const loginMobileStyles = `
+    @media (max-width: 768px) {
+        .login-container {
+            padding: 15px !important;
+            min-height: calc(100vh - 40px) !important;
+        }
+        .login-header {
+            font-size: 1.5em !important;
+            margin-bottom: 20px !important;
+        }
+        .login-form {
+            padding: 20px !important;
+            max-width: 100% !important;
+        }
+    }
+    @media (max-width: 480px) {
+        .login-header {
+            font-size: 1.3em !important;
+        }
+        .login-form {
+            padding: 15px !important;
+        }
+    }
+`;
 
 export default Login;

@@ -184,10 +184,12 @@ const MetricasVentas = () => {
     }
 
     return (
-        <div style={styles.container}>
+        <>
+            <style>{mobileStyles}</style>
+            <div style={styles.container} className="metricas-container">
             <h1>Métricas de Ventas y Rentabilidad ({selectedStoreSlug})</h1>
 
-            <div style={styles.filtersContainer}>
+            <div style={styles.filtersContainer} className="metricas-filters-container">
                 <div style={styles.filterGroup}>
                     <label style={styles.filterLabel}>Año:</label>
                     <input
@@ -258,7 +260,7 @@ const MetricasVentas = () => {
                 <p>La **Rentabilidad Bruta** se calcula como el Total de Ventas menos el Costo de los Productos Vendidos, los egresos del período **y los aranceles de ventas financieras**. El **Margen de Rentabilidad** es la Rentabilidad Bruta como porcentaje del Total de Ventas.</p>
             </div>
 
-            <div style={styles.summaryCards}>
+            <div style={styles.summaryCards} className="metricas-summary-cards">
                 <div style={styles.card}>
                     <h3 style={styles.cardTitle}>Total Ventas</h3>
                     <p style={styles.cardValue}>${parseFloat(metrics?.total_ventas_periodo || 0).toFixed(2)}</p>
@@ -295,11 +297,11 @@ const MetricasVentas = () => {
                 </div>
             </div>
 
-            <div style={styles.tablesContainer}>
-                <div style={styles.tableContainer}>
+            <div style={styles.tablesContainer} className="metricas-tables-container">
+                <div style={styles.tableContainer} className="metricas-table-container">
                     <h3 style={styles.tableTitle}>Productos Vendidos por Cantidad</h3>
                     {metrics?.productos_mas_vendidos.length > 0 ? (
-                        <table style={styles.table}>
+                        <table style={styles.table} className="metricas-table">
                             <thead>
                                 <tr>
                                     <th style={styles.th}>Nombre del Producto</th>
@@ -323,10 +325,10 @@ const MetricasVentas = () => {
                     )}
                 </div>
 
-                <div style={styles.tableContainer}>
+                <div style={styles.tableContainer} className="metricas-table-container">
                     <h3 style={styles.tableTitle}>Ventas por Vendedor</h3>
                     {metrics?.ventas_por_usuario.length > 0 ? (
-                        <table style={styles.table}>
+                        <table style={styles.table} className="metricas-table">
                             <thead>
                                 <tr>
                                     <th style={styles.th}>Vendedor</th>
@@ -349,10 +351,10 @@ const MetricasVentas = () => {
                     )}
                 </div>
 
-                <div style={styles.tableContainer}>
+                <div style={styles.tableContainer} className="metricas-table-container">
                     <h3 style={styles.tableTitle}>Ventas por Método de Pago</h3>
                     {metrics?.ventas_por_metodo_pago.length > 0 ? (
-                        <table style={styles.table}>
+                        <table style={styles.table} className="metricas-table">
                             <thead>
                                 <tr>
                                     <th style={styles.th}>Método de Pago</th>
@@ -373,10 +375,10 @@ const MetricasVentas = () => {
                     )}
                 </div>
 
-                 <div style={styles.tableContainer}>
+                 <div style={styles.tableContainer} className="metricas-table-container">
                     <h3 style={styles.tableTitle}>Egresos Mensuales</h3>
                     {metrics?.egresos_por_mes.length > 0 ? (
-                        <table style={styles.table}>
+                        <table style={styles.table} className="metricas-table">
                             <thead>
                                 <tr>
                                     <th style={styles.th}>Mes</th>
@@ -400,6 +402,7 @@ const MetricasVentas = () => {
                 </div>
             </div>
         </div>
+        </>
     );
 };
 
@@ -550,5 +553,54 @@ const styles = {
         fontStyle: 'italic',
     },
 };
+
+// Estilos responsivos para móviles
+const mobileStyles = `
+    @media (max-width: 768px) {
+        .metricas-container {
+            padding: 10px !important;
+        }
+        .metricas-filters-container {
+            flex-direction: column !important;
+            gap: 10px !important;
+        }
+        .metricas-filter-group {
+            width: 100% !important;
+        }
+        .metricas-filter-input {
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+        .metricas-summary-cards {
+            grid-template-columns: 1fr !important;
+        }
+        .metricas-card {
+            padding: 15px !important;
+        }
+        .metricas-card-value {
+            font-size: 1.5em !important;
+        }
+        .metricas-tables-container {
+            grid-template-columns: 1fr !important;
+        }
+        .metricas-table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .metricas-table {
+            min-width: 500px;
+            font-size: 0.85em;
+        }
+    }
+    @media (max-width: 480px) {
+        .metricas-table {
+            font-size: 0.75em;
+        }
+        .metricas-table th,
+        .metricas-table td {
+            padding: 8px 4px !important;
+        }
+    }
+`;
 
 export default MetricasVentas;
