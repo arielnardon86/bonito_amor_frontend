@@ -7,33 +7,6 @@ import { useAuth } from '../AuthContext';
 import { useSales } from './SalesContext'; 
 import Swal from 'sweetalert2';
 
-// ... (TalleOptions se mantiene igual) ...
-
-const TalleOptions = [
-    { value: 'UNICO', label: 'UNICO' },
-    { value: 'XS', label: 'XS' },
-    { value: 'S', label: 'S' },
-    { value: 'M', label: 'M' },
-    { value: 'L', label: 'L' },
-    { value: 'XL', label: 'XL' },
-    { value: 'XXL', label: 'XXL' },
-    { value: '3XL', label: '3XL' },
-    { value: '4XL', label: '4XL' },
-    { value: '5XL', label: '5XL' },
-    { value: '6XL', label: '6XL' },
-    { value: '7XL', label: '7XL' },
-    { value: '8XL', label: '8XL' },
-    { value: '1', label: '1' },
-    { value: '2', label: '2' },
-    { value: '3', label: '3' },
-    { value: '4', label: '4' },
-    { value: '5', label: '5' },
-    { value: '6', label: '6' },
-    { value: '8', label: '8' },
-    { value: '12', label: '12' },
-    { value: '14', label: '14' },
-    { value: '16', label: '16' },
-];
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 const normalizeApiUrl = (url) => {
@@ -377,9 +350,9 @@ const PuntoVenta = () => {
                 });
             } catch (error) {
                 if (error.response && error.response.status === 404) {
-                    // Si no es un barcode, busca por nombre/talle/código en el listado de abajo.
+                    // Si no es un barcode, busca por nombre/código en el listado de abajo.
                     setFilterTerm(busquedaProducto); // <-- Actualiza el filtro de la tabla
-                    showCustomAlert('Búsqueda por nombre/talle aplicada al listado de abajo.', 'info');
+                    showCustomAlert('Búsqueda por nombre aplicada al listado de abajo.', 'info');
                     setProductoSeleccionado(null);
                     setBusquedaProducto(''); // Limpia el input principal
                     return;
@@ -907,7 +880,7 @@ const PuntoVenta = () => {
                 {productoSeleccionado && (
                     <div style={styles.foundProductCard} className="found-product-card">
                         <p style={styles.foundProductText}>
-                            <strong>Producto:</strong> {productoSeleccionado.nombre} ({productoSeleccionado.talle}) - ${parseFloat(productoSeleccionado.precio).toFixed(2)}
+                            <strong>Producto:</strong> {productoSeleccionado.nombre} - ${parseFloat(productoSeleccionado.precio).toFixed(2)}
                         </p>
                         <p style={styles.foundProductText}>
                             Stock Disponible: {productoSeleccionado.stock}
@@ -935,7 +908,6 @@ const PuntoVenta = () => {
                                 <thead>
                                     <tr style={styles.tableHeaderRow}>
                                         <th style={styles.th}>Producto</th>
-                                        <th style={styles.th}>Talle</th>
                                         <th style={styles.th}>Cantidad</th>
                                         <th style={styles.th}>P. Unitario</th>
                                         <th style={styles.th}>Subtotal</th>
@@ -946,7 +918,6 @@ const PuntoVenta = () => {
                                     {activeCart.items.map((item) => (
                                         <tr key={item.product.id} style={styles.tableRow}>
                                             <td style={styles.td}>{item.product.nombre}</td>
-                                            <td style={styles.td}>{item.product.talle}</td>
                                             <td style={styles.td}>
                                                 <div style={styles.quantityControl}>
                                                     <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton}>-</button>
@@ -1112,7 +1083,7 @@ const PuntoVenta = () => {
                     {/* CAMBIO 3: USAR filterTerm Y REMOVER HANDLERS EXPLÍCITOS DE BUSQUEDA */}
                     <input
                         type="text"
-                        placeholder="Buscar por nombre o talle..."
+                        placeholder="Buscar por nombre..."
                         value={filterTerm}
                         onChange={(e) => setFilterTerm(e.target.value)}
                         style={styles.inputField}
@@ -1132,7 +1103,6 @@ const PuntoVenta = () => {
                                 <thead>
                                     <tr style={styles.tableHeaderRow}>
                                         <th style={styles.th}>Nombre</th>
-                                        <th style={styles.th}>Talle</th>
                                         <th style={styles.th}>Precio</th>
                                         <th style={styles.th}>Stock</th>
                                         <th style={styles.th}>Acción</th>
@@ -1143,7 +1113,6 @@ const PuntoVenta = () => {
                                         productos.map(product => (
                                             <tr key={product.id} style={styles.tableRow}>
                                                 <td style={styles.td}>{product.nombre}</td>
-                                                <td style={styles.td}>{product.talle}</td>
                                                 <td style={styles.td}>${parseFloat(product.precio).toFixed(2)}</td>
                                                 <td style={styles.td}>{product.stock}</td>
                                                 <td style={styles.td}>
@@ -1159,7 +1128,7 @@ const PuntoVenta = () => {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="5" style={styles.noDataMessage}>
+                                            <td colSpan="4" style={styles.noDataMessage}>
                                                 No se encontraron productos con el filtro aplicado.
                                             </td>
                                         </tr>

@@ -20,31 +20,6 @@ const normalizeApiUrl = (url) => {
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
-const TalleOptions = [
-    { value: 'UNICO', label: 'UNICO' },
-    { value: 'XS', label: 'XS' },
-    { value: 'S', label: 'S' },
-    { value: 'M', label: 'M' },
-    { value: 'L', label: 'L' },
-    { value: 'XL', label: 'XL' },
-    { value: 'XXL', label: 'XXL' },
-    { value: '3XL', label: '3XL' },
-    { value: '4XL', label: '4XL' },
-    { value: '5XL', label: '5XL' },
-    { value: '6XL', label: '6XL' },
-    { value: '7XL', label: '7XL' },
-    { value: '8XL', label: '8XL' },
-    { value: '1', label: '1' },
-    { value: '2', label: '2' },
-    { value: '3', label: '3' },
-    { value: '4', label: '4' },
-    { value: '5', label: '5' },
-    { value: '6', label: '6' },
-    { value: '8', label: '8' },
-    { value: '12', label: '12' },
-    { value: '14', label: '14' },
-    { value: '16', label: '16' },
-];
 
 const Productos = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
@@ -61,7 +36,6 @@ const Productos = () => {
 
     const [newProduct, setNewProduct] = useState({
         nombre: '',
-        talle: 'UNICO',
         precio: '',
         costo: '', // NUEVO CAMPO
         stock: '',
@@ -139,7 +113,7 @@ const Productos = () => {
             await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productToCreate, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            setNewProduct({ nombre: '', talle: 'UNICO', precio: '', costo: '', stock: '', codigo_barras: '' }); // Reset del formulario
+            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '' }); // Reset del formulario
             fetchProductos();
         } catch (err) {
             setError('Error al crear producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
@@ -243,19 +217,6 @@ const Productos = () => {
                         />
                     </div>
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Talle</label>
-                        <select
-                            value={newProduct.talle}
-                            onChange={(e) => setNewProduct({ ...newProduct, talle: e.target.value })}
-                            style={styles.input}
-                            required
-                        >
-                            {TalleOptions.map(option => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div style={styles.inputGroup}>
                         <label style={styles.label}>Precio</label>
                         <input
                             type="number"
@@ -308,7 +269,7 @@ const Productos = () => {
                 <div style={styles.filtersContainer}>
                     <input
                         type="text"
-                        placeholder="Buscar por nombre o talle..."
+                        placeholder="Buscar por nombre..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         style={styles.filterInput}
@@ -329,7 +290,6 @@ const Productos = () => {
                                         <th style={styles.th}>Seleccionar</th>
                                         <th style={styles.th}>Cantidad de etiquetas</th>
                                         <th style={styles.th}>Nombre</th>
-                                        <th style={styles.th}>Talle</th>
                                         <th style={styles.th}>Precio</th>
                                         <th style={styles.th}>Costo</th>
                                         <th style={styles.th}>Stock</th>
@@ -366,7 +326,6 @@ const Productos = () => {
                                                 />
                                             </td>
                                             <td style={styles.td}>{producto.nombre}</td>
-                                            <td style={styles.td}>{producto.talle}</td>
                                             <td style={styles.td}>${parseFloat(producto.precio).toFixed(2)}</td>
                                             <td style={styles.td}>${parseFloat(producto.costo || 0).toFixed(2)}</td> {/* Muestra el costo */}
                                             <td style={styles.td}>{producto.stock}</td>
