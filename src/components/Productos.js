@@ -40,6 +40,7 @@ const Productos = () => {
         costo: '', // NUEVO CAMPO
         stock: '',
         codigo_barras: '',
+        talle: '', // Campo talle (opcional pero requerido por el serializer)
     });
     
     const [editProduct, setEditProduct] = useState(null);
@@ -107,13 +108,14 @@ const Productos = () => {
             ...newProduct,
             codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
             tienda_slug: selectedStoreSlug,
+            talle: newProduct.talle || null, // Normalizar talle vacío a null
         };
         
         try {
             await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productToCreate, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '' }); // Reset del formulario
+            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', talle: '' }); // Reset del formulario
             fetchProductos();
         } catch (err) {
             setError('Error al crear producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
@@ -244,6 +246,16 @@ const Productos = () => {
                             onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
                             style={styles.input}
                             required
+                        />
+                    </div>
+                    <div style={styles.inputGroup}>
+                        <label style={styles.label}>Talle (Opcional)</label>
+                        <input
+                            type="text"
+                            value={newProduct.talle}
+                            onChange={(e) => setNewProduct({ ...newProduct, talle: e.target.value })}
+                            style={styles.input}
+                            placeholder="Ej: M, L, XL, 42, etc."
                         />
                     </div>
                     <div style={styles.inputGroup}>
@@ -406,6 +418,16 @@ const Productos = () => {
                                 value={editProduct.stock}
                                 onChange={(e) => setEditProduct({ ...editProduct, stock: e.target.value })}
                                 style={styles.modalInput}
+                            />
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Talle (Opcional):</label>
+                            <input
+                                type="text"
+                                value={editProduct.talle || ''}
+                                onChange={(e) => setEditProduct({ ...editProduct, talle: e.target.value })}
+                                style={styles.modalInput}
+                                placeholder="Ej: M, L, XL, 42, etc."
                             />
                         </div>
                         <div style={styles.modalActions}>

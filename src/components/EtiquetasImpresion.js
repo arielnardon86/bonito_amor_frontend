@@ -37,7 +37,6 @@ const EtiquetasImpresion = () => {
 
                     tempDiv.innerHTML = `
                         <p class="product-name">${producto.nombre}</p>
-                        <p class="product-talle">Talle: ${producto.talle}</p>
                         <div class="barcode-wrapper"></div>
                         <p class="price">Precio: $${parseFloat(producto.precio).toFixed(2)}</p>
                     `;
@@ -127,9 +126,6 @@ const EtiquetasImpresion = () => {
                     .label .product-name {
                         font-weight: bold;
                         font-size: 2.2mm; /* <- CAMBIO: Ligeramente más pequeña para ganar espacio */
-                    }
-                    .label .product-talle {
-                        font-size: 2mm; /* <- CAMBIO: Ligeramente más pequeña para ganar espacio */
                     }
                     .label .barcode-wrapper {
                         margin-top: 2px;
