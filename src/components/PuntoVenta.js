@@ -106,6 +106,11 @@ const PuntoVenta = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const methods = response.data.results || response.data;
+            console.log('✅ Métodos de pago cargados:', methods.map(m => ({
+                id: m.id,
+                nombre: m.nombre,
+                es_financiero: m.es_financiero
+            })));
             setMetodosPago(methods);
             const efectivo = methods.find(m => m.nombre === 'Efectivo');
             setMetodoPagoSeleccionado(efectivo ? efectivo.nombre : (methods.length > 0 ? methods[0].nombre : ''));
@@ -397,6 +402,17 @@ const PuntoVenta = () => {
     // Lógica para determinar si el método seleccionado es financiero
     const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
     const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero;
+    
+    // Log detallado cuando se selecciona un método de pago
+    useEffect(() => {
+        if (metodoPagoSeleccionado) {
+            console.log(`🔄 Método de pago seleccionado: "${metodoPagoSeleccionado}"`, {
+                metodoPagoObj: metodoPagoObj,
+                es_financiero: metodoPagoObj?.es_financiero,
+                isMetodoFinancieroActivo: isMetodoFinancieroActivo
+            });
+        }
+    }, [metodoPagoSeleccionado, metodoPagoObj, isMetodoFinancieroActivo]);
     
     // Filtrar los aranceles disponibles para el método de pago seleccionado
     // Usar comparación flexible (trim y case-insensitive) para evitar problemas de formato
@@ -1011,6 +1027,13 @@ const PuntoVenta = () => {
                                         <br />Aranceles cargados: {arancelesTienda.length} | Método: {metodoPagoSeleccionado}
                                     </div>
                                 )}
+                            </div>
+                        )}
+                        {/* DEBUG: Mostrar información cuando método debería ser financiero pero no se muestra el desplegable */}
+                        {metodoPagoSeleccionado && !isMetodoFinancieroActivo && (
+                            <div style={{ padding: '5px', fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+                                Debug: Método "{metodoPagoSeleccionado}" - es_financiero: {metodoPagoObj?.es_financiero ? 'true' : 'false/undefined'} 
+                                {!metodoPagoObj && ' (método no encontrado en lista)'}
                             </div>
                         )}
                         {isMetodoFinancieroActivo && arancelSeleccionadoId && (
