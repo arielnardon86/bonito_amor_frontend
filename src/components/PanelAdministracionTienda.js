@@ -113,7 +113,8 @@ const PanelAdministracionTienda = () => {
     // Estados para aranceles
     const [aranceles, setAranceles] = useState([]);
     const [showArancelForm, setShowArancelForm] = useState(false);
-    const [editingArancel, setEditingArancel] = useState(null);
+    const [showEditArancelModal, setShowEditArancelModal] = useState(false);
+    const [editArancelData, setEditArancelData] = useState(null);
     const [arancelForm, setArancelForm] = useState({
         metodo_pago: '',
         nombre_plan: 'CONTADO',
@@ -437,24 +438,26 @@ const PanelAdministracionTienda = () => {
     };
 
     const handleEditArancel = (arancel) => {
-        setEditingArancel(arancel);
-        setArancelForm({
-            metodo_pago: arancel.metodo_pago,
-            nombre_plan: arancel.nombre_plan,
-            arancel_porcentaje: arancel.arancel_porcentaje.toString(),
-            tienda: selectedStoreSlug
+        // Asegurar que metodo_pago sea el ID, no un objeto
+        const metodoPagoId = typeof arancel.metodo_pago === 'object' && arancel.metodo_pago !== null
+            ? arancel.metodo_pago.id
+            : arancel.metodo_pago;
+        
+        setEditArancelData({
+            id: arancel.id,
+            metodo_pago: metodoPagoId || '',
+            nombre_plan: arancel.nombre_plan || 'CONTADO',
+            arancel_porcentaje: arancel.arancel_porcentaje ? arancel.arancel_porcentaje.toString() : '0.00'
         });
-        setShowArancelForm(true);
+        setShowEditArancelModal(true);
     };
 
-    const handleUpdateArancel = async (e) => {
-        e.preventDefault();
-        
+    const handleUpdateArancel = async () => {
         try {
-            await axios.patch(`${BASE_API_ENDPOINT}/api/aranceles-tienda/${editingArancel.id}/`, {
-                metodo_pago: arancelForm.metodo_pago,
-                nombre_plan: arancelForm.nombre_plan,
-                arancel_porcentaje: arancelForm.arancel_porcentaje,
+            await axios.patch(`${BASE_API_ENDPOINT}/api/aranceles-tienda/${editArancelData.id}/`, {
+                metodo_pago: editArancelData.metodo_pago,
+                nombre_plan: editArancelData.nombre_plan,
+                arancel_porcentaje: editArancelData.arancel_porcentaje,
                 tienda: selectedStoreSlug
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -466,14 +469,8 @@ const PanelAdministracionTienda = () => {
                 text: 'Arancel actualizado correctamente.'
             });
             
-            setShowArancelForm(false);
-            setEditingArancel(null);
-            setArancelForm({
-                metodo_pago: '',
-                nombre_plan: 'CONTADO',
-                arancel_porcentaje: '0.00',
-                tienda: selectedStoreSlug
-            });
+            setShowEditArancelModal(false);
+            setEditArancelData(null);
             fetchAranceles();
         } catch (err) {
             console.error('Error al actualizar arancel:', err);
@@ -767,7 +764,6 @@ const PanelAdministracionTienda = () => {
                     <div style={styles.sectionHeader}>
                         <h2>Medios de Pago y Aranceles</h2>
                         <button onClick={() => {
-                            setEditingArancel(null);
                             setArancelForm({
                                 metodo_pago: '',
                                 nombre_plan: 'CONTADO',
@@ -781,9 +777,9 @@ const PanelAdministracionTienda = () => {
                     </div>
 
                     {showArancelForm && (
-                        <div style={styles.formContainer}>
-                            <h3>{editingArancel ? 'Editar Arancel' : 'Nuevo Arancel'}</h3>
-                            <form onSubmit={editingArancel ? handleUpdateArancel : handleCreateArancel}>
+                        <div style={styles.formContainer} className="panel-admin-form-container">
+                            <h3>Nuevo Arancel</h3>
+                            <form onSubmit={handleCreateArancel}>
                                 <div style={styles.formGrid} className="panel-admin-form-grid">
                                     <div style={styles.formGroup}>
                                         <label>Método de Pago *</label>
@@ -835,13 +831,12 @@ const PanelAdministracionTienda = () => {
                                 </div>
                                 <div style={styles.formActions} className="panel-admin-form-actions">
                                     <button type="submit" style={styles.saveButton}>
-                                        {editingArancel ? 'Actualizar' : 'Crear'}
+                                        Crear
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => {
                                             setShowArancelForm(false);
-                                            setEditingArancel(null);
                                         }}
                                         style={styles.cancelButton}
                                     >
@@ -930,6 +925,66 @@ const PanelAdministracionTienda = () => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL DE EDICIÓN DE ARANCEL */}
+            {showEditArancelModal && editArancelData && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3>Editar Arancel</h3>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Método de Pago *</label>
+                            <select
+                                value={editArancelData.metodo_pago}
+                                onChange={(e) => setEditArancelData({ ...editArancelData, metodo_pago: e.target.value })}
+                                style={styles.modalInput}
+                                required
+                            >
+                                <option value="">Seleccionar...</option>
+                                {metodosPago.filter(m => m.es_financiero).map(metodo => (
+                                    <option key={metodo.id} value={metodo.id}>
+                                        {metodo.nombre}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Plan *</label>
+                            <select
+                                value={editArancelData.nombre_plan}
+                                onChange={(e) => setEditArancelData({ ...editArancelData, nombre_plan: e.target.value })}
+                                style={styles.modalInput}
+                                required
+                            >
+                                {PLAN_CHOICES.map(plan => (
+                                    <option key={plan.value} value={plan.value}>
+                                        {plan.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Arancel (%) *</label>
+                            <input
+                                type="number"
+                                value={editArancelData.arancel_porcentaje}
+                                onChange={(e) => setEditArancelData({ ...editArancelData, arancel_porcentaje: e.target.value })}
+                                style={styles.modalInput}
+                                required
+                                min="0"
+                                max="100"
+                                step="0.01"
+                            />
+                        </div>
+                        <div style={styles.modalActions}>
+                            <button onClick={handleUpdateArancel} style={styles.modalConfirmButton}>Guardar</button>
+                            <button onClick={() => {
+                                setShowEditArancelModal(false);
+                                setEditArancelData(null);
+                            }} style={styles.modalCancelButton}>Cancelar</button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1203,6 +1258,47 @@ const styles = {
         maxWidth: '500px',
         width: '90%',
         boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+        textAlign: 'center',
+    },
+    inputGroupModal: {
+        marginBottom: '15px',
+        textAlign: 'left',
+    },
+    label: {
+        marginBottom: '5px',
+        fontWeight: 'bold',
+        color: '#555',
+        display: 'block',
+    },
+    modalInput: {
+        width: '100%',
+        padding: '8px',
+        boxSizing: 'border-box',
+        border: '1px solid #ccc',
+        borderRadius: '5px',
+        fontSize: '1em',
+    },
+    modalActions: {
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '10px',
+        marginTop: '15px',
+    },
+    modalConfirmButton: {
+        padding: '10px 15px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+    },
+    modalCancelButton: {
+        padding: '10px 15px',
+        backgroundColor: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
     },
 };
 
