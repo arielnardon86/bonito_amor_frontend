@@ -399,19 +399,32 @@ const PuntoVenta = () => {
     const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero;
     
     // Filtrar los aranceles disponibles para el método de pago seleccionado
+    // Usar comparación flexible (trim y case-insensitive) para evitar problemas de formato
     const arancelesDisponibles = arancelesTienda.filter(a => {
-        const coincide = a.metodo_pago_nombre === metodoPagoSeleccionado;
-        if (!coincide && isMetodoFinancieroActivo) {
-            console.log(`⚠️ Arancel no coincide: metodo_pago_nombre="${a.metodo_pago_nombre}" vs seleccionado="${metodoPagoSeleccionado}"`, a);
+        const nombreArancel = (a.metodo_pago_nombre || '').trim();
+        const nombreSeleccionado = (metodoPagoSeleccionado || '').trim();
+        const coincide = nombreArancel === nombreSeleccionado || 
+                        nombreArancel.toLowerCase() === nombreSeleccionado.toLowerCase();
+        if (isMetodoFinancieroActivo && !coincide) {
+            console.log(`⚠️ Arancel no coincide: metodo_pago_nombre="${nombreArancel}" vs seleccionado="${nombreSeleccionado}"`, a);
         }
         return coincide;
     });
     
     // Log para debug
     if (isMetodoFinancieroActivo) {
-        console.log(`📊 Método financiero seleccionado: ${metodoPagoSeleccionado}`);
+        console.log(`📊 Método financiero seleccionado: "${metodoPagoSeleccionado}"`);
         console.log(`📊 Total aranceles cargados: ${arancelesTienda.length}`);
-        console.log(`📊 Aranceles disponibles para ${metodoPagoSeleccionado}: ${arancelesDisponibles.length}`, arancelesDisponibles);
+        console.log(`📊 Todos los aranceles cargados:`, arancelesTienda.map(a => ({
+            id: a.id,
+            metodo_pago_nombre: a.metodo_pago_nombre,
+            nombre_plan: a.nombre_plan
+        })));
+        console.log(`📊 Aranceles disponibles para "${metodoPagoSeleccionado}": ${arancelesDisponibles.length}`, arancelesDisponibles);
+        if (arancelesDisponibles.length === 0 && arancelesTienda.length > 0) {
+            console.warn(`⚠️ No se encontraron aranceles para "${metodoPagoSeleccionado}" pero hay ${arancelesTienda.length} aranceles cargados. Métodos disponibles:`, 
+                [...new Set(arancelesTienda.map(a => a.metodo_pago_nombre))]);
+        }
     }
     
     // EFECTO CLAVE para la lógica del desplegable de aranceles
