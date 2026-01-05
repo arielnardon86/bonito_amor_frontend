@@ -158,9 +158,13 @@ const PuntoVenta = () => {
                 params: { tienda_slug: selectedStoreSlug }
             });
             const fetchedAranceles = response.data.results || response.data;
-            setArancelesTienda(fetchedAranceles);
+            console.log(`✅ Aranceles cargados: ${Array.isArray(fetchedAranceles) ? fetchedAranceles.length : 0} aranceles para tienda ${selectedStoreSlug}`, fetchedAranceles);
+            setArancelesTienda(Array.isArray(fetchedAranceles) ? fetchedAranceles : []);
         } catch (err) {
-            console.error("Error al cargar aranceles:", err.response ? err.response.data : err.message);
+            console.error("❌ Error al cargar aranceles:", err.response ? err.response.data : err.message);
+            console.error("URL:", `${BASE_API_ENDPOINT}/api/aranceles-tienda/`);
+            console.error("Params:", { tienda_slug: selectedStoreSlug });
+            setArancelesTienda([]); // Asegurar que sea un array vacío en caso de error
         }
     }, [token, selectedStoreSlug]);
 
@@ -395,7 +399,20 @@ const PuntoVenta = () => {
     const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero;
     
     // Filtrar los aranceles disponibles para el método de pago seleccionado
-    const arancelesDisponibles = arancelesTienda.filter(a => a.metodo_pago_nombre === metodoPagoSeleccionado);
+    const arancelesDisponibles = arancelesTienda.filter(a => {
+        const coincide = a.metodo_pago_nombre === metodoPagoSeleccionado;
+        if (!coincide && isMetodoFinancieroActivo) {
+            console.log(`⚠️ Arancel no coincide: metodo_pago_nombre="${a.metodo_pago_nombre}" vs seleccionado="${metodoPagoSeleccionado}"`, a);
+        }
+        return coincide;
+    });
+    
+    // Log para debug
+    if (isMetodoFinancieroActivo) {
+        console.log(`📊 Método financiero seleccionado: ${metodoPagoSeleccionado}`);
+        console.log(`📊 Total aranceles cargados: ${arancelesTienda.length}`);
+        console.log(`📊 Aranceles disponibles para ${metodoPagoSeleccionado}: ${arancelesDisponibles.length}`, arancelesDisponibles);
+    }
     
     // EFECTO CLAVE para la lógica del desplegable de aranceles
     useEffect(() => {
@@ -956,23 +973,31 @@ const PuntoVenta = () => {
                         </div>
                         
                         {/* DESPLEGABLE DE CUOTAS/ARANCEL */}
-                        {isMetodoFinancieroActivo && arancelesDisponibles.length > 0 && (
+                        {isMetodoFinancieroActivo && (
                             <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
                                 <label htmlFor="arancelPlan" style={styles.paymentMethodLabel}>Plan / Arancel:</label>
-                                <select
-                                    id="arancelPlan"
-                                    value={arancelSeleccionadoId}
-                                    onChange={(e) => setArancelSeleccionadoId(e.target.value)}
-                                    style={styles.inputField}
-                                    required
-                                >
-                                    <option value="">-- Seleccionar Plan/Arancel --</option>
-                                    {arancelesDisponibles.map(arancel => (
-                                        <option key={arancel.id} value={arancel.id}>
-                                            {arancel.nombre_plan} ({parseFloat(arancel.arancel_porcentaje).toFixed(2)}% Arancel)
-                                        </option>
-                                    ))}
-                                </select>
+                                {arancelesDisponibles.length > 0 ? (
+                                    <select
+                                        id="arancelPlan"
+                                        value={arancelSeleccionadoId}
+                                        onChange={(e) => setArancelSeleccionadoId(e.target.value)}
+                                        style={styles.inputField}
+                                        required
+                                    >
+                                        <option value="">-- Seleccionar Plan/Arancel --</option>
+                                        {arancelesDisponibles.map(arancel => (
+                                            <option key={arancel.id} value={arancel.id}>
+                                                {arancel.nombre_plan} ({parseFloat(arancel.arancel_porcentaje).toFixed(2)}% Arancel)
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div style={{ padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404' }}>
+                                        ⚠️ No hay planes/aranceles configurados para {metodoPagoSeleccionado} en esta tienda. 
+                                        <br />Por favor, contacta al administrador para configurar los aranceles.
+                                        <br />Aranceles cargados: {arancelesTienda.length} | Método: {metodoPagoSeleccionado}
+                                    </div>
+                                )}
                             </div>
                         )}
                         {isMetodoFinancieroActivo && arancelSeleccionadoId && (
