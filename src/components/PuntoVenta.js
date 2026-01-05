@@ -101,12 +101,14 @@ const PuntoVenta = () => {
     // FUNCIÓN 0: Fetch de Métodos de Pago
     const fetchMetodosPago = useCallback(async () => {
         if (!token) return;
+        const userType = user?.is_superuser ? 'ADMIN' : (user?.is_staff ? 'STAFF' : 'USER');
+        console.log(`🔄 [${userType}] Cargando métodos de pago`);
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const methods = response.data.results || response.data;
-            console.log('✅ Métodos de pago cargados:', methods.map(m => ({
+            console.log(`✅ [${userType}] Métodos de pago cargados:`, methods.map(m => ({
                 id: m.id,
                 nombre: m.nombre,
                 es_financiero: m.es_financiero
@@ -157,21 +159,32 @@ const PuntoVenta = () => {
     // FUNCIÓN 2: Fetch de Aranceles
     const fetchAranceles = useCallback(async () => { 
         if (!token || !selectedStoreSlug) return;
+        const userType = user?.is_superuser ? 'ADMIN' : (user?.is_staff ? 'STAFF' : 'USER');
+        console.log(`🔄 [${userType}] Cargando aranceles para tienda: ${selectedStoreSlug}`);
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/aranceles-tienda/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: { tienda_slug: selectedStoreSlug }
             });
             const fetchedAranceles = response.data.results || response.data;
-            console.log(`✅ Aranceles cargados: ${Array.isArray(fetchedAranceles) ? fetchedAranceles.length : 0} aranceles para tienda ${selectedStoreSlug}`, fetchedAranceles);
+            console.log(`✅ [${userType}] Aranceles cargados: ${Array.isArray(fetchedAranceles) ? fetchedAranceles.length : 0} aranceles para tienda ${selectedStoreSlug}`, fetchedAranceles);
+            if (Array.isArray(fetchedAranceles)) {
+                console.log(`📋 [${userType}] Detalle de aranceles:`, fetchedAranceles.map(a => ({
+                    id: a.id,
+                    metodo_pago_nombre: a.metodo_pago_nombre,
+                    nombre_plan: a.nombre_plan,
+                    arancel_porcentaje: a.arancel_porcentaje
+                })));
+            }
             setArancelesTienda(Array.isArray(fetchedAranceles) ? fetchedAranceles : []);
         } catch (err) {
-            console.error("❌ Error al cargar aranceles:", err.response ? err.response.data : err.message);
-            console.error("URL:", `${BASE_API_ENDPOINT}/api/aranceles-tienda/`);
-            console.error("Params:", { tienda_slug: selectedStoreSlug });
+            console.error(`❌ [${userType}] Error al cargar aranceles:`, err.response ? err.response.data : err.message);
+            console.error(`❌ [${userType}] URL:`, `${BASE_API_ENDPOINT}/api/aranceles-tienda/`);
+            console.error(`❌ [${userType}] Params:`, { tienda_slug: selectedStoreSlug });
+            console.error(`❌ [${userType}] Status:`, err.response?.status);
             setArancelesTienda([]); // Asegurar que sea un array vacío en caso de error
         }
-    }, [token, selectedStoreSlug]);
+    }, [token, selectedStoreSlug, user]);
 
     // FUNCIÓN 3: Fetch de Información de Tienda
     const fetchTiendaInfo = useCallback(async () => {
@@ -406,13 +419,16 @@ const PuntoVenta = () => {
     // Log detallado cuando se selecciona un método de pago
     useEffect(() => {
         if (metodoPagoSeleccionado) {
-            console.log(`🔄 Método de pago seleccionado: "${metodoPagoSeleccionado}"`, {
+            const userType = user?.is_superuser ? 'ADMIN' : (user?.is_staff ? 'STAFF' : 'USER');
+            console.log(`🔄 [${userType}] Método de pago seleccionado: "${metodoPagoSeleccionado}"`, {
                 metodoPagoObj: metodoPagoObj,
                 es_financiero: metodoPagoObj?.es_financiero,
-                isMetodoFinancieroActivo: isMetodoFinancieroActivo
+                isMetodoFinancieroActivo: isMetodoFinancieroActivo,
+                arancelesTienda_count: arancelesTienda.length,
+                arancelesDisponibles_count: arancelesDisponibles.length
             });
         }
-    }, [metodoPagoSeleccionado, metodoPagoObj, isMetodoFinancieroActivo]);
+    }, [metodoPagoSeleccionado, metodoPagoObj, isMetodoFinancieroActivo, user, arancelesTienda.length, arancelesDisponibles.length]);
     
     // Filtrar los aranceles disponibles para el método de pago seleccionado
     // Usar comparación flexible (trim y case-insensitive) para evitar problemas de formato
