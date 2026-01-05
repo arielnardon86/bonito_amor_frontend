@@ -1045,13 +1045,6 @@ const PuntoVenta = () => {
                                 )}
                             </div>
                         )}
-                        {/* DEBUG: Mostrar información cuando método debería ser financiero pero no se muestra el desplegable */}
-                        {metodoPagoSeleccionado && !isMetodoFinancieroActivo && (
-                            <div style={{ padding: '5px', fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
-                                Debug: Método "{metodoPagoSeleccionado}" - es_financiero: {metodoPagoObj?.es_financiero ? 'true' : 'false/undefined'} 
-                                {!metodoPagoObj && ' (método no encontrado en lista)'}
-                            </div>
-                        )}
                         {isMetodoFinancieroActivo && arancelSeleccionadoId && (
                             <h4 style={styles.arancelDisplay}>
                                 Arancel a pagar: ${calculateArancel().toFixed(2)}
