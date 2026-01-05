@@ -416,6 +416,19 @@ const PuntoVenta = () => {
     const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
     const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero;
     
+    // Filtrar los aranceles disponibles para el método de pago seleccionado
+    // Usar comparación flexible (trim y case-insensitive) para evitar problemas de formato
+    const arancelesDisponibles = arancelesTienda.filter(a => {
+        const nombreArancel = (a.metodo_pago_nombre || '').trim();
+        const nombreSeleccionado = (metodoPagoSeleccionado || '').trim();
+        const coincide = nombreArancel === nombreSeleccionado || 
+                        nombreArancel.toLowerCase() === nombreSeleccionado.toLowerCase();
+        if (isMetodoFinancieroActivo && !coincide) {
+            console.log(`⚠️ Arancel no coincide: metodo_pago_nombre="${nombreArancel}" vs seleccionado="${nombreSeleccionado}"`, a);
+        }
+        return coincide;
+    });
+    
     // Log detallado cuando se selecciona un método de pago
     useEffect(() => {
         if (metodoPagoSeleccionado) {
@@ -429,19 +442,6 @@ const PuntoVenta = () => {
             });
         }
     }, [metodoPagoSeleccionado, metodoPagoObj, isMetodoFinancieroActivo, user, arancelesTienda.length, arancelesDisponibles.length]);
-    
-    // Filtrar los aranceles disponibles para el método de pago seleccionado
-    // Usar comparación flexible (trim y case-insensitive) para evitar problemas de formato
-    const arancelesDisponibles = arancelesTienda.filter(a => {
-        const nombreArancel = (a.metodo_pago_nombre || '').trim();
-        const nombreSeleccionado = (metodoPagoSeleccionado || '').trim();
-        const coincide = nombreArancel === nombreSeleccionado || 
-                        nombreArancel.toLowerCase() === nombreSeleccionado.toLowerCase();
-        if (isMetodoFinancieroActivo && !coincide) {
-            console.log(`⚠️ Arancel no coincide: metodo_pago_nombre="${nombreArancel}" vs seleccionado="${nombreSeleccionado}"`, a);
-        }
-        return coincide;
-    });
     
     // Log para debug
     if (isMetodoFinancieroActivo) {
