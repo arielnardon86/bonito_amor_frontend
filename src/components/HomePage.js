@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom'; 
 import { useAuth } from '../AuthContext';
-import Login from './Login';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -21,8 +20,6 @@ import {
 const HomePage = () => {
     const { isAuthenticated, selectedStoreSlug, stores, loading, login, error: authError, clearError } = useAuth();
     const navigate = useNavigate();
-    const [selectedStore, setSelectedStore] = useState(null);
-    const [showLogin, setShowLogin] = useState(false);
     const [showAccessModal, setShowAccessModal] = useState(false);
     const [accessStore, setAccessStore] = useState('');
     const [accessUsername, setAccessUsername] = useState('');
@@ -33,13 +30,6 @@ const HomePage = () => {
             navigate('/punto-venta', { replace: true });
         }
     }, [loading, isAuthenticated, selectedStoreSlug, navigate]);
-
-    const handleStoreSelect = (storeName) => {
-        const slug = storeName.toLowerCase().replace(/\s+/g, '-');
-        setSelectedStore(storeName);
-        setShowLogin(true);
-        navigate(`/login/${slug}`);
-    };
 
     const scrollToSection = (sectionId) => {
         const element = document.getElementById(sectionId);
@@ -99,8 +89,6 @@ const HomePage = () => {
     if (isAuthenticated && selectedStoreSlug) {
         return null; // Se redirige automáticamente
     }
-
-    const hasStores = stores && stores.results && stores.results.length > 0;
 
     // Tipos de negocios que pueden usar el sistema
     const businessTypes = [
@@ -261,71 +249,6 @@ const HomePage = () => {
                     <p style={styles.heroSubDescription}>
                         Software de última tecnología, práctico e intuitivo, que te permite administrar tus ventas, facturación, clientes, cuentas corrientes e inventario de manera eficiente.
                     </p>
-                </div>
-            </section>
-
-            {/* Login Section */}
-            <section style={styles.loginSection}>
-                <div style={styles.loginCard}>
-                    <h2 style={styles.loginTitle}>Iniciar Sesión</h2>
-                    <p style={styles.loginSubtitle}>Selecciona tu tienda y accede a tu panel de control</p>
-                    
-                    {hasStores ? (
-                        <>
-                            {!showLogin ? (
-                                <div style={styles.storeSelector}>
-                                    <label htmlFor="store-select" style={styles.storeLabel}>
-                                        Selecciona tu Tienda:
-                                    </label>
-                                    <select
-                                        id="store-select"
-                                        value=""
-                                        onChange={(e) => {
-                                            if (e.target.value) {
-                                                handleStoreSelect(e.target.value);
-                                            }
-                                        }}
-                                        style={styles.storeSelect}
-                                    >
-                                        <option value="">-- Elige una tienda --</option>
-                                        {stores.results.map(store => (
-                                            <option key={store.id} value={store.nombre}>
-                                                {store.nombre}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {selectedStore && (
-                                        <button
-                                            onClick={() => setShowLogin(false)}
-                                            style={styles.backButton}
-                                        >
-                                            ← Volver a seleccionar tienda
-                                        </button>
-                                    )}
-                                </div>
-                            ) : (
-                                <div>
-                                    <button
-                                        onClick={() => {
-                                            setShowLogin(false);
-                                            setSelectedStore(null);
-                                            navigate('/');
-                                        }}
-                                        style={styles.backButton}
-                                    >
-                                        ← Volver
-                                    </button>
-                                    <Login />
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        <div style={styles.noStores}>
-                            <p style={styles.noStoresText}>
-                                No hay tiendas disponibles. Contacta al administrador del sistema.
-                            </p>
-                        </div>
-                    )}
                 </div>
             </section>
 
@@ -679,78 +602,6 @@ const styles = {
         maxWidth: '800px',
         margin: '0 auto',
     },
-    loginSection: {
-        padding: '60px 20px',
-        backgroundColor: '#ffffff',
-    },
-    loginCard: {
-        maxWidth: '500px',
-        margin: '0 auto',
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '40px',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-        border: '1px solid #e9ecef',
-    },
-    loginTitle: {
-        fontSize: '2em',
-        fontWeight: '700',
-        color: '#333',
-        marginBottom: '10px',
-        textAlign: 'center',
-    },
-    loginSubtitle: {
-        fontSize: '1.1em',
-        color: '#666',
-        marginBottom: '30px',
-        textAlign: 'center',
-    },
-    storeSelector: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '15px',
-    },
-    storeLabel: {
-        fontSize: '1.1em',
-        fontWeight: '600',
-        color: '#333',
-    },
-    storeSelect: {
-        padding: '14px 16px',
-        fontSize: '1em',
-        borderRadius: '8px',
-        border: '2px solid #e9ecef',
-        backgroundColor: '#f8f9fa',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        outline: 'none',
-    },
-    storeSelectHover: {
-        borderColor: '#3b82f6',
-        backgroundColor: '#ffffff',
-    },
-    backButton: {
-        padding: '10px 20px',
-        marginTop: '15px',
-        fontSize: '0.9em',
-        backgroundColor: 'transparent',
-        color: '#3b82f6',
-        border: '1px solid #3b82f6',
-        borderRadius: '8px',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        width: '100%',
-        fontWeight: '500',
-    },
-    noStores: {
-        padding: '30px',
-        textAlign: 'center',
-    },
-    noStoresText: {
-        color: '#dc3545',
-        fontSize: '1.1em',
-        fontWeight: '500',
-    },
     businessSection: {
         padding: '100px 20px',
         backgroundColor: '#f8f9fa',
@@ -1087,10 +938,6 @@ const responsiveStyles = `
         .benefits-grid {
             grid-template-columns: 1fr !important;
             gap: 25px !important;
-        }
-        
-        .login-card {
-            padding: 30px 20px !important;
         }
         
         .business-section,
