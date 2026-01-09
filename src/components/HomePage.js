@@ -153,7 +153,7 @@ const HomePage = () => {
             {/* Navbar para Landing Page */}
             {!isAuthenticated && (
                 <nav style={styles.landingNavbar}>
-                    <div style={styles.navbarContainer}>
+                    <div style={styles.navbarContainer} className="navbar-container">
                         <div style={styles.navbarLogoContainer}>
                             <img 
                                 src="/total-stock-logo.jpg" 
@@ -162,7 +162,7 @@ const HomePage = () => {
                             />
                         </div>
                         <ul style={styles.navbarLinks}>
-                            <li>
+                            <li className="navbar-link-item">
                                 <a 
                                     href="#inicio" 
                                     onClick={(e) => {
@@ -175,7 +175,7 @@ const HomePage = () => {
                                     Inicio
                                 </a>
                             </li>
-                            <li>
+                            <li className="navbar-link-item">
                                 <a 
                                     href="#negocios" 
                                     onClick={(e) => {
@@ -188,7 +188,7 @@ const HomePage = () => {
                                     Negocios
                                 </a>
                             </li>
-                            <li>
+                            <li className="navbar-link-item">
                                 <a 
                                     href="#caracteristicas" 
                                     onClick={(e) => {
@@ -201,7 +201,7 @@ const HomePage = () => {
                                     Características
                                 </a>
                             </li>
-                            <li>
+                            <li className="navbar-link-item">
                                 <a 
                                     href="#beneficios" 
                                     onClick={(e) => {
@@ -959,17 +959,20 @@ const responsiveStyles = `
         }
         
         .navbar-links {
-            gap: 15px !important;
-            flex-wrap: wrap;
+            gap: 10px !important;
         }
         
-        .navbar-link {
-            font-size: 0.9em !important;
+        .navbar-link-item {
+            display: none !important;
         }
         
         .access-button {
             padding: 8px 20px !important;
             font-size: 0.9em !important;
+        }
+        
+        .navbar-container {
+            padding: 0 15px !important;
         }
         
         .modal-content {
