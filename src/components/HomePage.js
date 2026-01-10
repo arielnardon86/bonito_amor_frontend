@@ -14,7 +14,9 @@ import {
     faPrint,
     faUsers,
     faStore as faStoreIcon,
-    faShoppingBag
+    faShoppingBag,
+    faCheck,
+    faTimes
 } from '@fortawesome/free-solid-svg-icons';
 
 const HomePage = () => {
@@ -214,6 +216,19 @@ const HomePage = () => {
                                     Beneficios
                                 </a>
                             </li>
+                            <li className="navbar-link-item">
+                                <a 
+                                    href="#precios" 
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        scrollToSection('precios');
+                                    }}
+                                    style={styles.navbarLink}
+                                    className="navbar-link"
+                                >
+                                    Precios
+                                </a>
+                            </li>
                             <li>
                                 <button 
                                     onClick={() => setShowAccessModal(true)}
@@ -340,6 +355,135 @@ const HomePage = () => {
                 </div>
             </section>
 
+            {/* Pricing Section */}
+            <section id="precios" style={styles.pricingSection}>
+                <div style={styles.pricingContainer}>
+                    <h2 style={styles.sectionTitle}>Planes y Precios</h2>
+                    <p style={styles.sectionSubtitle}>
+                        Elige el plan que mejor se adapte a las necesidades de tu negocio.
+                    </p>
+                    <div style={styles.pricingGrid}>
+                        {/* Starter Plan */}
+                        <div 
+                            style={styles.pricingCard}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-8px)';
+                                e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.1)';
+                            }}
+                        >
+                            <div style={styles.pricingHeader}>
+                                <h3 style={styles.pricingPlanName}>Starter</h3>
+                                <div style={styles.pricingPriceContainer}>
+                                    <span style={styles.pricingCurrency}>$</span>
+                                    <span style={styles.pricingAmount}>35.000</span>
+                                </div>
+                                <p style={styles.pricingPeriod}>Por tienda, por mes</p>
+                            </div>
+                            <div style={styles.pricingFeatures}>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>Carga de hasta 1000 productos en stock</span>
+                                </div>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>2 usuarios por caja</span>
+                                </div>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>Emisión de Recibos de compra</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Pro Plan */}
+                        <div 
+                            className="pricing-card-pro"
+                            style={{...styles.pricingCardPro, transform: 'scale(1.05)'}}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.08) translateY(-8px)';
+                                e.currentTarget.style.boxShadow = '0 16px 50px rgba(59, 130, 246, 0.3)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.05)';
+                                e.currentTarget.style.boxShadow = '0 12px 40px rgba(59, 130, 246, 0.2)';
+                            }}
+                        >
+                            <div style={styles.pricingBadge}>MÁS POPULAR</div>
+                            <div style={styles.pricingHeader}>
+                                <h3 style={styles.pricingPlanName}>Pro</h3>
+                                <div style={styles.pricingPriceContainer}>
+                                    <span style={styles.pricingCurrency}>$</span>
+                                    <span style={styles.pricingAmount}>40.000</span>
+                                </div>
+                                <p style={styles.pricingPeriod}>Por tienda, por mes</p>
+                            </div>
+                            <div style={styles.pricingFeatures}>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>Carga de hasta 2500 productos en stock</span>
+                                </div>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>4 usuarios por caja</span>
+                                </div>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>Emisión de Recibos de compra</span>
+                                </div>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>Emisión de Factura electrónica (Integración con ARCA)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Advanced Plan */}
+                        <div 
+                            style={styles.pricingCard}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-8px)';
+                                e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.1)';
+                            }}
+                        >
+                            <div style={styles.pricingHeader}>
+                                <h3 style={styles.pricingPlanName}>Advanced</h3>
+                                <div style={styles.pricingPriceContainer}>
+                                    <span style={styles.pricingCurrency}>$</span>
+                                    <span style={styles.pricingAmount}>50.000</span>
+                                </div>
+                                <p style={styles.pricingPeriod}>Por tienda, por mes</p>
+                            </div>
+                            <div style={styles.pricingFeatures}>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>Carga ilimitada de productos en stock</span>
+                                </div>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>Usuarios ilimitados por caja</span>
+                                </div>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>Emisión de Recibos de compra</span>
+                                </div>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <span>Emisión de Factura electrónica (Integración con ARCA)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Modal de Acceso */}
             {showAccessModal && (
                 <div style={styles.modalOverlay} onClick={() => setShowAccessModal(false)}>
@@ -444,6 +588,31 @@ const HomePage = () => {
                     </p>
                 </div>
             </footer>
+
+            {/* WhatsApp Floating Button */}
+            <a 
+                href="https://api.whatsapp.com/send/?phone=5493515464113&text&type=phone_number&app_absent=0"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.whatsappButton}
+                className="whatsapp-float"
+                aria-label="Contactar por WhatsApp"
+            >
+                <svg 
+                    width="36" 
+                    height="36" 
+                    viewBox="0 0 24 24" 
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={styles.whatsappIcon}
+                >
+                    {/* Modern WhatsApp Logo - Clean and minimal */}
+                    <path 
+                        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" 
+                        fill="#FFFFFF"
+                    />
+                </svg>
+            </a>
         </div>
     );
 };
@@ -734,6 +903,112 @@ const styles = {
         color: '#475569',
         lineHeight: '1.7',
     },
+    pricingSection: {
+        padding: '100px 20px',
+        backgroundColor: '#ffffff',
+    },
+    pricingContainer: {
+        maxWidth: '1200px',
+        margin: '0 auto',
+    },
+    pricingGrid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gap: '40px',
+        marginTop: '50px',
+    },
+    pricingCard: {
+        backgroundColor: '#ffffff',
+        borderRadius: '16px',
+        padding: '40px 30px',
+        textAlign: 'center',
+        boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
+        border: '2px solid #e2e8f0',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        cursor: 'default',
+        position: 'relative',
+    },
+    pricingCardPro: {
+        backgroundColor: '#ffffff',
+        borderRadius: '16px',
+        padding: '40px 30px',
+        textAlign: 'center',
+        boxShadow: '0 12px 40px rgba(59, 130, 246, 0.2)',
+        border: '3px solid #3b82f6',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        cursor: 'default',
+        position: 'relative',
+    },
+    pricingBadge: {
+        position: 'absolute',
+        top: '-15px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        backgroundColor: '#3b82f6',
+        color: '#ffffff',
+        padding: '8px 20px',
+        borderRadius: '20px',
+        fontSize: '0.85em',
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+    },
+    pricingHeader: {
+        marginBottom: '35px',
+        paddingBottom: '30px',
+        borderBottom: '2px solid #e2e8f0',
+    },
+    pricingPlanName: {
+        fontSize: '1.8em',
+        fontWeight: '700',
+        color: '#1e293b',
+        marginBottom: '20px',
+    },
+    pricingPriceContainer: {
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        marginBottom: '10px',
+    },
+    pricingCurrency: {
+        fontSize: '1.5em',
+        fontWeight: '600',
+        color: '#3b82f6',
+        marginTop: '5px',
+    },
+    pricingAmount: {
+        fontSize: '3em',
+        fontWeight: '700',
+        color: '#1e3a8a',
+        lineHeight: '1',
+    },
+    pricingPeriod: {
+        fontSize: '0.95em',
+        color: '#64748b',
+        marginTop: '10px',
+    },
+    pricingFeatures: {
+        textAlign: 'left',
+        listStyle: 'none',
+        padding: 0,
+        margin: 0,
+    },
+    pricingFeature: {
+        display: 'flex',
+        alignItems: 'flex-start',
+        marginBottom: '20px',
+        fontSize: '1em',
+        color: '#475569',
+        lineHeight: '1.6',
+        gap: '12px',
+    },
+    featureIconCheck: {
+        color: '#10b981',
+        fontSize: '1.2em',
+        marginTop: '3px',
+        flexShrink: 0,
+    },
     footer: {
         backgroundColor: '#1e293b',
         color: '#ffffff',
@@ -877,6 +1152,28 @@ const styles = {
         cursor: 'pointer',
         transition: 'all 0.3s ease',
     },
+    whatsappButton: {
+        position: 'fixed',
+        bottom: '30px',
+        right: '30px',
+        width: '60px',
+        height: '60px',
+        background: 'linear-gradient(135deg, #25D366 0%, #20BA5A 100%)',
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 4px 16px rgba(37, 211, 102, 0.35)',
+        zIndex: 999,
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        textDecoration: 'none',
+        cursor: 'pointer',
+        padding: '0',
+    },
+    whatsappIcon: {
+        width: '32px',
+        height: '32px',
+    },
 };
 
 // Agregar estilos responsivos y animaciones
@@ -926,6 +1223,36 @@ const responsiveStyles = `
         border-color: #3b82f6 !important;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
+    
+    .whatsapp-float:hover {
+        background: linear-gradient(135deg, #20BA5A 0%, #1DA851 100%) !important;
+        transform: scale(1.08);
+        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.45) !important;
+    }
+    
+    .whatsapp-float:active {
+        transform: scale(0.95);
+    }
+    
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35);
+        }
+        50% {
+            box-shadow: 0 4px 20px rgba(37, 211, 102, 0.5), 0 0 0 4px rgba(37, 211, 102, 0.1);
+        }
+        100% {
+            box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35);
+        }
+    }
+    
+    .whatsapp-float {
+        animation: pulse 3s ease-in-out infinite;
+    }
+    
+    .whatsapp-float:hover {
+        animation: none;
+    }
 
     @media (max-width: 768px) {
         .hero {
@@ -935,15 +1262,21 @@ const responsiveStyles = `
         
         .business-grid,
         .features-grid,
-        .benefits-grid {
+        .benefits-grid,
+        .pricing-grid {
             grid-template-columns: 1fr !important;
             gap: 25px !important;
         }
         
         .business-section,
         .features-section,
-        .benefits-section {
+        .benefits-section,
+        .pricing-section {
             padding: 60px 20px !important;
+        }
+        
+        .pricing-card-pro {
+            transform: scale(1) !important;
         }
         
         .logo {
@@ -977,6 +1310,18 @@ const responsiveStyles = `
         
         .modal-content {
             padding: 30px 25px !important;
+        }
+        
+        .whatsapp-float {
+            width: 56px !important;
+            height: 56px !important;
+            bottom: 20px !important;
+            right: 20px !important;
+        }
+        
+        .whatsapp-float svg {
+            width: 28px !important;
+            height: 28px !important;
         }
     }
     
