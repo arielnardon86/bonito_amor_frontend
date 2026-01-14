@@ -67,7 +67,11 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
         try {
             const response = await axios.get(
                 `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/categories/`,
-                { headers: { 'Authorization': `Bearer ${token}` }, timeout: 30000 }
+                { 
+                    headers: { 'Authorization': `Bearer ${token}` }, 
+                    params: { limit: 500 }, // Aumentar límite para mostrar más categorías
+                    timeout: 30000 
+                }
             );
             
             const categorias = response.data.categories || [];
