@@ -151,7 +151,7 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
                 `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/categories/`,
                 {
                     headers: { 'Authorization': `Bearer ${token}` },
-                    params: { search: query }
+                    params: { search: query, limit: 500 } // Aumentar límite para búsquedas
                 }
             );
             const categorias = response.data.categories || [];
