@@ -142,31 +142,52 @@ const IntegracionMercadoLibre = () => {
             
             if (response.data.auth_url) {
                 setAuthUrl(response.data.auth_url);
+                
+                // Configurar listener para recibir mensajes de la ventana popup
+                const messageHandler = async (event) => {
+                    // Verificar que el mensaje sea del tipo esperado
+                    if (event.data && event.data.type === 'ML_OAUTH_SUCCESS') {
+                        // Remover el listener
+                        window.removeEventListener('message', messageHandler);
+                        
+                        // Mostrar mensaje de éxito
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Autenticación exitosa',
+                            text: 'La integración con Mercado Libre se configuró correctamente.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                        
+                        // Recargar el estado de ML
+                        await fetchMLStatus();
+                        await fetchTienda();
+                    }
+                };
+                
+                window.addEventListener('message', messageHandler);
+                
                 // Abrir la URL en una nueva ventana
-                window.open(response.data.auth_url, '_blank', 'width=600,height=700');
+                const popup = window.open(response.data.auth_url, '_blank', 'width=600,height=700');
+                
+                // Verificar si la ventana se cerró manualmente (sin mensaje)
+                const checkClosed = setInterval(() => {
+                    if (popup.closed) {
+                        clearInterval(checkClosed);
+                        window.removeEventListener('message', messageHandler);
+                    }
+                }, 1000);
                 
                 Swal.fire({
-                    title: 'Autorización Pendiente',
+                    title: 'Autorización en proceso',
                     html: `
                         <p>Se abrió una ventana para autorizar la integración con Mercado Libre.</p>
-                        <p>Una vez autorices, copia el código que te proporciona Mercado Libre y pégalo abajo:</p>
-                        <input type="text" id="oauth-code" class="swal2-input" placeholder="Código de autorización">
+                        <p>Por favor, completa la autorización en la ventana que se abrió.</p>
+                        <p>La ventana se cerrará automáticamente cuando la autorización sea exitosa.</p>
                     `,
-                    showCancelButton: true,
-                    confirmButtonText: 'Completar Autorización',
-                    cancelButtonText: 'Cancelar',
-                    preConfirm: () => {
-                        const code = document.getElementById('oauth-code')?.value;
-                        if (!code) {
-                            Swal.showValidationMessage('Por favor ingresa el código de autorización');
-                            return false;
-                        }
-                        return code;
-                    }
-                }).then(async (result) => {
-                    if (result.isConfirmed && result.value) {
-                        await handleCompletarOAuth(result.value);
-                    }
+                    icon: 'info',
+                    showConfirmButton: true,
+                    confirmButtonText: 'Entendido'
                 });
             }
         } catch (err) {
