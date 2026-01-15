@@ -69,8 +69,8 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
                 `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/categories/`,
                 { 
                     headers: { 'Authorization': `Bearer ${token}` }, 
-                    params: { limit: 500 }, // Aumentar límite para mostrar más categorías
-                    timeout: 30000 
+                    params: { limit: 15000 }, // Límite alto para cargar todas las categorías disponibles
+                    timeout: 60000 
                 }
             );
             
@@ -151,7 +151,7 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
                 `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/categories/`,
                 {
                     headers: { 'Authorization': `Bearer ${token}` },
-                    params: { search: query, limit: 500 } // Aumentar límite para búsquedas
+                    params: { search: query, limit: 5000 } // Límite alto para búsquedas
                 }
             );
             const categorias = response.data.categories || [];
