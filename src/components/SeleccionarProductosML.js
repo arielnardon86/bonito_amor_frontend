@@ -1,5 +1,5 @@
 // Componente para seleccionar productos y categorías de ML
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
@@ -24,6 +24,9 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
     const [categoriasCache, setCategoriasCache] = useState({}); // Cache de categorías
     const [buscandoCategorias, setBuscandoCategorias] = useState({});
     const [busquedaCategoria, setBusquedaCategoria] = useState({}); // {productoId: texto_busqueda}
+    const [seleccionarTodos, setSeleccionarTodos] = useState(false);
+    const [categoriaTodos, setCategoriaTodos] = useState('');
+    const [busquedaCategoriaTodos, setBusquedaCategoriaTodos] = useState('');
     
     useEffect(() => {
         cargarProductos();
@@ -169,6 +172,7 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
     };
 
     const handleToggleProducto = (productoId) => {
+        if (seleccionarTodos) return;
         setSeleccionados(prev => ({
             ...prev,
             [productoId]: {
@@ -179,6 +183,7 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
     };
 
     const handleCategoriaChange = (productoId, categoriaId) => {
+        if (seleccionarTodos) return;
         setSeleccionados(prev => ({
             ...prev,
             [productoId]: {
@@ -186,6 +191,43 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
                 categoria: categoriaId || ''
             }
         }));
+    };
+
+    const handleToggleSeleccionarTodos = (checked) => {
+        setSeleccionarTodos(checked);
+
+        // Al activar, forzar todos seleccionados (categoría se aplica cuando elijas categoriaTodos)
+        if (checked) {
+            setSeleccionados(prev => {
+                const next = { ...prev };
+                productos.forEach(prod => {
+                    next[prod.id] = {
+                        checked: true,
+                        categoria: categoriaTodos || prev?.[prod.id]?.categoria || ''
+                    };
+                });
+                return next;
+            });
+        }
+    };
+
+    const handleCategoriaTodosChange = (categoriaId) => {
+        const value = categoriaId || '';
+        setCategoriaTodos(value);
+
+        if (!seleccionarTodos) return;
+
+        // Aplicar categoría única a todos los productos
+        setSeleccionados(prev => {
+            const next = { ...prev };
+            productos.forEach(prod => {
+                next[prod.id] = {
+                    checked: true,
+                    categoria: value
+                };
+            });
+            return next;
+        });
     };
 
     const handleBuscarCategoria = async (productoId, query) => {
@@ -228,7 +270,42 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
         );
     };
 
+    const getCategoriasFiltradasTodos = () => {
+        const todasLasCategorias = Object.values(categoriasCache);
+        const busqueda = busquedaCategoriaTodos;
+
+        if (!busqueda || busqueda.length === 0) {
+            return todasLasCategorias;
+        }
+
+        const busquedaLower = busqueda.toLowerCase();
+        return todasLasCategorias.filter(cat =>
+            cat.name.toLowerCase().includes(busquedaLower) ||
+            cat.id.toLowerCase().includes(busquedaLower)
+        );
+    };
+
     const handleConfirmar = () => {
+        if (seleccionarTodos) {
+            if (!categoriaTodos) {
+                Swal.fire('Advertencia', 'Elegí una categoría de Mercado Libre para aplicar a todos los productos', 'warning');
+                return;
+            }
+
+            const productosParaSincronizar = productos.map(prod => ({
+                producto_id: prod.id,
+                categoria_ml_id: categoriaTodos
+            }));
+
+            if (productosParaSincronizar.length === 0) {
+                Swal.fire('Advertencia', 'No hay productos disponibles para sincronizar', 'warning');
+                return;
+            }
+
+            onConfirm(productosParaSincronizar);
+            return;
+        }
+
         const productosParaSincronizar = Object.entries(seleccionados)
             .filter(([id, config]) => config.checked)
             .map(([id, config]) => ({
@@ -251,6 +328,106 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
     return (
         <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
             <h2 style={{ marginBottom: '20px' }}>Seleccionar Productos para Sincronizar</h2>
+
+            <div style={{
+                border: '1px solid #ddd',
+                borderRadius: '5px',
+                padding: '12px 15px',
+                marginBottom: '15px',
+                backgroundColor: '#fafafa'
+            }}>
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                        type="checkbox"
+                        checked={seleccionarTodos}
+                        onChange={(e) => handleToggleSeleccionarTodos(e.target.checked)}
+                        style={{ width: '20px', height: '20px', marginRight: '10px' }}
+                    />
+                    <strong>Seleccionar todos los productos</strong>
+                    <span style={{ marginLeft: '10px', color: '#666' }}>
+                        ({productos.length} productos)
+                    </span>
+                </label>
+
+                {seleccionarTodos && (
+                    <div style={{ marginTop: '12px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>
+                            Categoría ML para todos:
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <input
+                                type="text"
+                                placeholder="Buscar categoría..."
+                                value={busquedaCategoriaTodos}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px',
+                                    border: '1px solid #ccc',
+                                    borderRadius: '4px',
+                                    minWidth: '240px'
+                                }}
+                                onChange={async (e) => {
+                                    const query = e.target.value;
+                                    setBusquedaCategoriaTodos(query);
+                                    // Opcional: si quiere, podemos traer resultados extra desde backend
+                                    if (query.length >= 2) {
+                                        await buscarCategorias(query);
+                                    }
+                                }}
+                            />
+                            <select
+                                value={categoriaTodos}
+                                onChange={(e) => handleCategoriaTodosChange(e.target.value)}
+                                style={{
+                                    flex: 2,
+                                    padding: '8px',
+                                    border: '1px solid #ccc',
+                                    borderRadius: '4px',
+                                    minWidth: '280px'
+                                }}
+                            >
+                                <option value="">-- Selecciona o busca una categoría --</option>
+                                {cargandoCategorias ? (
+                                    <option disabled>Cargando categorías...</option>
+                                ) : Object.keys(categoriasCache).length === 0 ? (
+                                    <option disabled>No hay categorías disponibles</option>
+                                ) : (
+                                    (() => {
+                                        const categoriasFiltradas = getCategoriasFiltradasTodos();
+                                        const busqueda = busquedaCategoriaTodos;
+
+                                        if (busqueda && categoriasFiltradas.length === 0) {
+                                            return (
+                                                <option disabled>
+                                                    No se encontraron categorías con "{busqueda}"
+                                                </option>
+                                            );
+                                        }
+
+                                        return categoriasFiltradas
+                                            .sort((a, b) => a.name.localeCompare(b.name))
+                                            .map(cat => (
+                                                <option key={cat.id} value={cat.id}>
+                                                    {cat.name} ({cat.id})
+                                                </option>
+                                            ));
+                                    })()
+                                )}
+                            </select>
+                            <div style={{ fontSize: '11px', color: '#666', marginTop: '5px', width: '100%' }}>
+                                {cargandoCategorias ? (
+                                    <span>Cargando categorías...</span>
+                                ) : (
+                                    <span>
+                                        {Object.keys(categoriasCache).length} categorías en cache
+                                        {busquedaCategoriaTodos ? ` | Filtradas: ${getCategoriasFiltradasTodos().length}` : ''}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
             
             <div style={{ 
                 maxHeight: '60vh', 
@@ -270,14 +447,15 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
                                 padding: '15px', 
                                 marginBottom: '15px', 
                                 borderRadius: '5px',
-                                backgroundColor: seleccionados[prod.id]?.checked ? '#e7f3ff' : '#fff'
+                                backgroundColor: (seleccionarTodos || seleccionados[prod.id]?.checked) ? '#e7f3ff' : '#fff'
                             }}
                         >
                             <label style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
                                 <input 
                                     type="checkbox" 
-                                    checked={seleccionados[prod.id]?.checked || false}
+                                    checked={seleccionarTodos ? true : (seleccionados[prod.id]?.checked || false)}
                                     onChange={() => handleToggleProducto(prod.id)}
+                                    disabled={seleccionarTodos}
                                     style={{ width: '20px', height: '20px', marginRight: '10px' }}
                                 />
                                 <strong>{prod.nombre}</strong>
@@ -286,7 +464,7 @@ const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, o
                                 </span>
                             </label>
                             
-                            {seleccionados[prod.id]?.checked && (
+                            {!seleccionarTodos && seleccionados[prod.id]?.checked && (
                                 <div style={{ marginLeft: '30px', marginTop: '10px' }}>
                                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
                                         Categoría ML:
