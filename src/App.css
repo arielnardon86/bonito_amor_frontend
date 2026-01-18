@@ -1,0 +1,460 @@
+/* Store/frontend/src/App.css */
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  background-color: #eef2f7;
+  color: #333;
+  line-height: 1.6;
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.navbar {
+  background-color: #f8f8f8;
+  padding: 1rem 20px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 1000;
+}
+
+.navbar-header {
+    display: flex;
+    align-items: center;
+    gap: 20px; /* Espacio entre el logo y el nombre de la tienda */
+}
+
+.store-name-desktop {
+    display: block;
+    color: #333;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.store-name-mobile {
+    display: none;
+}
+
+.app-logo-image {
+    height: 50px;
+    max-width: 180px;
+    display: block;
+}
+
+.nav-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  transition: all 0.3s ease-out;
+}
+
+.nav-links li {
+  margin: 0 15px;
+}
+
+.nav-links li:last-child {
+    margin-right: 0;
+}
+
+.nav-links li a {
+  color: #333;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 1.05em;
+  transition: color 0.3s ease;
+  padding: 8px 0;
+}
+
+.nav-links li a:hover {
+  color: #2980b9;
+}
+
+.welcome-message {
+  margin-right: 15px;
+  color: #333;
+  font-weight: normal;
+}
+
+.logout-button {
+  background-color: #dc3545;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: #c82333;
+}
+
+.menu-icon {
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: #333;
+    z-index: 1001;
+    width: 40px;
+    height: 40px;
+    display: none; /* Oculto por defecto en desktop */
+    justify-content: center;
+    align-items: center;
+}
+
+/* Contenedor principal del contenido */
+.container {
+  padding: 30px;
+  max-width: 1300px;
+  margin: 30px auto;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  flex-grow: 1;
+}
+
+/* Estilos de tablas responsive */
+.table-responsive {
+    overflow-x: auto;
+}
+/* Estilos para los componentes internos */
+.productos-table, .carrito-table, .compras-table, .ventas-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 25px;
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+
+    .navbar {
+        padding: 10px;
+        flex-wrap: wrap;
+    }
+
+    .navbar-header {
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .app-logo-image {
+        height: 40px;
+        max-width: 150px;
+    }
+
+    .store-name-desktop {
+        display: none;
+    }
+    
+    .menu-icon {
+        display: flex;
+    }
+
+    .nav-links {
+        flex-direction: column;
+        width: 100%;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background-color: #f8f8f8;
+        border-top: 1px solid #ccc;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        
+        transform: translateY(-100%);
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s ease;
+        max-height: calc(100vh - 70px);
+        overflow-y: auto;
+    }
+
+    .nav-links.active {
+        transform: translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+    
+    .nav-links li {
+        width: 100%;
+        text-align: center;
+        margin: 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .nav-links li:last-child {
+        border-bottom: none;
+    }
+
+    .store-name-mobile {
+        display: block;
+        padding: 15px;
+        color: #333;
+        width: 100%;
+        text-align: center;
+        border-bottom: 1px solid #ccc;
+        font-weight: bold;
+        font-size: 1em;
+    }
+
+    .nav-links li a,
+    .nav-links li button {
+        display: block;
+        padding: 15px;
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 1em;
+    }
+
+    .welcome-message {
+        display: block;
+        margin-right: 0;
+        margin-bottom: 10px;
+        text-align: center;
+        font-size: 0.95em;
+    }
+    
+    .logout-button {
+        width: calc(100% - 30px);
+        margin: 0 auto;
+        padding: 12px;
+        font-size: 0.95em;
+    }
+    
+    /* Contenedor principal */
+    .container {
+        padding: 15px;
+        margin: 15px auto;
+        border-radius: 8px;
+    }
+
+    /* Reglas para las tablas en mobile */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -15px;
+        padding: 0 15px;
+    }
+
+    .productos-table, 
+    .carrito-table, 
+    .compras-table, 
+    .ventas-table {
+        font-size: 0.85em;
+        min-width: 600px;
+    }
+
+    table {
+        width: 100%;
+        white-space: nowrap;
+    }
+
+    table th,
+    table td {
+        padding: 8px 4px;
+        font-size: 0.9em;
+    }
+
+    /* Botones en mobile */
+    button {
+        min-height: 44px; /* Tamaño mínimo para touch */
+        font-size: 0.95em;
+    }
+
+    /* Inputs en mobile */
+    input, select, textarea {
+        font-size: 16px; /* Previene zoom en iOS */
+        min-height: 44px;
+        padding: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        font-size: 13px;
+    }
+
+    .container {
+        padding: 10px;
+        margin: 10px;
+    }
+
+    .app-logo-image {
+        height: 35px;
+        max-width: 120px;
+    }
+
+    table {
+        font-size: 0.8em;
+    }
+
+    table th,
+    table td {
+        padding: 6px 3px;
+    }
+
+    button {
+        padding: 10px 15px;
+        font-size: 0.9em;
+    }
+}
+
+/* Mejoras para tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .container {
+        padding: 20px;
+        margin: 20px auto;
+    }
+}
+
+/* Mejoras generales para componentes */
+@media (max-width: 768px) {
+    /* Filtros responsivos */
+    .filters-container,
+    [style*="filtersContainer"] {
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+    
+    .filter-group,
+    [style*="filterGroup"] {
+        width: 100% !important;
+    }
+    
+    .filter-input,
+    .filter-select,
+    [style*="filterInput"] {
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+    
+    /* Botones de acción en móvil */
+    .action-buttons,
+    [style*="actionButtons"] {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .action-buttons button,
+    [style*="actionButtons"] button {
+        width: 100%;
+    }
+    
+    /* Formularios */
+    .form-grid,
+    [style*="formGrid"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Modales */
+    .modal-content,
+    [style*="modalContent"] {
+        width: 95% !important;
+        max-width: 95% !important;
+        margin: 10px !important;
+        padding: 15px !important;
+    }
+    
+    /* Paginación */
+    .pagination-container,
+    [style*="paginationContainer"] {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .pagination-button,
+    [style*="paginationButton"] {
+        width: 100%;
+    }
+    
+    /* Tablas responsive mejoradas */
+    .table-responsive,
+    [style*="tableResponsive"],
+    [style*="tableContainer"] {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        position: relative;
+    }
+    
+    .table-responsive::before,
+    [style*="tableResponsive"]::before {
+        content: '';
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        width: 100%;
+        height: 1px;
+    }
+    
+    /* Cards y contenedores de información */
+    .summary-cards,
+    [style*="summaryCards"],
+    [style*="cardsContainer"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Headers de sección */
+    .section-header,
+    [style*="sectionHeader"] {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 15px;
+    }
+    
+    /* Ajustes de fuente para mejor legibilidad */
+    h1 {
+        font-size: 1.5em;
+    }
+    
+    h2 {
+        font-size: 1.3em;
+    }
+    
+    h3 {
+        font-size: 1.1em;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 10px;
+        margin: 10px;
+    }
+    
+    h1 {
+        font-size: 1.3em;
+    }
+    
+    h2 {
+        font-size: 1.1em;
+    }
+    
+    table {
+        font-size: 0.8em;
+    }
+    
+    button {
+        padding: 12px 15px;
+        font-size: 0.9em;
+    }
+    
+    input, select, textarea {
+        font-size: 16px; /* Previene zoom automático en iOS */
+    }
+}

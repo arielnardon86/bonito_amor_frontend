@@ -1,0 +1,302 @@
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
+
+import Productos from './components/Productos';
+import PuntoVenta from './components/PuntoVenta';
+import Login from './components/Login';
+import RegistroCompras from './components/RegistroCompras'; 
+import ProtectedRoute from './components/ProtectedRoute'; 
+import { AuthProvider, useAuth } from './AuthContext'; 
+import { SalesProvider } from './components/SalesContext'; 
+import EtiquetasImpresion from './components/EtiquetasImpresion';
+import ReciboImpresion from './components/ReciboImpresion';
+import FacturaImpresion from './components/FacturaImpresion';
+import TicketCambioImpresion from './components/TicketCambioImpresion';
+import CambioDevolucion from './components/CambioDevolucion';
+import PanelAdministracionTienda from './components/PanelAdministracionTienda';
+
+import MetricasVentas from './components/MetricasVentas';
+import VentasPage from './components/VentasPage';
+import HomePage from './components/HomePage';
+import IntegracionMercadoLibre from './components/IntegracionMercadoLibre'; 
+
+import './App.css';
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faBars, faTimes } from '@fortawesome/free-solid-svg-icons';
+
+// Componente para la navegación
+const Navbar = () => {
+  const { isAuthenticated, user, logout, selectedStoreSlug, stores, token } = useAuth(); 
+  const [isOpen, setIsOpen] = useState(false);
+  const [mlConfigurado, setMlConfigurado] = useState(false);
+  const [verificandoML, setVerificandoML] = useState(false);
+  const location = useLocation();
+
+  const handleLogout = () => {
+    logout();
+    setIsOpen(false);
+  };
+
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768 && isOpen) { 
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen]);
+
+  // Verificar si Mercado Libre está configurado para la tienda
+  useEffect(() => {
+    const verificarMLConfigurado = async () => {
+      if (!isAuthenticated || !selectedStoreSlug || !token || !user?.is_superuser) {
+        setMlConfigurado(false);
+        return;
+      }
+
+      setVerificandoML(true);
+      try {
+        // Obtener el ID de la tienda desde stores
+        let tiendaId = null;
+        if (Array.isArray(stores) && stores.length > 0) {
+          const tiendaEncontrada = stores.find(s => s.nombre === selectedStoreSlug);
+          if (tiendaEncontrada?.id) {
+            tiendaId = tiendaEncontrada.id;
+          }
+        }
+
+        // Si no está en stores, buscar en la API
+        if (!tiendaId) {
+          const response = await axios.get(`${process.env.REACT_APP_API_URL?.replace(/\/api\/?$/, '')}/api/tiendas/`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const tiendas = response.data.results || response.data;
+          if (Array.isArray(tiendas)) {
+            const tiendaEncontrada = tiendas.find(t => t.nombre === selectedStoreSlug);
+            if (tiendaEncontrada?.id) {
+              tiendaId = tiendaEncontrada.id;
+            }
+          }
+        }
+
+        if (tiendaId) {
+          // Verificar estado de ML
+          try {
+            const mlResponse = await axios.get(
+              `${process.env.REACT_APP_API_URL?.replace(/\/api\/?$/, '')}/api/tiendas/${tiendaId}/mercadolibre/status/`,
+              {
+                headers: { 'Authorization': `Bearer ${token}` }
+              }
+            );
+            
+            // ML está configurado si tiene connected = true (tiene todas las credenciales)
+            // O si tiene app_id y client_secret (aunque no tenga token aún)
+            const mlData = mlResponse.data;
+            const configurado = mlData.connected === true || 
+                               (mlData.has_app_id && mlData.has_client_secret);
+            setMlConfigurado(configurado);
+          } catch (mlErr) {
+            // Si el endpoint devuelve error (ej: 400 porque no está configurado para ML)
+            // o si la tienda no tiene plataforma_ecommerce = MERCADO_LIBRE
+            setMlConfigurado(false);
+          }
+        } else {
+          setMlConfigurado(false);
+        }
+      } catch (err) {
+        // Si hay error, asumir que no está configurado
+        console.log('ML no configurado o error al verificar:', err);
+        setMlConfigurado(false);
+      } finally {
+        setVerificandoML(false);
+      }
+    };
+
+    verificarMLConfigurado();
+  }, [isAuthenticated, selectedStoreSlug, token, user, stores]);
+
+  // Si estamos en la página de etiquetas, recibo, factura o ticket de cambio, no mostramos la barra de navegación
+  if (location.pathname === '/etiquetas' || location.pathname === '/recibo' || location.pathname === '/factura' || location.pathname === '/ticket-cambio' || location.pathname === '/cambio-devolucion') {
+    return null;
+  }
+
+  return (
+    <nav className="navbar">
+      <div className="navbar-header">
+        <Link to="/" className="navbar-logo">
+          <img src="/total-stock-logo.jpg" alt="Total Stock Logo" className="app-logo-image" />
+        </Link>
+        {selectedStoreSlug && <span className="store-name-desktop">Tienda: <strong>{selectedStoreSlug}</strong></span>}
+      </div>
+
+      {isAuthenticated && (
+        <>
+          <div onClick={toggleMenu} className="menu-icon">
+            <FontAwesomeIcon icon={isOpen ? faTimes : faBars} /> 
+          </div>
+
+          <ul className={isOpen ? "nav-links active" : "nav-links"}>
+            {selectedStoreSlug && (
+                <li className="store-name-mobile">
+                    Tienda: <strong>{selectedStoreSlug}</strong>
+                </li>
+            )}
+
+            {user && (user.is_staff || user.is_superuser) && ( 
+                <li onClick={() => setIsOpen(false)}><Link to="/punto-venta">Punto de Venta</Link></li>
+            )}
+            
+            {user && (user.is_staff || user.is_superuser) && ( 
+                <li onClick={() => setIsOpen(false)}><Link to="/ventas">Listado de Ventas</Link></li>
+            )}
+            
+            {user && user.is_superuser && ( 
+                <>
+                    <li onClick={() => setIsOpen(false)}><Link to="/productos">Gestión de Productos</Link></li>
+                    <li onClick={() => setIsOpen(false)}><Link to="/metricas-ventas">Métricas de Ventas</Link></li>
+                    <li onClick={() => setIsOpen(false)}><Link to="/registro-compras">Registro de Egresos</Link></li>
+                    <li onClick={() => setIsOpen(false)}><Link to="/panel-administracion-tienda">Panel de Administración</Link></li>
+                    {mlConfigurado && (
+                        <li onClick={() => setIsOpen(false)}><Link to="/integracion-mercadolibre">Integración Mercado Libre</Link></li>
+                    )}
+                </>
+            )}
+            
+            {user && ( 
+                <li>
+                    <span className="welcome-message">Bienvenido, {user?.username}!</span>
+                    <button onClick={handleLogout} className="logout-button">Cerrar Sesión</button>
+                </li>
+            )}
+          </ul>
+        </>
+      )}
+    </nav>
+  );
+};
+
+const appContentStyles = {
+  container: {
+    padding: '30px',
+    maxWidth: '1300px',
+    margin: '30px auto',
+    backgroundColor: '#ffffff',
+    borderRadius: '10px',
+    boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)',
+    flexGrow: 1,
+    // Se eliminan los media queries de aqui para pasarlos al css global
+  }
+};
+
+const AppContent = () => {
+  const { isAuthenticated, loading, selectedStoreSlug, user } = useAuth(); 
+
+  if (loading) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
+  }
+
+  return (
+    <>
+      <Navbar /> 
+      <div className="container" style={appContentStyles.container}>
+        <Routes>
+          <Route path="/login/:storeSlug" element={<Login />} />
+          <Route path="/login" element={<Login />} />
+
+          <Route path="/" element={
+            isAuthenticated && selectedStoreSlug ? (
+              <ProtectedRoute staffOnly={true}>
+                <PuntoVenta />
+              </ProtectedRoute>
+            ) : (
+              <HomePage />
+            )
+          } />
+
+          {isAuthenticated && selectedStoreSlug && (user?.is_staff || user?.is_superuser) && (
+            <>
+              <Route path="/punto-venta" element={<PuntoVenta />} />
+            </>
+          )}
+
+          {isAuthenticated && selectedStoreSlug && (user?.is_staff || user?.is_superuser) && (
+            <>
+              <Route path="/ventas" element={
+                <ProtectedRoute staffOnly={true}>
+                  <VentasPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/recibo" element={<ReciboImpresion />} />
+              <Route path="/factura" element={<FacturaImpresion />} />
+              <Route path="/ticket-cambio" element={<TicketCambioImpresion />} />
+              <Route path="/cambio-devolucion" element={
+                <ProtectedRoute staffOnly={true}>
+                  <CambioDevolucion />
+                </ProtectedRoute>
+              } />
+            </>
+          )}
+
+          {isAuthenticated && selectedStoreSlug && user?.is_superuser && (
+            <>
+              <Route path="/productos" element={
+                <ProtectedRoute adminOnly={true}>
+                  <Productos />
+                </ProtectedRoute>
+              } />
+              <Route path="/metricas-ventas" element={
+                <ProtectedRoute adminOnly={true}>
+                  <MetricasVentas />
+                </ProtectedRoute>
+              } />
+              <Route path="/registro-compras" element={ 
+                <ProtectedRoute adminOnly={true}>
+                  <RegistroCompras />
+                </ProtectedRoute>
+              } />
+              <Route path="/etiquetas" element={<EtiquetasImpresion />} />
+              <Route path="/panel-administracion-tienda" element={
+                <ProtectedRoute adminOnly={true}>
+                  <PanelAdministracionTienda />
+                </ProtectedRoute>
+              } />
+              <Route path="/integracion-mercadolibre" element={
+                <ProtectedRoute superuserOnly={true}>
+                  <IntegracionMercadoLibre />
+                </ProtectedRoute>
+              } />
+            </>
+          )}
+
+          {isAuthenticated && !selectedStoreSlug && (
+            <Route path="*" element={<Navigate to="/" replace />} />
+          )}
+
+          {(!isAuthenticated || (isAuthenticated && !selectedStoreSlug)) && 
+            <Route path="*" element={<Navigate to="/" replace />} />
+          }
+
+        </Routes>
+      </div>
+    </>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <SalesProvider>
+        <AppContent />
+      </SalesProvider>
+    </AuthProvider>
+  );
+}
+
+export default App;

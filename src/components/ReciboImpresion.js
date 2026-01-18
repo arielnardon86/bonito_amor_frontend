@@ -1,0 +1,304 @@
+// BONITO_AMOR/frontend/src/components/ReciboImpresion.js
+import React, { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+const ReciboImpresion = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { venta, fromCambioDevolucion } = location.state || {}; 
+    const reciboRef = useRef(null);
+
+    useEffect(() => {
+        const detalles = venta?.detalles;
+
+        if (reciboRef.current && venta && detalles && detalles.length > 0) {
+            reciboRef.current.innerHTML = '';
+
+            // Función de formateo de fecha más segura
+            const formatFecha = (fecha) => {
+                const dateObj = new Date(fecha);
+                return !isNaN(dateObj.getTime()) ? dateObj.toLocaleString() : fecha;
+            };
+            
+            // Función para generar código numérico de 13 dígitos desde el UUID de la venta (mismo que lee el código de barras)
+            const generarCodigoNumerico13Digitos = (ventaId) => {
+                // Generar un código numérico determinístico del UUID de la venta
+                const ventaIdSinGuiones = String(ventaId).replace(/-/g, '');
+                
+                // Crear un hash numérico del UUID
+                let hash = 0;
+                for (let i = 0; i < ventaIdSinGuiones.length; i++) {
+                    hash = (hash * 31 + ventaIdSinGuiones.charCodeAt(i)) % 1000000000;
+                }
+                
+                // Generar código base: 779 (Argentina) + 9 dígitos del hash
+                const hash9Digitos = String(Math.abs(hash)).padStart(9, '0').substring(0, 9);
+                let code = '779' + hash9Digitos;
+                
+                // Calcular dígito de control para EAN13
+                let sum = 0;
+                for (let i = 0; i < 12; i++) {
+                    sum += parseInt(code[i], 10) * (i % 2 === 0 ? 1 : 3);
+                }
+                const checksum = (10 - (sum % 10)) % 10;
+                return code + checksum.toString();
+            };
+            
+            // Generar código numérico de 13 dígitos (mismo que lee el código de barras)
+            const codigoNumerico = venta?.id ? generarCodigoNumerico13Digitos(venta.id) : 'N/A';
+            
+            const subtotal = detalles.reduce((acc, item) => {
+                const cantidad = item.cantidad || item.quantity;
+                const precio = item.precio_unitario || item.product?.precio;
+                return acc + (cantidad * parseFloat(precio || 0));
+            }, 0);
+
+            const esNotaCredito = venta?.metodo_pago === 'Nota de Crédito' || venta?.metodo_pago_nombre === 'Nota de Crédito';
+            const esDiferenciaPendiente = venta?.es_diferencia_pendiente || venta?.cambio_devolucion_diferencia;
+            const tituloRecibo = esNotaCredito ? 'Nota de Crédito' : 'Comprobante de compra';
+            
+            // Calcular saldo a favor para mostrar en el recibo
+            let saldoAFavorMonto = 0;
+            if (venta.cambio_devolucion_info && parseFloat(venta.cambio_devolucion_info.saldo_a_favor || 0) > 0) {
+                saldoAFavorMonto = parseFloat(venta.cambio_devolucion_info.saldo_a_favor);
+            } else if (venta.cambio_devolucion_diferencia && parseFloat(venta.cambio_devolucion_diferencia.monto_devolucion || 0) > 0) {
+                // Para diferencia pendiente, usar monto_devolucion como saldo a favor
+                saldoAFavorMonto = parseFloat(venta.cambio_devolucion_diferencia.monto_devolucion);
+            } else if (venta.cambio_devolucion_diferencia && venta.cambio_devolucion_diferencia.saldo_a_favor && parseFloat(venta.cambio_devolucion_diferencia.saldo_a_favor) > 0) {
+                saldoAFavorMonto = parseFloat(venta.cambio_devolucion_diferencia.saldo_a_favor);
+            }
+            
+            // Información adicional si viene de un cambio/devolución
+            let infoCambioDevolucion = '';
+            if (esDiferenciaPendiente && venta?.cambio_devolucion_diferencia) {
+                const montoDevuelto = parseFloat(venta.cambio_devolucion_diferencia.monto_devolucion || 0);
+                if (montoDevuelto > 0) {
+                    infoCambioDevolucion = `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none; margin-top: 5px; padding: 5px; background-color: #e8f4f8; border-radius: 3px;"><strong>Nota:</strong> Esta venta corresponde a la diferencia de un cambio/devolución. Monto devuelto por cambio: $${montoDevuelto.toFixed(2)}</p>`;
+                }
+            }
+            
+            reciboRef.current.innerHTML = `
+                <div class="receipt">
+                    <div class="header">
+                        <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${tituloRecibo}</h2>
+                        <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
+                        <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
+                        <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">ID de Venta: ${codigoNumerico}</p>
+                        ${infoCambioDevolucion}
+                        <hr>
+                    </div>
+                    <div class="items">
+                        <h3 style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Productos:</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Cant.</th>
+                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Descripción</th>
+                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Precio</th>
+                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${detalles.map(item => {
+                                    let nombre = item.producto_nombre || item.product?.nombre || 'N/A';
+                                    // Si el método de pago es "Nota de Crédito" y no hay producto, mostrar "Nota de Crédito"
+                                    if ((venta.metodo_pago === 'Nota de Crédito' || venta.metodo_pago_nombre === 'Nota de Crédito') && (!item.producto_nombre && !item.product?.nombre)) {
+                                        nombre = 'Nota de Crédito';
+                                    }
+                                    const cantidad = item.cantidad || item.quantity;
+                                    const precio = item.precio_unitario || item.product?.precio;
+                                    const subtotal = cantidad * parseFloat(precio || 0);
+                                    return `
+                                    <tr>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${cantidad}</td>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${nombre}</td>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">$${parseFloat(precio || 0).toFixed(2)}</td>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">$${subtotal.toFixed(2)}</td>
+                                    </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                        <hr>
+                    </div>
+                    <div class="totals">
+                        <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Subtotal:</strong> $${subtotal.toFixed(2)}</p>
+                        ${(venta.descuento_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> -${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
+                        ${(venta.descuento_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> -$${parseFloat(venta.descuento_monto).toFixed(2)}</p>` : ''}
+                        ${saldoAFavorMonto > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Saldo a favor:</strong> -$${saldoAFavorMonto.toFixed(2)}</p>` : ''}
+                        
+                        ${(venta.recargo_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo:</strong> +${parseFloat(venta.recargo_porcentaje).toFixed(2)}%</p>` : ''}
+                        ${(venta.recargo_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo:</strong> +$${parseFloat(venta.recargo_monto).toFixed(2)}</p>` : ''}
+                        
+                        <p style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
+                        <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
+                        <hr>
+                    </div>
+                    <div class="footer">
+                        <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">¡Gracias por su compra!</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            reciboRef.current.innerHTML = `
+                 <div style="text-align: center;">
+                     <h1 style="color: #dc3545;">Error al generar el recibo.</h1>
+                     <p>No se encontraron datos de venta válidos.</p>
+                 </div>
+            `;
+        }
+    }, [venta, navigate]);
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const handleGoBack = () => {
+        // Si es una nota de crédito, viene de un cambio/devolución, o tiene diferencia pendiente, volver al punto de venta
+        if (venta?.metodo_pago === 'Nota de Crédito' || venta?.es_diferencia_pendiente || fromCambioDevolucion) {
+            navigate('/punto-venta');
+        } else {
+            navigate(-1);
+        }
+    };
+
+    const handleTicketCambio = () => {
+        if (!venta || !venta.id) {
+            alert('Error: No se encontró información de la venta');
+            return;
+        }
+        navigate('/ticket-cambio', { state: { venta } });
+    };
+    
+    const esNotaCredito = venta?.metodo_pago === 'Nota de Crédito' || venta?.metodo_pago_nombre === 'Nota de Crédito';
+
+    if (!venta) {
+        return (
+            <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>
+                <h1>No hay datos de venta para mostrar en el recibo.</h1>
+                <button onClick={handleGoBack} style={{ padding: '10px 20px', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '5px', backgroundColor: '#f0f0f0', marginTop: '20px' }}>Volver</button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="receipt-page-container">
+            <div className="no-print-controls">
+                <button onClick={handleGoBack}>Volver</button>
+                <button onClick={handlePrint}>Imprimir Recibo</button>
+                {!esNotaCredito && (
+                    <button onClick={handleTicketCambio} style={{ backgroundColor: '#17a2b8', color: 'white' }}>Ticket de cambio</button>
+                )}
+            </div>
+            
+            <div className="receipt-printable-area" ref={reciboRef}>
+                {/* El recibo se renderizará aquí */}
+            </div>
+
+            <style>
+                {`
+                    @page {
+                        size: 72mm auto;
+                        margin: 0;
+                    }
+                    .receipt-page-container {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                        font-family: Arial, sans-serif;
+                    }
+                    .no-print-controls button {
+                        padding: 10px 20px;
+                        cursor: pointer;
+                        border: 1px solid #ccc;
+                        border-radius: 5px;
+                        background-color: #f0f0f0;
+                        margin: 0 5px;
+                    }
+                    .no-print-controls button:last-child {
+                        background-color: #28a745;
+                        color: white;
+                        border: none;
+                    }
+                    .receipt-printable-area {
+                        width: 72mm;
+                        padding: 5mm;
+                        background: #fff;
+                        border: 1px solid #000;
+                    }
+                    .receipt {
+                        font-size: 10px;
+                        line-height: 1.2;
+                    }
+                    .receipt h2, .receipt h3 {
+                        text-align: center;
+                        margin: 0;
+                        font-size: 14px;
+                        font-weight: bold; /* Asegura que los títulos sean gruesos */
+                        color: #000; /* Asegura el color negro */
+                        -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
+                    }
+                    .receipt hr {
+                        border-top: 1px dashed #000;
+                        margin: 5px 0;
+                    }
+                    .receipt p {
+                        margin: 2px 0;
+                        font-weight: bold; /* Asegura que el texto normal sea grueso */
+                        color: #000; /* Asegura el color negro */
+                        -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
+                    }
+                    .receipt table {
+                        width: 100%;
+                        border-collapse: collapse;
+                    }
+                    .receipt th, .receipt td {
+                        padding: 1px;
+                        text-align: left;
+                        font-weight: bold; /* Asegura que los datos de la tabla sean gruesos */
+                        color: #000; /* Asegura el color negro */
+                        -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
+                    }
+                    .receipt th {
+                        border-bottom: 1px solid #000;
+                    }
+                    .receipt .items {
+                        margin-top: 5px;
+                    }
+                    .receipt .totals {
+                        text-align: right;
+                        margin-top: 5px;
+                    }
+                    .receipt .footer {
+                        text-align: center;
+                        margin-top: 10px;
+                    }
+                    @media print {
+                        body * {
+                            visibility: hidden;
+                        }
+                        .receipt-printable-area, .receipt-printable-area * {
+                            visibility: visible;
+                        }
+                        .receipt-printable-area {
+                            position: absolute;
+                            left: 0;
+                            top: 0;
+                            width: 72mm;
+                            margin: 0;
+                            padding: 0;
+                            box-shadow: none;
+                        }
+                        .no-print-controls {
+                            display: none !important;
+                        }
+                    }
+                `}
+            </style>
+        </div>
+    );
+};
+
+export default ReciboImpresion;
