@@ -189,38 +189,40 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug, user]);
 
-    // FUNCIÓN 3: Fetch de Información de Tienda
+    // FUNCIÓN 3: Fetch de Información de Tienda - OPTIMIZADO: Usar endpoint específico
     const fetchTiendaInfo = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
         try {
+            // OPTIMIZACIÓN: Usar endpoint con filtro de nombre en lugar de cargar todas las tiendas
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { nombre: selectedStoreSlug } // Filtrar en el backend
             });
             
-            // Manejar diferentes formatos de respuesta (array, objeto con results, o objeto único)
-            let tiendas = [];
+            // Manejar diferentes formatos de respuesta
+            let tienda = null;
             if (Array.isArray(response.data)) {
-                tiendas = response.data;
+                tienda = response.data.find(t => {
+                    const nombreTienda = t.nombre ? t.nombre.trim() : '';
+                    const slugTienda = selectedStoreSlug ? selectedStoreSlug.trim() : '';
+                    return nombreTienda === slugTienda || nombreTienda.toLowerCase() === slugTienda.toLowerCase();
+                });
             } else if (response.data.results && Array.isArray(response.data.results)) {
-                tiendas = response.data.results;
+                tienda = response.data.results.find(t => {
+                    const nombreTienda = t.nombre ? t.nombre.trim() : '';
+                    const slugTienda = selectedStoreSlug ? selectedStoreSlug.trim() : '';
+                    return nombreTienda === slugTienda || nombreTienda.toLowerCase() === slugTienda.toLowerCase();
+                });
             } else if (response.data.nombre) {
                 // Es un objeto único de tienda
-                tiendas = [response.data];
+                tienda = response.data;
             }
-            
-            // Buscar la tienda por nombre (comparación flexible)
-            const tienda = tiendas.find(t => {
-                const nombreTienda = t.nombre ? t.nombre.trim() : '';
-                const slugTienda = selectedStoreSlug ? selectedStoreSlug.trim() : '';
-                // Comparación exacta y también sin case sensitivity
-                return nombreTienda === slugTienda || nombreTienda.toLowerCase() === slugTienda.toLowerCase();
-            });
             
             if (tienda) {
                 console.log('Tienda encontrada:', tienda.nombre, 'Tipo facturación:', tienda.tipo_facturacion);
                 setTiendaInfo(tienda);
             } else {
-                console.warn('Tienda no encontrada. Buscando:', selectedStoreSlug, 'Tiendas disponibles:', tiendas.map(t => t.nombre));
+                console.warn('Tienda no encontrada:', selectedStoreSlug);
                 setTiendaInfo(null);
             }
         } catch (err) {

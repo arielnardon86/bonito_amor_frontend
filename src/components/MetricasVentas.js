@@ -128,16 +128,24 @@ const MetricasVentas = () => {
     
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
-            fetchMetrics();
-            const fullMonth = !filterDateFrom && !filterDateTo;
-            if (fullMonth) {
-                (async () => {
+            // OPTIMIZACIÓN: Hacer llamadas en paralelo
+            const loadData = async () => {
+                const promises = [
+                    fetchMetrics(),
+                    fetchInventoryMetrics(),
+                    fetchSellers(),
+                    fetchPaymentMethods()
+                ];
+                
+                // Cargar mes anterior solo si es necesario (lazy loading)
+                const fullMonth = !filterDateFrom && !filterDateTo;
+                if (fullMonth) {
                     const m = parseInt(currentMonth, 10);
                     const y = parseInt(currentYear, 10);
                     const prevM = m === 1 ? 12 : m - 1;
                     const prevY = m === 1 ? y - 1 : y;
-                    try {
-                        const res = await axios.get(`${BASE_API_ENDPOINT}/api/metricas/metrics/`, {
+                    promises.push(
+                        axios.get(`${BASE_API_ENDPOINT}/api/metricas/metrics/`, {
                             headers: { 'Authorization': `Bearer ${token}` },
                             params: {
                                 tienda_slug: selectedStoreSlug,
@@ -146,25 +154,24 @@ const MetricasVentas = () => {
                                 seller_id: filterSellerId || undefined,
                                 payment_method: filterPaymentMethod || undefined,
                             },
-                        });
-                        setMetricsPreviousMonth(res.data);
-                    } catch (e) {
-                        setMetricsPreviousMonth(null);
-                    }
-                })();
-            } else {
-                setMetricsPreviousMonth(null);
-            }
-            fetchInventoryMetrics();
-            fetchSellers();
-            fetchPaymentMethods();
+                        }).then(res => setMetricsPreviousMonth(res.data))
+                          .catch(() => setMetricsPreviousMonth(null))
+                    );
+                } else {
+                    setMetricsPreviousMonth(null);
+                }
+                
+                await Promise.all(promises);
+            };
+            
+            loadData();
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
             setError("Acceso denegado. Solo los superusuarios pueden ver las métricas.");
             setLoading(false);
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false);
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, token, filterDateFrom, filterDateTo, filterSellerId, filterPaymentMethod, fetchMetrics, fetchSellers, fetchPaymentMethods, fetchInventoryMetrics]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, token, filterDateFrom, filterDateTo, filterSellerId, filterPaymentMethod, fetchMetrics, fetchSellers, fetchPaymentMethods, fetchInventoryMetrics, currentMonth, currentYear]);
     
     const handleApplyFilters = () => {
         if (pendingDateFrom && pendingDateTo && pendingDateFrom > pendingDateTo) {

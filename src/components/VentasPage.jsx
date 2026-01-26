@@ -143,8 +143,13 @@ const VentasPage = () => {
 
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
-            fetchVentas();
-            fetchSellers();
+            // OPTIMIZACIÓN: Hacer llamadas en paralelo
+            Promise.all([
+                fetchVentas(),
+                fetchSellers()
+            ]).catch(err => {
+                console.error('Error al cargar datos iniciales:', err);
+            });
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
             setError("Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.");
             setLoading(false);
