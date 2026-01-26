@@ -98,7 +98,13 @@ export const AuthProvider = ({ children }) => {
             return true;
         } catch (err) {
             console.error('Error during login:', err.response ? err.response.data : err.message);
-            setAuthError('Credenciales incorrectas o error de conexión.');
+            const detail = err.response?.data?.detail;
+            const msg = typeof detail === 'string'
+                ? detail
+                : Array.isArray(detail)
+                    ? detail[0]
+                    : null;
+            setAuthError(msg || 'Credenciales incorrectas o error de conexión.');
             setLoading(false);
             logout();
             return false;
@@ -126,7 +132,11 @@ export const AuthProvider = ({ children }) => {
             }
         }
 
-        await fetchStores();
+        if (token) {
+            await fetchStores();
+        } else {
+            setStores([]);
+        }
 
         setLoading(false);
     }, [token, logout, fetchStores]);
