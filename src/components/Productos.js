@@ -5,9 +5,12 @@ import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import JsBarcode from 'jsbarcode';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL;
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const normalizeApiUrl = (url) => {
+    if (!url) {
+        return 'http://localhost:8000';
+    }
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
@@ -194,19 +197,17 @@ const Productos = () => {
     if (!selectedStoreSlug) {
         return (
             <div style={styles.noStoreSelectedMessage}>
-                <h2>Por favor, selecciona una tienda en la barra de navegación para ver los productos.</h2>
+                <p>Selecciona una tienda en el menú para ver los productos.</p>
             </div>
         );
     }
     
     return (
         <div style={styles.container}>
-            <div style={styles.header}>
-                <h1 style={styles.title}>Gestión de Productos ({selectedStoreSlug})</h1>
-            </div>
+            <h1 style={styles.title}>Productos</h1>
             
             <div style={styles.section}>
-                <h2 style={styles.sectionTitle}>Agregar Nuevo Producto</h2>
+                <h2 style={styles.sectionTitle}>Nuevo producto</h2>
                 <form onSubmit={handleCreateProduct} style={styles.form}>
                     <div style={styles.inputGroup}>
                         <label style={styles.label}>Nombre</label>
@@ -275,7 +276,7 @@ const Productos = () => {
             
             <div style={styles.section}>
                 <div style={styles.tableHeader}>
-                    <h2 style={styles.sectionTitle}>Listado de Productos</h2>
+                    <h2 style={styles.sectionTitle}>Listado</h2>
                     <button onClick={handleImprimirEtiquetas} style={styles.printButton}>Imprimir Etiquetas</button>
                 </div>
                 <div style={styles.filtersContainer}>
@@ -298,23 +299,14 @@ const Productos = () => {
                         <div style={styles.tableResponsive}>
                             <table style={styles.table}>
                                 <thead>
-                                    <tr>
-                                        <th style={styles.th}>Seleccionar</th>
-                                        <th style={styles.th}>Cantidad de etiquetas</th>
-                                        <th style={styles.th}>Nombre</th>
-                                        <th style={styles.th}>Precio</th>
-                                        <th style={styles.th}>Costo</th>
-                                        <th style={styles.th}>Stock</th>
-                                        <th style={styles.th}>Acciones</th>
-                                    </tr>
+                                    <tr><th style={styles.th}>Seleccionar</th><th style={styles.th}>Cantidad de etiquetas</th><th style={styles.th}>Nombre</th><th style={styles.th}>Precio</th><th style={styles.th}>Costo</th><th style={styles.th}>Stock</th><th style={styles.th}>Acciones</th></tr>
                                 </thead>
                                 <tbody>
                                     {productos.map(producto => (
-                                        <tr key={producto.id}>
-                                            <td style={styles.td}>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={!!etiquetasSeleccionadas[producto.id]} 
+                                        <tr key={producto.id}><td style={styles.td}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!etiquetasSeleccionadas[producto.id]}
                                                     onChange={(e) => {
                                                         const isChecked = e.target.checked;
                                                         if (isChecked) {
@@ -326,8 +318,7 @@ const Productos = () => {
                                                         }
                                                     }}
                                                 />
-                                            </td>
-                                            <td style={styles.td}>
+                                            </td><td style={styles.td}>
                                                 <input
                                                     type="number"
                                                     min="0"
@@ -336,12 +327,7 @@ const Productos = () => {
                                                     style={styles.etiquetasInput}
                                                     disabled={!etiquetasSeleccionadas[producto.id]}
                                                 />
-                                            </td>
-                                            <td style={styles.td}>{producto.nombre}</td>
-                                            <td style={styles.td}>${parseFloat(producto.precio).toFixed(2)}</td>
-                                            <td style={styles.td}>${parseFloat(producto.costo || 0).toFixed(2)}</td> {/* Muestra el costo */}
-                                            <td style={styles.td}>{producto.stock}</td>
-                                            <td style={styles.td}>
+                                            </td><td style={styles.td}>{producto.nombre}</td><td style={styles.td}>${parseFloat(producto.precio).toFixed(2)}</td><td style={styles.td}>${parseFloat(producto.costo || 0).toFixed(2)}</td><td style={styles.td}>{producto.stock}</td><td style={styles.td}>
                                                 <button onClick={() => {
                                                     setEditProduct({ ...producto });
                                                     setShowEditModal(true);
@@ -350,8 +336,7 @@ const Productos = () => {
                                                     setProductToDelete(producto);
                                                     setShowDeleteModal(true);
                                                 }} style={styles.deleteButton}>Eliminar</button>
-                                            </td>
-                                        </tr>
+                                            </td></tr>
                                     ))}
                                 </tbody>
                             </table>
@@ -494,11 +479,10 @@ const Productos = () => {
     );
 };
 const styles = {
-    container: { padding: '20px', fontFamily: 'Arial, sans-serif' },
-    header: { textAlign: 'center' },
-    title: { color: '#2c3e50', fontSize: '2.5em' },
+    container: { padding: 0, fontFamily: 'Arial, sans-serif', width: '100%' },
+    title: { color: '#2c3e50', fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.25rem' },
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' },
-    sectionTitle: { color: '#34495e', borderBottom: '1px solid #eee', paddingBottom: '10px' },
+    sectionTitle: { color: '#34495e', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '8px', marginTop: '1.5rem', marginBottom: '0.5rem' },
     form: { display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-end' },
     inputGroup: { flex: '1 1 200px', display: 'flex', flexDirection: 'column' },
     label: { marginBottom: '5px', fontWeight: 'bold' },

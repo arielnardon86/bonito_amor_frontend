@@ -1,13 +1,12 @@
 // BONITO_AMOR/frontend/src/components/Login.js
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import Swal from 'sweetalert2'; // <-- NUEVO: Importamos SweetAlert2
+import Swal from 'sweetalert2';
 
 function Login() {
   const { login, error: authError, clearError } = useAuth();
   const navigate = useNavigate();
-  const { storeSlug } = useParams();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -16,7 +15,7 @@ function Login() {
     e.preventDefault();
     clearError();
 
-    const success = await login(username, password, storeSlug);
+    const success = await login(username, password);
     
     // Mostramos SweetAlert en base al resultado del login
     if (success) {
@@ -41,7 +40,7 @@ function Login() {
     <>
       <style>{loginMobileStyles}</style>
       <div style={styles.container} className="login-container">
-      <h2 style={styles.header} className="login-header">Iniciar Sesión en {storeSlug ? storeSlug.replace(/-/g, ' ').toUpperCase() : 'Tu Tienda'}</h2>
+      <h2 style={styles.header} className="login-header">Iniciar Sesión</h2>
       
       {/* Eliminamos el mensaje de error anterior ya que usaremos SweetAlert */}
       {/* {(authError) && <p style={styles.error}>{authError}</p>} */}

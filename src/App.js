@@ -24,7 +24,20 @@ import IntegracionMercadoLibre from './components/IntegracionMercadoLibre';
 import './App.css';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBars, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { 
+  faBars, 
+  faTimes, 
+  faShoppingCart,
+  faListAlt,
+  faBox,
+  faChartLine,
+  faMoneyBillWave,
+  faCog,
+  faShoppingBag,
+  faSignOutAlt,
+  faUser,
+  faStore
+} from '@fortawesome/free-solid-svg-icons';
 
 // Componente para la navegación
 const Navbar = () => {
@@ -51,6 +64,28 @@ const Navbar = () => {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen]);
+
+  // Cerrar sidebar en mobile al cambiar de ruta
+  useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsOpen(false);
+    }
+  }, [location.pathname]);
+
+  // Evitar scroll del body solo cuando el menú está abierto en mobile
+  useEffect(() => {
+    if (window.innerWidth <= 768 && isOpen) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.removeProperty('overflow');
+      document.documentElement.style.removeProperty('overflow');
+    }
+    return () => {
+      document.body.style.removeProperty('overflow');
+      document.documentElement.style.removeProperty('overflow');
+    };
   }, [isOpen]);
 
   // Verificar si Mercado Libre está configurado para la tienda
@@ -127,72 +162,108 @@ const Navbar = () => {
     return null;
   }
 
+  // Si no está autenticado, no mostrar sidebar
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
-    <nav className="navbar">
-      <div className="navbar-header">
-        <Link to="/" className="navbar-logo">
-          <img src="/total-stock-logo.jpg" alt="Total Stock Logo" className="app-logo-image" />
-        </Link>
-        {selectedStoreSlug && <span className="store-name-desktop">Tienda: <strong>{selectedStoreSlug}</strong></span>}
+    <>
+      {/* Menú hamburguesa para mobile */}
+      <div onClick={toggleMenu} className="menu-icon-mobile">
+        <FontAwesomeIcon icon={isOpen ? faTimes : faBars} /> 
       </div>
+      
+      {/* Overlay para mobile cuando el menú está abierto */}
+      {isOpen && <div className="sidebar-overlay" onClick={toggleMenu}></div>}
 
-      {isAuthenticated && (
-        <>
-          <div onClick={toggleMenu} className="menu-icon">
-            <FontAwesomeIcon icon={isOpen ? faTimes : faBars} /> 
-          </div>
+      <nav className={`sidebar ${isOpen ? 'active' : ''}`}>
+        <div className="sidebar-header">
+          <Link to="/" className="sidebar-logo" onClick={() => setIsOpen(false)}>
+            <img src="/total-stock-logo.jpg" alt="Total Stock Logo" className="app-logo-image" />
+          </Link>
+          {selectedStoreSlug && (
+            <div className="store-name-sidebar">
+              <FontAwesomeIcon icon={faStore} className="store-icon" />
+              <span><strong>{selectedStoreSlug}</strong></span>
+            </div>
+          )}
+        </div>
 
-          <ul className={isOpen ? "nav-links active" : "nav-links"}>
-            {selectedStoreSlug && (
-                <li className="store-name-mobile">
-                    Tienda: <strong>{selectedStoreSlug}</strong>
-                </li>
-            )}
-
+        {isAuthenticated && (
+          <ul className="sidebar-links">
             {user && (user.is_staff || user.is_superuser) && ( 
-                <li onClick={() => setIsOpen(false)}><Link to="/punto-venta">Punto de Venta</Link></li>
+              <li onClick={() => setIsOpen(false)}>
+                <Link to="/punto-venta" className={location.pathname === '/punto-venta' || location.pathname === '/' ? 'active' : ''}>
+                  <FontAwesomeIcon icon={faShoppingCart} className="nav-icon" />
+                  <span>Punto de Venta</span>
+                </Link>
+              </li>
             )}
             
             {user && (user.is_staff || user.is_superuser) && ( 
-                <li onClick={() => setIsOpen(false)}><Link to="/ventas">Listado de Ventas</Link></li>
+              <li onClick={() => setIsOpen(false)}>
+                <Link to="/ventas" className={location.pathname === '/ventas' ? 'active' : ''}>
+                  <FontAwesomeIcon icon={faListAlt} className="nav-icon" />
+                  <span>Listado de Ventas</span>
+                </Link>
+              </li>
             )}
             
             {user && user.is_superuser && ( 
-                <>
-                    <li onClick={() => setIsOpen(false)}><Link to="/productos">Gestión de Productos</Link></li>
-                    <li onClick={() => setIsOpen(false)}><Link to="/metricas-ventas">Métricas de Ventas</Link></li>
-                    <li onClick={() => setIsOpen(false)}><Link to="/registro-compras">Registro de Egresos</Link></li>
-                    <li onClick={() => setIsOpen(false)}><Link to="/panel-administracion-tienda">Panel de Administración</Link></li>
-                    {mlConfigurado && (
-                        <li onClick={() => setIsOpen(false)}><Link to="/integracion-mercadolibre">Integración Mercado Libre</Link></li>
-                    )}
-                </>
+              <>
+                <li onClick={() => setIsOpen(false)}>
+                  <Link to="/productos" className={location.pathname === '/productos' ? 'active' : ''}>
+                    <FontAwesomeIcon icon={faBox} className="nav-icon" />
+                    <span>Gestión de Productos</span>
+                  </Link>
+                </li>
+                <li onClick={() => setIsOpen(false)}>
+                  <Link to="/metricas-ventas" className={location.pathname === '/metricas-ventas' ? 'active' : ''}>
+                    <FontAwesomeIcon icon={faChartLine} className="nav-icon" />
+                    <span>Métricas de Ventas</span>
+                  </Link>
+                </li>
+                <li onClick={() => setIsOpen(false)}>
+                  <Link to="/registro-compras" className={location.pathname === '/registro-compras' ? 'active' : ''}>
+                    <FontAwesomeIcon icon={faMoneyBillWave} className="nav-icon" />
+                    <span>Registro de Egresos</span>
+                  </Link>
+                </li>
+                <li onClick={() => setIsOpen(false)}>
+                  <Link to="/panel-administracion-tienda" className={location.pathname === '/panel-administracion-tienda' ? 'active' : ''}>
+                    <FontAwesomeIcon icon={faCog} className="nav-icon" />
+                    <span>Panel de Administración</span>
+                  </Link>
+                </li>
+                {mlConfigurado && (
+                  <li onClick={() => setIsOpen(false)}>
+                    <Link to="/integracion-mercadolibre" className={location.pathname === '/integracion-mercadolibre' ? 'active' : ''}>
+                      <FontAwesomeIcon icon={faShoppingBag} className="nav-icon" />
+                      <span>Integración Mercado Libre</span>
+                    </Link>
+                  </li>
+                )}
+              </>
             )}
             
             {user && ( 
-                <li>
-                    <span className="welcome-message">Bienvenido, {user?.username}!</span>
-                    <button onClick={handleLogout} className="logout-button">Cerrar Sesión</button>
-                </li>
+              <li className="sidebar-footer">
+                <div className="user-info">
+                  <FontAwesomeIcon icon={faUser} className="user-icon" />
+                  <span className="username">{user?.username}</span>
+                </div>
+                <button onClick={handleLogout} className="logout-button">
+                  <FontAwesomeIcon icon={faSignOutAlt} />
+                  <span>Cerrar Sesión</span>
+                </button>
+              </li>
             )}
           </ul>
-        </>
-      )}
-    </nav>
+        )}
+      </nav>
+    </>
   );
-};
-
-const appContentStyles = {
-  container: {
-    padding: '30px',
-    maxWidth: '1300px',
-    margin: '30px auto',
-    backgroundColor: '#ffffff',
-    borderRadius: '10px',
-    boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)',
-    flexGrow: 1,
-    // Se eliminan los media queries de aqui para pasarlos al css global
-  }
 };
 
 const AppContent = () => {
@@ -204,8 +275,9 @@ const AppContent = () => {
 
   return (
     <>
-      <Navbar /> 
-      <div className="container" style={appContentStyles.container}>
+      <Navbar />
+      <div className={`main-content ${isAuthenticated && selectedStoreSlug ? 'with-sidebar' : 'no-sidebar'}`}>
+        <div className="container">
         <Routes>
           <Route path="/login/:storeSlug" element={<Login />} />
           <Route path="/login" element={<Login />} />
@@ -284,6 +356,7 @@ const AppContent = () => {
           }
 
         </Routes>
+        </div>
       </div>
     </>
   );

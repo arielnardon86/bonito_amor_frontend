@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const ReciboImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { venta, fromCambioDevolucion } = location.state || {}; 
+    const { venta, fromCambioDevolucion } = location.state || {};
     const reciboRef = useRef(null);
 
     useEffect(() => {
@@ -147,14 +147,13 @@ const ReciboImpresion = () => {
                  </div>
             `;
         }
-    }, [venta, navigate]);
+    }, [venta]);
 
     const handlePrint = () => {
         window.print();
     };
 
     const handleGoBack = () => {
-        // Si es una nota de crédito, viene de un cambio/devolución, o tiene diferencia pendiente, volver al punto de venta
         if (venta?.metodo_pago === 'Nota de Crédito' || venta?.es_diferencia_pendiente || fromCambioDevolucion) {
             navigate('/punto-venta');
         } else {
@@ -169,8 +168,6 @@ const ReciboImpresion = () => {
         }
         navigate('/ticket-cambio', { state: { venta } });
     };
-    
-    const esNotaCredito = venta?.metodo_pago === 'Nota de Crédito' || venta?.metodo_pago_nombre === 'Nota de Crédito';
 
     if (!venta) {
         return (
@@ -186,11 +183,10 @@ const ReciboImpresion = () => {
             <div className="no-print-controls">
                 <button onClick={handleGoBack}>Volver</button>
                 <button onClick={handlePrint}>Imprimir Recibo</button>
-                {!esNotaCredito && (
+                {!(venta?.metodo_pago === 'Nota de Crédito' || venta?.metodo_pago_nombre === 'Nota de Crédito') && (
                     <button onClick={handleTicketCambio} style={{ backgroundColor: '#17a2b8', color: 'white' }}>Ticket de cambio</button>
                 )}
             </div>
-            
             <div className="receipt-printable-area" ref={reciboRef}>
                 {/* El recibo se renderizará aquí */}
             </div>
@@ -279,7 +275,8 @@ const ReciboImpresion = () => {
                         body * {
                             visibility: hidden;
                         }
-                        .receipt-printable-area, .receipt-printable-area * {
+                        .receipt-printable-area,
+                        .receipt-printable-area * {
                             visibility: visible;
                         }
                         .receipt-printable-area {

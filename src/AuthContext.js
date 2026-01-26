@@ -4,9 +4,12 @@ import { jwtDecode } from 'jwt-decode';
 
 const AuthContext = createContext(null);
 
-const API_BASE_URL = process.env.REACT_APP_API_URL;
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
 
 const normalizeApiUrl = (url) => {
+    if (!url) {
+        return 'http://127.0.0.1:8000';
+    }
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
@@ -36,10 +39,13 @@ export const AuthProvider = ({ children }) => {
                     ...(token && { 'Authorization': `Bearer ${token}` })
                 }
             });
-            setStores(response.data);
-            return response.data;
+            const data = response.data;
+            const list = Array.isArray(data) ? data : (data?.results ?? []);
+            setStores(list);
+            return list;
         } catch (err) {
             console.error('Error fetching stores:', err);
+            setStores([]);
             return [];
         }
     }, [token]);
@@ -56,43 +62,40 @@ export const AuthProvider = ({ children }) => {
         delete axios.defaults.headers.common['Authorization'];
     }, []);
 
-    const login = useCallback(async (username, password, storeSlug) => {
+    const login = useCallback(async (username, password, _storeSlugIgnored) => {
         setLoading(true);
         setAuthError(null);
         try {
             const response = await axios.post(`${BASE_API_ENDPOINT}/api/token/`, { username, password });
             const newToken = response.data.access;
-            
-            // Verificación de la tienda directamente del token
             const decodedUser = jwtDecode(newToken);
-            
-            // CORRECCIÓN CLAVE: Verificar si la tienda asignada en el token coincide con la seleccionada
-            if (decodedUser.tienda_nombre && decodedUser.tienda_nombre.toLowerCase().replace(/\s/g, '-') === storeSlug) {
-                localStorage.setItem('token', newToken);
-                axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
-                const userData = {
-                    id: decodedUser.user_id,
-                    username: decodedUser.username,
-                    email: decodedUser.email,
-                    is_staff: decodedUser.is_staff,
-                    is_superuser: decodedUser.is_superuser,
-                };
-    
-                setUser(userData);
-                setToken(newToken);
-                setIsAuthenticated(true);
-                setSelectedStoreSlug(decodedUser.tienda_nombre);
-                localStorage.setItem('selectedStoreSlug', decodedUser.tienda_nombre);
-
+            if (!decodedUser.tienda_nombre) {
                 setLoading(false);
-                return true;
-            } else {
-                setLoading(false);
-                setAuthError("El usuario no tiene acceso a esta tienda.");
+                setAuthError('El usuario no tiene una tienda asignada.');
                 logout();
                 return false;
             }
+
+            localStorage.setItem('token', newToken);
+            axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+
+            const userData = {
+                id: decodedUser.user_id,
+                username: decodedUser.username,
+                email: decodedUser.email,
+                is_staff: decodedUser.is_staff,
+                is_superuser: decodedUser.is_superuser,
+            };
+
+            setUser(userData);
+            setToken(newToken);
+            setIsAuthenticated(true);
+            setSelectedStoreSlug(decodedUser.tienda_nombre);
+            localStorage.setItem('selectedStoreSlug', decodedUser.tienda_nombre);
+
+            setLoading(false);
+            return true;
         } catch (err) {
             console.error('Error during login:', err.response ? err.response.data : err.message);
             setAuthError('Credenciales incorrectas o error de conexión.');

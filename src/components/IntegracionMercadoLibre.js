@@ -6,6 +6,9 @@ import Swal from 'sweetalert2';
 import SeleccionarProductosML from './SeleccionarProductosML';
 
 const normalizeApiUrl = (url) => {
+    if (!url) {
+        return 'http://localhost:8000';
+    }
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
@@ -16,7 +19,7 @@ const normalizeApiUrl = (url) => {
     return normalizedUrl;
 };
 
-const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL);
+const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
 const IntegracionMercadoLibre = () => {
     const { token, isAuthenticated, selectedStoreSlug, stores } = useAuth();
@@ -397,8 +400,8 @@ const IntegracionMercadoLibre = () => {
     const isAutenticado = mlStatus?.authenticated === true;
 
     return (
-        <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-            <h1 style={{ marginBottom: '30px', color: '#333' }}>Integración con Mercado Libre</h1>
+        <div style={{ padding: 0, width: '100%', maxWidth: '100%' }}>
+            <h1 style={{ marginBottom: '1.25rem', color: '#2c3e50', fontSize: '1.5rem', fontWeight: 600 }}>Mercado Libre</h1>
 
             {error && (
                 <div style={{
@@ -421,7 +424,7 @@ const IntegracionMercadoLibre = () => {
                 marginBottom: '30px',
                 border: '1px solid #ddd'
             }}>
-                <h2 style={{ marginTop: 0, color: '#333' }}>Estado de la Integración</h2>
+                <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.1rem', color: '#34495e' }}>Estado</h2>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px', marginTop: '15px' }}>
                     <div>

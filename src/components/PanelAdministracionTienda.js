@@ -6,6 +6,9 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const normalizeApiUrl = (url) => {
+    if (!url) {
+        return 'http://localhost:8000';
+    }
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
@@ -16,13 +19,15 @@ const normalizeApiUrl = (url) => {
     return normalizedUrl;
 };
 
-const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL);
+const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
 // Estilos responsivos para móviles
 const mobileStyles = `
     @media (max-width: 768px) {
         .panel-admin-container {
             padding: 10px !important;
+            overflow-x: hidden;
+            max-width: 100%;
         }
         .panel-admin-tabs {
             flex-direction: column;
@@ -36,10 +41,13 @@ const mobileStyles = `
         .panel-admin-section-header {
             flex-direction: column;
             align-items: flex-start !important;
-            gap: 15px;
+            gap: 12px;
         }
         .panel-admin-add-button {
-            width: 100%;
+            width: auto;
+            padding: 8px 14px !important;
+            font-size: 0.9em !important;
+            white-space: nowrap;
         }
         .panel-admin-form-grid {
             grid-template-columns: 1fr !important;
@@ -53,6 +61,7 @@ const mobileStyles = `
         .panel-admin-table-container {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            max-width: 100%;
         }
         .panel-admin-table {
             min-width: 600px;
@@ -71,6 +80,10 @@ const mobileStyles = `
         }
     }
     @media (max-width: 480px) {
+        .panel-admin-add-button {
+            padding: 6px 12px !important;
+            font-size: 0.85em !important;
+        }
         .panel-admin-table {
             font-size: 0.75em;
         }
@@ -536,11 +549,7 @@ const PanelAdministracionTienda = () => {
             <style>{mobileStyles}</style>
             <div style={styles.container} className="panel-admin-container">
             <div style={styles.header}>
-                <h1 style={styles.title}>Panel de Administración de Tienda</h1>
-                <p style={styles.subtitle}>Tienda: <strong>{selectedStoreSlug}</strong></p>
-                <button onClick={() => navigate('/punto-venta')} style={styles.backButton}>
-                    ← Volver a Punto de Venta
-                </button>
+                <h1 style={styles.title}>Administración</h1>
             </div>
 
             <div style={styles.tabs} className="panel-admin-tabs">
@@ -563,8 +572,7 @@ const PanelAdministracionTienda = () => {
             {/* TAB: USUARIOS */}
             {activeTab === 'usuarios' && (
                 <div style={styles.tabContent}>
-                    <div style={styles.sectionHeader}>
-                        <h2>Gestión de Usuarios</h2>
+                    <div style={styles.sectionHeader} className="panel-admin-section-header">
                         <button onClick={() => {
                             setEditingUser(null);
                             setUserForm({
@@ -761,8 +769,7 @@ const PanelAdministracionTienda = () => {
             {/* TAB: MEDIOS DE PAGO Y ARANCELES */}
             {activeTab === 'medios-pago-aranceles' && (
                 <div style={styles.tabContent}>
-                    <div style={styles.sectionHeader}>
-                        <h2>Medios de Pago y Aranceles</h2>
+                    <div style={styles.sectionHeader} className="panel-admin-section-header">
                         <button onClick={() => {
                             setArancelForm({
                                 metodo_pago: '',
@@ -1044,13 +1051,10 @@ const PanelAdministracionTienda = () => {
 
 const styles = {
     container: {
-        padding: '20px',
+        padding: 0,
         fontFamily: 'Inter, sans-serif',
-        maxWidth: '1200px',
-        margin: '20px auto',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        width: '100%',
+        maxWidth: '100%',
         color: '#333',
     },
     loadingMessage: {
@@ -1065,7 +1069,8 @@ const styles = {
         borderBottom: '2px solid #e0e0e0',
     },
     title: {
-        fontSize: '2em',
+        fontSize: '1.5rem',
+        fontWeight: 600,
         marginBottom: '10px',
         color: '#2c3e50',
     },
@@ -1093,7 +1098,9 @@ const styles = {
         padding: '12px 24px',
         backgroundColor: 'transparent',
         border: 'none',
-        borderBottom: '3px solid transparent',
+        borderBottomWidth: '3px',
+        borderBottomStyle: 'solid',
+        borderBottomColor: 'transparent',
         cursor: 'pointer',
         fontSize: '1em',
         color: '#666',
@@ -1113,6 +1120,7 @@ const styles = {
         alignItems: 'center',
         marginBottom: '20px',
     },
+    sectionTitle: { fontSize: '1.1rem', fontWeight: 600, color: '#2c3e50', margin: 0 },
     addButton: {
         padding: '10px 20px',
         backgroundColor: '#28a745',
@@ -1180,11 +1188,14 @@ const styles = {
     tableContainer: {
         backgroundColor: 'white',
         borderRadius: '8px',
-        overflow: 'hidden',
+        overflowX: 'auto',
+        overflowY: 'visible',
+        WebkitOverflowScrolling: 'touch',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     },
     table: {
         width: '100%',
+        minWidth: '600px',
         borderCollapse: 'collapse',
     },
     th: {

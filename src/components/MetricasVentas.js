@@ -3,9 +3,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL;
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const normalizeApiUrl = (url) => {
+    if (!url) {
+        return 'http://localhost:8000';
+    }
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
@@ -21,26 +24,25 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const MetricasVentas = () => {
     const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth();
     const [metrics, setMetrics] = useState(null);
-    const [inventoryMetrics, setInventoryMetrics] = useState(null); 
+    const [metricsPreviousMonth, setMetricsPreviousMonth] = useState(null);
+    const [inventoryMetrics, setInventoryMetrics] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [validationError, setValidationError] = useState(null);
 
     const today = new Date();
     const currentYear = today.getFullYear().toString();
     const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0');
-    const currentDay = today.getDate().toString().padStart(2, '0');
 
-    // Filtros aplicados
-    const [filterYear, setFilterYear] = useState(currentYear);
-    const [filterMonth, setFilterMonth] = useState(currentMonth); 
-    const [filterDay, setFilterDay] = useState('');     
+    // Filtros aplicados: rango (date_from/date_to) o mes completo (ambos vacíos = mes en curso)
+    const [filterDateFrom, setFilterDateFrom] = useState('');
+    const [filterDateTo, setFilterDateTo] = useState('');
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
 
     // Filtros pendientes (para los inputs)
-    const [pendingFilterYear, setPendingFilterYear] = useState(currentYear);
-    const [pendingFilterMonth, setPendingFilterMonth] = useState(currentMonth); 
-    const [pendingFilterDay, setPendingFilterDay] = useState('');
+    const [pendingDateFrom, setPendingDateFrom] = useState('');
+    const [pendingDateTo, setPendingDateTo] = useState('');
     const [pendingFilterSellerId, setPendingFilterSellerId] = useState('');
     const [pendingFilterPaymentMethod, setPendingFilterPaymentMethod] = useState('');
 
@@ -53,21 +55,26 @@ const MetricasVentas = () => {
             setLoading(false);
             return;
         }
-    
         setLoading(true);
         setError(null);
         try {
             const params = {
                 tienda_slug: selectedStoreSlug,
-                year: filterYear,
-                month: filterMonth,
-                day: filterDay,
-                seller_id: filterSellerId,
-                payment_method: filterPaymentMethod,
+                seller_id: filterSellerId || undefined,
+                payment_method: filterPaymentMethod || undefined,
             };
+            if (filterDateFrom || filterDateTo) {
+                const from = filterDateFrom || filterDateTo;
+                const to = filterDateTo || filterDateFrom;
+                params.date_from = from;
+                params.date_to = to;
+            } else {
+                params.year = currentYear;
+                params.month = currentMonth;
+            }
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/metricas/metrics/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
-                params: params
+                params,
             });
             setMetrics(response.data);
         } catch (err) {
@@ -76,8 +83,8 @@ const MetricasVentas = () => {
         } finally {
             setLoading(false);
         }
-    }, [token, selectedStoreSlug, filterYear, filterMonth, filterDay, filterSellerId, filterPaymentMethod]);
-    
+    }, [token, selectedStoreSlug, filterDateFrom, filterDateTo, filterSellerId, filterPaymentMethod]);
+
     const fetchInventoryMetrics = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
         try {
@@ -122,7 +129,33 @@ const MetricasVentas = () => {
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && user.is_superuser && selectedStoreSlug) {
             fetchMetrics();
-            fetchInventoryMetrics(); 
+            const fullMonth = !filterDateFrom && !filterDateTo;
+            if (fullMonth) {
+                (async () => {
+                    const m = parseInt(currentMonth, 10);
+                    const y = parseInt(currentYear, 10);
+                    const prevM = m === 1 ? 12 : m - 1;
+                    const prevY = m === 1 ? y - 1 : y;
+                    try {
+                        const res = await axios.get(`${BASE_API_ENDPOINT}/api/metricas/metrics/`, {
+                            headers: { 'Authorization': `Bearer ${token}` },
+                            params: {
+                                tienda_slug: selectedStoreSlug,
+                                year: prevY.toString(),
+                                month: prevM.toString().padStart(2, '0'),
+                                seller_id: filterSellerId || undefined,
+                                payment_method: filterPaymentMethod || undefined,
+                            },
+                        });
+                        setMetricsPreviousMonth(res.data);
+                    } catch (e) {
+                        setMetricsPreviousMonth(null);
+                    }
+                })();
+            } else {
+                setMetricsPreviousMonth(null);
+            }
+            fetchInventoryMetrics();
             fetchSellers();
             fetchPaymentMethods();
         } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
@@ -131,30 +164,36 @@ const MetricasVentas = () => {
         } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
             setLoading(false);
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchMetrics, fetchSellers, fetchPaymentMethods, fetchInventoryMetrics]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, token, filterDateFrom, filterDateTo, filterSellerId, filterPaymentMethod, fetchMetrics, fetchSellers, fetchPaymentMethods, fetchInventoryMetrics]);
     
     const handleApplyFilters = () => {
-        setFilterYear(pendingFilterYear);
-        setFilterMonth(pendingFilterMonth);
-        setFilterDay(pendingFilterDay);
+        if (pendingDateFrom && pendingDateTo && pendingDateFrom > pendingDateTo) {
+            setValidationError('La fecha "Desde" debe ser anterior o igual a "Hasta".');
+            return;
+        }
+        setValidationError(null);
+        setFilterDateFrom(pendingDateFrom);
+        setFilterDateTo(pendingDateTo);
         setFilterSellerId(pendingFilterSellerId);
         setFilterPaymentMethod(pendingFilterPaymentMethod);
     };
 
+    const handleMesActual = () => {
+        setValidationError(null);
+        setPendingDateFrom('');
+        setPendingDateTo('');
+        setFilterDateFrom('');
+        setFilterDateTo('');
+    };
+
     const handleClearFilters = () => {
-        const today = new Date();
-        const currentYear = today.getFullYear().toString();
-        const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0');
-        
-        setPendingFilterYear(currentYear);
-        setPendingFilterMonth(currentMonth); 
-        setPendingFilterDay('');
+        setValidationError(null);
+        setPendingDateFrom('');
+        setPendingDateTo('');
         setPendingFilterSellerId('');
         setPendingFilterPaymentMethod('');
-        
-        setFilterYear(currentYear);
-        setFilterMonth(currentMonth); 
-        setFilterDay('');
+        setFilterDateFrom('');
+        setFilterDateTo('');
         setFilterSellerId('');
         setFilterPaymentMethod('');
     };
@@ -170,7 +209,7 @@ const MetricasVentas = () => {
     if (!selectedStoreSlug) {
         return (
             <div style={styles.noStoreSelectedMessage}>
-                <h2>Por favor, selecciona una tienda en la barra de navegación para ver las métricas.</h2>
+                <p>Selecciona una tienda en el menú para ver las métricas.</p>
             </div>
         );
     }
@@ -187,115 +226,142 @@ const MetricasVentas = () => {
         <>
             <style>{mobileStyles}</style>
             <div style={styles.container} className="metricas-container">
-            <h1>Métricas de Ventas y Rentabilidad ({selectedStoreSlug})</h1>
+            <h1 style={styles.pageTitle}>Métricas</h1>
 
             <div style={styles.filtersContainer} className="metricas-filters-container">
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Año:</label>
-                    <input
-                        type="number"
-                        value={pendingFilterYear}
-                        onChange={(e) => setPendingFilterYear(e.target.value)}
-                        style={styles.filterInput}
-                        min="2000" 
-                        max={new Date().getFullYear()}
-                    />
+                <div style={styles.periodSection} className="metricas-period-section">
+                    <span style={styles.periodSectionTitle}>Período</span>
+                    <div style={styles.periodInputs} className="metricas-period-inputs">
+                        <div style={styles.filterGroup} className="metricas-filter-group">
+                            <label style={styles.filterLabel}>Desde</label>
+                            <input
+                                type="date"
+                                value={pendingDateFrom}
+                                onChange={(e) => { setValidationError(null); setPendingDateFrom(e.target.value); }}
+                                style={styles.filterInput}
+                                className="metricas-filter-input"
+                            />
+                        </div>
+                        <div style={styles.filterGroup} className="metricas-filter-group">
+                            <label style={styles.filterLabel}>Hasta</label>
+                            <input
+                                type="date"
+                                value={pendingDateTo}
+                                onChange={(e) => { setValidationError(null); setPendingDateTo(e.target.value); }}
+                                style={styles.filterInput}
+                                className="metricas-filter-input"
+                            />
+                        </div>
+                    </div>
+                    <p style={styles.periodHint}>Dejar vacío = mes en curso completo. Solo Desde = ese día.</p>
+                    {validationError && <p style={styles.validationError}>{validationError}</p>}
                 </div>
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Mes:</label>
-                    <select
-                        value={pendingFilterMonth}
-                        onChange={(e) => setPendingFilterMonth(e.target.value)}
-                        style={styles.filterInput}
-                    >
-                        <option value="">Todos</option>
-                        {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
-                            <option key={m} value={m}>{m}</option>
-                        ))}
-                    </select>
-                </div>
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Día:</label>
-                    <input
-                        type="number"
-                        value={pendingFilterDay}
-                        onChange={(e) => setPendingFilterDay(e.target.value)}
-                        style={styles.filterInput}
-                        min="1"
-                        max="31"
-                    />
-                </div>
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Vendedor:</label>
-                    <select
-                        value={pendingFilterSellerId}
-                        onChange={(e) => setPendingFilterSellerId(e.target.value)}
-                        style={styles.filterInput}
-                    >
-                        <option value="">Todos</option>
-                        {sellers.map(seller => (
-                            <option key={seller.id} value={seller.id}>{seller.username}</option>
-                        ))}
-                    </select>
-                </div>
-                <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Método de Pago:</label>
-                    <select
-                        value={pendingFilterPaymentMethod}
-                        onChange={(e) => setPendingFilterPaymentMethod(e.target.value)}
-                        style={styles.filterInput}
-                    >
-                        <option value="">Todos</option>
-                        {paymentMethods.map(method => (
-                            <option key={method.id} value={method.nombre}>{method.nombre}</option>
-                        ))}
-                    </select>
-                </div>
-                <button onClick={handleApplyFilters} style={styles.filterButton}>Aplicar Filtros</button>
-                <button onClick={handleClearFilters} style={{ ...styles.filterButton, backgroundColor: '#6c757d' }}>Limpiar Filtros</button>
-            </div>
-
-            <div style={styles.chartExplanation}>
-                <p>Aquí puedes visualizar las métricas clave de tu tienda. Utiliza los filtros para analizar datos por año, mes, día, vendedor o método de pago.</p>
-                <p>La **Rentabilidad Bruta** se calcula como el Total de Ventas menos el Costo de los Productos Vendidos, los egresos del período **y los aranceles de ventas financieras**. El **Margen de Rentabilidad** es la Rentabilidad Bruta como porcentaje del Total de Ventas.</p>
-            </div>
-
-            <div style={styles.summaryCards} className="metricas-summary-cards">
-                <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Total Ventas</h3>
-                    <p style={styles.cardValue}>${parseFloat(metrics?.total_ventas_periodo || 0).toFixed(2)}</p>
-                </div>
-                <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Costo de productos vendidos</h3>
-                    <p style={styles.cardValue}>${parseFloat(metrics?.total_costo_vendido_periodo || 0).toFixed(2)}</p>
-                </div>
-                <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Total Egresos</h3>
-                    <p style={styles.cardValue}>${parseFloat(metrics?.total_compras_periodo || 0).toFixed(2)}</p>
-                </div>
-                
-                <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Arancel Total Ventas</h3>
-                    <p style={styles.cardValue}>${parseFloat(metrics?.total_arancel_ventas || 0).toFixed(2)}</p>
-                </div>
-
-                <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Rentabilidad Bruta</h3>
-                    <p style={styles.cardValue}>${parseFloat(metrics?.rentabilidad_bruta_periodo || 0).toFixed(2)}</p>
-                </div>
-                <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Margen de Rentabilidad</h3>
-                    <p style={styles.cardValue}>{parseFloat(metrics?.margen_rentabilidad_periodo || 0).toFixed(2)}%</p>
-                </div>
-                <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Stock Total (Cantidad)</h3>
-                    <p style={styles.cardValue}>{inventoryMetrics?.total_stock || 0}</p>
-                </div>
-                 <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Monto Total del Stock</h3>
-                    <p style={styles.cardValue}>${parseFloat(inventoryMetrics?.total_monto_stock_precio || 0).toFixed(2)}</p>
+                <div style={styles.filtersRow2} className="metricas-filters-row2">
+                    <div style={styles.filterGroup} className="metricas-filter-group">
+                        <label style={styles.filterLabel}>Vendedor</label>
+                        <select
+                            value={pendingFilterSellerId}
+                            onChange={(e) => setPendingFilterSellerId(e.target.value)}
+                            style={styles.filterInput}
+                            className="metricas-filter-input"
+                        >
+                            <option value="">Todos</option>
+                            {sellers.map(seller => (
+                                <option key={seller.id} value={seller.id}>{seller.username}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div style={styles.filterGroup} className="metricas-filter-group">
+                        <label style={styles.filterLabel}>Método de pago</label>
+                        <select
+                            value={pendingFilterPaymentMethod}
+                            onChange={(e) => setPendingFilterPaymentMethod(e.target.value)}
+                            style={styles.filterInput}
+                            className="metricas-filter-input"
+                        >
+                            <option value="">Todos</option>
+                            {paymentMethods.map(method => (
+                                <option key={method.id} value={method.nombre}>{method.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div style={styles.filterActions} className="metricas-filter-actions">
+                        <button onClick={handleMesActual} style={{ ...styles.filterButton, ...styles.filterButtonSecondary }}>Mes actual</button>
+                        <button onClick={handleApplyFilters} style={styles.filterButton}>Aplicar</button>
+                        <button onClick={handleClearFilters} style={{ ...styles.filterButton, ...styles.filterButtonMuted }}>Limpiar</button>
+                    </div>
                 </div>
             </div>
+
+            {(() => {
+                const showVariation = !filterDateFrom && !filterDateTo;
+                const prev = metricsPreviousMonth;
+                const cur = metrics || {};
+                const pv = (c, p) => (p != null && Number(p) !== 0) ? (((Number(c) || 0) - Number(p)) / Math.abs(Number(p))) * 100 : null;
+                const varVentas = showVariation ? pv(cur.total_ventas_periodo, prev?.total_ventas_periodo) : null;
+                const varEgresos = showVariation ? pv(cur.total_compras_periodo, prev?.total_compras_periodo) : null;
+                const varRent = showVariation ? pv(cur.rentabilidad_bruta_periodo, prev?.rentabilidad_bruta_periodo) : null;
+                const VarBadge = ({ v }) => {
+                    if (v == null) return null;
+                    const isPos = v >= 0;
+                    return (
+                        <span style={{ ...styles.variationBadge, color: isPos ? '#0d8050' : '#c0392b' }}>
+                            {isPos ? '+' : ''}{v.toFixed(1)}% vs mes ant.
+                        </span>
+                    );
+                };
+                const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+                const formatDay = (s) => s ? s.split('-').reverse().join('/') : '';
+                const periodLabel = (filterDateFrom && filterDateTo)
+                    ? `${formatDay(filterDateFrom)} – ${formatDay(filterDateTo)}`
+                    : (filterDateFrom || filterDateTo)
+                        ? formatDay(filterDateFrom || filterDateTo)
+                        : `${meses[parseInt(currentMonth, 10) - 1]} ${currentYear}`;
+                return (
+                    <>
+                        <p style={styles.periodLabel}>Período: {periodLabel}</p>
+                        <div style={styles.heroCards} className="metricas-hero-cards">
+                            <div style={{ ...styles.heroCard, borderLeftColor: '#27ae60' }}>
+                                <h3 style={styles.heroCardTitle}>Total de ventas</h3>
+                                <p style={styles.heroCardValue}>${parseFloat(metrics?.total_ventas_periodo || 0).toFixed(2)}</p>
+                                <VarBadge v={varVentas} />
+                            </div>
+                            <div style={{ ...styles.heroCard, borderLeftColor: '#e67e22' }}>
+                                <h3 style={styles.heroCardTitle}>Total de egresos</h3>
+                                <p style={styles.heroCardValue}>${parseFloat(metrics?.total_compras_periodo || 0).toFixed(2)}</p>
+                                <VarBadge v={varEgresos} />
+                            </div>
+                            <div style={{ ...styles.heroCard, borderLeftColor: '#3498db' }}>
+                                <h3 style={styles.heroCardTitle}>Rentabilidad bruta</h3>
+                                <p style={styles.heroCardValue}>${parseFloat(metrics?.rentabilidad_bruta_periodo || 0).toFixed(2)}</p>
+                                <VarBadge v={varRent} />
+                            </div>
+                        </div>
+                        <div style={styles.summaryCards} className="metricas-summary-cards">
+                            <div style={styles.card}>
+                                <h3 style={styles.cardTitle}>Costo de productos vendidos</h3>
+                                <p style={styles.cardValue}>${parseFloat(metrics?.total_costo_vendido_periodo || 0).toFixed(2)}</p>
+                            </div>
+                            <div style={styles.card}>
+                                <h3 style={styles.cardTitle}>Arancel Total Ventas</h3>
+                                <p style={styles.cardValue}>${parseFloat(metrics?.total_arancel_ventas || 0).toFixed(2)}</p>
+                            </div>
+                            <div style={styles.card}>
+                                <h3 style={styles.cardTitle}>Margen de Rentabilidad</h3>
+                                <p style={styles.cardValue}>{parseFloat(metrics?.margen_rentabilidad_periodo || 0).toFixed(2)}%</p>
+                            </div>
+                            <div style={styles.card}>
+                                <h3 style={styles.cardTitle}>Stock Total (Cantidad)</h3>
+                                <p style={styles.cardValue}>{inventoryMetrics?.total_stock || 0}</p>
+                            </div>
+                            <div style={styles.card}>
+                                <h3 style={styles.cardTitle}>Monto Total del Stock</h3>
+                                <p style={styles.cardValue}>${parseFloat(inventoryMetrics?.total_monto_stock_precio || 0).toFixed(2)}</p>
+                            </div>
+                        </div>
+                    </>
+                );
+            })()}
 
             <div style={styles.tablesContainer} className="metricas-tables-container">
                 <div style={styles.tableContainer} className="metricas-table-container">
@@ -408,15 +474,13 @@ const MetricasVentas = () => {
 
 const styles = {
     container: {
-        padding: '20px',
+        padding: 0,
         fontFamily: 'Inter, sans-serif',
-        maxWidth: '1200px',
-        margin: '20px auto',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px (0,0,0,0.1)',
+        width: '100%',
+        maxWidth: '100%',
         color: '#333',
     },
+    pageTitle: { color: '#2c3e50', fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.25rem' },
     loadingMessage: {
         padding: '20px',
         textAlign: 'center',
@@ -451,14 +515,48 @@ const styles = {
     },
     filtersContainer: {
         display: 'flex',
-        flexWrap: 'wrap',
-        gap: '15px',
+        flexDirection: 'column',
+        gap: '20px',
         marginBottom: '30px',
         padding: '20px',
         backgroundColor: '#ffffff',
         borderRadius: '8px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+    },
+    periodSection: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        width: '100%',
+    },
+    filtersRow2: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '15px',
         alignItems: 'flex-end',
+        width: '100%',
+    },
+    periodSectionTitle: {
+        fontWeight: 'bold',
+        color: '#555',
+        fontSize: '0.9rem',
+    },
+    periodInputs: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '12px',
+        alignItems: 'flex-end',
+    },
+    periodHint: {
+        margin: 0,
+        fontSize: '0.8rem',
+        color: '#6c757d',
+    },
+    validationError: {
+        margin: '6px 0 0 0',
+        fontSize: '0.85rem',
+        color: '#c0392b',
+        fontWeight: 600,
     },
     filterGroup: {
         display: 'flex',
@@ -468,33 +566,78 @@ const styles = {
         marginBottom: '5px',
         fontWeight: 'bold',
         color: '#555',
+        fontSize: '0.9rem',
     },
     filterInput: {
         padding: '8px 12px',
         border: '1px solid #ccc',
         borderRadius: '4px',
-        minWidth: '120px',
+        minWidth: '140px',
+    },
+    filterActions: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '10px',
+        alignItems: 'flex-end',
     },
     filterButton: {
-        padding: '10px 20px',
+        padding: '10px 18px',
         backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
         fontWeight: 'bold',
-        transition: 'background-color 0.3s ease',
+        transition: 'background-color 0.2s ease',
     },
-    chartExplanation: {
-        backgroundColor: '#e9ecef',
-        padding: '15px',
-        borderRadius: '8px',
-        marginBottom: '30px',
+    filterButtonSecondary: {
+        backgroundColor: '#17a2b8',
+    },
+    filterButtonMuted: {
+        backgroundColor: '#6c757d',
+    },
+    periodLabel: {
+        fontSize: '0.95rem',
+        color: '#5a6c7d',
+        margin: '0 0 16px 0',
+        fontWeight: 600,
+    },
+    heroCards: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '20px',
+        marginBottom: '24px',
+    },
+    heroCard: {
+        backgroundColor: '#ffffff',
+        padding: '24px 20px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+        textAlign: 'center',
+        borderLeft: '4px solid #3498db',
+    },
+    heroCardTitle: {
+        fontSize: '0.95rem',
+        color: '#5a6c7d',
+        margin: '0 0 12px 0',
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.03em',
+    },
+    heroCardValue: {
+        fontSize: '1.75rem',
+        fontWeight: 700,
+        color: '#2c3e50',
+        margin: '0 0 8px 0',
+    },
+    variationBadge: {
+        fontSize: '0.85rem',
+        fontWeight: 600,
     },
     summaryCards: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '20px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: '16px',
         marginBottom: '30px',
     },
     card: {
@@ -563,13 +706,31 @@ const mobileStyles = `
         .metricas-filters-container {
             flex-direction: column !important;
             gap: 10px !important;
+            align-items: stretch !important;
+        }
+        .metricas-period-section {
+            width: 100%;
+        }
+        .metricas-period-inputs {
+            flex-direction: column !important;
+        }
+        .metricas-filters-row2 {
+            flex-direction: column !important;
+            align-items: stretch !important;
         }
         .metricas-filter-group {
             width: 100% !important;
         }
         .metricas-filter-input {
             width: 100% !important;
+            min-width: 0 !important;
             box-sizing: border-box;
+        }
+        .metricas-filter-actions {
+            flex-wrap: wrap;
+        }
+        .metricas-hero-cards {
+            grid-template-columns: 1fr !important;
         }
         .metricas-summary-cards {
             grid-template-columns: 1fr !important;

@@ -4,9 +4,12 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL;
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const normalizeApiUrl = (url) => {
+    if (!url) {
+        return 'http://localhost:8000';
+    }
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
@@ -20,7 +23,7 @@ const normalizeApiUrl = (url) => {
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const VentasPage = () => {
-    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth();
+    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug } = useAuth();
     const navigate = useNavigate();
 
     const today = new Date();
@@ -39,7 +42,6 @@ const VentasPage = () => {
     const [filterVentaId, setFilterVentaId] = useState('');
     const barcodeInputRef = React.useRef(null);
     const barcodeInputValueRef = React.useRef(''); // Referencia para mantener el valor sin re-renderizar
-    const isComposingRef = React.useRef(false); // Para manejar composición IME
 
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
@@ -406,7 +408,7 @@ const VentasPage = () => {
     if (!selectedStoreSlug) {
         return (
             <div style={styles.noStoreSelectedMessage}>
-                <h2>Por favor, selecciona una tienda en la barra de navegación para ver las ventas.</h2>
+                <p>Selecciona una tienda en el menú para ver las ventas.</p>
             </div>
         );
     }
@@ -421,7 +423,7 @@ const VentasPage = () => {
 
     return (
         <div style={styles.container}>
-            <h1>Listado de Ventas ({selectedStoreSlug})</h1>
+            <h1 style={styles.header}>Ventas</h1>
 
             <div style={styles.filtersContainer}>
                 {!isStaffOnly && (
@@ -954,21 +956,17 @@ const VentasPage = () => {
 
 const styles = {
     container: {
-        padding: '20px',
+        padding: '0',
         fontFamily: 'Inter, sans-serif',
-        maxWidth: '1200px',
-        margin: '20px auto',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        width: '100%',
+        maxWidth: '100%',
         color: '#333',
     },
     header: {
-        textAlign: 'center',
         color: '#2c3e50',
-        marginBottom: '30px',
-        fontSize: '2.5em',
-        fontWeight: 'bold',
+        marginBottom: '1.25rem',
+        fontSize: '1.5rem',
+        fontWeight: '600',
     },
     loadingMessage: {
         padding: '20px',

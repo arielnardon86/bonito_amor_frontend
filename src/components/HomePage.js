@@ -20,10 +20,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 const HomePage = () => {
-    const { isAuthenticated, selectedStoreSlug, stores, loading, login, error: authError, clearError } = useAuth();
+    const { isAuthenticated, selectedStoreSlug, loading, login, error: authError, clearError } = useAuth();
     const navigate = useNavigate();
     const [showAccessModal, setShowAccessModal] = useState(false);
-    const [accessStore, setAccessStore] = useState('');
     const [accessUsername, setAccessUsername] = useState('');
     const [accessPassword, setAccessPassword] = useState('');
 
@@ -43,19 +42,18 @@ const HomePage = () => {
     const handleAccessLogin = async (e) => {
         e.preventDefault();
         clearError();
-        
-        if (!accessStore || !accessUsername || !accessPassword) {
+
+        if (!accessUsername || !accessPassword) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Campos incompletos',
-                text: 'Por favor completa todos los campos.'
+                text: 'Por favor ingresa usuario y contraseña.'
             });
             return;
         }
 
-        const slug = accessStore.toLowerCase().replace(/\s+/g, '-');
-        const success = await login(accessUsername, accessPassword, slug);
-        
+        const success = await login(accessUsername, accessPassword);
+
         if (success) {
             Swal.fire({
                 icon: 'success',
@@ -65,7 +63,6 @@ const HomePage = () => {
                 showConfirmButton: false
             });
             setShowAccessModal(false);
-            setAccessStore('');
             setAccessUsername('');
             setAccessPassword('');
             navigate('/');
@@ -493,7 +490,6 @@ const HomePage = () => {
                             <button 
                                 onClick={() => {
                                     setShowAccessModal(false);
-                                    setAccessStore('');
                                     setAccessUsername('');
                                     setAccessPassword('');
                                     clearError();
@@ -505,23 +501,6 @@ const HomePage = () => {
                             </button>
                         </div>
                         <form onSubmit={handleAccessLogin} style={styles.modalForm}>
-                            <div style={styles.inputGroupModal}>
-                                <label style={styles.label}>Tienda:</label>
-                                <select
-                                    value={accessStore}
-                                    onChange={(e) => setAccessStore(e.target.value)}
-                                    style={styles.modalInput}
-                                    className="modal-input"
-                                    required
-                                >
-                                    <option value="">-- Elige una tienda --</option>
-                                    {stores && stores.results && stores.results.map(store => (
-                                        <option key={store.id} value={store.nombre}>
-                                            {store.nombre}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
                             <div style={styles.inputGroupModal}>
                                 <label style={styles.label}>Usuario:</label>
                                 <input
@@ -554,7 +533,6 @@ const HomePage = () => {
                                     type="button"
                                     onClick={() => {
                                         setShowAccessModal(false);
-                                        setAccessStore('');
                                         setAccessUsername('');
                                         setAccessPassword('');
                                         clearError();

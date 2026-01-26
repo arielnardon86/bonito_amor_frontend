@@ -3,9 +3,12 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2'; // <-- NUEVO: Importamos SweetAlert2
 
-const API_BASE_URL = process.env.REACT_APP_API_URL; 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000'; 
 
 const normalizeApiUrl = (url) => {
+    if (!url) {
+        return 'http://localhost:8000';
+    }
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
@@ -155,7 +158,7 @@ const RegistroCompras = () => {
     }
 
     if (!selectedStoreSlug) {
-        return <div style={styles.noStoreSelectedMessage}>Por favor, selecciona una tienda.</div>;
+        return <div style={styles.noStoreSelectedMessage}><p>Selecciona una tienda en el menú para ver los egresos.</p></div>;
     }
 
     if (loadingCompras) {
@@ -168,11 +171,11 @@ const RegistroCompras = () => {
 
     return (
         <div style={styles.container}>
-            <h1>Registro de Egresos ({selectedStoreSlug})</h1>
+            <h1 style={styles.pageTitle}>Egresos</h1>
 
             {/* Formulario de registro de nuevos egresos */}
             <div style={styles.formContainer}>
-                <h2>Registrar Egresos</h2>
+                <h2 style={styles.sectionTitle}>Nuevo egreso</h2>
                 <form onSubmit={handleCreateCompra} style={styles.form}>
                     <div style={styles.formGroup}>
                         <label style={styles.formLabel}>Fecha de egreso*</label>
@@ -213,7 +216,7 @@ const RegistroCompras = () => {
 
             {/* Listado de egresos */}
             <div style={styles.tableContainer}>
-                <h2>Registro de Egresos</h2>
+                <h2 style={styles.sectionTitle}>Historial</h2>
                 {compras.length > 0 ? (
                     <div style={styles.tableResponsive}>
                         <table style={styles.table}>
@@ -288,15 +291,14 @@ const RegistroCompras = () => {
 
 const styles = {
     container: {
-        padding: '20px',
+        padding: 0,
         fontFamily: 'Inter, sans-serif',
-        maxWidth: '1200px',
-        margin: '20px auto',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        width: '100%',
+        maxWidth: '100%',
         color: '#333',
     },
+    pageTitle: { color: '#2c3e50', fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.25rem' },
+    sectionTitle: { color: '#34495e', fontSize: '1.1rem', marginTop: '1.5rem', marginBottom: '0.75rem' },
     loadingMessage: {
         padding: '20px',
         textAlign: 'center',

@@ -6,7 +6,7 @@ import JsBarcode from 'jsbarcode';
 const TicketCambioImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { venta } = location.state || {}; 
+    const { venta } = location.state || {};
     const ticketRef = useRef(null);
 
     useEffect(() => {
@@ -146,7 +146,7 @@ const TicketCambioImpresion = () => {
                 `;
             }
         }
-    }, [venta, navigate]);
+    }, [venta]);
 
     const handlePrint = () => {
         window.print();
@@ -171,7 +171,6 @@ const TicketCambioImpresion = () => {
                 <button onClick={handleGoBack}>Volver</button>
                 <button onClick={handlePrint}>Imprimir Ticket</button>
             </div>
-            
             <div className="ticket-printable-area" ref={ticketRef}>
                 {/* El ticket se renderizará aquí */}
             </div>
@@ -260,7 +259,7 @@ const TicketCambioImpresion = () => {
                             margin: 0;
                             padding: 0;
                         }
-                        @page { 
+                        @page {
                             margin: 0;
                             @top-left { content: none; }
                             @top-center { content: none; }
@@ -272,7 +271,8 @@ const TicketCambioImpresion = () => {
                         body * {
                             visibility: hidden;
                         }
-                        .ticket-printable-area, .ticket-printable-area * {
+                        .ticket-printable-area,
+                        .ticket-printable-area * {
                             visibility: visible;
                         }
                         .ticket-printable-area {

@@ -6,7 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL;
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const normalizeApiUrl = (url) => {
     let normalizedUrl = url;
@@ -810,7 +810,7 @@ const CambioDevolucion = () => {
     return (
         <div style={styles.container}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h1 style={styles.header}>Cambio/Devolución</h1>
+                <h1 style={styles.pageTitle}>Cambio / Devolución</h1>
                 <button 
                     onClick={() => navigate('/punto-venta')}
                     style={{
@@ -836,7 +836,7 @@ const CambioDevolucion = () => {
             {/* Buscar venta */}
             {!ventaOriginal && (
                 <div style={styles.section}>
-                    <h3 style={styles.sectionHeader}>Buscar Venta</h3>
+                    <h2 style={styles.sectionHeader}>Buscar venta</h2>
                     <div style={styles.inputGroup}>
                         <input
                             ref={barcodeInputRef}
@@ -858,7 +858,7 @@ const CambioDevolucion = () => {
             {ventaOriginal && (
                 <div>
                     <div style={styles.section}>
-                        <h3 style={styles.sectionHeader}>Venta Original</h3>
+                        <h2 style={styles.sectionHeader}>Venta original</h2>
                         <p><strong>Fecha:</strong> {new Date(ventaOriginal.fecha_venta).toLocaleString()}</p>
                         <p><strong>Total:</strong> ${parseFloat(ventaOriginal.total).toFixed(2)}</p>
                         <p><strong>Método de pago:</strong> {ventaOriginal.metodo_pago}</p>
@@ -872,7 +872,7 @@ const CambioDevolucion = () => {
 
                     {/* Productos de la venta original - Selección para devolver */}
                     <div style={styles.section}>
-                        <h3 style={styles.sectionHeader}>Productos a Devolver/Cambiar</h3>
+                        <h2 style={styles.sectionHeader}>Productos a devolver o cambiar</h2>
                         <p style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
                             Marque los productos que desea devolver o cambiar
                         </p>
@@ -968,7 +968,7 @@ const CambioDevolucion = () => {
 
                     {/* Punto de Venta - Productos Nuevos */}
                     <div style={styles.section}>
-                        <h3 style={styles.sectionHeader}>Punto de Venta - Productos Nuevos</h3>
+                        <h2 style={styles.sectionHeader}>Productos nuevos</h2>
                         
                         {/* Búsqueda de productos */}
                         <div style={styles.inputGroup}>
@@ -1047,7 +1047,7 @@ const CambioDevolucion = () => {
                         {/* Carrito de productos nuevos */}
                         {activeCart && activeCart.items.length > 0 && (
                             <div style={styles.section}>
-                                <h4 style={styles.sectionHeader}>Carrito de Productos Nuevos</h4>
+                                <h3 style={styles.sectionHeader}>Carrito de productos nuevos</h3>
                                 <div style={styles.tableResponsive}>
                                     <table style={styles.table}>
                                         <thead>
@@ -1220,7 +1220,7 @@ const CambioDevolucion = () => {
 
                     {/* Resumen Final */}
                     <div style={styles.section}>
-                        <h3 style={styles.sectionHeader}>Resumen del Cambio/Devolución</h3>
+                        <h2 style={styles.sectionHeader}>Resumen</h2>
                         <p><strong>Monto a devolver:</strong> ${montoDevolucion.toFixed(2)}</p>
                         <p><strong>Monto de productos nuevos:</strong> ${montoNuevo.toFixed(2)}</p>
                         <p><strong>Diferencia:</strong> ${montoDiferencia.toFixed(2)}</p>
@@ -1273,10 +1273,10 @@ const CambioDevolucion = () => {
 
 // --- OBJETO DE ESTILOS (Igual que PuntoVenta.js) ---
 const styles = {
-    container: { padding: '20px', fontFamily: 'Arial, sans-serif' },
-    header: { textAlign: 'center', color: '#2c3e50' },
+    container: { padding: 0, fontFamily: 'Arial, sans-serif', width: '100%' },
+    pageTitle: { color: '#2c3e50', fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' },
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' },
-    sectionHeader: { color: '#34495e', borderBottom: '1px solid #eee', paddingBottom: '10px' },
+    sectionHeader: { color: '#34495e', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '8px', marginTop: '1rem', marginBottom: '0.5rem' },
     loadingMessage: { textAlign: 'center', color: '#777' },
     accessDeniedMessage: { color: '#dc3545', textAlign: 'center' },
     noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },

@@ -4,6 +4,9 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const normalizeApiUrl = (url) => {
+    if (!url) {
+        return 'http://localhost:8000';
+    }
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
@@ -14,7 +17,7 @@ const normalizeApiUrl = (url) => {
     return normalizedUrl;
 };
 
-const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL);
+const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
 const SeleccionarProductosML = ({ tiendaId, selectedStoreSlug, token, onClose, onConfirm }) => {
     const [productos, setProductos] = useState([]);

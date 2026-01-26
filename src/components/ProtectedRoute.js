@@ -11,17 +11,12 @@ const ProtectedRoute = ({ children, adminOnly = false, staffOnly = false }) => {
         return <div style={{ textAlign: 'center', marginTop: '50px' }}>Cargando...</div>;
     }
 
-    // Si no está autenticado, redirige al login con el slug por defecto
     if (!isAuthenticated) {
-        console.log("ProtectedRoute: No autenticado, redirigiendo a login.");
-        return <Navigate to="/login/bonito-amor" replace />; // Redirige a la ruta de login con un slug
+        return <Navigate to="/login" replace />;
     }
 
-    // Asegurarse de que 'user' no sea null/undefined antes de acceder a sus propiedades
-    // Esto es especialmente importante si 'loading' cambia a false antes de que 'user' se haya cargado completamente
     if (!user) {
-        console.log("ProtectedRoute: Autenticado pero datos de usuario no disponibles, redirigiendo a login.");
-        return <Navigate to="/login/bonito-amor" replace />; // Redirige a la ruta de login con un slug
+        return <Navigate to="/login" replace />;
     }
 
 

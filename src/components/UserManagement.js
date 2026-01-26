@@ -6,6 +6,9 @@ import { useNavigate } from 'react-router-dom';
 
 // Función para normalizar la URL base, eliminando cualquier /api/ o barra final
 const normalizeApiUrl = (url) => {
+    if (!url) {
+        return 'http://localhost:8000';
+    }
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
@@ -16,7 +19,7 @@ const normalizeApiUrl = (url) => {
     return normalizedUrl;
 };
 
-const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL);
+const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
 
 const UserManagement = () => {

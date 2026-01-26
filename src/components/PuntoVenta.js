@@ -8,8 +8,11 @@ import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
 
 
-const API_BASE_URL = process.env.REACT_APP_API_URL;
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 const normalizeApiUrl = (url) => {
+    if (!url) {
+        return 'http://localhost:8000';
+    }
     let normalizedUrl = url;
     if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
         normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
@@ -849,7 +852,7 @@ const PuntoVenta = () => {
     if (!selectedStoreSlug) {
         return (
             <div style={styles.noStoreSelectedMessage}>
-                <h2>Por favor, selecciona una tienda en la barra de navegación para usar el punto de venta.</h2>
+                <p>Selecciona una tienda en el menú para usar el punto de venta.</p>
             </div>
         );
     }
@@ -860,11 +863,11 @@ const PuntoVenta = () => {
 
     return (
         <div style={styles.container}>
-            <h1 style={styles.header}>Punto de Venta ({selectedStoreSlug})</h1>
+            <h1 style={styles.header}>Punto de Venta</h1>
             
-            {/* --- SECCIÓN GESTIÓN DE VENTAS --- */}
-            <div style={styles.section}>
-                <h3 style={styles.sectionHeader}>Gestión de Ventas Activas</h3>
+            {/* --- SECCIÓN VENTAS ACTIVAS (buscador + carrito integrados) --- */}
+            <div style={styles.section} className="punto-venta-ventas-activas">
+                <h2 style={styles.sectionHeader}>Ventas activas</h2>
                 <div style={styles.cartSelectionContainer} className="cart-selection-container">
                     {carts.map((cart, index) => (
                         <button
@@ -883,71 +886,43 @@ const PuntoVenta = () => {
 
                 {activeCart && (
                     <div style={styles.activeCartInfo} className="active-cart-info">
-                        <h4 style={styles.activeCartTitle}>Venta Activa: {activeCart.alias || activeCart.name}</h4>
+                        <span style={styles.activeCartTitle}>Venta: {activeCart.alias || activeCart.name}</span>
                         <div style={styles.activeCartActions} className="active-cart-actions">
                             <input
                                 type="text"
-                                placeholder="Nuevo Alias (opcional)"
+                                placeholder="Alias (opcional)"
                                 value={activeCart.alias || ''}
                                 onChange={(e) => updateCartAlias(activeCartId, e.target.value)}
                                 style={styles.inputField}
                             />
                             <button onClick={handleDeleteActiveCart} style={styles.deleteCartButton}>
-                                Eliminar Venta
+                                Eliminar
                             </button>
                         </div>
                     </div>
                 )}
-            </div>
 
-            {/* --- MODAL NUEVA VENTA --- */}
-            {showNewCartModal && (
-                <div style={styles.modalOverlay}>
-                    <div style={styles.modalContent}>
-                        <h3 style={styles.modalHeader}>Crear Nueva Venta</h3>
+                <div style={styles.searchRow} className="search-row">
+                    <div style={{ ...styles.inputGroup, marginBottom: 0 }} className="input-group">
                         <input
                             type="text"
-                            placeholder="Alias para la venta (ej: Cliente A)"
-                            value={newCartAliasInput}
-                            onChange={(e) => setNewCartAliasInput(e.target.value)}
+                            placeholder="Código de barras o nombre"
+                            value={busquedaProducto}
+                            onChange={(e) => setBusquedaProducto(e.target.value)}
+                            onKeyPress={(e) => { if (e.key === 'Enter') handleBuscarProducto(); }}
                             style={styles.inputField}
+                            className="input-field"
                         />
-                        <div style={styles.modalActions}>
-                            <button onClick={() => setShowNewCartModal(false)} style={styles.modalCancelButton}>
-                                Cancelar
-                            </button>
-                            <button onClick={handleCreateNewCartWithAlias} style={styles.modalConfirmButton}>
-                                Crear Venta
-                            </button>
-                        </div>
+                        <button onClick={handleBuscarProducto} style={styles.primaryButton} className="primary-button">
+                            Buscar
+                        </button>
                     </div>
                 </div>
-            )}
 
-            {/* --- SECCIÓN BUSCAR PRODUCTO POR CÓDIGO DE BARRAS (NO SE TOCA) --- */}
-            <div style={styles.section}>
-                <h3 style={styles.sectionHeader}>Buscar Producto por Código de Barras</h3>
-                <div style={styles.inputGroup} className="input-group">
-                    <input
-                        type="text"
-                        placeholder="Ingresa código de barras o nombre"
-                        value={busquedaProducto}
-                        onChange={(e) => setBusquedaProducto(e.target.value)}
-                        onKeyPress={(e) => { if (e.key === 'Enter') handleBuscarProducto(); }}
-                        style={styles.inputField}
-                        className="input-field"
-                    />
-                    <button onClick={handleBuscarProducto} style={styles.primaryButton} className="primary-button">
-                        Buscar
-                    </button>
-                </div>
                 {productoSeleccionado && (
                     <div style={styles.foundProductCard} className="found-product-card">
                         <p style={styles.foundProductText}>
-                            <strong>Producto:</strong> {productoSeleccionado.nombre} - ${parseFloat(productoSeleccionado.precio).toFixed(2)}
-                        </p>
-                        <p style={styles.foundProductText}>
-                            Stock Disponible: {productoSeleccionado.stock}
+                            <strong>{productoSeleccionado.nombre}</strong> — ${parseFloat(productoSeleccionado.precio).toFixed(2)} · Stock: {productoSeleccionado.stock}
                         </p>
                         <div style={styles.productActions} className="product-actions">
                             <button
@@ -955,72 +930,68 @@ const PuntoVenta = () => {
                                 disabled={productoSeleccionado.stock === 0}
                                 style={productoSeleccionado.stock === 0 ? styles.disabledButton : styles.addProductButton}
                             >
-                                {productoSeleccionado.stock === 0 ? 'Sin Stock' : 'Añadir 1 Ud.'}
+                                {productoSeleccionado.stock === 0 ? 'Sin stock' : 'Añadir 1 Ud.'}
                             </button>
                         </div>
                     </div>
                 )}
-            </div>
 
-            {/* --- SECCIÓN DETALLE DEL CARRITO --- */}
-            <div style={styles.section}>
-                <h3 style={styles.sectionHeader}>Detalle del Carrito Activo: {activeCart ? (activeCart.alias || activeCart.name) : 'Ninguno Seleccionado'}</h3>
                 {activeCart && activeCart.items.length > 0 ? (
                     <>
-                        <div style={styles.tableResponsive} className="table-responsive">
-                            <table style={styles.table} className="table">
-                                <thead>
-                                    <tr style={styles.tableHeaderRow}>
-                                        <th style={styles.th}>Producto</th>
-                                        <th style={styles.th}>Cantidad</th>
-                                        <th style={styles.th}>P. Unitario</th>
-                                        <th style={styles.th}>Subtotal</th>
-                                        <th style={styles.th}>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {activeCart.items.map((item) => (
-                                        <tr key={item.product.id} style={styles.tableRow}>
-                                            <td style={styles.td}>{item.product.nombre}</td>
-                                            <td style={styles.td}>
-                                                <div style={styles.quantityControl}>
-                                                    <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton}>-</button>
-                                                    <span style={styles.quantityText}>{item.quantity}</span>
-                                                    <button onClick={() => handleAddProductoEnVenta(item.product, 1)} style={styles.quantityButton}>+</button>
-                                                </div>
-                                            </td>
-                                            <td style={styles.td}>${parseFloat(item.product.precio).toFixed(2)}</td>
-                                            <td style={styles.td}>${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
-                                            <td style={styles.td}>
-                                                <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} style={styles.removeButton}>
-                                                    Quitar
-                                                </button>
-                                            </td>
+                        <div style={styles.cartTableWrap} className="cart-table-wrap">
+                            <div style={styles.tableResponsive} className="table-responsive">
+                                <table style={styles.table} className="table">
+                                    <thead>
+                                        <tr style={styles.tableHeaderRow}>
+                                            <th style={styles.th}>Producto</th>
+                                            <th style={styles.th}>Cant.</th>
+                                            <th style={styles.th}>P. unit.</th>
+                                            <th style={styles.th}>Subtotal</th>
+                                            <th style={styles.th}>Acciones</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {activeCart.items.map((item) => (
+                                            <tr key={item.product.id} style={styles.tableRow}>
+                                                <td style={styles.td}>{item.product.nombre}</td>
+                                                <td style={styles.td}>
+                                                    <div style={styles.quantityControl} className="quantity-control">
+                                                        <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton}>−</button>
+                                                        <span style={styles.quantityText}>{item.quantity}</span>
+                                                        <button onClick={() => handleAddProductoEnVenta(item.product, 1)} style={styles.quantityButton}>+</button>
+                                                    </div>
+                                                </td>
+                                                <td style={styles.td}>${parseFloat(item.product.precio).toFixed(2)}</td>
+                                                <td style={styles.td}>${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
+                                                <td style={styles.td}>
+                                                    <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} style={styles.removeButton}>
+                                                        Quitar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                         <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4>
                         <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
-                            <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de Pago:</label>
+                            <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de pago</label>
                             <select
                                 id="metodoPago"
                                 value={metodoPagoSeleccionado}
                                 onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
                                 style={styles.inputField}
                             >
-                                <option value="">Selecciona un método de pago</option>
+                                <option value="">Seleccionar método</option>
                                 {metodosPago.map(method => (
                                     <option key={method.id} value={method.nombre}>{method.nombre}</option>
                                 ))}
                             </select>
                         </div>
-                        
-                        {/* DESPLEGABLE DE CUOTAS/ARANCEL */}
                         {isMetodoFinancieroActivo && (
                             <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
-                                <label htmlFor="arancelPlan" style={styles.paymentMethodLabel}>Plan / Arancel:</label>
+                                <label htmlFor="arancelPlan" style={styles.paymentMethodLabel}>Plan / Arancel</label>
                                 {arancelesDisponibles.length > 0 ? (
                                     <select
                                         id="arancelPlan"
@@ -1029,90 +1000,71 @@ const PuntoVenta = () => {
                                         style={styles.inputField}
                                         required
                                     >
-                                        <option value="">-- Seleccionar Plan/Arancel --</option>
+                                        <option value="">Seleccionar plan</option>
                                         {arancelesDisponibles.map(arancel => (
                                             <option key={arancel.id} value={arancel.id}>
-                                                {arancel.nombre_plan} ({parseFloat(arancel.arancel_porcentaje).toFixed(2)}% Arancel)
+                                                {arancel.nombre_plan} ({parseFloat(arancel.arancel_porcentaje).toFixed(2)}%)
                                             </option>
                                         ))}
                                     </select>
                                 ) : (
-                                    <div style={{ padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404' }}>
-                                        ⚠️ No hay planes/aranceles configurados para {metodoPagoSeleccionado} en esta tienda. 
-                                        <br />Por favor, contacta al administrador para configurar los aranceles.
-                                        <br />Aranceles cargados: {arancelesTienda.length} | Método: {metodoPagoSeleccionado}
+                                    <div style={styles.arancelWarning}>
+                                        No hay planes configurados para {metodoPagoSeleccionado}. Contacta al administrador.
                                     </div>
                                 )}
                             </div>
                         )}
                         {isMetodoFinancieroActivo && arancelSeleccionadoId && (
-                            <h4 style={styles.arancelDisplay}>
-                                Arancel a pagar: ${calculateArancel().toFixed(2)}
-                            </h4>
+                            <p style={styles.arancelDisplay}>Arancel: ${calculateArancel().toFixed(2)}</p>
                         )}
-
-                        {/* --- LAYOUT DE AJUSTES --- */}
                         <div style={styles.ajustesContainer} className="ajustesContainer">
-                            {/* GRUPO RECARGO */}
-                            <div style={styles.ajusteGrupo}>
-                                <label htmlFor="recargoMonto" style={styles.ajusteLabel}>Recargo $:</label>
+                            <div style={styles.ajusteGrupo} className="ajusteGrupo">
+                                <label htmlFor="recargoMonto" style={styles.ajusteLabel}>Recargo $</label>
                                 <input
                                     type="number"
                                     id="recargoMonto"
                                     value={recargoMonto}
                                     onChange={(e) => {
                                         setRecargoMonto(Math.max(0, parseFloat(e.target.value) || 0));
-                                        setRecargoPorcentaje(''); 
-                                        setDescuentoMonto('');    
-                                        setDescuentoPorcentaje('');
+                                        setRecargoPorcentaje(''); setDescuentoMonto(''); setDescuentoPorcentaje('');
                                     }}
                                     style={styles.ajusteInput}
                                     min="0"
                                 />
-                                <span style={styles.ajusteSeparador}>O</span>
-                                <label htmlFor="recargoPorcentaje" style={styles.ajusteLabel}>%:</label>
+                                <span style={styles.ajusteSeparador}>o %</span>
                                 <input
                                     type="number"
                                     id="recargoPorcentaje"
                                     value={recargoPorcentaje}
                                     onChange={(e) => {
                                         setRecargoPorcentaje(Math.max(0, parseFloat(e.target.value) || 0));
-                                        setRecargoMonto('');       
-                                        setDescuentoMonto('');     
-                                        setDescuentoPorcentaje('');
+                                        setRecargoMonto(''); setDescuentoMonto(''); setDescuentoPorcentaje('');
                                     }}
                                     style={styles.ajusteInput}
                                     min="0"
                                 />
                             </div>
-                            
-                            {/* GRUPO DESCUENTO */}
-                            <div style={styles.ajusteGrupo}>
-                                <label htmlFor="descuentoMonto" style={styles.ajusteLabel}>Descuento $:</label>
+                            <div style={styles.ajusteGrupo} className="ajusteGrupo">
+                                <label htmlFor="descuentoMonto" style={styles.ajusteLabel}>Descuento $</label>
                                 <input
                                     type="number"
                                     id="descuentoMonto"
                                     value={descuentoMonto}
                                     onChange={(e) => {
                                         setDescuentoMonto(Math.max(0, parseFloat(e.target.value) || 0));
-                                        setDescuentoPorcentaje(''); 
-                                        setRecargoMonto('');       
-                                        setRecargoPorcentaje('');  
+                                        setDescuentoPorcentaje(''); setRecargoMonto(''); setRecargoPorcentaje('');
                                     }}
                                     style={styles.ajusteInput}
                                     min="0"
                                 />
-                                <span style={styles.ajusteSeparador}>O</span>
-                                <label htmlFor="descuentoPorcentaje" style={styles.ajusteLabel}>%:</label>
+                                <span style={styles.ajusteSeparador}>o %</span>
                                 <input
                                     type="number"
                                     id="descuentoPorcentaje"
                                     value={descuentoPorcentaje}
                                     onChange={(e) => {
                                         setDescuentoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)));
-                                        setDescuentoMonto('');
-                                        setRecargoMonto('');       
-                                        setRecargoPorcentaje('');  
+                                        setDescuentoMonto(''); setRecargoMonto(''); setRecargoPorcentaje('');
                                     }}
                                     style={styles.ajusteInput}
                                     min="0"
@@ -1120,37 +1072,48 @@ const PuntoVenta = () => {
                                 />
                             </div>
                         </div>
-                        {/* --- FIN LAYOUT DE AJUSTES --- */}
-
-
-                        {/* --- CHECKBOX DE REDONDEO --- */}
-                        <div style={{...styles.ajusteGrupo, marginTop: '10px', justifyContent: 'flex-start', border: 'none', padding: '0'}}> 
+                        <div style={styles.redondearRow}>
                             <input
                                 type="checkbox"
                                 id="redondearMonto"
                                 checked={redondearMonto}
                                 onChange={(e) => setRedondearMonto(e.target.checked)}
-                                style={{ marginRight: '8px', cursor: 'pointer' }} 
                             />
-                            <label htmlFor="redondearMonto" style={{...styles.ajusteLabel, cursor: 'pointer', fontSize: '0.9em'}}>
-                                Redondear total (múlt. 100 ↓)
-                            </label>
+                            <label htmlFor="redondearMonto" style={styles.redondearLabel}>Redondear total (múlt. 100 ↓)</label>
                         </div>
-                        {/* --- FIN CHECKBOX DE REDONDEO --- */}
-
-                        <h4 style={styles.finalTotalVenta}>Total Final: ${calculateFinalTotal().toFixed(2)}</h4>
+                        <h4 style={styles.finalTotalVenta}>Total: ${calculateFinalTotal().toFixed(2)}</h4>
                         <button onClick={handleProcesarVenta} style={styles.processSaleButton} className="process-sale-button">
-                            Procesar Venta
+                            Procesar venta
                         </button>
                     </>
                 ) : (
-                    <p style={styles.noDataMessage}>El carrito activo está vacío. Busca y añade productos.</p>
+                    <p style={styles.noDataMessage}>Carrito vacío. Busca productos por código de barras o en la lista de abajo.</p>
                 )}
             </div>
 
+            {/* --- MODAL NUEVA VENTA --- */}
+            {showNewCartModal && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3 style={styles.modalHeader}>Nueva venta</h3>
+                        <input
+                            type="text"
+                            placeholder="Alias (ej: Cliente A)"
+                            value={newCartAliasInput}
+                            onChange={(e) => setNewCartAliasInput(e.target.value)}
+                            style={styles.inputField}
+                        />
+                        <div style={styles.modalActions}>
+                            <button onClick={() => setShowNewCartModal(false)} style={styles.modalCancelButton}>Cancelar</button>
+                            <button onClick={handleCreateNewCartWithAlias} style={styles.modalConfirmButton}>Crear</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* --- SECCIÓN PRODUCTOS DISPONIBLES (BUSQUEDA INSTANTÁNEA IMPLEMENTADA) --- */}
             <div style={styles.section}>
-                <h3 style={styles.sectionHeader}>Productos Disponibles</h3>
+                <h2 style={styles.sectionHeader}>Productos</h2>
                 <div style={styles.inputGroup} className="input-group">
                     {/* CAMBIO 3: USAR filterTerm Y REMOVER HANDLERS EXPLÍCITOS DE BUSQUEDA */}
                     <input
@@ -1244,64 +1207,140 @@ const PuntoVenta = () => {
                 </div>
             )}
             
-            {/* --- ESTILOS RESPONSIVE (Se mantienen) --- */}
             <style>
                 {`
+                .punto-venta-ventas-activas {
+                    display: flex;
+                    flex-direction: column;
+                }
+                .search-row .input-group {
+                    margin-bottom: 0;
+                }
+                .cart-table-wrap {
+                    width: 100%;
+                    min-width: 0;
+                }
+                .cart-table-wrap .table-responsive {
+                    -webkit-overflow-scrolling: touch;
+                    overflow-x: auto;
+                    margin: 0;
+                    padding: 0;
+                    width: 100%;
+                    max-width: 100%;
+                }
+                .cart-table-wrap table.table {
+                    min-width: 400px;
+                }
                 @media (max-width: 768px) {
+                    .punto-venta-ventas-activas {
+                        padding: 16px !important;
+                    }
                     .cart-selection-container {
-                        flex-direction: column;
-                        gap: 10px;
+                        flex-direction: row;
+                        flex-wrap: wrap;
+                        gap: 8px;
                     }
                     .active-cart-button, .inactive-cart-button, .new-cart-button {
-                        width: 100%;
+                        flex: 1 1 auto;
+                        min-width: 100px;
                     }
                     .active-cart-info {
                         flex-direction: column;
-                        align-items: flex-start;
+                        align-items: stretch;
                         gap: 10px;
+                        width: 100%;
                     }
                     .active-cart-actions {
                         flex-direction: column;
                         width: 100%;
                     }
-                    .input-group {
+                    .active-cart-actions input {
+                        width: 100% !important;
+                        box-sizing: border-box;
+                    }
+                    .search-row {
+                        margin-top: 12px;
+                        margin-bottom: 12px;
+                    }
+                    .search-row .input-group {
                         flex-direction: column;
                         gap: 10px;
                     }
-                    .input-field {
+                    .search-row .input-field {
                         width: 100%;
+                        box-sizing: border-box;
                     }
-                    .primary-button {
+                    .search-row .primary-button {
                         width: 100%;
                     }
                     .found-product-card {
                         flex-direction: column;
-                        align-items: flex-start;
+                        align-items: stretch;
                         gap: 10px;
                     }
                     .product-actions {
-                        flex-direction: column;
                         width: 100%;
                     }
-                    .table-responsive {
+                    .product-actions button {
+                        width: 100%;
+                    }
+                    .cart-table-wrap {
+                        margin: 0;
+                        overflow: hidden;
+                        width: 100%;
+                        max-width: 100%;
+                    }
+                    .cart-table-wrap .table-responsive {
                         overflow-x: auto;
-                    }
-                    table.table {
+                        -webkit-overflow-scrolling: touch;
+                        margin: 0;
+                        padding: 0;
                         width: 100%;
-                        white-space: nowrap;
+                        max-width: 100%;
+                    }
+                    .cart-table-wrap table.table {
+                        min-width: 380px;
+                        font-size: 0.9em;
+                    }
+                    .cart-table-wrap th,
+                    .cart-table-wrap td {
+                        padding: 8px 6px;
+                    }
+                    .quantity-control {
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                        flex-wrap: nowrap;
+                    }
+                    .quantity-control button {
+                        min-width: 32px;
+                        padding: 4px 6px;
                     }
                     .payment-method-select-container {
                         flex-direction: column;
-                        align-items: flex-start;
-                        gap: 5px;
+                        align-items: stretch;
+                        gap: 8px;
                         width: 100%;
                     }
-                    /* NUEVO ESTILO RESPONSIVE */
+                    .payment-method-select-container label {
+                        flex-shrink: 0;
+                    }
+                    .payment-method-select-container select,
+                    .payment-method-select-container .input-field {
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
                     .ajustesContainer {
                         flex-direction: column !important;
+                        gap: 10px;
+                    }
+                    .ajustesContainer .ajusteGrupo {
+                        flex: none;
+                        width: 100%;
                     }
                     .process-sale-button {
                         width: 100%;
+                        padding: 12px 16px;
                     }
                     .pagination-container {
                         flex-direction: column;
@@ -1309,6 +1348,21 @@ const PuntoVenta = () => {
                     }
                     .pagination-button {
                         width: 100%;
+                    }
+                }
+                @media (max-width: 480px) {
+                    .punto-venta-ventas-activas {
+                        padding: 12px !important;
+                    }
+                    .cart-selection-container {
+                        flex-direction: column;
+                    }
+                    .active-cart-button, .inactive-cart-button, .new-cart-button {
+                        min-width: 100%;
+                        width: 100%;
+                    }
+                    .cart-table-wrap table.table {
+                        min-width: 340px;
                     }
                 }
                 `}
@@ -1319,8 +1373,8 @@ const PuntoVenta = () => {
 
 // --- OBJETO DE ESTILOS (Se mantiene) ---
 const styles = {
-    container: { padding: '20px', fontFamily: 'Arial, sans-serif' },
-    header: { textAlign: 'center', color: '#2c3e50' },
+    container: { padding: 0, fontFamily: 'Arial, sans-serif', width: '100%' },
+    header: { color: '#2c3e50', marginBottom: '1.25rem', fontSize: '1.5rem', fontWeight: '600' },
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' },
     sectionHeader: { color: '#34495e', borderBottom: '1px solid #eee', paddingBottom: '10px' },
     loadingMessage: { textAlign: 'center', color: '#777' },
@@ -1331,9 +1385,14 @@ const styles = {
     activeCartButton: { padding: '10px 15px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
     inactiveCartButton: { padding: '10px 15px', backgroundColor: '#ecf0f1', color: '#333', border: '1px solid #ccc', borderRadius: '5px', cursor: 'pointer' },
     newCartButton: { padding: '10px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
-    activeCartInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' },
-    activeCartTitle: { margin: 0, color: '#3498db' },
-    activeCartActions: { display: 'flex', gap: '10px' },
+    activeCartInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap', gap: '10px' },
+    activeCartTitle: { margin: 0, color: '#3498db', fontSize: '1rem' },
+    activeCartActions: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+    searchRow: { marginTop: '12px', marginBottom: '12px' },
+    cartTableWrap: { marginTop: '16px', marginBottom: '8px', overflow: 'hidden' },
+    arancelWarning: { padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404', fontSize: '0.9em', margin: 0 },
+    redondearRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' },
+    redondearLabel: { margin: 0, fontSize: '0.9em', cursor: 'pointer' },
     inputField: { padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }, // Añadido boxSizing
     deleteCartButton: { backgroundColor: '#e74c3c', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
