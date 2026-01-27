@@ -14,27 +14,34 @@ const firebaseConfig = {
   measurementId: "G-218NZKTJQV"
 };
 
-// Inicializar Firebase
-const app = initializeApp(firebaseConfig);
-
-// Inicializar Analytics (opcional, para métricas)
+// Inicializar Firebase con manejo de errores robusto
+let app = null;
 let analytics = null;
-if (typeof window !== 'undefined') {
-  try {
-    analytics = getAnalytics(app);
-  } catch (error) {
-    console.warn('Firebase Analytics no está disponible:', error);
-  }
-}
-
-// Obtener instancia de messaging (solo en el cliente, no en SSR)
 let messaging = null;
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  try {
-    messaging = getMessaging(app);
-  } catch (error) {
-    console.warn('Firebase Messaging no está disponible:', error);
+
+try {
+  app = initializeApp(firebaseConfig);
+  
+  // Inicializar Analytics (opcional, para métricas)
+  if (typeof window !== 'undefined') {
+    try {
+      analytics = getAnalytics(app);
+    } catch (error) {
+      console.warn('Firebase Analytics no está disponible:', error);
+    }
   }
+
+  // Obtener instancia de messaging (solo en el cliente, no en SSR)
+  if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    try {
+      messaging = getMessaging(app);
+    } catch (error) {
+      console.warn('Firebase Messaging no está disponible:', error);
+    }
+  }
+} catch (error) {
+  console.error('Error al inicializar Firebase (no crítico, la app seguirá funcionando):', error);
+  // La app puede funcionar sin Firebase, solo las notificaciones no estarán disponibles
 }
 
 // VAPID Key para notificaciones push

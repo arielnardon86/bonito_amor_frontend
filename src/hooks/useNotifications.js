@@ -22,7 +22,9 @@ const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL || 'http
 
 export const useNotifications = () => {
     const { token, isAuthenticated, selectedStoreSlug } = useAuth();
-    const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+    const [notificationPermission, setNotificationPermission] = useState(
+        typeof Notification !== 'undefined' ? Notification.permission : 'default'
+    );
     const [fcmToken, setFcmToken] = useState(null);
     const [error, setError] = useState(null);
 
@@ -83,24 +85,34 @@ export const useNotifications = () => {
 
     // Solicitar permiso y registrar token
     const solicitarPermiso = useCallback(async () => {
+        if (typeof Notification === 'undefined') {
+            setError('Las notificaciones no están disponibles en este navegador');
+            return;
+        }
+        
         if (notificationPermission === 'granted') {
             return; // Ya tiene permiso
         }
 
-        const token = await requestNotificationPermission(
-            (token) => {
-                setFcmToken(token);
-                registrarToken(token);
-            },
-            (error) => {
-                setError(error);
-            }
-        );
+        try {
+            const token = await requestNotificationPermission(
+                (token) => {
+                    setFcmToken(token);
+                    registrarToken(token);
+                },
+                (error) => {
+                    setError(error);
+                }
+            );
 
-        if (token) {
-            setNotificationPermission('granted');
-        } else {
-            setNotificationPermission(Notification.permission);
+            if (token) {
+                setNotificationPermission('granted');
+            } else {
+                setNotificationPermission(Notification.permission);
+            }
+        } catch (error) {
+            console.warn('Error al solicitar permiso de notificaciones (no crítico):', error);
+            setError('No se pudieron solicitar permisos de notificaciones');
         }
     }, [notificationPermission, registrarToken]);
 
@@ -110,39 +122,54 @@ export const useNotifications = () => {
             return;
         }
 
-        // Si ya tiene permiso, obtener y registrar el token
-        if (notificationPermission === 'granted') {
-            requestNotificationPermission(
-                (token) => {
-                    setFcmToken(token);
-                    registrarToken(token);
-                },
-                (error) => {
-                    setError(error);
-                }
-            );
+        // Verificar que las notificaciones estén disponibles
+        if (typeof Notification === 'undefined' || typeof window === 'undefined') {
+            return;
         }
 
-        // Escuchar mensajes cuando la app está en primer plano
-        const unsubscribe = onMessageListener((payload) => {
-            console.log('Notificación recibida:', payload);
-            // Aquí puedes mostrar una notificación personalizada o actualizar el estado
-            if (payload.notification) {
-                new Notification(payload.notification.title, {
-                    body: payload.notification.body,
-                    icon: payload.notification.icon || '/logo192.png',
-                    badge: '/logo192.png',
-                    tag: 'venta-notification',
-                    requireInteraction: false
-                });
+        try {
+            // Si ya tiene permiso, obtener y registrar el token
+            if (notificationPermission === 'granted') {
+                requestNotificationPermission(
+                    (token) => {
+                        setFcmToken(token);
+                        registrarToken(token);
+                    },
+                    (error) => {
+                        console.warn('Error al obtener token FCM (no crítico):', error);
+                        setError(error);
+                    }
+                );
             }
-        });
 
-        return () => {
-            if (unsubscribe) {
-                unsubscribe();
-            }
-        };
+            // Escuchar mensajes cuando la app está en primer plano
+            const unsubscribe = onMessageListener((payload) => {
+                console.log('Notificación recibida:', payload);
+                // Aquí puedes mostrar una notificación personalizada o actualizar el estado
+                if (payload.notification && typeof Notification !== 'undefined') {
+                    try {
+                        new Notification(payload.notification.title, {
+                            body: payload.notification.body,
+                            icon: payload.notification.icon || '/logo192.png',
+                            badge: '/logo192.png',
+                            tag: 'venta-notification',
+                            requireInteraction: false
+                        });
+                    } catch (notifError) {
+                        console.warn('Error al mostrar notificación (no crítico):', notifError);
+                    }
+                }
+            });
+
+            return () => {
+                if (unsubscribe && typeof unsubscribe === 'function') {
+                    unsubscribe();
+                }
+            };
+        } catch (error) {
+            console.warn('Error al inicializar notificaciones (no crítico):', error);
+            // No bloquear la app si fallan las notificaciones
+        }
     }, [isAuthenticated, token, notificationPermission, registrarToken]);
 
     // Eliminar token al cerrar sesión

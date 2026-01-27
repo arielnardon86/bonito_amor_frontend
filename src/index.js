@@ -6,6 +6,20 @@ import reportWebVitals from './reportWebVitals';
 import { AuthProvider } from './AuthContext'; // <--- NUEVO: Importa AuthProvider
 import { BrowserRouter as Router } from 'react-router-dom'; // Asegúrate de que Router esté importado
 
+// Registrar Service Worker de Firebase de forma opcional (no bloquea la app si falla)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      .then((registration) => {
+        console.log('Service Worker registrado exitosamente:', registration.scope);
+      })
+      .catch((error) => {
+        console.warn('Service Worker no pudo registrarse (no crítico):', error);
+        // No bloquear la app si el Service Worker falla
+      });
+  });
+}
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
