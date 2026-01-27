@@ -20,6 +20,7 @@ import MetricasVentas from './components/MetricasVentas';
 import VentasPage from './components/VentasPage';
 import HomePage from './components/HomePage';
 import IntegracionMercadoLibre from './components/IntegracionMercadoLibre'; 
+import { useNotifications } from './hooks/useNotifications';
 
 import './App.css';
 
@@ -268,6 +269,9 @@ const Navbar = () => {
 
 const AppContent = () => {
   const { isAuthenticated, loading, selectedStoreSlug, user } = useAuth(); 
+  
+  // Inicializar notificaciones push cuando el usuario está autenticado
+  const { notificationPermission, solicitarPermiso, error: notificationError } = useNotifications();
 
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
