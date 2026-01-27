@@ -271,14 +271,8 @@ const AppContent = () => {
   const { isAuthenticated, loading, selectedStoreSlug, user } = useAuth(); 
   
   // Inicializar notificaciones push cuando el usuario está autenticado
-  // Manejar errores silenciosamente para que no bloqueen la app
-  let notificationHook = null;
-  try {
-    notificationHook = useNotifications();
-  } catch (error) {
-    console.warn('Error al inicializar notificaciones (no crítico):', error);
-  }
-  const { notificationPermission, solicitarPermiso, error: notificationError } = notificationHook || {};
+  // El hook maneja errores internamente, no bloquea la app si falla
+  const { notificationPermission, solicitarPermiso, error: notificationError } = useNotifications();
 
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;

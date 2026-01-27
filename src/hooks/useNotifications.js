@@ -1,8 +1,22 @@
 // hooks/useNotifications.js - Hook para manejar notificaciones push
 import { useEffect, useState, useCallback } from 'react';
-import { requestNotificationPermission, onMessageListener } from '../firebase';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
+
+// Importar Firebase de forma segura (no bloquea si falla)
+let requestNotificationPermission = null;
+let onMessageListener = null;
+
+try {
+  const firebaseModule = require('../firebase');
+  requestNotificationPermission = firebaseModule.requestNotificationPermission;
+  onMessageListener = firebaseModule.onMessageListener;
+} catch (error) {
+  console.warn('Firebase no está disponible (notificaciones deshabilitadas):', error);
+  // Funciones dummy para que no falle
+  requestNotificationPermission = async () => null;
+  onMessageListener = () => () => {};
+}
 
 const normalizeApiUrl = (url) => {
     if (!url) {
