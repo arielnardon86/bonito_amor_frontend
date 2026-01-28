@@ -295,7 +295,7 @@ const AppContent = () => {
   
   // Inicializar notificaciones push cuando el usuario está autenticado
   // El hook maneja errores internamente, no bloquea la app si falla
-  const { notificationPermission, solicitarPermiso, error: notificationError } = useNotifications();
+  const { notificationPermission, solicitarPermiso, eliminarToken, fcmToken, error: notificationError } = useNotifications();
 
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
@@ -367,7 +367,13 @@ const AppContent = () => {
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />
               <Route path="/panel-administracion-tienda" element={
                 <ProtectedRoute adminOnly={true}>
-                  <PanelAdministracionTienda />
+                  <PanelAdministracionTienda
+                    notificationPermission={notificationPermission}
+                    solicitarPermiso={solicitarPermiso}
+                    eliminarToken={eliminarToken}
+                    fcmToken={fcmToken}
+                    notificationError={notificationError}
+                  />
                 </ProtectedRoute>
               } />
               <Route path="/integracion-mercadolibre" element={
