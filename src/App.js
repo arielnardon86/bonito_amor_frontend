@@ -37,11 +37,18 @@ import {
   faShoppingBag,
   faSignOutAlt,
   faUser,
-  faStore
+  faStore,
+  faBell
 } from '@fortawesome/free-solid-svg-icons';
 
+// Soporte de notificaciones push (gesto de usuario requerido en móvil)
+const notificacionesSoportadas = () =>
+  typeof window !== 'undefined' &&
+  'Notification' in window &&
+  'serviceWorker' in navigator;
+
 // Componente para la navegación
-const Navbar = () => {
+const Navbar = ({ solicitarPermiso, notificationPermission }) => {
   const { isAuthenticated, user, logout, selectedStoreSlug, stores, token } = useAuth(); 
   const [isOpen, setIsOpen] = useState(false);
   const [mlConfigurado, setMlConfigurado] = useState(false);
@@ -248,6 +255,22 @@ const Navbar = () => {
               </>
             )}
             
+            {user && notificacionesSoportadas() && notificationPermission === 'default' && (
+              <li className="sidebar-notifications">
+                <button
+                  type="button"
+                  className="notifications-enable-button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (solicitarPermiso) solicitarPermiso();
+                  }}
+                >
+                  <FontAwesomeIcon icon={faBell} />
+                  <span>Activar notificaciones</span>
+                </button>
+              </li>
+            )}
             {user && ( 
               <li className="sidebar-footer">
                 <div className="user-info">
@@ -280,7 +303,10 @@ const AppContent = () => {
 
   return (
     <>
-      <Navbar />
+      <Navbar
+        solicitarPermiso={solicitarPermiso}
+        notificationPermission={notificationPermission}
+      />
       <div className={`main-content ${isAuthenticated && selectedStoreSlug ? 'with-sidebar' : 'no-sidebar'}`}>
         <div className="container">
         <Routes>
