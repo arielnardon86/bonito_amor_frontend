@@ -37,8 +37,15 @@ import {
   faShoppingBag,
   faSignOutAlt,
   faUser,
-  faStore
+  faStore,
+  faBell
 } from '@fortawesome/free-solid-svg-icons';
+
+// Soporte de notificaciones push (gesto de usuario requerido en móvil)
+const notificacionesSoportadas = () =>
+  typeof window !== 'undefined' &&
+  'Notification' in window &&
+  'serviceWorker' in navigator;
 
 // Componente para la navegación
 const Navbar = () => {
@@ -267,6 +274,22 @@ const Navbar = () => {
               </>
             )}
             
+            {user && notificacionesSoportadas() && notificationPermission === 'default' && (
+              <li className="sidebar-notifications">
+                <button
+                  type="button"
+                  className="notifications-enable-button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (solicitarPermiso) solicitarPermiso();
+                  }}
+                >
+                  <FontAwesomeIcon icon={faBell} />
+                  <span>Activar notificaciones</span>
+                </button>
+              </li>
+            )}
             {user && ( 
               <li className="sidebar-footer">
                 <div className="user-info">
@@ -380,7 +403,13 @@ const AppContent = () => {
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />
               <Route path="/panel-administracion-tienda" element={
                 <ProtectedRoute adminOnly={true}>
-                  <PanelAdministracionTienda />
+                  <PanelAdministracionTienda
+                    notificationPermission={notificationPermission}
+                    solicitarPermiso={solicitarPermiso}
+                    eliminarToken={eliminarToken}
+                    fcmToken={fcmToken}
+                    notificationError={notificationError}
+                  />
                 </ProtectedRoute>
               } />
               <Route path="/integracion-mercadolibre" element={

@@ -94,7 +94,16 @@ const mobileStyles = `
     }
 `;
 
-const PanelAdministracionTienda = () => {
+const notificacionesSoportadas = () =>
+    typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
+
+const PanelAdministracionTienda = ({
+    notificationPermission = 'default',
+    solicitarPermiso = () => {},
+    eliminarToken = () => {},
+    fcmToken = null,
+    notificationError = null
+}) => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
     const navigate = useNavigate();
     
@@ -1168,6 +1177,55 @@ const PanelAdministracionTienda = () => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB: NOTIFICACIONES */}
+            {activeTab === 'notificaciones' && (
+                <div style={styles.tabContent}>
+                    <div style={{ ...styles.infoBox, maxWidth: '520px', marginBottom: 24 }}>
+                        <h3 style={{ marginTop: 0, marginBottom: 12 }}>Notificaciones de ventas</h3>
+                        <p style={{ marginBottom: 16, color: '#555' }}>
+                            Recibí notificaciones push en este dispositivo cuando se registre una venta en la tienda. Funciona en navegador y en la PWA (app instalada).
+                        </p>
+                        {!notificacionesSoportadas() ? (
+                            <p style={{ margin: 0, color: '#856404', background: '#fff3cd', padding: 12, borderRadius: 6 }}>
+                                Las notificaciones no están disponibles en este navegador. Probá en Chrome, Edge o Safari (iOS 16.4+).
+                            </p>
+                        ) : notificationPermission === 'denied' ? (
+                            <p style={{ margin: 0, color: '#856404', background: '#fff3cd', padding: 12, borderRadius: 6 }}>
+                                Las notificaciones están bloqueadas. Habilitálas en la configuración del navegador o del sistema para poder activarlas acá.
+                            </p>
+                        ) : notificationPermission === 'granted' && fcmToken ? (
+                            <div>
+                                <p style={{ margin: '0 0 16px', color: '#155724', background: '#d4edda', padding: 12, borderRadius: 6 }}>
+                                    Notificaciones activas. Vas a recibir un aviso en este dispositivo por cada venta.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => eliminarToken(fcmToken)}
+                                    style={{ ...styles.cancelButton, padding: '10px 20px' }}
+                                >
+                                    Desactivar notificaciones
+                                </button>
+                            </div>
+                        ) : (
+                            <div>
+                                {notificationError && (
+                                    <p style={{ margin: '0 0 12px', color: '#721c24', background: '#f8d7da', padding: 10, borderRadius: 6, fontSize: 14 }}>
+                                        {notificationError}
+                                    </p>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => solicitarPermiso()}
+                                    style={{ ...styles.saveButton, padding: '10px 20px' }}
+                                >
+                                    Activar notificaciones de ventas
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
