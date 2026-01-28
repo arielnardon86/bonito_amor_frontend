@@ -155,7 +155,7 @@ const HomePage = () => {
                     <div style={styles.navbarContainer} className="navbar-container">
                         <div style={styles.navbarLogoContainer}>
                             <img 
-                                src="/total-stock-logo.jpg" 
+                                src="/logo-completo.png" 
                                 alt="Total Stock Logo" 
                                 style={styles.navbarLogo}
                             />
@@ -246,7 +246,7 @@ const HomePage = () => {
                 <div style={styles.heroContent}>
                     <div style={styles.logoContainer}>
                         <img 
-                            src="/total-stock-logo.jpg" 
+                            src="/logo-completo.png" 
                             alt="Total Stock Logo" 
                             style={styles.logo}
                         />
@@ -553,7 +553,7 @@ const HomePage = () => {
                 <div style={styles.footerContent}>
                     <div style={styles.footerLogoContainer}>
                         <img 
-                            src="/total-stock-logo.jpg" 
+                            src="/logo-completo.png" 
                             alt="Total Stock Logo" 
                             style={styles.footerLogo}
                         />

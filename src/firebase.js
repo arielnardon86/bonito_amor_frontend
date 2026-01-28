@@ -48,6 +48,54 @@ try {
 const vapidKey = process.env.REACT_APP_FIREBASE_VAPID_KEY || "BB9sDwXjjqnKWe2DVl-olVRIfoqMGp_l72KIExbVS4ceTzU0r4UR15V_OBP67PC1e9CbjCAQpaVGYdFCpiri9f4";
 
 /**
+ * Obtiene el token FCM sin solicitar permiso (útil cuando el permiso ya está concedido)
+ * @param {Function} onTokenReceived - Callback cuando se obtiene el token
+ * @param {Function} onError - Callback cuando hay un error
+ */
+export const getFCMToken = async (onTokenReceived, onError) => {
+  if (!messaging) {
+    console.warn('Firebase Messaging no está disponible');
+    if (onError) {
+      onError('Firebase Messaging no está disponible');
+    }
+    return null;
+  }
+
+  try {
+    // Verificar que el permiso esté concedido
+    if (Notification.permission !== 'granted') {
+      if (onError) {
+        onError('El permiso de notificaciones no está concedido');
+      }
+      return null;
+    }
+
+    // Obtener el token FCM directamente
+    const currentToken = await getToken(messaging, { vapidKey });
+    
+    if (currentToken) {
+      console.log('Token FCM obtenido:', currentToken);
+      if (onTokenReceived) {
+        onTokenReceived(currentToken);
+      }
+      return currentToken;
+    } else {
+      console.warn('No se pudo obtener el token FCM');
+      if (onError) {
+        onError('No se pudo obtener el token FCM. Verifica que el Service Worker esté configurado correctamente.');
+      }
+      return null;
+    }
+  } catch (error) {
+    console.error('Error al obtener token FCM:', error);
+    if (onError) {
+      onError(error.message);
+    }
+    return null;
+  }
+};
+
+/**
  * Solicita permiso y obtiene el token FCM
  * @param {Function} onTokenReceived - Callback cuando se obtiene el token
  * @param {Function} onError - Callback cuando hay un error

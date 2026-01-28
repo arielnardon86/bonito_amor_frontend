@@ -1,20 +1,23 @@
 // hooks/useNotifications.js - Hook para manejar notificaciones push
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 
 // Importar Firebase de forma segura (no bloquea si falla)
 let requestNotificationPermission = null;
+let getFCMToken = null;
 let onMessageListener = null;
 
 try {
   const firebaseModule = require('../firebase');
   requestNotificationPermission = firebaseModule.requestNotificationPermission;
+  getFCMToken = firebaseModule.getFCMToken;
   onMessageListener = firebaseModule.onMessageListener;
 } catch (error) {
   console.warn('Firebase no está disponible (notificaciones deshabilitadas):', error);
   // Funciones dummy para que no falle
   requestNotificationPermission = async () => null;
+  getFCMToken = async () => null;
   onMessageListener = () => () => {};
 }
 
@@ -41,6 +44,15 @@ export const useNotifications = () => {
     );
     const [fcmToken, setFcmToken] = useState(null);
     const [error, setError] = useState(null);
+    const [isManuallyDisabled, setIsManuallyDisabled] = useState(false);
+    const listenerRegisteredRef = useRef(false); // Ref para rastrear si el listener ya está registrado
+
+    // Sincronizar el estado del permiso con el navegador al montar
+    useEffect(() => {
+        if (typeof Notification !== 'undefined') {
+            setNotificationPermission(Notification.permission);
+        }
+    }, []);
 
     // Obtener información del dispositivo
     const getDeviceInfo = useCallback(() => {
@@ -78,24 +90,50 @@ export const useNotifications = () => {
 
     // Eliminar token del backend
     const eliminarToken = useCallback(async (fcmTokenValue) => {
-        if (!token || !fcmTokenValue) {
+        if (!token) {
+            console.log('No hay token de autenticación para eliminar token FCM');
+            // Aún así, limpiar el estado local si no hay token de autenticación
+            setFcmToken(null);
+            setError(null);
+            return;
+        }
+
+        // Si no hay fcmTokenValue pero hay fcmToken en el estado, usar ese
+        const tokenToDelete = fcmTokenValue || fcmToken;
+        if (!tokenToDelete) {
+            console.log('No hay token FCM para eliminar');
+            setFcmToken(null);
+            setError(null);
             return;
         }
 
         try {
             await axios.post(
                 `${BASE_API_ENDPOINT}/api/notificaciones/eliminar-token/`,
-                { token: fcmTokenValue },
+                { token: tokenToDelete },
                 {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }
             );
             console.log('Token FCM eliminado del backend');
+            // Limpiar el estado local
             setFcmToken(null);
+            // Limpiar cualquier error previo
+            setError(null);
+            // Marcar como desactivado manualmente para evitar que el useEffect automático lo reactive
+            setIsManuallyDisabled(true);
+            // Actualizar el estado de permiso para reflejar el estado real del navegador
+            if (typeof Notification !== 'undefined') {
+                setNotificationPermission(Notification.permission);
+            }
         } catch (err) {
             console.error('Error al eliminar token FCM:', err);
+            // Aún así, limpiar el estado local para permitir reactivar
+            setFcmToken(null);
+            setIsManuallyDisabled(true);
+            setError('Error al desactivar notificaciones, pero el estado local se limpió');
         }
-    }, [token]);
+    }, [token, fcmToken]);
 
     // Solicitar permiso y registrar token
     const solicitarPermiso = useCallback(async () => {
@@ -104,31 +142,93 @@ export const useNotifications = () => {
             return;
         }
         
-        if (notificationPermission === 'granted') {
-            return; // Ya tiene permiso
+        console.log('Solicitando permiso de notificaciones...', { 
+            currentFcmToken: fcmToken, 
+            notificationPermission: Notification.permission,
+            isManuallyDisabled
+        });
+        
+        // Si el usuario está reactivando manualmente, resetear la bandera
+        setIsManuallyDisabled(false);
+        
+        // Verificar el estado real del permiso del navegador (puede haber cambiado)
+        const currentPermission = Notification.permission;
+        setNotificationPermission(currentPermission);
+        
+        // Si ya tiene permiso pero no tiene token, obtenerlo directamente sin solicitar permiso nuevamente
+        if (currentPermission === 'granted' && !fcmToken) {
+            console.log('Permiso ya concedido, obteniendo token FCM...');
+            try {
+                // Limpiar cualquier error previo
+                setError(null);
+                
+                // Obtener el token directamente sin mostrar diálogo de permiso
+                const token = await getFCMToken(
+                    (token) => {
+                        console.log('Token FCM obtenido exitosamente:', token);
+                        setFcmToken(token);
+                        registrarToken(token);
+                        setNotificationPermission('granted');
+                    },
+                    (error) => {
+                        console.error('Error al obtener token:', error);
+                        setError(error || 'No se pudo obtener el token de notificaciones');
+                    }
+                );
+
+                if (token) {
+                    console.log('Token FCM asignado:', token);
+                    setNotificationPermission('granted');
+                } else {
+                    console.warn('No se obtuvo token FCM');
+                    setError('No se pudo obtener el token de notificaciones. Verifica que el Service Worker esté configurado correctamente.');
+                }
+            } catch (error) {
+                console.error('Error al obtener token de notificaciones:', error);
+                setError('No se pudo obtener el token de notificaciones: ' + (error.message || error));
+            }
+            return;
         }
 
+        // Si ya tiene permiso y token, no hacer nada
+        if (currentPermission === 'granted' && fcmToken) {
+            console.log('Ya tiene permiso y token, no se hace nada');
+            return; // Ya tiene permiso y token
+        }
+
+        // Solicitar permiso si no está concedido
+        console.log('Solicitando permiso al usuario...');
         try {
+            // Limpiar cualquier error previo
+            setError(null);
+            
             const token = await requestNotificationPermission(
                 (token) => {
+                    console.log('Permiso concedido y token obtenido:', token);
                     setFcmToken(token);
                     registrarToken(token);
+                    setNotificationPermission('granted');
                 },
                 (error) => {
-                    setError(error);
+                    console.error('Error al solicitar permiso:', error);
+                    setError(error || 'No se pudo solicitar el permiso de notificaciones');
+                    setNotificationPermission(Notification.permission);
                 }
             );
 
             if (token) {
+                console.log('Token obtenido después de solicitar permiso:', token);
                 setNotificationPermission('granted');
             } else {
+                console.warn('No se obtuvo token después de solicitar permiso');
                 setNotificationPermission(Notification.permission);
             }
         } catch (error) {
-            console.warn('Error al solicitar permiso de notificaciones (no crítico):', error);
-            setError('No se pudieron solicitar permisos de notificaciones');
+            console.error('Error al solicitar permiso de notificaciones:', error);
+            setError('No se pudieron solicitar permisos de notificaciones: ' + (error.message || error));
+            setNotificationPermission(Notification.permission);
         }
-    }, [notificationPermission, registrarToken]);
+    }, [fcmToken, registrarToken]);
 
     // Inicializar notificaciones cuando el usuario está autenticado
     useEffect(() => {
@@ -142,9 +242,15 @@ export const useNotifications = () => {
         }
 
         try {
-            // Si ya tiene permiso, obtener y registrar el token
-            if (notificationPermission === 'granted') {
-                requestNotificationPermission(
+            // Sincronizar el estado del permiso con el navegador
+            const currentPermission = Notification.permission;
+            setNotificationPermission(currentPermission);
+            
+            // Si ya tiene permiso y no hay token, obtener y registrar el token sin solicitar permiso nuevamente
+            // PERO solo si no fue desactivado manualmente
+            if (currentPermission === 'granted' && !fcmToken && !isManuallyDisabled) {
+                console.log('Obteniendo token FCM automáticamente...');
+                getFCMToken(
                     (token) => {
                         setFcmToken(token);
                         registrarToken(token);
@@ -154,42 +260,54 @@ export const useNotifications = () => {
                         setError(error);
                     }
                 );
+            } else if (isManuallyDisabled) {
+                console.log('Notificaciones desactivadas manualmente, no se reactivan automáticamente');
             }
 
             // Escuchar mensajes cuando la app está en primer plano
-            const unsubscribe = onMessageListener((payload) => {
-                console.log('Notificación recibida:', payload);
-                // Aquí puedes mostrar una notificación personalizada o actualizar el estado
-                if (payload.notification && typeof Notification !== 'undefined') {
-                    try {
-                        new Notification(payload.notification.title, {
-                            body: payload.notification.body,
-                            icon: payload.notification.icon || '/logo192.png',
-                            badge: '/logo192.png',
-                            tag: 'venta-notification',
-                            requireInteraction: false
-                        });
-                    } catch (notifError) {
-                        console.warn('Error al mostrar notificación (no crítico):', notifError);
-                    }
-                }
-            });
+            // IMPORTANTE: Solo registrar el listener UNA VEZ para evitar duplicados
+            let unsubscribe = null;
+            
+            if (!listenerRegisteredRef.current) {
+                console.log('Registrando listener de notificaciones por primera vez');
+                listenerRegisteredRef.current = true;
+                
+                unsubscribe = onMessageListener((payload) => {
+                    console.log('Notificación recibida en primer plano:', payload);
+                    
+                    // Cuando la app está en primer plano, Firebase NO muestra notificaciones automáticamente
+                    // Solo el Service Worker las muestra cuando la app está en segundo plano
+                    // Sin embargo, para evitar duplicados, NO mostramos notificación manualmente aquí
+                    // porque el Service Worker puede estar activo y mostrar la notificación automáticamente
+                    // incluso cuando la app está en primer plano en algunos navegadores
+                    
+                    // Si necesitas actualizar la UI cuando llega una notificación, hazlo aquí
+                    // pero NO uses new Notification() para evitar duplicados
+                });
+            }
 
             return () => {
+                // Solo limpiar el listener cuando el componente se desmonta o el usuario cierra sesión
                 if (unsubscribe && typeof unsubscribe === 'function') {
+                    console.log('Limpiando listener de notificaciones');
                     unsubscribe();
+                    listenerRegisteredRef.current = false;
                 }
             };
         } catch (error) {
             console.warn('Error al inicializar notificaciones (no crítico):', error);
             // No bloquear la app si fallan las notificaciones
         }
-    }, [isAuthenticated, token, notificationPermission, registrarToken]);
+    }, [isAuthenticated, token, fcmToken, isManuallyDisabled]); // Removido registrarToken de las dependencias para evitar re-registros
 
-    // Eliminar token al cerrar sesión
+    // Eliminar token al cerrar sesión y resetear el listener
     useEffect(() => {
-        if (!isAuthenticated && fcmToken) {
-            eliminarToken(fcmToken);
+        if (!isAuthenticated) {
+            if (fcmToken) {
+                eliminarToken(fcmToken);
+            }
+            // Resetear el flag del listener cuando el usuario cierra sesión
+            listenerRegisteredRef.current = false;
         }
     }, [isAuthenticated, fcmToken, eliminarToken]);
 

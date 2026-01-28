@@ -46,7 +46,9 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [mlConfigurado, setMlConfigurado] = useState(false);
   const [verificandoML, setVerificandoML] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const location = useLocation();
+  const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken } = useNotifications();
 
   const handleLogout = () => {
     logout();
@@ -59,7 +61,9 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth > 768 && isOpen) { 
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (!mobile && isOpen) { 
         setIsOpen(false);
       }
     };
@@ -168,6 +172,21 @@ const Navbar = () => {
     return null;
   }
 
+  const handleActivarNotificaciones = async () => {
+    if (solicitarPermiso) {
+      await solicitarPermiso();
+    }
+  };
+
+  const handleDesactivarNotificaciones = async () => {
+    if (eliminarToken) {
+      // Pasar el token actual o null, la función manejará ambos casos
+      await eliminarToken(fcmToken || null);
+    }
+  };
+
+  const notificacionesActivas = !!fcmToken;
+
   return (
     <>
       {/* Menú hamburguesa para mobile */}
@@ -181,7 +200,7 @@ const Navbar = () => {
       <nav className={`sidebar ${isOpen ? 'active' : ''}`}>
         <div className="sidebar-header">
           <Link to="/" className="sidebar-logo" onClick={() => setIsOpen(false)}>
-            <img src="/total-stock-logo.jpg" alt="Total Stock Logo" className="app-logo-image" />
+            <img src="/logo-completo.png" alt="Total Stock Logo" className="app-logo-image" />
           </Link>
           {selectedStoreSlug && (
             <div className="store-name-sidebar">
@@ -254,6 +273,30 @@ const Navbar = () => {
                   <FontAwesomeIcon icon={faUser} className="user-icon" />
                   <span className="username">{user?.username}</span>
                 </div>
+
+                {/* Botón de notificaciones solo para mobile (PWA) */}
+                {isMobile && (
+                  <button
+                    type="button"
+                    className="notifications-toggle-button"
+                    onClick={notificacionesActivas ? handleDesactivarNotificaciones : handleActivarNotificaciones}
+                    style={{
+                      padding: '8px 12px',
+                      marginTop: '8px',
+                      marginBottom: '8px',
+                      backgroundColor: notificacionesActivas ? '#dc3545' : '#17a2b8',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.9em',
+                      width: '100%'
+                    }}
+                  >
+                    {notificacionesActivas ? 'Desactivar notificaciones' : 'Activar notificaciones'}
+                  </button>
+                )}
+
                 <button onClick={handleLogout} className="logout-button">
                   <FontAwesomeIcon icon={faSignOutAlt} />
                   <span>Cerrar Sesión</span>
@@ -270,10 +313,6 @@ const Navbar = () => {
 const AppContent = () => {
   const { isAuthenticated, loading, selectedStoreSlug, user } = useAuth(); 
   
-  // Inicializar notificaciones push cuando el usuario está autenticado
-  // El hook maneja errores internamente, no bloquea la app si falla
-  const { notificationPermission, solicitarPermiso, error: notificationError } = useNotifications();
-
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
   }

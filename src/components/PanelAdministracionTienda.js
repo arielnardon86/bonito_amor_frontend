@@ -98,8 +98,9 @@ const PanelAdministracionTienda = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
     const navigate = useNavigate();
     
-    const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios', 'medios-pago-aranceles'
+    const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios', 'medios-pago-aranceles', 'aranceles-ml'
     const [loading, setLoading] = useState(true);
+    const [tiendaInfo, setTiendaInfo] = useState(null); // Para verificar integración ML
     
     // Estados para usuarios
     const [users, setUsers] = useState([]);
@@ -134,6 +135,36 @@ const PanelAdministracionTienda = () => {
         arancel_porcentaje: '0.00',
         tienda: selectedStoreSlug || ''
     });
+    
+    // Estados para aranceles Mercado Libre
+    const [arancelesML, setArancelesML] = useState([]);
+    const [categoriasML, setCategoriasML] = useState([]);
+    const [showArancelMLForm, setShowArancelMLForm] = useState(false);
+    const [showEditArancelMLModal, setShowEditArancelMLModal] = useState(false);
+    const [editArancelMLData, setEditArancelMLData] = useState(null);
+    const [arancelMLForm, setArancelMLForm] = useState({
+        categoria_ml: '',
+        arancel_porcentaje: '0.00',
+        tienda: selectedStoreSlug || ''
+    });
+
+    // Cargar información de la tienda para verificar integración ML
+    const fetchTiendaInfo = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { nombre: selectedStoreSlug }
+            });
+            const tiendas = response.data.results || response.data;
+            const tienda = Array.isArray(tiendas) ? tiendas.find(t => t.nombre === selectedStoreSlug) : tiendas;
+            if (tienda) {
+                setTiendaInfo(tienda);
+            }
+        } catch (err) {
+            console.error('Error al cargar información de la tienda:', err);
+        }
+    }, [token, selectedStoreSlug]);
 
     useEffect(() => {
         if (!authLoading) {
@@ -141,15 +172,19 @@ const PanelAdministracionTienda = () => {
                 navigate('/');
             } else {
                 setLoading(false);
+                fetchTiendaInfo();
                 if (activeTab === 'usuarios') {
                     fetchUsers();
                 } else if (activeTab === 'medios-pago-aranceles') {
                     fetchMetodosPago();
                     fetchAranceles();
+                } else if (activeTab === 'aranceles-ml') {
+                    fetchArancelesML();
+                    fetchCategoriasML();
                 }
             }
         }
-    }, [authLoading, isAuthenticated, user, navigate, activeTab, selectedStoreSlug]);
+    }, [authLoading, isAuthenticated, user, navigate, activeTab, selectedStoreSlug, fetchTiendaInfo]);
 
     // ========== FUNCIONES PARA USUARIOS ==========
     const fetchUsers = useCallback(async () => {
@@ -531,6 +566,198 @@ const PanelAdministracionTienda = () => {
         }
     };
 
+    // ========== FUNCIONES PARA ARANCELES MERCADO LIBRE ==========
+    const fetchArancelesML = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/aranceles-ml/?tienda_slug=${selectedStoreSlug}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setArancelesML(response.data.results || response.data);
+        } catch (err) {
+            console.error('Error al cargar aranceles ML:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudieron cargar los aranceles de Mercado Libre.'
+            });
+        }
+    }, [token, selectedStoreSlug]);
+
+    const fetchCategoriasML = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            // Obtener el ID de la tienda
+            const tiendaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { nombre: selectedStoreSlug }
+            });
+            const tiendas = tiendaResponse.data.results || tiendaResponse.data;
+            const tienda = Array.isArray(tiendas) ? tiendas.find(t => t.nombre === selectedStoreSlug) : tiendas;
+            
+            if (tienda && tienda.id) {
+                // Obtener categorías usadas por la tienda (solo las que tienen productos)
+                const productosResponse = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    params: { tienda_slug: selectedStoreSlug }
+                });
+                const productos = productosResponse.data.results || productosResponse.data;
+                const categoriasUsadas = [...new Set(
+                    productos
+                        .filter(p => p.ml_categoria_id)
+                        .map(p => p.ml_categoria_id)
+                )];
+                
+                // Obtener todas las categorías de una vez y filtrar por las usadas
+                if (categoriasUsadas.length > 0) {
+                    try {
+                        const catResponse = await axios.get(
+                            `${BASE_API_ENDPOINT}/api/tiendas/${tienda.id}/mercadolibre/categories/`,
+                            {
+                                headers: { 'Authorization': `Bearer ${token}` },
+                                params: { limit: 15000 } // Obtener todas las categorías
+                            }
+                        );
+                        const todasLasCategorias = catResponse.data.categories || [];
+                        // Filtrar solo las categorías que la tienda ha usado
+                        const categoriasInfo = todasLasCategorias.filter(cat => 
+                            categoriasUsadas.includes(cat.id)
+                        );
+                        setCategoriasML(categoriasInfo);
+                    } catch (err) {
+                        console.error('Error al obtener categorías ML:', err);
+                        setCategoriasML([]);
+                    }
+                } else {
+                    setCategoriasML([]);
+                }
+            }
+        } catch (err) {
+            console.error('Error al cargar categorías ML:', err);
+            setCategoriasML([]);
+        }
+    }, [token, selectedStoreSlug]);
+
+    const handleArancelMLFormChange = (e) => {
+        const { name, value } = e.target;
+        setArancelMLForm({
+            ...arancelMLForm,
+            [name]: value
+        });
+    };
+
+    const handleCreateArancelML = async (e) => {
+        e.preventDefault();
+        
+        try {
+            await axios.post(`${BASE_API_ENDPOINT}/api/aranceles-ml/`, {
+                ...arancelMLForm,
+                tienda: selectedStoreSlug
+            }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Éxito',
+                text: 'Arancel de Mercado Libre creado correctamente.'
+            });
+            
+            setShowArancelMLForm(false);
+            setArancelMLForm({
+                categoria_ml: '',
+                arancel_porcentaje: '0.00',
+                tienda: selectedStoreSlug
+            });
+            fetchArancelesML();
+        } catch (err) {
+            console.error('Error al crear arancel ML:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Error al crear el arancel.'
+            });
+        }
+    };
+
+    const handleEditArancelML = (arancel) => {
+        const categoriaId = typeof arancel.categoria_ml === 'object' && arancel.categoria_ml !== null
+            ? arancel.categoria_ml
+            : arancel.categoria_ml_id || arancel.categoria_ml;
+        
+        setEditArancelMLData({
+            id: arancel.id,
+            categoria_ml: categoriaId,
+            arancel_porcentaje: arancel.arancel_porcentaje ? arancel.arancel_porcentaje.toString() : '0.00'
+        });
+        setShowEditArancelMLModal(true);
+    };
+
+    const handleUpdateArancelML = async () => {
+        try {
+            await axios.patch(`${BASE_API_ENDPOINT}/api/aranceles-ml/${editArancelMLData.id}/`, {
+                categoria_ml: editArancelMLData.categoria_ml,
+                arancel_porcentaje: editArancelMLData.arancel_porcentaje,
+                tienda: selectedStoreSlug
+            }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Éxito',
+                text: 'Arancel de Mercado Libre actualizado correctamente.'
+            });
+            
+            setShowEditArancelMLModal(false);
+            setEditArancelMLData(null);
+            fetchArancelesML();
+        } catch (err) {
+            console.error('Error al actualizar arancel ML:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: err.response?.data?.detail || 'Error al actualizar el arancel.'
+            });
+        }
+    };
+
+    const handleDeleteArancelML = async (arancelId) => {
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: 'Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await axios.delete(`${BASE_API_ENDPOINT}/api/aranceles-ml/${arancelId}/`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Éxito',
+                    text: 'Arancel de Mercado Libre eliminado correctamente.'
+                });
+                
+                fetchArancelesML();
+            } catch (err) {
+                console.error('Error al eliminar arancel ML:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: err.response?.data?.detail || 'Error al eliminar el arancel.'
+                });
+            }
+        }
+    };
+
     const PLAN_CHOICES = [
         { value: 'CONTADO', label: 'Contado / Pago Único' },
         { value: '1', label: '1 Cuota' },
@@ -567,6 +794,15 @@ const PanelAdministracionTienda = () => {
                 >
                     Medios de Pago y Aranceles
                 </button>
+                {tiendaInfo && tiendaInfo.plataforma_ecommerce === 'MERCADO_LIBRE' && (
+                    <button
+                        onClick={() => setActiveTab('aranceles-ml')}
+                        style={activeTab === 'aranceles-ml' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
+                        className="panel-admin-tab"
+                    >
+                        Aranceles Mercado Libre
+                    </button>
+                )}
             </div>
 
             {/* TAB: USUARIOS */}
@@ -990,6 +1226,185 @@ const PanelAdministracionTienda = () => {
                             <button onClick={() => {
                                 setShowEditArancelModal(false);
                                 setEditArancelData(null);
+                            }} style={styles.modalCancelButton}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB: ARANCELES MERCADO LIBRE */}
+            {activeTab === 'aranceles-ml' && (
+                <div style={styles.tabContent}>
+                    <div style={styles.sectionHeader}>
+                        <h2>Aranceles Mercado Libre por Categoría</h2>
+                        <button onClick={() => {
+                            setArancelMLForm({
+                                categoria_ml: '',
+                                arancel_porcentaje: '0.00',
+                                tienda: selectedStoreSlug
+                            });
+                            setShowArancelMLForm(true);
+                        }} style={styles.addButton} className="panel-admin-add-button">
+                            + Nuevo Arancel ML
+                        </button>
+                    </div>
+
+                    {showArancelMLForm && (
+                        <div style={styles.formContainer} className="panel-admin-form-container">
+                            <h3>Nuevo Arancel Mercado Libre</h3>
+                            <form onSubmit={handleCreateArancelML}>
+                                <div style={styles.formGrid} className="panel-admin-form-grid">
+                                    <div style={styles.formGroup}>
+                                        <label>Categoría ML *</label>
+                                        <select
+                                            name="categoria_ml"
+                                            value={arancelMLForm.categoria_ml}
+                                            onChange={handleArancelMLFormChange}
+                                            required
+                                            style={styles.input}
+                                        >
+                                            <option value="">Seleccionar categoría...</option>
+                                            {categoriasML.map(cat => (
+                                                <option key={cat.id} value={cat.id}>
+                                                    {cat.name} ({cat.id})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {categoriasML.length === 0 && (
+                                            <p style={{ fontSize: '0.9em', color: '#666', marginTop: '5px' }}>
+                                                No hay categorías disponibles. Primero debes sincronizar productos con categorías de Mercado Libre.
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div style={styles.formGroup}>
+                                        <label>Arancel (%) *</label>
+                                        <input
+                                            type="number"
+                                            name="arancel_porcentaje"
+                                            value={arancelMLForm.arancel_porcentaje}
+                                            onChange={handleArancelMLFormChange}
+                                            required
+                                            min="0"
+                                            max="100"
+                                            step="0.01"
+                                            style={styles.input}
+                                        />
+                                    </div>
+                                </div>
+                                <div style={styles.formActions} className="panel-admin-form-actions">
+                                    <button type="submit" style={styles.saveButton}>
+                                        Crear
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowArancelMLForm(false);
+                                        }}
+                                        style={styles.cancelButton}
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    <div style={styles.infoBox}>
+                        <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Información</h3>
+                        <p style={{ marginBottom: '10px' }}>
+                            Los aranceles de Mercado Libre se configuran por categoría. Solo se muestran las categorías que has usado en tus productos sincronizados con Mercado Libre.
+                        </p>
+                        <p style={{ marginBottom: '10px', fontSize: '0.9em', color: '#666' }}>
+                            Si no ves ninguna categoría, primero debes sincronizar productos con Mercado Libre y asignarles categorías.
+                        </p>
+                    </div>
+
+                    <h3 style={{ marginTop: '30px', marginBottom: '15px' }}>Aranceles Configurados</h3>
+                    <div style={styles.tableContainer} className="panel-admin-table-container">
+                        <table style={styles.table} className="panel-admin-table">
+                            <thead>
+                                <tr>
+                                    <th style={styles.th}>Categoría</th>
+                                    <th style={styles.th}>ID Categoría</th>
+                                    <th style={styles.th}>Arancel (%)</th>
+                                    <th style={styles.th}>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {arancelesML.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" style={styles.td}>No hay aranceles de Mercado Libre configurados</td>
+                                    </tr>
+                                ) : (
+                                    arancelesML.map(arancel => (
+                                        <tr key={arancel.id}>
+                                            <td style={styles.td}>{arancel.categoria_ml_nombre || '-'}</td>
+                                            <td style={styles.td}>{arancel.categoria_ml_id || arancel.categoria_ml || '-'}</td>
+                                            <td style={styles.td}>{parseFloat(arancel.arancel_porcentaje).toFixed(2)}%</td>
+                                            <td style={styles.td}>
+                                                <div style={styles.actionButtons} className="panel-admin-action-buttons">
+                                                    <button
+                                                        onClick={() => handleEditArancelML(arancel)}
+                                                        style={styles.editButton}
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteArancelML(arancel.id)}
+                                                        style={styles.deleteButton}
+                                                    >
+                                                        Eliminar
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL DE EDICIÓN DE ARANCEL ML */}
+            {showEditArancelMLModal && editArancelMLData && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3>Editar Arancel Mercado Libre</h3>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Categoría ML *</label>
+                            <select
+                                value={editArancelMLData.categoria_ml}
+                                onChange={(e) => setEditArancelMLData({ ...editArancelMLData, categoria_ml: e.target.value })}
+                                style={styles.modalInput}
+                                required
+                            >
+                                <option value="">Seleccionar categoría...</option>
+                                {categoriasML.map(cat => (
+                                    <option key={cat.id} value={cat.id}>
+                                        {cat.name} ({cat.id})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Arancel (%) *</label>
+                            <input
+                                type="number"
+                                value={editArancelMLData.arancel_porcentaje}
+                                onChange={(e) => setEditArancelMLData({ ...editArancelMLData, arancel_porcentaje: e.target.value })}
+                                style={styles.modalInput}
+                                required
+                                min="0"
+                                max="100"
+                                step="0.01"
+                            />
+                        </div>
+                        <div style={styles.modalActions}>
+                            <button onClick={handleUpdateArancelML} style={styles.modalConfirmButton}>Guardar</button>
+                            <button onClick={() => {
+                                setShowEditArancelMLModal(false);
+                                setEditArancelMLData(null);
                             }} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>

@@ -20,16 +20,21 @@ firebase.initializeApp(firebaseConfig);
 // Obtener instancia de messaging
 const messaging = firebase.messaging();
 
-// Manejar mensajes en background (cuando la app está cerrada)
+// Manejar mensajes en background (cuando la app está cerrada o en segundo plano)
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Mensaje recibido en background:', payload);
   
   const notificationTitle = payload.notification?.title || 'Nueva Venta';
+  // Usar un tag único basado en el ID de la venta para evitar duplicados
+  // Si llegan múltiples notificaciones de la misma venta, se reemplazarán entre sí
+  const ventaId = payload.data?.venta_id || Date.now().toString();
+  const notificationTag = `venta-${ventaId}`;
+  
   const notificationOptions = {
     body: payload.notification?.body || 'Se ha realizado una nueva venta',
     icon: payload.notification?.icon || '/logo192.png',
     badge: '/logo192.png',
-    tag: 'venta-notification',
+    tag: notificationTag, // Tag único por venta para evitar duplicados
     requireInteraction: false,
     data: payload.data || {}
   };
