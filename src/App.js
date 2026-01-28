@@ -403,13 +403,7 @@ const AppContent = () => {
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />
               <Route path="/panel-administracion-tienda" element={
                 <ProtectedRoute adminOnly={true}>
-                  <PanelAdministracionTienda
-                    notificationPermission={notificationPermission}
-                    solicitarPermiso={solicitarPermiso}
-                    eliminarToken={eliminarToken}
-                    fcmToken={fcmToken}
-                    notificationError={notificationError}
-                  />
+                  <PanelAdministracionTienda />
                 </ProtectedRoute>
               } />
               <Route path="/integracion-mercadolibre" element={

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '../hooks/useNotifications';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
@@ -97,15 +98,10 @@ const mobileStyles = `
 const notificacionesSoportadas = () =>
     typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
 
-const PanelAdministracionTienda = ({
-    notificationPermission = 'default',
-    solicitarPermiso = () => {},
-    eliminarToken = () => {},
-    fcmToken = null,
-    notificationError = null
-}) => {
+const PanelAdministracionTienda = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
     const navigate = useNavigate();
+    const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken, error: notificationError } = useNotifications();
     
     const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios', 'medios-pago-aranceles', 'aranceles-ml'
     const [loading, setLoading] = useState(true);
