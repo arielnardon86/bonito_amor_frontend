@@ -232,7 +232,9 @@ const PuntoVenta = () => {
     }, [token, selectedStoreSlug]);
 
     // **********************************************
-    // EFECTO PRINCIPAL (Carga inicial)
+    // EFECTO PRINCIPAL (Carga inicial) - Similar a Productos.js
+    // Solo se ejecuta cuando cambian las condiciones de autenticación/tienda
+    // NO incluye filterTerm en dependencias para evitar llamadas duplicadas
     // **********************************************
     useEffect(() => {
         const loadInitialData = async () => {
@@ -245,8 +247,8 @@ const PuntoVenta = () => {
                         fetchAranceles(),
                         fetchTiendaInfo()
                     ]);
-                    // Se usa filterTerm para la carga inicial, para que esté en sync.
-                    await fetchProductos(1, filterTerm); 
+                    // Carga inicial sin filtro (el efecto de filterTerm se encargará de aplicar el filtro si existe)
+                    await fetchProductos(1, filterTerm || ''); 
                 } catch (err) {
                     console.error("Fallo al inicializar datos:", err);
                     setError(prev => prev || 'Fallo crítico al iniciar el Punto de Venta.');
@@ -262,29 +264,34 @@ const PuntoVenta = () => {
         };
         loadInitialData();
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, token, 
-        fetchMetodosPago, fetchAranceles, fetchTiendaInfo, fetchProductos, filterTerm]);
+        fetchMetodosPago, fetchAranceles, fetchTiendaInfo, fetchProductos]);
+        // NOTA: filterTerm NO está en las dependencias para evitar llamadas duplicadas
 
     // **********************************************
-    // CAMBIO 2: NUEVO EFECTO CON DEBOUNCE PARA filterTerm
+    // EFECTO CON DEBOUNCE PARA filterTerm - Similar a Productos.js pero con debounce
+    // Este es el único efecto que debe ejecutarse cuando cambia filterTerm
     // **********************************************
     useEffect(() => {
+        // No ejecutar si no hay tienda seleccionada o no está autenticado
+        if (!selectedStoreSlug || !isAuthenticated || authLoading) {
+            return;
+        }
+        
         setLoadingProducts(true);
         const handler = setTimeout(() => {
-            if (selectedStoreSlug) { 
-                // Llama a fetchProductos con el término de filtro después del delay
-                fetchProductos(1, filterTerm)
-                    .catch(err => console.error("Error al filtrar productos:", err))
-                    .finally(() => setLoadingProducts(false));
-            } else {
-                 setLoadingProducts(false);
-            }
-        }, 500); // Debounce de 500ms
+            fetchProductos(1, filterTerm)
+                .catch(err => {
+                    console.error("Error al filtrar productos:", err);
+                    setError('Error al buscar productos.');
+                })
+                .finally(() => setLoadingProducts(false));
+        }, 300); // Debounce de 300ms (más rápido y responsivo, similar a Productos)
         
         // Función de limpieza para cancelar el timeout anterior si filterTerm cambia de nuevo
         return () => {
             clearTimeout(handler);
         };
-    }, [filterTerm, fetchProductos, selectedStoreSlug]);
+    }, [filterTerm, fetchProductos, selectedStoreSlug, isAuthenticated, authLoading]);
     // **********************************************
     
     // --- FUNCIÓN HELPER (Calcula total CON ajustes de usuario, SIN redondeo) ---
