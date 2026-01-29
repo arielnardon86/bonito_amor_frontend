@@ -275,14 +275,29 @@ export const useNotifications = () => {
                 unsubscribe = onMessageListener((payload) => {
                     console.log('Notificación recibida en primer plano:', payload);
                     
-                    // Cuando la app está en primer plano, Firebase NO muestra notificaciones automáticamente
-                    // Solo el Service Worker las muestra cuando la app está en segundo plano
-                    // Sin embargo, para evitar duplicados, NO mostramos notificación manualmente aquí
-                    // porque el Service Worker puede estar activo y mostrar la notificación automáticamente
-                    // incluso cuando la app está en primer plano en algunos navegadores
-                    
-                    // Si necesitas actualizar la UI cuando llega una notificación, hazlo aquí
-                    // pero NO uses new Notification() para evitar duplicados
+                    // Cuando la app está en primer plano, mostrar la notificación manualmente
+                    // El Service Worker NO mostrará notificación si hay una ventana visible
+                    // Usar el mismo tag que el Service Worker para evitar duplicados
+                    if (payload.notification && typeof Notification !== 'undefined' && document.visibilityState === 'visible') {
+                        try {
+                            const ventaId = payload.data?.venta_id || Date.now().toString();
+                            const notificationTag = `venta-${ventaId}`;
+                            
+                            // Usar el mismo tag que el Service Worker
+                            // Si el Service Worker ya mostró la notificación, esta la reemplazará
+                            // Si no, esta será la única notificación mostrada
+                            new Notification(payload.notification.title, {
+                                body: payload.notification.body,
+                                icon: payload.notification.icon || '/logo192.png',
+                                badge: '/logo192.png',
+                                tag: notificationTag, // Tag único por venta - reemplaza notificaciones anteriores con el mismo tag
+                                requireInteraction: false,
+                                data: payload.data || {}
+                            });
+                        } catch (notifError) {
+                            console.warn('Error al mostrar notificación en primer plano (no crítico):', notifError);
+                        }
+                    }
                 });
             }
 

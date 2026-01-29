@@ -21,8 +21,27 @@ firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
 // Manejar mensajes en background (cuando la app está cerrada o en segundo plano)
-messaging.onBackgroundMessage((payload) => {
+messaging.onBackgroundMessage(async (payload) => {
   console.log('[firebase-messaging-sw.js] Mensaje recibido en background:', payload);
+  
+  // Verificar si hay ventanas visibles (app en primer plano)
+  // Si hay ventanas visibles, NO mostrar notificación aquí para evitar duplicados
+  // El listener de primer plano se encargará de mostrar la notificación si es necesario
+  const clientList = await self.clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true
+  });
+  
+  const hasVisibleWindow = clientList.some(client => 
+    client.visibilityState === 'visible' && client.focused
+  );
+  
+  // Si hay una ventana visible y enfocada, no mostrar notificación aquí
+  // Esto evita duplicados cuando la app está en primer plano
+  if (hasVisibleWindow) {
+    console.log('[firebase-messaging-sw.js] Ventana visible detectada, no mostrar notificación desde SW para evitar duplicados');
+    return;
+  }
   
   const notificationTitle = payload.notification?.title || 'Nueva Venta';
   // Usar un tag único basado en el ID de la venta para evitar duplicados
