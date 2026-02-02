@@ -33,7 +33,24 @@ const RegistroCompras = () => {
     const [prevPageUrl, setPrevPageUrl] = useState(null);
     const [currentPageNumber, setCurrentPageNumber] = useState(1);
 
-    const fetchCompras = useCallback(async (pageUrl = `${BASE_API_ENDPOINT}/api/compras/`) => {
+    // Filtros (pendientes y aplicados, como en Métricas)
+    const [pendingDateFrom, setPendingDateFrom] = useState('');
+    const [pendingDateTo, setPendingDateTo] = useState('');
+    const [pendingSearch, setPendingSearch] = useState('');
+    const [filterDateFrom, setFilterDateFrom] = useState('');
+    const [filterDateTo, setFilterDateTo] = useState('');
+    const [filterSearch, setFilterSearch] = useState('');
+    const [validationError, setValidationError] = useState(null);
+
+    const buildParams = useCallback(() => {
+        const params = { tienda_slug: selectedStoreSlug };
+        if (filterDateFrom) params.date_from = filterDateFrom;
+        if (filterDateTo) params.date_to = filterDateTo;
+        if (filterSearch && filterSearch.trim()) params.search = filterSearch.trim();
+        return params;
+    }, [selectedStoreSlug, filterDateFrom, filterDateTo, filterSearch]);
+
+    const fetchCompras = useCallback(async (pageUrl = null) => {
         if (!token || !selectedStoreSlug) {
             setLoadingCompras(false);
             return;
@@ -41,19 +58,19 @@ const RegistroCompras = () => {
 
         setLoadingCompras(true);
         try {
-            const response = await axios.get(pageUrl, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: {
-                    tienda_slug: selectedStoreSlug,
-                }
-            });
-            setCompras(response.data.results);
+            const baseUrl = `${BASE_API_ENDPOINT}/api/compras/`;
+            const usePaginatedUrl = pageUrl && pageUrl.includes('page=');
+            const headers = { 'Authorization': `Bearer ${token}` };
+            const response = usePaginatedUrl
+                ? await axios.get(pageUrl, { headers })
+                : await axios.get(baseUrl, { headers, params: buildParams() });
+            setCompras(response.data.results ?? []);
             setNextPageUrl(response.data.next);
             setPrevPageUrl(response.data.previous);
             
-            if (pageUrl.includes('page=')) {
+            if (usePaginatedUrl && pageUrl) {
                 const urlParams = new URLSearchParams(new URL(pageUrl).search);
-                setCurrentPageNumber(parseInt(urlParams.get('page')) || 1);
+                setCurrentPageNumber(parseInt(urlParams.get('page'), 10) || 1);
             } else {
                 setCurrentPageNumber(1);
             }
@@ -64,7 +81,7 @@ const RegistroCompras = () => {
         } finally {
             setLoadingCompras(false);
         }
-    }, [token, selectedStoreSlug]);
+    }, [token, selectedStoreSlug, buildParams]);
 
     const handleCreateCompra = async (e) => {
         e.preventDefault();
@@ -149,6 +166,40 @@ const RegistroCompras = () => {
         }
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchCompras]);
 
+    const handleApplyFilters = () => {
+        if (pendingDateFrom && pendingDateTo && pendingDateFrom > pendingDateTo) {
+            setValidationError('La fecha "Desde" debe ser anterior o igual a "Hasta".');
+            return;
+        }
+        setValidationError(null);
+        setFilterDateFrom(pendingDateFrom);
+        setFilterDateTo(pendingDateTo);
+        setFilterSearch(pendingSearch.trim());
+    };
+
+    const handleMesActual = () => {
+        setValidationError(null);
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = (today.getMonth() + 1).toString().padStart(2, '0');
+        const firstDay = `${y}-${m}-01`;
+        const lastDay = `${y}-${m}-${new Date(y, today.getMonth() + 1, 0).getDate().toString().padStart(2, '0')}`;
+        setPendingDateFrom(firstDay);
+        setPendingDateTo(lastDay);
+        setFilterDateFrom(firstDay);
+        setFilterDateTo(lastDay);
+    };
+
+    const handleClearFilters = () => {
+        setValidationError(null);
+        setPendingDateFrom('');
+        setPendingDateTo('');
+        setPendingSearch('');
+        setFilterDateFrom('');
+        setFilterDateTo('');
+        setFilterSearch('');
+    };
+
     if (authLoading || (isAuthenticated && !user)) {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
@@ -214,6 +265,52 @@ const RegistroCompras = () => {
                 </form>
             </div>
 
+            {/* Filtros */}
+            <div style={styles.filtersContainer}>
+                <div style={styles.periodSection}>
+                    <span style={styles.periodSectionTitle}>Período</span>
+                    <div style={styles.periodInputs}>
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Desde</label>
+                            <input
+                                type="date"
+                                value={pendingDateFrom}
+                                onChange={(e) => { setValidationError(null); setPendingDateFrom(e.target.value); }}
+                                style={styles.filterInput}
+                            />
+                        </div>
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Hasta</label>
+                            <input
+                                type="date"
+                                value={pendingDateTo}
+                                onChange={(e) => { setValidationError(null); setPendingDateTo(e.target.value); }}
+                                style={styles.filterInput}
+                            />
+                        </div>
+                    </div>
+                    <p style={styles.periodHint}>Dejar vacío = mostrar todos. Solo Desde = ese día en adelante.</p>
+                </div>
+                <div style={styles.filtersRow2}>
+                    <div style={styles.filterGroup}>
+                        <label style={styles.filterLabel}>Buscar por concepto</label>
+                        <input
+                            type="text"
+                            placeholder="Palabras clave..."
+                            value={pendingSearch}
+                            onChange={(e) => setPendingSearch(e.target.value)}
+                            style={styles.filterInput}
+                        />
+                    </div>
+                    <div style={styles.filterActions}>
+                        <button onClick={handleMesActual} style={{ ...styles.filterButton, ...styles.filterButtonSecondary }}>Mes actual</button>
+                        <button onClick={handleApplyFilters} style={styles.filterButton}>Aplicar</button>
+                        <button onClick={handleClearFilters} style={{ ...styles.filterButton, ...styles.filterButtonMuted }}>Limpiar</button>
+                    </div>
+                </div>
+                {validationError && <p style={styles.validationError}>{validationError}</p>}
+            </div>
+
             {/* Listado de egresos */}
             <div style={styles.tableContainer}>
                 <h2 style={styles.sectionTitle}>Historial</h2>
@@ -271,6 +368,15 @@ const RegistroCompras = () => {
                     }
                     [style*="submitButton"] {
                         width: 100%;
+                    }
+                    [style*="filtersRow2"] {
+                        flex-direction: column;
+                    }
+                    [style*="filterGroup"] {
+                        min-width: 100%;
+                    }
+                    [style*="filterActions"] button {
+                        flex: 1;
                     }
                     [style*="tableContainer"] {
                         overflow-x: auto;
@@ -336,7 +442,85 @@ const styles = {
         padding: '20px',
         borderRadius: '8px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        marginBottom: '30px',
+        marginBottom: '20px',
+    },
+    filtersContainer: {
+        backgroundColor: '#ffffff',
+        padding: '20px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        marginBottom: '20px',
+    },
+    periodSection: {
+        marginBottom: 16,
+    },
+    periodSectionTitle: {
+        display: 'block',
+        fontWeight: 600,
+        marginBottom: 8,
+        color: '#2c3e50',
+    },
+    periodInputs: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 16,
+        alignItems: 'flex-end',
+    },
+    periodHint: {
+        margin: '8px 0 0',
+        fontSize: 12,
+        color: '#666',
+    },
+    filtersRow2: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 16,
+        alignItems: 'flex-end',
+        marginTop: 16,
+    },
+    filterGroup: {
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 160,
+    },
+    filterLabel: {
+        marginBottom: 4,
+        fontWeight: 500,
+        color: '#555',
+        fontSize: 14,
+    },
+    filterInput: {
+        padding: '8px 12px',
+        border: '1px solid #ccc',
+        borderRadius: 6,
+        fontSize: 14,
+    },
+    filterActions: {
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap',
+    },
+    filterButton: {
+        padding: '8px 16px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        border: 'none',
+        borderRadius: 6,
+        cursor: 'pointer',
+        fontWeight: 500,
+        fontSize: 14,
+    },
+    filterButtonSecondary: {
+        backgroundColor: '#6c757d',
+    },
+    filterButtonMuted: {
+        backgroundColor: '#adb5bd',
+        color: '#333',
+    },
+    validationError: {
+        marginTop: 8,
+        color: '#dc3545',
+        fontSize: 14,
     },
     form: {
         display: 'flex',
