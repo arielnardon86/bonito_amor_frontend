@@ -20,6 +20,7 @@ const normalizeApiUrl = (url) => {
 };
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
+const PAGE_SIZE = 10; // DRF default
 
 const RegistroCompras = () => {
     const { token, isAuthenticated, user, loading: authLoading, selectedStoreSlug } = useAuth();
@@ -32,6 +33,7 @@ const RegistroCompras = () => {
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
     const [currentPageNumber, setCurrentPageNumber] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
 
     // Filtros (pendientes y aplicados, como en Métricas)
     const [pendingDateFrom, setPendingDateFrom] = useState('');
@@ -67,6 +69,8 @@ const RegistroCompras = () => {
             setCompras(response.data.results ?? []);
             setNextPageUrl(response.data.next);
             setPrevPageUrl(response.data.previous);
+            const count = response.data.count ?? 0;
+            setTotalPages(Math.max(1, Math.ceil(count / PAGE_SIZE)));
             
             if (usePaginatedUrl && pageUrl) {
                 const urlParams = new URLSearchParams(new URL(pageUrl).search);
@@ -348,7 +352,7 @@ const RegistroCompras = () => {
                     <button onClick={() => fetchCompras(prevPageUrl)} disabled={!prevPageUrl} style={styles.paginationButton}>
                         Anterior
                     </button>
-                    <span style={styles.pageNumber}>Página {currentPageNumber}</span>
+                    <span style={styles.pageNumber}>Página {currentPageNumber} de {totalPages}</span>
                     <button onClick={() => fetchCompras(nextPageUrl)} disabled={!nextPageUrl} style={styles.paginationButton}>
                         Siguiente
                     </button>

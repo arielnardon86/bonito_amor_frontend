@@ -1183,12 +1183,12 @@ const PuntoVenta = () => {
 
                         {pageInfo.totalPages > 1 && (
                             <div style={styles.paginationContainer} className="pagination-container">
-                                <button onClick={nextPageHandler} disabled={!pageInfo.next} style={styles.paginationButton} className="pagination-button">
-                                    Siguiente
-                                </button>
-                                <span style={styles.pageNumber}>Página {pageInfo.currentPage} de {pageInfo.totalPages}</span>
                                 <button onClick={prevPageHandler} disabled={!pageInfo.previous} style={styles.paginationButton} className="pagination-button">
                                     Anterior
+                                </button>
+                                <span style={styles.pageNumber}>Página {pageInfo.currentPage} de {pageInfo.totalPages}</span>
+                                <button onClick={nextPageHandler} disabled={!pageInfo.next} style={styles.paginationButton} className="pagination-button">
+                                    Siguiente
                                 </button>
                             </div>
                         )}
