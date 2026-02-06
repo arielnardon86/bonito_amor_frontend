@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2'; // <-- NUEVO: Importamos SweetAlert2
+import { formatearMonto } from '../utils/formatearMonto';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000'; 
 
