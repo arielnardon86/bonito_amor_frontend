@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import JsBarcode from 'jsbarcode';
+import { formatearMonto } from '../utils/formatearMonto';
 
 const EtiquetasImpresion = () => {
     const location = useLocation();
@@ -38,7 +39,7 @@ const EtiquetasImpresion = () => {
                     tempDiv.innerHTML = `
                         <p class="product-name">${producto.nombre}</p>
                         <div class="barcode-wrapper"></div>
-                        <p class="price">Precio: $${parseFloat(producto.precio).toFixed(2)}</p>
+                        <p class="price">Precio: ${formatearMonto(producto.precio)}</p>
                     `;
                     if (svgElement) {
                         tempDiv.querySelector('.barcode-wrapper').appendChild(svgElement);

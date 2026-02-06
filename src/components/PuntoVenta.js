@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
-import { useSales } from './SalesContext'; 
+import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
+import { formatearMonto } from '../utils/formatearMonto';
 
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -564,27 +565,27 @@ const PuntoVenta = () => {
         }
         // --- FIN LÓGICA CÁLCULO BACKEND ---
 
-        let htmlMessage = `Confirmas la venta por un total de <strong>$${finalTotal.toFixed(2)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?`;
+        let htmlMessage = `Confirmas la venta por un total de <strong>${formatearMonto(finalTotal)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?`;
         
         if (arancelMonto > 0) {
             htmlMessage += `<br><br><strong>Plan/Arancel:</strong> ${arancelInfo.nombre_plan} (${parseFloat(arancelInfo.arancel_porcentaje).toFixed(2)}%)`;
-            htmlMessage += `<br><strong>Monto del Arancel (Egreso):</strong> $${arancelMonto.toFixed(2)}`;
+            htmlMessage += `<br><strong>Monto del Arancel (Egreso):</strong> ${formatearMonto(arancelMonto)}`;
         }
 
         // Mensaje de ajuste (Recargo o Descuento)
         let adjustmentMessage = '';
         if (datosAjusteParaBackend.recargo_monto > 0) {
-            adjustmentMessage = `<br>(Ajuste Total: +$${datosAjusteParaBackend.recargo_monto.toFixed(2)})`;
+            adjustmentMessage = `<br>(Ajuste Total: +${formatearMonto(datosAjusteParaBackend.recargo_monto)})`;
         } else if (datosAjusteParaBackend.recargo_porcentaje > 0) {
             adjustmentMessage = `<br>(Recargo: ${datosAjusteParaBackend.recargo_porcentaje.toFixed(2)}%)`;
         } else if (datosAjusteParaBackend.descuento_monto > 0) {
-            adjustmentMessage = `<br>(Ajuste Total: -$${datosAjusteParaBackend.descuento_monto.toFixed(2)})`;
+            adjustmentMessage = `<br>(Ajuste Total: -${formatearMonto(datosAjusteParaBackend.descuento_monto)})`;
         } else if (datosAjusteParaBackend.descuento_porcentaje > 0) {
             adjustmentMessage = `<br>(Descuento: ${datosAjusteParaBackend.descuento_porcentaje.toFixed(2)}%)`;
         }
         
         if (redondearMonto) {
-             htmlMessage += `<br><strong>(Monto final redondeado a $${finalTotal.toFixed(2)})</strong>`;
+             htmlMessage += `<br><strong>(Monto final redondeado a ${formatearMonto(finalTotal)})</strong>`;
              if (adjustmentMessage) {
                  htmlMessage += adjustmentMessage;
              }
@@ -931,7 +932,7 @@ const PuntoVenta = () => {
                 {productoSeleccionado && (
                     <div style={styles.foundProductCard} className="found-product-card">
                         <p style={styles.foundProductText}>
-                            <strong>{productoSeleccionado.nombre}</strong> — ${parseFloat(productoSeleccionado.precio).toFixed(2)} · Stock: {productoSeleccionado.stock}
+                            <strong>{productoSeleccionado.nombre}</strong> — {formatearMonto(productoSeleccionado.precio)} · Stock: {productoSeleccionado.stock}
                         </p>
                         <div style={styles.productActions} className="product-actions">
                             <button
@@ -970,8 +971,8 @@ const PuntoVenta = () => {
                                                         <button onClick={() => handleAddProductoEnVenta(item.product, 1)} style={styles.quantityButton}>+</button>
                                                     </div>
                                                 </td>
-                                                <td style={styles.td}>${parseFloat(item.product.precio).toFixed(2)}</td>
-                                                <td style={styles.td}>${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
+                                                <td style={styles.td}>{formatearMonto(item.product.precio)}</td>
+                                                <td style={styles.td}>{formatearMonto(item.quantity * parseFloat(item.product.precio))}</td>
                                                 <td style={styles.td}>
                                                     <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} style={styles.removeButton}>
                                                         Quitar
@@ -983,7 +984,7 @@ const PuntoVenta = () => {
                                 </table>
                             </div>
                         </div>
-                        <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4>
+                        <h4 style={styles.totalVenta}>Subtotal: {formatearMonto(activeCart.total)}</h4>
                         <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
                             <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de pago</label>
                             <select
@@ -1024,7 +1025,7 @@ const PuntoVenta = () => {
                             </div>
                         )}
                         {isMetodoFinancieroActivo && arancelSeleccionadoId && (
-                            <p style={styles.arancelDisplay}>Arancel: ${calculateArancel().toFixed(2)}</p>
+                            <p style={styles.arancelDisplay}>Arancel: {formatearMonto(calculateArancel())}</p>
                         )}
                         <div style={styles.ajustesContainer} className="ajustesContainer">
                             <div style={styles.ajusteGrupo} className="ajusteGrupo">
@@ -1090,7 +1091,7 @@ const PuntoVenta = () => {
                             />
                             <label htmlFor="redondearMonto" style={styles.redondearLabel}>Redondear total (múlt. 100 ↓)</label>
                         </div>
-                        <h4 style={styles.finalTotalVenta}>Total: ${calculateFinalTotal().toFixed(2)}</h4>
+                        <h4 style={styles.finalTotalVenta}>Total: {formatearMonto(calculateFinalTotal())}</h4>
                         <button onClick={handleProcesarVenta} style={styles.processSaleButton} className="process-sale-button">
                             Procesar venta
                         </button>
@@ -1157,7 +1158,7 @@ const PuntoVenta = () => {
                                         productos.map(product => (
                                             <tr key={product.id} style={styles.tableRow}>
                                                 <td style={styles.td}>{product.nombre}</td>
-                                                <td style={styles.td}>${parseFloat(product.precio).toFixed(2)}</td>
+                                                <td style={styles.td}>{formatearMonto(product.precio)}</td>
                                                 <td style={styles.td}>{product.stock}</td>
                                                 <td style={styles.td}>
                                                     <button
@@ -1458,5 +1459,7 @@ const styles = {
         boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
     },
 };
+
+export default PuntoVenta;
 
 export default PuntoVenta;

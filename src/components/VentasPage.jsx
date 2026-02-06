@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { formatearMonto } from '../utils/formatearMonto';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -525,7 +526,7 @@ const VentasPage = () => {
                                                 </span>
                                             )}
                                         </td>
-                                        <td style={styles.td}>${parseFloat(venta.total || 0).toFixed(2)}</td>
+                                        <td style={styles.td}>{formatearMonto(venta.total || 0)}</td>
                                         <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
                                         <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
                                         <td style={styles.td}>
@@ -601,7 +602,7 @@ const VentasPage = () => {
                                                             <strong>Venta Original:</strong> {venta.cambio_devolucion_nota_credito.venta_original_id}
                                                         </p>
                                                         <p style={{ margin: '5px 0' }}>
-                                                            <strong>Saldo a Favor:</strong> ${parseFloat(venta.cambio_devolucion_nota_credito.saldo_a_favor || 0).toFixed(2)}
+                                                            <strong>Saldo a Favor:</strong> {formatearMonto(venta.cambio_devolucion_nota_credito.saldo_a_favor || 0)}
                                                         </p>
                                                         <button
                                                             onClick={() => handleVerCambioDevolucion(venta.cambio_devolucion_nota_credito.id)}
@@ -630,7 +631,7 @@ const VentasPage = () => {
                                                             <strong>Venta Original:</strong> {venta.cambio_devolucion_diferencia.venta_original_id}
                                                         </p>
                                                         <p style={{ margin: '5px 0' }}>
-                                                            <strong>Monto Diferencia:</strong> ${parseFloat(venta.cambio_devolucion_diferencia.monto_diferencia || 0).toFixed(2)}
+                                                            <strong>Monto Diferencia:</strong> {formatearMonto(venta.cambio_devolucion_diferencia.monto_diferencia || 0)}
                                                         </p>
                                                         <button
                                                             onClick={() => handleVerCambioDevolucion(venta.cambio_devolucion_diferencia.id)}
@@ -704,8 +705,8 @@ const VentasPage = () => {
                                                                     <tr key={detalle.id}>
                                                                         <td style={styles.detailTd}>{productoNombre}</td>
                                                                         <td style={styles.detailTd}>{detalle.cantidad}</td>
-                                                                        <td style={styles.detailTd}>${precioUnitarioAjustado.toFixed(2)}</td>
-                                                                        <td style={styles.detailTd}>${subtotalAjustado.toFixed(2)}</td>
+                                                                        <td style={styles.detailTd}>{formatearMonto(precioUnitarioAjustado)}</td>
+                                                                        <td style={styles.detailTd}>{formatearMonto(subtotalAjustado)}</td>
                                                                         <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
                                                                         <td style={styles.detailTd}>
                                                                             {!venta.anulada && !detalle.anulado_individualmente && !isStaffOnly && (
@@ -733,11 +734,11 @@ const VentasPage = () => {
                                                 {(venta.descuento_porcentaje > 0 || venta.descuento_monto > 0 || venta.recargo_porcentaje > 0 || venta.recargo_monto > 0) && (
                                                     <p style={styles.discountDisplay}>
                                                         {venta.recargo_monto > 0 ? 
-                                                            `Recargo aplicado a la venta: $${parseFloat(venta.recargo_monto).toFixed(2)}` :
+                                                            `Recargo aplicado a la venta: ${formatearMonto(venta.recargo_monto)}` :
                                                         venta.recargo_porcentaje > 0 ?
                                                             `Recargo aplicado a la venta: ${parseFloat(venta.recargo_porcentaje).toFixed(2)}%` :
                                                         venta.descuento_monto > 0 ? 
-                                                            `Descuento aplicado a la venta: $${parseFloat(venta.descuento_monto).toFixed(2)}` :
+                                                            `Descuento aplicado a la venta: ${formatearMonto(venta.descuento_monto)}` :
                                                             `Descuento aplicado a la venta: ${parseFloat(venta.descuento_porcentaje).toFixed(2)}%`
                                                         }
                                                     </p>
@@ -806,11 +807,11 @@ const VentasPage = () => {
                             <p><strong>Estado:</strong> {cambioDevolucionDetalle.estado}</p>
                             <p><strong>Fecha:</strong> {new Date(cambioDevolucionDetalle.fecha_creacion).toLocaleString()}</p>
                             <p><strong>Venta Original:</strong> {cambioDevolucionDetalle.venta_original_id}</p>
-                            <p><strong>Monto Devolución:</strong> ${parseFloat(cambioDevolucionDetalle.monto_devolucion || 0).toFixed(2)}</p>
-                            <p><strong>Monto Nuevo:</strong> ${parseFloat(cambioDevolucionDetalle.monto_nuevo || 0).toFixed(2)}</p>
-                            <p><strong>Diferencia:</strong> ${parseFloat(cambioDevolucionDetalle.monto_diferencia || 0).toFixed(2)}</p>
+                            <p><strong>Monto Devolución:</strong> {formatearMonto(cambioDevolucionDetalle.monto_devolucion || 0)}</p>
+                            <p><strong>Monto Nuevo:</strong> {formatearMonto(cambioDevolucionDetalle.monto_nuevo || 0)}</p>
+                            <p><strong>Diferencia:</strong> {formatearMonto(cambioDevolucionDetalle.monto_diferencia || 0)}</p>
                             {parseFloat(cambioDevolucionDetalle.saldo_a_favor || 0) > 0 && (
-                                <p><strong>Saldo a Favor:</strong> ${parseFloat(cambioDevolucionDetalle.saldo_a_favor).toFixed(2)}</p>
+                                <p><strong>Saldo a Favor:</strong> {formatearMonto(cambioDevolucionDetalle.saldo_a_favor)}</p>
                             )}
                         </div>
                         
@@ -842,16 +843,16 @@ const VentasPage = () => {
                                                 </td>
                                                 <td style={{ padding: '8px', border: '1px solid #ddd' }}>{detalle.cantidad}</td>
                                                 <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                                                    {detalle.precio_unitario_devuelto ? `$${parseFloat(detalle.precio_unitario_devuelto).toFixed(2)}` : '-'}
+                                                    {detalle.precio_unitario_devuelto ? formatearMonto(detalle.precio_unitario_devuelto) : '-'}
                                                 </td>
                                                 <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                                                    {detalle.precio_unitario_nuevo ? `$${parseFloat(detalle.precio_unitario_nuevo).toFixed(2)}` : '-'}
+                                                    {detalle.precio_unitario_nuevo ? formatearMonto(detalle.precio_unitario_nuevo) : '-'}
                                                 </td>
                                                 <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                                                    ${parseFloat(detalle.subtotal_devuelto || 0).toFixed(2)}
+                                                    {formatearMonto(detalle.subtotal_devuelto || 0)}
                                                 </td>
                                                 <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                                                    ${parseFloat(detalle.subtotal_nuevo || 0).toFixed(2)}
+                                                    {formatearMonto(detalle.subtotal_nuevo || 0)}
                                                 </td>
                                             </tr>
                                         ))}

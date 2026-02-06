@@ -1,7 +1,7 @@
-//BONITO_AMOR/frontend/src/components/MetricasVentas.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
+import { formatearMonto } from '../utils/formatearMonto';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -330,28 +330,28 @@ const MetricasVentas = () => {
                         <div style={styles.heroCards} className="metricas-hero-cards">
                             <div style={{ ...styles.heroCard, borderLeftColor: '#27ae60' }}>
                                 <h3 style={styles.heroCardTitle}>Total de ventas</h3>
-                                <p style={styles.heroCardValue}>${parseFloat(metrics?.total_ventas_periodo || 0).toFixed(2)}</p>
+                                <p style={styles.heroCardValue}>{formatearMonto(metrics?.total_ventas_periodo || 0)}</p>
                                 <VarBadge v={varVentas} />
                             </div>
                             <div style={{ ...styles.heroCard, borderLeftColor: '#e67e22' }}>
                                 <h3 style={styles.heroCardTitle}>Total de egresos</h3>
-                                <p style={styles.heroCardValue}>${parseFloat(metrics?.total_compras_periodo || 0).toFixed(2)}</p>
+                                <p style={styles.heroCardValue}>{formatearMonto(metrics?.total_compras_periodo || 0)}</p>
                                 <VarBadge v={varEgresos} />
                             </div>
                             <div style={{ ...styles.heroCard, borderLeftColor: '#3498db' }}>
                                 <h3 style={styles.heroCardTitle}>Rentabilidad bruta</h3>
-                                <p style={styles.heroCardValue}>${parseFloat(metrics?.rentabilidad_bruta_periodo || 0).toFixed(2)}</p>
+                                <p style={styles.heroCardValue}>{formatearMonto(metrics?.rentabilidad_bruta_periodo || 0)}</p>
                                 <VarBadge v={varRent} />
                             </div>
                         </div>
                         <div style={styles.summaryCards} className="metricas-summary-cards">
                             <div style={styles.card}>
                                 <h3 style={styles.cardTitle}>Costo de productos vendidos</h3>
-                                <p style={styles.cardValue}>${parseFloat(metrics?.total_costo_vendido_periodo || 0).toFixed(2)}</p>
+                                <p style={styles.cardValue}>{formatearMonto(metrics?.total_costo_vendido_periodo || 0)}</p>
                             </div>
                             <div style={styles.card}>
                                 <h3 style={styles.cardTitle}>Arancel Total Ventas</h3>
-                                <p style={styles.cardValue}>${parseFloat(metrics?.total_arancel_ventas || 0).toFixed(2)}</p>
+                                <p style={styles.cardValue}>{formatearMonto(metrics?.total_arancel_ventas || 0)}</p>
                             </div>
                             <div style={styles.card}>
                                 <h3 style={styles.cardTitle}>Margen de Rentabilidad</h3>
@@ -363,7 +363,7 @@ const MetricasVentas = () => {
                             </div>
                             <div style={styles.card}>
                                 <h3 style={styles.cardTitle}>Monto Total del Stock</h3>
-                                <p style={styles.cardValue}>${parseFloat(inventoryMetrics?.total_monto_stock_precio || 0).toFixed(2)}</p>
+                                <p style={styles.cardValue}>{formatearMonto(inventoryMetrics?.total_monto_stock_precio || 0)}</p>
                             </div>
                         </div>
                     </>
@@ -413,7 +413,7 @@ const MetricasVentas = () => {
                                 {metrics.ventas_por_usuario.map((sellerMetric, index) => (
                                     <tr key={index}>
                                         <td style={styles.td}>{sellerMetric.usuario__username}</td>
-                                        <td style={styles.td}>${parseFloat(sellerMetric.total_vendido).toFixed(2)}</td>
+                                        <td style={styles.td}>{formatearMonto(sellerMetric.total_vendido)}</td>
                                         <td style={styles.td}>{sellerMetric.cantidad_ventas}</td>
                                     </tr>
                                 ))}
@@ -438,7 +438,7 @@ const MetricasVentas = () => {
                                 {metrics.ventas_por_metodo_pago.map((methodMetric, index) => (
                                     <tr key={index}>
                                         <td style={styles.td}>{methodMetric.metodo_pago}</td>
-                                        <td style={styles.td}>${parseFloat(methodMetric.total_vendido).toFixed(2)}</td>
+                                        <td style={styles.td}>{formatearMonto(methodMetric.total_vendido)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -464,7 +464,7 @@ const MetricasVentas = () => {
                                     <tr key={index}>
                                         <td style={styles.td}>{egreso.mes}</td>
                                         <td style={styles.td}>{egreso.year}</td>
-                                        <td style={styles.td}>${parseFloat(egreso.total_egresos).toFixed(2)}</td>
+                                        <td style={styles.td}>{formatearMonto(egreso.total_egresos)}</td>
                                     </tr>
                                 ))}
                             </tbody>

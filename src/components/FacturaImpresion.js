@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import { formatearMonto } from '../utils/formatearMonto';
 
 const FacturaImpresion = () => {
     const location = useLocation();
@@ -179,8 +180,8 @@ const FacturaImpresion = () => {
                                     <tr style="border-bottom: 1px dashed #ccc;">
                                         <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none;">${cantidad}</td>
                                         <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none;">${nombre}</td>
-                                        <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">$${parseFloat(precio).toFixed(2)}</td>
-                                        <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">$${subtotal.toFixed(2)}</td>
+                                        <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(precio)}</td>
+                                        <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(subtotal)}</td>
                                     </tr>
                                     `;
                                 }).join('') : '<tr><td colspan="4" style="text-align: center; padding: 2mm; color: #000;">No hay detalles disponibles</td></tr>'}
@@ -189,12 +190,12 @@ const FacturaImpresion = () => {
                     </div>
                     
                     <div class="totals" style="border-top: 2px solid #000; padding-top: 3mm;">
-                        <p style="font-size: 3mm; color: #000; margin: 1mm 0; text-align: right; -webkit-font-smoothing: none;"><strong>Subtotal:</strong> $${subtotalInicialConIva.toFixed(2)}</p>
-                        ${descuentoMonto > 0 ? `<p style="font-size: 3mm; color: #000; margin: 1mm 0; text-align: right; -webkit-font-smoothing: none;"><strong>Descuento${(venta?.descuento_porcentaje && venta.descuento_porcentaje > 0) ? ` (${venta.descuento_porcentaje}%)` : ''}:</strong> -$${descuentoMonto.toFixed(2)}</p>` : ''}
-                        ${recargoMonto > 0 ? `<p style="font-size: 3mm; color: #000; margin: 1mm 0; text-align: right; -webkit-font-smoothing: none;"><strong>Recargo${(venta?.recargo_porcentaje && venta.recargo_porcentaje > 0) ? ` (${venta.recargo_porcentaje}%)` : ''}:</strong> +$${recargoMonto.toFixed(2)}</p>` : ''}
-                        <p style="font-size: 3mm; color: #000; margin: 1mm 0; text-align: right; -webkit-font-smoothing: none;"><strong>Subtotal (sin IVA):</strong> $${subtotalFinalSinIva.toFixed(2)}</p>
-                        ${ivaFinal > 0 ? `<p style="font-size: 3mm; color: #000; margin: 1mm 0; text-align: right; -webkit-font-smoothing: none;"><strong>IVA 21%:</strong> $${ivaFinal.toFixed(2)}</p>` : ''}
-                        <p style="font-size: 4mm; font-weight: bold; color: #000; margin: 2mm 0; text-align: right; -webkit-font-smoothing: none; border-top: 1px solid #000; padding-top: 2mm;"><strong>TOTAL: $${totalFinal.toFixed(2)}</strong></p>
+                        <p style="font-size: 3mm; color: #000; margin: 1mm 0; text-align: right; -webkit-font-smoothing: none;"><strong>Subtotal:</strong> ${formatearMonto(subtotalInicialConIva)}</p>
+                        ${descuentoMonto > 0 ? `<p style="font-size: 3mm; color: #000; margin: 1mm 0; text-align: right; -webkit-font-smoothing: none;"><strong>Descuento${(venta?.descuento_porcentaje && venta.descuento_porcentaje > 0) ? ` (${venta.descuento_porcentaje}%)` : ''}:</strong> -${formatearMonto(descuentoMonto)}</p>` : ''}
+                        ${recargoMonto > 0 ? `<p style="font-size: 3mm; color: #000; margin: 1mm 0; text-align: right; -webkit-font-smoothing: none;"><strong>Recargo${(venta?.recargo_porcentaje && venta.recargo_porcentaje > 0) ? ` (${venta.recargo_porcentaje}%)` : ''}:</strong> +${formatearMonto(recargoMonto)}</p>` : ''}
+                        <p style="font-size: 3mm; color: #000; margin: 1mm 0; text-align: right; -webkit-font-smoothing: none;"><strong>Subtotal (sin IVA):</strong> ${formatearMonto(subtotalFinalSinIva)}</p>
+                        ${ivaFinal > 0 ? `<p style="font-size: 3mm; color: #000; margin: 1mm 0; text-align: right; -webkit-font-smoothing: none;"><strong>IVA 21%:</strong> ${formatearMonto(ivaFinal)}</p>` : ''}
+                        <p style="font-size: 4mm; font-weight: bold; color: #000; margin: 2mm 0; text-align: right; -webkit-font-smoothing: none; border-top: 1px solid #000; padding-top: 2mm;"><strong>TOTAL: ${formatearMonto(totalFinal)}</strong></p>
                     </div>
                     
                     <div class="footer" style="text-align: center; margin-top: 5mm; padding-top: 3mm; border-top: 1px solid #000;">

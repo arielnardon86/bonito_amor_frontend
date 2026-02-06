@@ -334,7 +334,7 @@ const RegistroCompras = () => {
                                 {compras.map((compra) => (
                                     <tr key={compra.id}>
                                         <td style={styles.td}>{new Date(compra.fecha_compra).toLocaleDateString()}</td>
-                                        <td style={styles.td}>${parseFloat(compra.total).toFixed(2)}</td>
+                                        <td style={styles.td}>{formatearMonto(compra.total)}</td>
                                         <td style={styles.td}>{compra.proveedor || 'N/A'}</td>
                                         <td style={styles.td}>{compra.usuario.username}</td>
                                         <td style={styles.td}>

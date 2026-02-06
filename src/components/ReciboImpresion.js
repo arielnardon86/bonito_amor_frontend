@@ -1,6 +1,7 @@
 // BONITO_AMOR/frontend/src/components/ReciboImpresion.js
 import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { formatearMonto } from '../utils/formatearMonto';
 
 const ReciboImpresion = () => {
     const location = useLocation();
@@ -73,7 +74,7 @@ const ReciboImpresion = () => {
             if (esDiferenciaPendiente && venta?.cambio_devolucion_diferencia) {
                 const montoDevuelto = parseFloat(venta.cambio_devolucion_diferencia.monto_devolucion || 0);
                 if (montoDevuelto > 0) {
-                    infoCambioDevolucion = `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none; margin-top: 5px; padding: 5px; background-color: #e8f4f8; border-radius: 3px;"><strong>Nota:</strong> Esta venta corresponde a la diferencia de un cambio/devolución. Monto devuelto por cambio: $${montoDevuelto.toFixed(2)}</p>`;
+                    infoCambioDevolucion = `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none; margin-top: 5px; padding: 5px; background-color: #e8f4f8; border-radius: 3px;"><strong>Nota:</strong> Esta venta corresponde a la diferencia de un cambio/devolución. Monto devuelto por cambio: ${formatearMonto(montoDevuelto)}</p>`;
                 }
             }
             
@@ -112,8 +113,8 @@ const ReciboImpresion = () => {
                                     <tr>
                                         <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${cantidad}</td>
                                         <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${nombre}</td>
-                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">$${parseFloat(precio || 0).toFixed(2)}</td>
-                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">$${subtotal.toFixed(2)}</td>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${formatearMonto(precio || 0)}</td>
+                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${formatearMonto(subtotal)}</td>
                                     </tr>
                                     `;
                                 }).join('')}
@@ -122,15 +123,15 @@ const ReciboImpresion = () => {
                         <hr>
                     </div>
                     <div class="totals">
-                        <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Subtotal:</strong> $${subtotal.toFixed(2)}</p>
+                        <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Subtotal:</strong> ${formatearMonto(subtotal)}</p>
                         ${(venta.descuento_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> -${parseFloat(venta.descuento_porcentaje).toFixed(2)}%</p>` : ''}
-                        ${(venta.descuento_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> -$${parseFloat(venta.descuento_monto).toFixed(2)}</p>` : ''}
-                        ${saldoAFavorMonto > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Saldo a favor:</strong> -$${saldoAFavorMonto.toFixed(2)}</p>` : ''}
+                        ${(venta.descuento_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Descuento:</strong> -${formatearMonto(venta.descuento_monto)}</p>` : ''}
+                        ${saldoAFavorMonto > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Saldo a favor:</strong> -${formatearMonto(saldoAFavorMonto)}</p>` : ''}
                         
                         ${(venta.recargo_porcentaje || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo:</strong> +${parseFloat(venta.recargo_porcentaje).toFixed(2)}%</p>` : ''}
-                        ${(venta.recargo_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo:</strong> +$${parseFloat(venta.recargo_monto).toFixed(2)}</p>` : ''}
+                        ${(venta.recargo_monto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recargo:</strong> +${formatearMonto(venta.recargo_monto)}</p>` : ''}
                         
-                        <p style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Total:</strong> $${parseFloat(venta.total).toFixed(2)}</p>
+                        <p style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Total:</strong> ${formatearMonto(venta.total)}</p>
                         <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
                         <hr>
                     </div>

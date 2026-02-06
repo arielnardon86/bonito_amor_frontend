@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
+import { formatearMonto } from '../utils/formatearMonto';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -574,7 +575,7 @@ const CambioDevolucion = () => {
                     if (tieneFacturacion) {
                         Swal.fire({
                             title: 'Cambio/Devolución procesado!',
-                            text: `Diferencia a pagar: $${montoDiferencia.toFixed(2)}. ¿Desea emitir una factura?`,
+                            text: `Diferencia a pagar: ${formatearMonto(montoDiferencia)}. ¿Desea emitir una factura?`,
                             icon: 'success',
                             showCancelButton: true,
                             showDenyButton: true,
@@ -860,7 +861,7 @@ const CambioDevolucion = () => {
                     <div style={styles.section}>
                         <h2 style={styles.sectionHeader}>Venta original</h2>
                         <p><strong>Fecha:</strong> {new Date(ventaOriginal.fecha_venta).toLocaleString()}</p>
-                        <p><strong>Total:</strong> ${parseFloat(ventaOriginal.total).toFixed(2)}</p>
+                        <p><strong>Total:</strong> {formatearMonto(ventaOriginal.total)}</p>
                         <p><strong>Método de pago:</strong> {ventaOriginal.metodo_pago}</p>
                         <button onClick={() => {
                             setVentaOriginal(null);
@@ -950,10 +951,10 @@ const CambioDevolucion = () => {
                                                     )}
                                                 </td>
                                                 <td style={styles.td}>
-                                                    ${precioUnitarioAjustado.toFixed(2)}
+                                                    {formatearMonto(precioUnitarioAjustado)}
                                                 </td>
                                                 <td style={styles.td}>
-                                                    ${(precioUnitarioAjustado * cantidadADevolver).toFixed(2)}
+                                                    {formatearMonto(precioUnitarioAjustado * cantidadADevolver)}
                                                 </td>
                                             </tr>
                                         );
@@ -962,7 +963,7 @@ const CambioDevolucion = () => {
                             </table>
                         </div>
                         <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#e9ecef', borderRadius: '4px' }}>
-                            <strong>Total a devolver: ${montoDevolucion.toFixed(2)}</strong>
+                            <strong>Total a devolver: {formatearMonto(montoDevolucion)}</strong>
                         </div>
                     </div>
 
@@ -1006,7 +1007,7 @@ const CambioDevolucion = () => {
                                             <tr key={producto.id} style={styles.tableRow}>
                                                 <td style={styles.td}>{producto.nombre}</td>
                                                 <td style={styles.td}>{producto.talle}</td>
-                                                <td style={styles.td}>${parseFloat(producto.precio).toFixed(2)}</td>
+                                                <td style={styles.td}>{formatearMonto(producto.precio)}</td>
                                                 <td style={styles.td}>{producto.stock}</td>
                                                 <td style={styles.td}>
                                                     <button
@@ -1027,7 +1028,7 @@ const CambioDevolucion = () => {
                         {productoSeleccionado && (
                             <div style={styles.foundProductCard}>
                                 <p style={styles.foundProductText}>
-                                    <strong>Producto:</strong> {productoSeleccionado.nombre} ({productoSeleccionado.talle}) - ${parseFloat(productoSeleccionado.precio).toFixed(2)}
+                                    <strong>Producto:</strong> {productoSeleccionado.nombre} ({productoSeleccionado.talle}) - {formatearMonto(productoSeleccionado.precio)}
                                 </p>
                                 <p style={styles.foundProductText}>
                                     Stock Disponible: {productoSeleccionado.stock}
@@ -1072,8 +1073,8 @@ const CambioDevolucion = () => {
                                                             <button onClick={() => handleAddProductoEnVenta(item.product, 1)} style={styles.quantityButton}>+</button>
                                                         </div>
                                                     </td>
-                                                    <td style={styles.td}>${parseFloat(item.product.precio).toFixed(2)}</td>
-                                                    <td style={styles.td}>${(item.quantity * parseFloat(item.product.precio)).toFixed(2)}</td>
+                                                    <td style={styles.td}>{formatearMonto(item.product.precio)}</td>
+                                                    <td style={styles.td}>{formatearMonto(item.quantity * parseFloat(item.product.precio))}</td>
                                                     <td style={styles.td}>
                                                         <button onClick={() => removeProductFromCart(activeCartId, item.product.id)} style={styles.removeButton}>
                                                             Quitar
@@ -1084,7 +1085,7 @@ const CambioDevolucion = () => {
                                         </tbody>
                                     </table>
                                 </div>
-                                <h4 style={styles.totalVenta}>Subtotal: ${activeCart.total.toFixed(2)}</h4>
+                                <h4 style={styles.totalVenta}>Subtotal: {formatearMonto(activeCart.total)}</h4>
                                 
                                 {/* Descuentos y Recargos */}
                                 <div style={styles.ajustesContainer}>
@@ -1167,7 +1168,7 @@ const CambioDevolucion = () => {
                                     </label>
                                 </div>
                                 
-                                <h4 style={styles.finalTotalVenta}>Total con ajustes: ${montoNuevo.toFixed(2)}</h4>
+                                <h4 style={styles.finalTotalVenta}>Total con ajustes: {formatearMonto(montoNuevo)}</h4>
 
                                 {/* Método de pago (solo si hay diferencia a pagar) */}
                                 {montoDiferencia > 0 && (
@@ -1211,7 +1212,7 @@ const CambioDevolucion = () => {
                                 )}
                                 {isMetodoFinancieroActivo && arancelSeleccionadoId && (
                                     <h4 style={styles.arancelDisplay}>
-                                        Arancel a pagar: ${calculateArancel().toFixed(2)}
+                                        Arancel a pagar: {formatearMonto(calculateArancel())}
                                     </h4>
                                 )}
                             </div>
@@ -1221,19 +1222,19 @@ const CambioDevolucion = () => {
                     {/* Resumen Final */}
                     <div style={styles.section}>
                         <h2 style={styles.sectionHeader}>Resumen</h2>
-                        <p><strong>Monto a devolver:</strong> ${montoDevolucion.toFixed(2)}</p>
-                        <p><strong>Monto de productos nuevos:</strong> ${montoNuevo.toFixed(2)}</p>
-                        <p><strong>Diferencia:</strong> ${montoDiferencia.toFixed(2)}</p>
+                        <p><strong>Monto a devolver:</strong> {formatearMonto(montoDevolucion)}</p>
+                        <p><strong>Monto de productos nuevos:</strong> {formatearMonto(montoNuevo)}</p>
+                        <p><strong>Diferencia:</strong> {formatearMonto(montoDiferencia)}</p>
                         {saldoAFavor > 0 && (
                             <p style={{ color: 'green', fontSize: '18px' }}>
-                                <strong>✅ Saldo a favor: ${saldoAFavor.toFixed(2)}</strong>
+                                <strong>✅ Saldo a favor: {formatearMonto(saldoAFavor)}</strong>
                                 <br />
                                 <small>Se generará un recibo de nota de crédito automáticamente</small>
                             </p>
                         )}
                         {montoDiferencia > 0 && (
                             <p style={{ color: 'red', fontSize: '18px' }}>
-                                <strong>⚠️ Diferencia a pagar: ${montoDiferencia.toFixed(2)}</strong>
+                                <strong>⚠️ Diferencia a pagar: {formatearMonto(montoDiferencia)}</strong>
                                 <br />
                                 <small>Se creará una venta normal que puede facturarse o recibirse</small>
                             </p>

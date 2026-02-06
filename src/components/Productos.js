@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
-import JsBarcode from 'jsbarcode';
+import { formatearMonto } from '../utils/formatearMonto';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -327,7 +327,7 @@ const Productos = () => {
                                                     style={styles.etiquetasInput}
                                                     disabled={!etiquetasSeleccionadas[producto.id]}
                                                 />
-                                            </td><td style={styles.td}>{producto.nombre}</td><td style={styles.td}>${parseFloat(producto.precio).toFixed(2)}</td><td style={styles.td}>${parseFloat(producto.costo || 0).toFixed(2)}</td><td style={styles.td}>{producto.stock}</td><td style={styles.td}>
+                                            </td><td style={styles.td}>{producto.nombre}</td><td style={styles.td}>{formatearMonto(producto.precio)}</td><td style={styles.td}>{formatearMonto(producto.costo || 0)}</td><td style={styles.td}>{producto.stock}</td><td style={styles.td}>
                                                 <button onClick={() => {
                                                     setEditProduct({ ...producto });
                                                     setShowEditModal(true);
