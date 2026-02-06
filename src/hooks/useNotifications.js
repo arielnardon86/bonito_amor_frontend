@@ -1,5 +1,5 @@
 // hooks/useNotifications.js - Hook para manejar notificaciones push
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 
@@ -20,6 +20,12 @@ try {
   getFCMToken = async () => null;
   onMessageListener = () => () => {};
 }
+
+// Singleton: el listener onMessage se registra solo UNA vez globalmente.
+// Varios componentes (App/Navbar, PanelAdministracionTienda) usan useNotifications,
+// lo que causaba notificaciones duplicadas por venta.
+let globalMessageListenerActive = false;
+let globalMessageUnsubscribe = null;
 
 const normalizeApiUrl = (url) => {
     if (!url) {
@@ -45,7 +51,6 @@ export const useNotifications = () => {
     const [fcmToken, setFcmToken] = useState(null);
     const [error, setError] = useState(null);
     const [isManuallyDisabled, setIsManuallyDisabled] = useState(false);
-    const listenerRegisteredRef = useRef(false); // Ref para rastrear si el listener ya está registrado
 
     // Sincronizar el estado del permiso con el navegador al montar
     useEffect(() => {
@@ -265,32 +270,26 @@ export const useNotifications = () => {
             }
 
             // Escuchar mensajes cuando la app está en primer plano
-            // IMPORTANTE: Solo registrar el listener UNA VEZ para evitar duplicados
-            let unsubscribe = null;
-            
-            if (!listenerRegisteredRef.current) {
-                console.log('Registrando listener de notificaciones por primera vez');
-                listenerRegisteredRef.current = true;
-                
-                unsubscribe = onMessageListener((payload) => {
+            // IMPORTANTE: Registrar el listener solo UNA vez globalmente (singleton).
+            // Varios componentes usan useNotifications (App/Navbar, PanelAdministracionTienda)
+            // y cada uno registraba su propio listener, causando notificaciones duplicadas.
+            if (!globalMessageListenerActive) {
+                console.log('Registrando listener de notificaciones (único global)');
+                globalMessageListenerActive = true;
+
+                globalMessageUnsubscribe = onMessageListener((payload) => {
                     console.log('Notificación recibida en primer plano:', payload);
-                    
-                    // Cuando la app está en primer plano, mostrar la notificación manualmente
-                    // El Service Worker NO mostrará notificación si hay una ventana visible
-                    // Usar el mismo tag que el Service Worker para evitar duplicados
+
                     if (payload.notification && typeof Notification !== 'undefined' && document.visibilityState === 'visible') {
                         try {
                             const ventaId = payload.data?.venta_id || Date.now().toString();
                             const notificationTag = `venta-${ventaId}`;
-                            
-                            // Usar el mismo tag que el Service Worker
-                            // Si el Service Worker ya mostró la notificación, esta la reemplazará
-                            // Si no, esta será la única notificación mostrada
+
                             new Notification(payload.notification.title, {
                                 body: payload.notification.body,
                                 icon: payload.notification.icon || '/logo192.png',
                                 badge: '/logo192.png',
-                                tag: notificationTag, // Tag único por venta - reemplaza notificaciones anteriores con el mismo tag
+                                tag: notificationTag,
                                 requireInteraction: false,
                                 data: payload.data || {}
                             });
@@ -301,28 +300,27 @@ export const useNotifications = () => {
                 });
             }
 
-            return () => {
-                // Solo limpiar el listener cuando el componente se desmonta o el usuario cierra sesión
-                if (unsubscribe && typeof unsubscribe === 'function') {
-                    console.log('Limpiando listener de notificaciones');
-                    unsubscribe();
-                    listenerRegisteredRef.current = false;
-                }
-            };
+            // No desregistrar en cleanup: el listener es global y debe persistir al navegar.
+            // Se desregistra solo en el efecto de logout.
+            return () => {};
         } catch (error) {
             console.warn('Error al inicializar notificaciones (no crítico):', error);
             // No bloquear la app si fallan las notificaciones
         }
     }, [isAuthenticated, token, fcmToken, isManuallyDisabled]); // Removido registrarToken de las dependencias para evitar re-registros
 
-    // Eliminar token al cerrar sesión y resetear el listener
+    // Eliminar token al cerrar sesión y desregistrar el listener global
     useEffect(() => {
         if (!isAuthenticated) {
             if (fcmToken) {
                 eliminarToken(fcmToken);
             }
-            // Resetear el flag del listener cuando el usuario cierra sesión
-            listenerRegisteredRef.current = false;
+            // Desregistrar el listener onMessage para evitar fugas y permitir re-registro en próximo login
+            if (globalMessageUnsubscribe && typeof globalMessageUnsubscribe === 'function') {
+                globalMessageUnsubscribe();
+                globalMessageUnsubscribe = null;
+                globalMessageListenerActive = false;
+            }
         }
     }, [isAuthenticated, fcmToken, eliminarToken]);
 
