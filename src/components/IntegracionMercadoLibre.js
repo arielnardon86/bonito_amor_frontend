@@ -28,6 +28,7 @@ const IntegracionMercadoLibre = () => {
     const [mlStatus, setMlStatus] = useState(null);
     const [loading, setLoading] = useState(true);
     const [sincronizando, setSincronizando] = useState(false);
+    const [desconectando, setDesconectando] = useState(false);
     const [error, setError] = useState(null);
     const [authUrl, setAuthUrl] = useState(null);
 
@@ -229,6 +230,36 @@ const IntegracionMercadoLibre = () => {
         }
     };
 
+    // Desconectar integración ML (borra tokens para poder reconectar con otra cuenta/App)
+    const handleDesconectar = async () => {
+        if (!tiendaId) return;
+        const confirm = await Swal.fire({
+            title: '¿Desconectar Mercado Libre?',
+            text: 'Se borrarán los tokens. Podés volver a conectar la misma u otra cuenta después.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, desconectar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirm.isConfirmed) return;
+        setDesconectando(true);
+        try {
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/disconnect/`,
+                {},
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            Swal.fire('Listo', 'Integración desconectada. Podés volver a autorizar cuando quieras.', 'success');
+            await fetchMLStatus();
+            await fetchTienda();
+        } catch (err) {
+            const errorMsg = err.response?.data?.error || err.message;
+            Swal.fire('Error', `Error al desconectar: ${errorMsg}`, 'error');
+        } finally {
+            setDesconectando(false);
+        }
+    };
+
     // Estado para mostrar modal de selección
     const [mostrarModalSeleccion, setMostrarModalSeleccion] = useState(false);
 
@@ -413,8 +444,20 @@ const IntegracionMercadoLibre = () => {
                 width: '600px'
             });
         } catch (err) {
-            const errorMsg = err.response?.data?.error || err.message;
-            Swal.fire('Error', `Error al importar productos: ${errorMsg}`, 'error');
+            const data = err.response?.data || {};
+            const errorMsg = data.error || err.message;
+            const reconnectRequired = data.reconnect_required === true;
+            if (reconnectRequired) {
+                Swal.fire({
+                    title: 'Reconectar Mercado Libre',
+                    text: errorMsg,
+                    icon: 'warning',
+                    confirmButtonText: 'Entendido'
+                });
+                await fetchMLStatus();
+            } else {
+                Swal.fire('Error', `Error al importar productos: ${errorMsg}`, 'error');
+            }
             console.error('Error importando productos:', err);
         } finally {
             setSincronizando(false);
@@ -512,6 +555,29 @@ const IntegracionMercadoLibre = () => {
                         </div>
                     )}
                 </div>
+                {isAutenticado && (
+                    <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #ddd' }}>
+                        <p style={{ marginBottom: '10px', color: '#666', fontSize: '14px' }}>
+                            Si cambiaste de cuenta de Mercado Libre o de aplicación, desconectá y volvé a autorizar.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={handleDesconectar}
+                            disabled={desconectando}
+                            style={{
+                                padding: '10px 20px',
+                                backgroundColor: desconectando ? '#ccc' : '#dc3545',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '5px',
+                                cursor: desconectando ? 'not-allowed' : 'pointer',
+                                fontSize: '14px'
+                            }}
+                        >
+                            {desconectando ? 'Desconectando...' : 'Desconectar y reconectar'}
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Configuración OAuth */}
