@@ -363,6 +363,64 @@ const IntegracionMercadoLibre = () => {
         }
     };
 
+    // Importar productos desde Mercado Libre (sincronización inversa)
+    const handleImportarProductos = async () => {
+        if (!tiendaId) return;
+
+        setSincronizando(true);
+        try {
+            Swal.fire({
+                title: 'Importando productos desde Mercado Libre...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const response = await axios.post(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/import-products/`,
+                { solo_nuevos: true },
+                { 
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    timeout: 300000
+                }
+            );
+
+            const { success, actualizados, errors, results } = response.data;
+
+            let detallesHtml = '';
+            if (results?.details?.length > 0) {
+                detallesHtml = '<ul style="text-align: left; max-height: 300px; overflow-y: auto;">';
+                results.details.slice(0, 30).forEach(detail => {
+                    const icon = detail.status === 'success' ? '✅' : '❌';
+                    detallesHtml += `<li style="margin: 5px 0;">${icon} <strong>${detail.nombre}</strong>: ${detail.message}</li>`;
+                });
+                if (results.details.length > 30) {
+                    detallesHtml += `<li><em>... y ${results.details.length - 30} más</em></li>`;
+                }
+                detallesHtml += '</ul>';
+            }
+
+            Swal.fire({
+                title: 'Importación Completada',
+                html: `
+                    <p><strong>Nuevos importados:</strong> ${success}</p>
+                    <p><strong>Actualizados:</strong> ${actualizados || 0}</p>
+                    <p><strong>Errores:</strong> ${errors}</p>
+                    ${detallesHtml ? `<hr/><h4>Detalles:</h4>${detallesHtml}` : ''}
+                `,
+                icon: errors === 0 ? 'success' : (success > 0 ? 'warning' : 'error'),
+                width: '600px'
+            });
+        } catch (err) {
+            const errorMsg = err.response?.data?.error || err.message;
+            Swal.fire('Error', `Error al importar productos: ${errorMsg}`, 'error');
+            console.error('Error importando productos:', err);
+        } finally {
+            setSincronizando(false);
+        }
+    };
+
     // Actualizar configuración de sincronización
     const handleActualizarConfig = async (field, value) => {
         if (!tiendaId) return;
@@ -550,6 +608,36 @@ const IntegracionMercadoLibre = () => {
                         </div>
                     </div>
 
+                    {/* Traer productos desde Mercado Libre - Sección destacada */}
+                    <div style={{
+                        backgroundColor: '#e8f5e9',
+                        padding: '20px',
+                        borderRadius: '8px',
+                        marginBottom: '30px',
+                        border: '1px solid #4caf50'
+                    }}>
+                        <h3 style={{ marginTop: 0, color: '#2e7d32' }}>Traer productos a Total Stock</h3>
+                        <p style={{ marginBottom: '15px' }}>
+                            Si tenés productos publicados en Mercado Libre que aún no están en tu sistema, importalos para vincularlos. Las ventas se registrarán automáticamente.
+                        </p>
+                        <button
+                            onClick={handleImportarProductos}
+                            disabled={sincronizando}
+                            style={{
+                                padding: '14px 28px',
+                                backgroundColor: sincronizando ? '#ccc' : '#2e7d32',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '5px',
+                                cursor: sincronizando ? 'not-allowed' : 'pointer',
+                                fontSize: '16px',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            {sincronizando ? 'Procesando...' : '📥 Importar productos desde Mercado Libre'}
+                        </button>
+                    </div>
+
                     {/* Sincronización manual */}
                     <div style={{
                         backgroundColor: '#e7f3ff',
@@ -559,7 +647,7 @@ const IntegracionMercadoLibre = () => {
                         border: '1px solid #b3d9ff'
                     }}>
                         <h3 style={{ marginTop: 0, color: '#004085' }}>Sincronización Manual</h3>
-                        <p>Puedes sincronizar todos los productos de la tienda con Mercado Libre manualmente.</p>
+                        <p>Envía productos de Total Stock a Mercado Libre o actualiza el stock de los ya vinculados.</p>
                         <div style={{ display: 'flex', gap: '15px', marginTop: '15px', flexWrap: 'wrap' }}>
                             <button
                                 onClick={() => setMostrarModalSeleccion(true)}
@@ -593,8 +681,9 @@ const IntegracionMercadoLibre = () => {
                             </button>
                         </div>
                         <p style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
-                            <strong>Nota:</strong> "Actualizar Stock" solo actualiza el stock de productos que ya están sincronizados con Mercado Libre. 
-                            Si tienes productos nuevos, usa "Sincronizar Productos" primero.
+                            <strong>Importar desde ML:</strong> Trae tus productos que ya publicaste en Mercado Libre hacia Total Stock y los vincula.<br/>
+                            <strong>Sincronizar productos:</strong> Sube productos de Total Stock a Mercado Libre.<br/>
+                            <strong>Actualizar Stock:</strong> Actualiza el stock en ML de productos que ya están vinculados.
                         </p>
                     </div>
                 </>
@@ -611,9 +700,10 @@ const IntegracionMercadoLibre = () => {
             }}>
                 <h4 style={{ marginTop: 0, color: '#333' }}>Información</h4>
                 <ul style={{ marginBottom: 0 }}>
-                    <li>La sincronización automática actualiza el stock y los precios cuando modificas productos en Total Stock.</li>
-                    <li>Puedes seleccionar qué productos sincronizar y elegir la categoría de Mercado Libre para cada uno.</li>
-                    <li>Los productos sincronizados tienen un indicador en la lista de productos.</li>
+                    <li><strong>Importar desde ML:</strong> Si ya tenés productos publicados en Mercado Libre, importalos para vincularlos. Las ventas se registrarán automáticamente.</li>
+                    <li><strong>Facturación automática:</strong> Cuando vendas en ML y tengas AFIP/ARCA configurado, las facturas se emiten automáticamente como Consumidor Final.</li>
+                    <li>La sincronización automática actualiza el stock y los precios cuando modificás productos en Total Stock.</li>
+                    <li>Podés seleccionar qué productos sincronizar y elegir la categoría de Mercado Libre para cada uno.</li>
                 </ul>
             </div>
 
