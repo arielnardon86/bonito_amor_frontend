@@ -52,6 +52,7 @@ const Productos = () => {
     const [productToDelete, setProductToDelete] = useState(null);
 
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
+    const [mostrarTalle, setMostrarTalle] = useState(false);
 
     const generarCodigoDeBarrasEAN13 = () => {
         let code = '779' + Math.floor(100000000 + Math.random() * 900000000).toString();
@@ -288,6 +289,16 @@ const Productos = () => {
                         style={styles.filterInput}
                     />
                     <button onClick={() => fetchProductos()} style={styles.searchButton}>Buscar</button>
+                    {productos.some(p => p.talle && String(p.talle).trim() !== '') && (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginLeft: '12px' }}>
+                            <input
+                                type="checkbox"
+                                checked={mostrarTalle}
+                                onChange={(e) => setMostrarTalle(e.target.checked)}
+                            />
+                            <span>Mostrar talle</span>
+                        </label>
+                    )}
                 </div>
                 
                 {loadingProducts ? (
@@ -299,7 +310,16 @@ const Productos = () => {
                         <div style={styles.tableResponsive}>
                             <table style={styles.table}>
                                 <thead>
-                                    <tr><th style={styles.th}>Seleccionar</th><th style={styles.th}>Cantidad de etiquetas</th><th style={styles.th}>Nombre</th><th style={styles.th}>Precio</th><th style={styles.th}>Costo</th><th style={styles.th}>Stock</th><th style={styles.th}>Acciones</th></tr>
+                                    <tr>
+                                        <th style={styles.th}>Seleccionar</th>
+                                        <th style={styles.th}>Cantidad de etiquetas</th>
+                                        <th style={styles.th}>Nombre</th>
+                                        {mostrarTalle && <th style={styles.th}>Talle</th>}
+                                        <th style={styles.th}>Precio</th>
+                                        <th style={styles.th}>Costo</th>
+                                        <th style={styles.th}>Stock</th>
+                                        <th style={styles.th}>Acciones</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     {productos.map(producto => (
@@ -327,7 +347,9 @@ const Productos = () => {
                                                     style={styles.etiquetasInput}
                                                     disabled={!etiquetasSeleccionadas[producto.id]}
                                                 />
-                                            </td><td style={styles.td}>{producto.nombre}</td><td style={styles.td}>{formatearMonto(producto.precio)}</td><td style={styles.td}>{formatearMonto(producto.costo || 0)}</td><td style={styles.td}>{producto.stock}</td><td style={styles.td}>
+                                            </td><td style={styles.td}>{producto.nombre}</td>
+                                            {mostrarTalle && <td style={styles.td}>{producto.talle || '-'}</td>}
+                                            <td style={styles.td}>{formatearMonto(producto.precio)}</td><td style={styles.td}>{formatearMonto(producto.costo || 0)}</td><td style={styles.td}>{producto.stock}</td><td style={styles.td}>
                                                 <button onClick={() => {
                                                     setEditProduct({ ...producto });
                                                     setShowEditModal(true);

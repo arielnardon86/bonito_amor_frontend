@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import { formatearMonto } from '../utils/formatearMonto';
 
 const normalizeApiUrl = (url) => {
     if (!url) {
@@ -136,20 +137,26 @@ const PanelAdministracionTienda = () => {
     const [editArancelData, setEditArancelData] = useState(null);
     const [arancelForm, setArancelForm] = useState({
         metodo_pago: '',
+        metodo_pago_nuevo: false,
+        nuevo_metodo_nombre: '',
+        nuevo_metodo_descripcion: '',
         nombre_plan: 'CONTADO',
+        plan_custom: false,
+        plan_custom_nombre: '',
         arancel_porcentaje: '0.00',
         tienda: selectedStoreSlug || ''
     });
     
-    // Estados para aranceles Mercado Libre
+    // Estados para aranceles Mercado Libre (por producto: arancel % + costo envío)
     const [arancelesML, setArancelesML] = useState([]);
-    const [categoriasML, setCategoriasML] = useState([]);
+    const [productosML, setProductosML] = useState([]);
     const [showArancelMLForm, setShowArancelMLForm] = useState(false);
     const [showEditArancelMLModal, setShowEditArancelMLModal] = useState(false);
     const [editArancelMLData, setEditArancelMLData] = useState(null);
     const [arancelMLForm, setArancelMLForm] = useState({
-        categoria_ml: '',
+        producto: '',
         arancel_porcentaje: '0.00',
+        costo_envio: '0.00',
         tienda: selectedStoreSlug || ''
     });
 
@@ -185,7 +192,7 @@ const PanelAdministracionTienda = () => {
                     fetchAranceles();
                 } else if (activeTab === 'aranceles-ml') {
                     fetchArancelesML();
-                    fetchCategoriasML();
+                    fetchProductosML();
                 }
             }
         }
@@ -448,19 +455,51 @@ const PanelAdministracionTienda = () => {
     }, [token, selectedStoreSlug]);
 
     const handleArancelFormChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value, type, checked } = e.target;
         setArancelForm({
             ...arancelForm,
-            [name]: value
+            [name]: type === 'checkbox' ? checked : value
         });
     };
 
     const handleCreateArancel = async (e) => {
         e.preventDefault();
         
+        if (arancelForm.metodo_pago_nuevo && !arancelForm.nuevo_metodo_nombre?.trim()) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Ingresa el nombre del nuevo método de pago.' });
+            return;
+        }
+        if (!arancelForm.metodo_pago_nuevo && !arancelForm.metodo_pago) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Selecciona un método de pago o crea uno nuevo.' });
+            return;
+        }
+        if (arancelForm.plan_custom && !arancelForm.plan_custom_nombre?.trim()) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Ingresa el nombre del plan personalizado.' });
+            return;
+        }
+        
         try {
+            let metodoPagoId = arancelForm.metodo_pago;
+            
+            if (arancelForm.metodo_pago_nuevo && arancelForm.nuevo_metodo_nombre?.trim()) {
+                const metodoRes = await axios.post(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
+                    nombre: arancelForm.nuevo_metodo_nombre.trim(),
+                    descripcion: arancelForm.nuevo_metodo_descripcion?.trim() || '',
+                    activo: true,
+                    es_financiero: true
+                }, { headers: { 'Authorization': `Bearer ${token}` } });
+                metodoPagoId = metodoRes.data.id;
+                fetchMetodosPago();
+            }
+            
+            const planFinal = arancelForm.plan_custom && arancelForm.plan_custom_nombre?.trim()
+                ? arancelForm.plan_custom_nombre.trim()
+                : arancelForm.nombre_plan;
+            
             await axios.post(`${BASE_API_ENDPOINT}/api/aranceles-tienda/`, {
-                ...arancelForm,
+                metodo_pago: metodoPagoId,
+                nombre_plan: planFinal,
+                arancel_porcentaje: parseFloat(arancelForm.arancel_porcentaje) || 0,
                 tienda: selectedStoreSlug
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -475,7 +514,12 @@ const PanelAdministracionTienda = () => {
             setShowArancelForm(false);
             setArancelForm({
                 metodo_pago: '',
+                metodo_pago_nuevo: false,
+                nuevo_metodo_nombre: '',
+                nuevo_metodo_descripcion: '',
                 nombre_plan: 'CONTADO',
+                plan_custom: false,
+                plan_custom_nombre: '',
                 arancel_porcentaje: '0.00',
                 tienda: selectedStoreSlug
             });
@@ -485,32 +529,64 @@ const PanelAdministracionTienda = () => {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Error al crear el arancel.'
+                text: err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || (typeof err.response?.data === 'object' ? Object.values(err.response.data).flat().join(' ') : 'Error al crear el arancel.')
             });
         }
     };
 
     const handleEditArancel = (arancel) => {
-        // Asegurar que metodo_pago sea el ID, no un objeto
-        const metodoPagoId = typeof arancel.metodo_pago === 'object' && arancel.metodo_pago !== null
-            ? arancel.metodo_pago.id
-            : arancel.metodo_pago;
+        const metodoPagoId = typeof arancel.metodo_pago === 'object' && arancel.metodo_pago !== null ? arancel.metodo_pago.id : arancel.metodo_pago;
+        const planVal = arancel.nombre_plan || 'CONTADO';
+        const isPlanCustom = !PLAN_CHOICES.some(p => p.value === planVal);
         
         setEditArancelData({
             id: arancel.id,
             metodo_pago: metodoPagoId || '',
-            nombre_plan: arancel.nombre_plan || 'CONTADO',
+            metodo_pago_nuevo: false,
+            nuevo_metodo_nombre: '',
+            nuevo_metodo_descripcion: '',
+            nombre_plan: isPlanCustom ? 'CONTADO' : planVal,
+            plan_custom: isPlanCustom,
+            plan_custom_nombre: isPlanCustom ? planVal : '',
             arancel_porcentaje: arancel.arancel_porcentaje ? arancel.arancel_porcentaje.toString() : '0.00'
         });
         setShowEditArancelModal(true);
     };
 
     const handleUpdateArancel = async () => {
+        if (editArancelData.metodo_pago_nuevo && !editArancelData.nuevo_metodo_nombre?.trim()) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Ingresa el nombre del nuevo método de pago.' });
+            return;
+        }
+        if (!editArancelData.metodo_pago_nuevo && !editArancelData.metodo_pago) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Selecciona un método de pago o crea uno nuevo.' });
+            return;
+        }
+        if (editArancelData.plan_custom && !editArancelData.plan_custom_nombre?.trim()) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Ingresa el nombre del plan personalizado.' });
+            return;
+        }
+        
         try {
+            let metodoPagoId = editArancelData.metodo_pago;
+            if (editArancelData.metodo_pago_nuevo && editArancelData.nuevo_metodo_nombre?.trim()) {
+                const metodoRes = await axios.post(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
+                    nombre: editArancelData.nuevo_metodo_nombre.trim(),
+                    descripcion: editArancelData.nuevo_metodo_descripcion?.trim() || '',
+                    activo: true,
+                    es_financiero: true
+                }, { headers: { 'Authorization': `Bearer ${token}` } });
+                metodoPagoId = metodoRes.data.id;
+                fetchMetodosPago();
+            }
+            const planFinal = editArancelData.plan_custom && editArancelData.plan_custom_nombre?.trim()
+                ? editArancelData.plan_custom_nombre.trim()
+                : editArancelData.nombre_plan;
+            
             await axios.patch(`${BASE_API_ENDPOINT}/api/aranceles-tienda/${editArancelData.id}/`, {
-                metodo_pago: editArancelData.metodo_pago,
-                nombre_plan: editArancelData.nombre_plan,
-                arancel_porcentaje: editArancelData.arancel_porcentaje,
+                metodo_pago: metodoPagoId,
+                nombre_plan: planFinal,
+                arancel_porcentaje: parseFloat(editArancelData.arancel_porcentaje) || 0,
                 tienda: selectedStoreSlug
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -589,57 +665,24 @@ const PanelAdministracionTienda = () => {
         }
     }, [token, selectedStoreSlug]);
 
-    const fetchCategoriasML = useCallback(async () => {
+    const fetchProductosML = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
         try {
-            // Obtener el ID de la tienda
-            const tiendaResponse = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { nombre: selectedStoreSlug }
-            });
-            const tiendas = tiendaResponse.data.results || tiendaResponse.data;
-            const tienda = Array.isArray(tiendas) ? tiendas.find(t => t.nombre === selectedStoreSlug) : tiendas;
-            
-            if (tienda && tienda.id) {
-                // Obtener categorías usadas por la tienda (solo las que tienen productos)
-                const productosResponse = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    params: { tienda_slug: selectedStoreSlug }
+            let allProducts = [];
+            let nextUrl = `${BASE_API_ENDPOINT}/api/productos/?tienda_slug=${selectedStoreSlug}`;
+            while (nextUrl) {
+                const response = await axios.get(nextUrl, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-                const productos = productosResponse.data.results || productosResponse.data;
-                const categoriasUsadas = [...new Set(
-                    productos
-                        .filter(p => p.ml_categoria_id)
-                        .map(p => p.ml_categoria_id)
-                )];
-                
-                // Obtener todas las categorías de una vez y filtrar por las usadas
-                if (categoriasUsadas.length > 0) {
-                    try {
-                        const catResponse = await axios.get(
-                            `${BASE_API_ENDPOINT}/api/tiendas/${tienda.id}/mercadolibre/categories/`,
-                            {
-                                headers: { 'Authorization': `Bearer ${token}` },
-                                params: { limit: 15000 } // Obtener todas las categorías
-                            }
-                        );
-                        const todasLasCategorias = catResponse.data.categories || [];
-                        // Filtrar solo las categorías que la tienda ha usado
-                        const categoriasInfo = todasLasCategorias.filter(cat => 
-                            categoriasUsadas.includes(cat.id)
-                        );
-                        setCategoriasML(categoriasInfo);
-                    } catch (err) {
-                        console.error('Error al obtener categorías ML:', err);
-                        setCategoriasML([]);
-                    }
-                } else {
-                    setCategoriasML([]);
-                }
+                const results = response.data.results || response.data;
+                const pageProducts = Array.isArray(results) ? results : [];
+                allProducts = allProducts.concat(pageProducts);
+                nextUrl = response.data.next || null;
             }
+            setProductosML(allProducts);
         } catch (err) {
-            console.error('Error al cargar categorías ML:', err);
-            setCategoriasML([]);
+            console.error('Error al cargar productos para aranceles ML:', err);
+            setProductosML([]);
         }
     }, [token, selectedStoreSlug]);
 
@@ -656,7 +699,9 @@ const PanelAdministracionTienda = () => {
         
         try {
             await axios.post(`${BASE_API_ENDPOINT}/api/aranceles-ml/`, {
-                ...arancelMLForm,
+                producto: arancelMLForm.producto,
+                arancel_porcentaje: parseFloat(arancelMLForm.arancel_porcentaje) || 0,
+                costo_envio: parseFloat(arancelMLForm.costo_envio) || 0,
                 tienda: selectedStoreSlug
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -670,8 +715,9 @@ const PanelAdministracionTienda = () => {
             
             setShowArancelMLForm(false);
             setArancelMLForm({
-                categoria_ml: '',
+                producto: '',
                 arancel_porcentaje: '0.00',
+                costo_envio: '0.00',
                 tienda: selectedStoreSlug
             });
             fetchArancelesML();
@@ -680,20 +726,21 @@ const PanelAdministracionTienda = () => {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Error al crear el arancel.'
+                text: err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || (typeof err.response?.data === 'object' ? Object.values(err.response.data).flat().join(' ') : 'Error al crear el arancel.')
             });
         }
     };
 
     const handleEditArancelML = (arancel) => {
-        const categoriaId = typeof arancel.categoria_ml === 'object' && arancel.categoria_ml !== null
-            ? arancel.categoria_ml
-            : arancel.categoria_ml_id || arancel.categoria_ml;
+        const productoId = typeof arancel.producto === 'object' && arancel.producto !== null
+            ? arancel.producto.id
+            : arancel.producto;
         
         setEditArancelMLData({
             id: arancel.id,
-            categoria_ml: categoriaId,
-            arancel_porcentaje: arancel.arancel_porcentaje ? arancel.arancel_porcentaje.toString() : '0.00'
+            producto: productoId,
+            arancel_porcentaje: arancel.arancel_porcentaje != null ? arancel.arancel_porcentaje.toString() : '0.00',
+            costo_envio: arancel.costo_envio != null ? arancel.costo_envio.toString() : '0.00'
         });
         setShowEditArancelMLModal(true);
     };
@@ -701,8 +748,9 @@ const PanelAdministracionTienda = () => {
     const handleUpdateArancelML = async () => {
         try {
             await axios.patch(`${BASE_API_ENDPOINT}/api/aranceles-ml/${editArancelMLData.id}/`, {
-                categoria_ml: editArancelMLData.categoria_ml,
-                arancel_porcentaje: editArancelMLData.arancel_porcentaje,
+                producto: editArancelMLData.producto,
+                arancel_porcentaje: parseFloat(editArancelMLData.arancel_porcentaje) || 0,
+                costo_envio: parseFloat(editArancelMLData.costo_envio) || 0,
                 tienda: selectedStoreSlug
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -1014,7 +1062,12 @@ const PanelAdministracionTienda = () => {
                         <button onClick={() => {
                             setArancelForm({
                                 metodo_pago: '',
+                                metodo_pago_nuevo: false,
+                                nuevo_metodo_nombre: '',
+                                nuevo_metodo_descripcion: '',
                                 nombre_plan: 'CONTADO',
+                                plan_custom: false,
+                                plan_custom_nombre: '',
                                 arancel_porcentaje: '0.00',
                                 tienda: selectedStoreSlug
                             });
@@ -1029,38 +1082,53 @@ const PanelAdministracionTienda = () => {
                             <h3>Nuevo Arancel</h3>
                             <form onSubmit={handleCreateArancel}>
                                 <div style={styles.formGrid} className="panel-admin-form-grid">
-                                    <div style={styles.formGroup}>
+                                    <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
                                         <label>Método de Pago *</label>
-                                        <select
-                                            name="metodo_pago"
-                                            value={arancelForm.metodo_pago}
-                                            onChange={handleArancelFormChange}
-                                            required
-                                            style={styles.input}
-                                        >
-                                            <option value="">Seleccionar...</option>
-                                            {metodosPago.filter(m => m.es_financiero).map(metodo => (
-                                                <option key={metodo.id} value={metodo.id}>
-                                                    {metodo.nombre}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                <input type="radio" name="metodo_pago_modo" checked={!arancelForm.metodo_pago_nuevo} onChange={() => setArancelForm({ ...arancelForm, metodo_pago_nuevo: false })} />
+                                                Seleccionar existente
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                <input type="radio" name="metodo_pago_modo" checked={arancelForm.metodo_pago_nuevo} onChange={() => setArancelForm({ ...arancelForm, metodo_pago_nuevo: true })} />
+                                                Crear nuevo
+                                            </label>
+                                        </div>
+                                        {!arancelForm.metodo_pago_nuevo ? (
+                                            <select name="metodo_pago" value={arancelForm.metodo_pago} onChange={handleArancelFormChange} required={!arancelForm.metodo_pago_nuevo} style={styles.input}>
+                                                <option value="">Seleccionar método...</option>
+                                                {metodosPago.filter(m => m.es_financiero && m.nombre !== 'Mercado Libre').map(metodo => (
+                                                    <option key={metodo.id} value={metodo.id}>{metodo.nombre}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                <input type="text" name="nuevo_metodo_nombre" value={arancelForm.nuevo_metodo_nombre} onChange={handleArancelFormChange} placeholder="Nombre del método (ej: Tarjeta Visa)" style={styles.input} required={arancelForm.metodo_pago_nuevo} />
+                                                <input type="text" name="nuevo_metodo_descripcion" value={arancelForm.nuevo_metodo_descripcion} onChange={handleArancelFormChange} placeholder="Descripción (opcional)" style={styles.input} />
+                                            </div>
+                                        )}
                                     </div>
-                                    <div style={styles.formGroup}>
+                                    <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
                                         <label>Plan *</label>
-                                        <select
-                                            name="nombre_plan"
-                                            value={arancelForm.nombre_plan}
-                                            onChange={handleArancelFormChange}
-                                            required
-                                            style={styles.input}
-                                        >
-                                            {PLAN_CHOICES.map(plan => (
-                                                <option key={plan.value} value={plan.value}>
-                                                    {plan.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                <input type="radio" name="plan_modo" checked={!arancelForm.plan_custom} onChange={() => setArancelForm({ ...arancelForm, plan_custom: false })} />
+                                                Seleccionar existente
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                <input type="radio" name="plan_modo" checked={arancelForm.plan_custom} onChange={() => setArancelForm({ ...arancelForm, plan_custom: true })} />
+                                                Crear nuevo
+                                            </label>
+                                        </div>
+                                        {!arancelForm.plan_custom ? (
+                                            <select name="nombre_plan" value={arancelForm.nombre_plan} onChange={handleArancelFormChange} required={!arancelForm.plan_custom} style={styles.input}>
+                                                {PLAN_CHOICES.map(plan => (
+                                                    <option key={plan.value} value={plan.value}>{plan.label}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input type="text" name="plan_custom_nombre" value={arancelForm.plan_custom_nombre} onChange={handleArancelFormChange} placeholder="Nombre del plan (ej: 18 cuotas)" style={styles.input} required={arancelForm.plan_custom} />
+                                        )}
                                     </div>
                                     <div style={styles.formGroup}>
                                         <label>Arancel (%) *</label>
@@ -1233,34 +1301,51 @@ const PanelAdministracionTienda = () => {
                         <h3>Editar Arancel</h3>
                         <div style={styles.inputGroupModal}>
                             <label style={styles.label}>Método de Pago *</label>
-                            <select
-                                value={editArancelData.metodo_pago}
-                                onChange={(e) => setEditArancelData({ ...editArancelData, metodo_pago: e.target.value })}
-                                style={styles.modalInput}
-                                required
-                            >
-                                <option value="">Seleccionar...</option>
-                                {metodosPago.filter(m => m.es_financiero).map(metodo => (
-                                    <option key={metodo.id} value={metodo.id}>
-                                        {metodo.nombre}
-                                    </option>
-                                ))}
-                            </select>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                    <input type="radio" checked={!editArancelData.metodo_pago_nuevo} onChange={() => setEditArancelData({ ...editArancelData, metodo_pago_nuevo: false })} />
+                                    Seleccionar existente
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                    <input type="radio" checked={editArancelData.metodo_pago_nuevo} onChange={() => setEditArancelData({ ...editArancelData, metodo_pago_nuevo: true })} />
+                                    Crear nuevo
+                                </label>
+                            </div>
+                            {!editArancelData.metodo_pago_nuevo ? (
+                                <select value={editArancelData.metodo_pago} onChange={(e) => setEditArancelData({ ...editArancelData, metodo_pago: e.target.value })} style={styles.modalInput}>
+                                    <option value="">Seleccionar...</option>
+                                    {metodosPago.filter(m => m.es_financiero && m.nombre !== 'Mercado Libre').map(metodo => (
+                                        <option key={metodo.id} value={metodo.id}>{metodo.nombre}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <input type="text" value={editArancelData.nuevo_metodo_nombre} onChange={(e) => setEditArancelData({ ...editArancelData, nuevo_metodo_nombre: e.target.value })} placeholder="Nombre del método" style={styles.modalInput} />
+                                    <input type="text" value={editArancelData.nuevo_metodo_descripcion} onChange={(e) => setEditArancelData({ ...editArancelData, nuevo_metodo_descripcion: e.target.value })} placeholder="Descripción (opcional)" style={styles.modalInput} />
+                                </div>
+                            )}
                         </div>
                         <div style={styles.inputGroupModal}>
                             <label style={styles.label}>Plan *</label>
-                            <select
-                                value={editArancelData.nombre_plan}
-                                onChange={(e) => setEditArancelData({ ...editArancelData, nombre_plan: e.target.value })}
-                                style={styles.modalInput}
-                                required
-                            >
-                                {PLAN_CHOICES.map(plan => (
-                                    <option key={plan.value} value={plan.value}>
-                                        {plan.label}
-                                    </option>
-                                ))}
-                            </select>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                    <input type="radio" checked={!editArancelData.plan_custom} onChange={() => setEditArancelData({ ...editArancelData, plan_custom: false })} />
+                                    Seleccionar existente
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                    <input type="radio" checked={editArancelData.plan_custom} onChange={() => setEditArancelData({ ...editArancelData, plan_custom: true })} />
+                                    Crear nuevo
+                                </label>
+                            </div>
+                            {!editArancelData.plan_custom ? (
+                                <select value={editArancelData.nombre_plan} onChange={(e) => setEditArancelData({ ...editArancelData, nombre_plan: e.target.value })} style={styles.modalInput}>
+                                    {PLAN_CHOICES.map(plan => (
+                                        <option key={plan.value} value={plan.value}>{plan.label}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input type="text" value={editArancelData.plan_custom_nombre} onChange={(e) => setEditArancelData({ ...editArancelData, plan_custom_nombre: e.target.value })} placeholder="Nombre del plan" style={styles.modalInput} />
+                            )}
                         </div>
                         <div style={styles.inputGroupModal}>
                             <label style={styles.label}>Arancel (%) *</label>
@@ -1290,11 +1375,12 @@ const PanelAdministracionTienda = () => {
             {activeTab === 'aranceles-ml' && (
                 <div style={styles.tabContent}>
                     <div style={styles.sectionHeader}>
-                        <h2>Aranceles Mercado Libre por Categoría</h2>
+                        <h2>Aranceles Mercado Libre por Producto</h2>
                         <button onClick={() => {
                             setArancelMLForm({
-                                categoria_ml: '',
+                                producto: '',
                                 arancel_porcentaje: '0.00',
+                                costo_envio: '0.00',
                                 tienda: selectedStoreSlug
                             });
                             setShowArancelMLForm(true);
@@ -1309,24 +1395,26 @@ const PanelAdministracionTienda = () => {
                             <form onSubmit={handleCreateArancelML}>
                                 <div style={styles.formGrid} className="panel-admin-form-grid">
                                     <div style={styles.formGroup}>
-                                        <label>Categoría ML *</label>
+                                        <label>Producto *</label>
                                         <select
-                                            name="categoria_ml"
-                                            value={arancelMLForm.categoria_ml}
+                                            name="producto"
+                                            value={arancelMLForm.producto}
                                             onChange={handleArancelMLFormChange}
                                             required
                                             style={styles.input}
                                         >
-                                            <option value="">Seleccionar categoría...</option>
-                                            {categoriasML.map(cat => (
-                                                <option key={cat.id} value={cat.id}>
-                                                    {cat.name} ({cat.id})
+                                            <option value="">Seleccionar producto...</option>
+                                            {productosML
+                                                .filter(p => !arancelesML.some(a => (a.producto?.id ?? a.producto) === p.id))
+                                                .map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.nombre} {p.codigo ? `(${p.codigo})` : ''}
                                                 </option>
                                             ))}
                                         </select>
-                                        {categoriasML.length === 0 && (
+                                        {productosML.length === 0 && (
                                             <p style={{ fontSize: '0.9em', color: '#666', marginTop: '5px' }}>
-                                                No hay categorías disponibles. Primero debes sincronizar productos con categorías de Mercado Libre.
+                                                No hay productos disponibles. Primero añade productos a la tienda.
                                             </p>
                                         )}
                                     </div>
@@ -1340,6 +1428,18 @@ const PanelAdministracionTienda = () => {
                                             required
                                             min="0"
                                             max="100"
+                                            step="0.01"
+                                            style={styles.input}
+                                        />
+                                    </div>
+                                    <div style={styles.formGroup}>
+                                        <label>Costo de envío (por unidad)</label>
+                                        <input
+                                            type="number"
+                                            name="costo_envio"
+                                            value={arancelMLForm.costo_envio}
+                                            onChange={handleArancelMLFormChange}
+                                            min="0"
                                             step="0.01"
                                             style={styles.input}
                                         />
@@ -1366,10 +1466,10 @@ const PanelAdministracionTienda = () => {
                     <div style={styles.infoBox}>
                         <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Información</h3>
                         <p style={{ marginBottom: '10px' }}>
-                            Los aranceles de Mercado Libre se configuran por categoría. Solo se muestran las categorías que has usado en tus productos sincronizados con Mercado Libre.
+                            Configura arancel (%) y costo de envío por unidad para cada producto. Las ventas con medio de pago "Mercado Libre" descontarán estos valores en las métricas.
                         </p>
                         <p style={{ marginBottom: '10px', fontSize: '0.9em', color: '#666' }}>
-                            Si no ves ninguna categoría, primero debes sincronizar productos con Mercado Libre y asignarles categorías.
+                            Cada producto puede tener un arancel distinto según su categoría en ML. El costo de envío se aplica por unidad vendida.
                         </p>
                     </div>
 
@@ -1378,9 +1478,9 @@ const PanelAdministracionTienda = () => {
                         <table style={styles.table} className="panel-admin-table">
                             <thead>
                                 <tr>
-                                    <th style={styles.th}>Categoría</th>
-                                    <th style={styles.th}>ID Categoría</th>
+                                    <th style={styles.th}>Producto</th>
                                     <th style={styles.th}>Arancel (%)</th>
+                                    <th style={styles.th}>Costo envío/u</th>
                                     <th style={styles.th}>Acciones</th>
                                 </tr>
                             </thead>
@@ -1392,9 +1492,9 @@ const PanelAdministracionTienda = () => {
                                 ) : (
                                     arancelesML.map(arancel => (
                                         <tr key={arancel.id}>
-                                            <td style={styles.td}>{arancel.categoria_ml_nombre || '-'}</td>
-                                            <td style={styles.td}>{arancel.categoria_ml_id || arancel.categoria_ml || '-'}</td>
-                                            <td style={styles.td}>{parseFloat(arancel.arancel_porcentaje).toFixed(2)}%</td>
+                                            <td style={styles.td}>{arancel.producto_nombre || arancel.producto?.nombre || '-'}</td>
+                                            <td style={styles.td}>{parseFloat(arancel.arancel_porcentaje || 0).toFixed(2)}%</td>
+                                            <td style={styles.td}>{formatearMonto(parseFloat(arancel.costo_envio || 0))}</td>
                                             <td style={styles.td}>
                                                 <div style={styles.actionButtons} className="panel-admin-action-buttons">
                                                     <button
@@ -1426,17 +1526,17 @@ const PanelAdministracionTienda = () => {
                     <div style={styles.modalContent}>
                         <h3>Editar Arancel Mercado Libre</h3>
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>Categoría ML *</label>
+                            <label style={styles.label}>Producto *</label>
                             <select
-                                value={editArancelMLData.categoria_ml}
-                                onChange={(e) => setEditArancelMLData({ ...editArancelMLData, categoria_ml: e.target.value })}
+                                value={editArancelMLData.producto}
+                                onChange={(e) => setEditArancelMLData({ ...editArancelMLData, producto: e.target.value })}
                                 style={styles.modalInput}
                                 required
                             >
-                                <option value="">Seleccionar categoría...</option>
-                                {categoriasML.map(cat => (
-                                    <option key={cat.id} value={cat.id}>
-                                        {cat.name} ({cat.id})
+                                <option value="">Seleccionar producto...</option>
+                                {productosML.map(p => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.nombre} {p.codigo ? `(${p.codigo})` : ''}
                                     </option>
                                 ))}
                             </select>
@@ -1451,6 +1551,17 @@ const PanelAdministracionTienda = () => {
                                 required
                                 min="0"
                                 max="100"
+                                step="0.01"
+                            />
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Costo de envío (por unidad)</label>
+                            <input
+                                type="number"
+                                value={editArancelMLData.costo_envio}
+                                onChange={(e) => setEditArancelMLData({ ...editArancelMLData, costo_envio: e.target.value })}
+                                style={styles.modalInput}
+                                min="0"
                                 step="0.01"
                             />
                         </div>

@@ -350,8 +350,8 @@ const MetricasVentas = () => {
                                 <p style={styles.cardValue}>{formatearMonto(metrics?.total_costo_vendido_periodo || 0)}</p>
                             </div>
                             <div style={styles.card}>
-                                <h3 style={styles.cardTitle}>Arancel Total Ventas</h3>
-                                <p style={styles.cardValue}>{formatearMonto(metrics?.total_arancel_ventas || 0)}</p>
+                                <h3 style={styles.cardTitle}>Arancel + Envío ML (Total Ventas)</h3>
+                                <p style={styles.cardValue}>{formatearMonto((parseFloat(metrics?.total_arancel_ventas || 0) + parseFloat(metrics?.total_costo_envio_ml || 0)))}</p>
                             </div>
                             <div style={styles.card}>
                                 <h3 style={styles.cardTitle}>Margen de Rentabilidad</h3>

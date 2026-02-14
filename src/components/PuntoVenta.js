@@ -48,7 +48,8 @@ const PuntoVenta = () => {
     const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
     
     const [arancelesTienda, setArancelesTienda] = useState([]); 
-    const [arancelSeleccionadoId, setArancelSeleccionadoId] = useState(''); 
+    const [arancelSeleccionadoId, setArancelSeleccionadoId] = useState('');
+    const [arancelesML, setArancelesML] = useState([]); 
     
     // ESTADO ORIGINAL (NO SE TOCA, SOLO PARA CÓDIGO DE BARRAS)
     const [busquedaProducto, setBusquedaProducto] = useState('');
@@ -79,6 +80,7 @@ const PuntoVenta = () => {
     const [recargoMonto, setRecargoMonto] = useState('');
 
     const [redondearMonto, setRedondearMonto] = useState(false);
+    const [redondearMontoArriba, setRedondearMontoArriba] = useState(false);
 
     const [pageInfo, setPageInfo] = useState({
         next: null,
@@ -190,6 +192,21 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug, user]);
 
+    // Fetch de Aranceles Mercado Libre (por producto: arancel % + costo envío)
+    const fetchArancelesML = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/aranceles-ml/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug }
+            });
+            setArancelesML(response.data.results || response.data || []);
+        } catch (err) {
+            console.error('Error al cargar aranceles ML:', err);
+            setArancelesML([]);
+        }
+    }, [token, selectedStoreSlug]);
+
     // FUNCIÓN 3: Fetch de Información de Tienda - OPTIMIZADO: Usar endpoint específico
     const fetchTiendaInfo = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
@@ -246,6 +263,7 @@ const PuntoVenta = () => {
                     await Promise.all([
                         fetchMetodosPago(),
                         fetchAranceles(),
+                        fetchArancelesML(),
                         fetchTiendaInfo()
                     ]);
                     // Carga inicial sin filtro (el efecto de filterTerm se encargará de aplicar el filtro si existe)
@@ -265,7 +283,7 @@ const PuntoVenta = () => {
         };
         loadInitialData();
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, token, 
-        fetchMetodosPago, fetchAranceles, fetchTiendaInfo, fetchProductos]);
+        fetchMetodosPago, fetchAranceles, fetchArancelesML, fetchTiendaInfo, fetchProductos]);
         // NOTA: filterTerm NO está en las dependencias para evitar llamadas duplicadas
 
     // **********************************************
@@ -322,12 +340,14 @@ const PuntoVenta = () => {
         
         if (redondearMonto) {
             totalConAjuste = Math.floor(totalConAjuste / 100) * 100;
+        } else if (redondearMontoArriba) {
+            totalConAjuste = Math.ceil(totalConAjuste / 100) * 100;
         }
         
         return totalConAjuste;
-    }, [calculateTotalSinRedondeo, redondearMonto]);
+    }, [calculateTotalSinRedondeo, redondearMonto, redondearMontoArriba]);
 
-    // FUNCIÓN 4: Cálculo del Arancel
+    // FUNCIÓN 4: Cálculo del Arancel (para tarjetas/planes)
     const calculateArancel = useCallback(() => {
         const arancel = arancelesTienda.find(a => a.id === arancelSeleccionadoId);
         if (!arancel || !arancelSeleccionadoId) return 0;
@@ -338,6 +358,22 @@ const PuntoVenta = () => {
         
         return arancelTotal;
     }, [arancelSeleccionadoId, arancelesTienda, calculateFinalTotal]);
+
+    // Cálculo de arancel + costo envío Mercado Libre (por producto)
+    const calculateArancelEnvioML = useCallback(() => {
+        if (!activeCart || activeCart.items.length === 0 || !arancelesML.length) return { arancel: 0, envio: 0 };
+        const mapProducto = (id) => arancelesML.find(a => (a.producto?.id ?? a.producto) === id);
+        let arancelTotal = 0;
+        let envioTotal = 0;
+        activeCart.items.forEach(item => {
+            const conf = mapProducto(item.product.id);
+            if (!conf) return;
+            const subtotalItem = item.quantity * parseFloat(item.product.precio);
+            arancelTotal += subtotalItem * (parseFloat(conf.arancel_porcentaje || 0) / 100);
+            envioTotal += (parseFloat(conf.costo_envio || 0)) * item.quantity;
+        });
+        return { arancel: arancelTotal, envio: envioTotal };
+    }, [activeCart, arancelesML]);
 
     // FUNCIÓN 5: Lógica para Añadir Producto
     const handleAddProductoEnVenta = useCallback((product, quantity = 1) => {
@@ -427,7 +463,8 @@ const PuntoVenta = () => {
 
     // Lógica para determinar si el método seleccionado es financiero
     const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
-    const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero;
+    const isMercadoLibre = metodoPagoSeleccionado === 'Mercado Libre';
+    const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero && !isMercadoLibre; // ML usa aranceles por producto, no Plan/Arancel
     
     // Filtrar los aranceles disponibles para el método de pago seleccionado
     // Usar comparación flexible (trim y case-insensitive) para evitar problemas de formato
@@ -503,12 +540,14 @@ const PuntoVenta = () => {
 
         const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
         const isMetodoFinanciero = metodoPagoObj?.es_financiero;
+        const isMercadoLibreVenta = metodoPagoSeleccionado === 'Mercado Libre';
         // Normalizar: convertir cadena vacía a null
         const arancelIdNormalizado = arancelSeleccionadoId && arancelSeleccionadoId.trim() !== '' ? arancelSeleccionadoId : null;
-        const finalArancelId = isMetodoFinanciero ? arancelIdNormalizado : null;
+        const finalArancelId = (isMetodoFinanciero && !isMercadoLibreVenta) ? arancelIdNormalizado : null;
         const arancelInfo = arancelesTienda.find(a => a.id === finalArancelId);
+        const { arancel: arancelML, envio: envioML } = calculateArancelEnvioML();
 
-        if (isMetodoFinanciero && !finalArancelId) {
+        if (isMetodoFinanciero && !isMercadoLibreVenta && !finalArancelId) {
             Swal.fire('Error', 'Por favor, selecciona el Plan / Arancel.', 'error');
             return;
         }
@@ -516,7 +555,7 @@ const PuntoVenta = () => {
         const isDiscountApplied = parseFloat(descuentoMonto) > 0 || parseFloat(descuentoPorcentaje) > 0;
         const isSurchargeApplied = parseFloat(recargoMonto) > 0 || parseFloat(recargoPorcentaje) > 0;
 
-        if (redondearMonto && (isDiscountApplied || isSurchargeApplied)) {
+        if ((redondearMonto || redondearMontoArriba) && (isDiscountApplied || isSurchargeApplied)) {
             const confirmOverride = await Swal.fire({
                 title: 'Aviso de Redondeo',
                 text: 'El redondeo se aplicará sobre el ajuste (descuento/recargo) que ya ingresaste. El monto final se recalculará.',
@@ -535,8 +574,7 @@ const PuntoVenta = () => {
 
         // --- LÓGICA DE CÁLCULO PARA BACKEND ---
         const subtotalCrudo = activeCart.total; // Subtotal sin ajustes
-        const finalTotal = calculateFinalTotal(); // Total FINAL (con ajustes Y redondeo si aplica)
-        const arancelMonto = calculateArancel(); 
+        const finalTotal = calculateFinalTotal(); // Total FINAL (con ajustes Y redondeo si aplica) 
 
         let datosAjusteParaBackend = {
             descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
@@ -545,8 +583,8 @@ const PuntoVenta = () => {
             recargo_monto: parseFloat(recargoMonto) || 0,
         };
 
-        if (redondearMonto) {
-            // Si hay redondeo, calculamos el ajuste total (negativo o positivo)
+        if (redondearMonto || redondearMontoArriba) {
+            // Si hay redondeo (abajo o arriba), calculamos el ajuste total (negativo o positivo)
             // y lo enviamos como UN solo campo (monto) al backend.
             const ajusteTotalEfectivo = finalTotal - subtotalCrudo;
 
@@ -567,9 +605,15 @@ const PuntoVenta = () => {
 
         let htmlMessage = `Confirmas la venta por un total de <strong>${formatearMonto(finalTotal)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?`;
         
+        const arancelMonto = isMercadoLibreVenta ? arancelML : calculateArancel();
         if (arancelMonto > 0) {
-            htmlMessage += `<br><br><strong>Plan/Arancel:</strong> ${arancelInfo.nombre_plan} (${parseFloat(arancelInfo.arancel_porcentaje).toFixed(2)}%)`;
-            htmlMessage += `<br><strong>Monto del Arancel (Egreso):</strong> ${formatearMonto(arancelMonto)}`;
+            if (isMercadoLibreVenta) {
+                htmlMessage += `<br><br><strong>Arancel ML:</strong> ${formatearMonto(arancelML)}`;
+                if (envioML > 0) htmlMessage += `<br><strong>Costo envío:</strong> ${formatearMonto(envioML)}`;
+            } else {
+                htmlMessage += `<br><br><strong>Plan/Arancel:</strong> ${arancelInfo.nombre_plan} (${parseFloat(arancelInfo.arancel_porcentaje).toFixed(2)}%)`;
+                htmlMessage += `<br><strong>Monto del Arancel (Egreso):</strong> ${formatearMonto(arancelMonto)}`;
+            }
         }
 
         // Mensaje de ajuste (Recargo o Descuento)
@@ -584,7 +628,7 @@ const PuntoVenta = () => {
             adjustmentMessage = `<br>(Descuento: ${datosAjusteParaBackend.descuento_porcentaje.toFixed(2)}%)`;
         }
         
-        if (redondearMonto) {
+        if (redondearMonto || redondearMontoArriba) {
              htmlMessage += `<br><strong>(Monto final redondeado a ${formatearMonto(finalTotal)})</strong>`;
              if (adjustmentMessage) {
                  htmlMessage += adjustmentMessage;
@@ -606,14 +650,18 @@ const PuntoVenta = () => {
                     const ventaData = {
                         tienda_slug: selectedStoreSlug,
                         metodo_pago: metodoPagoSeleccionado,
-                        ...datosAjusteParaBackend, // Se envían los datos calculados
-                        arancel_aplicado_id: finalArancelId || null, // Asegurar que sea null si está vacío
+                        ...datosAjusteParaBackend,
+                        arancel_aplicado_id: finalArancelId || null,
                         detalles: activeCart.items.map(item => ({
                             producto: item.product.id,
                             cantidad: item.quantity,
                             precio_unitario: parseFloat(item.product.precio),
                         })),
                     };
+                    if (isMercadoLibreVenta) {
+                        ventaData.arancel_total_ml = arancelML;
+                        ventaData.costo_envio_ml = envioML;
+                    }
 
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
@@ -649,6 +697,7 @@ const PuntoVenta = () => {
                     setRecargoPorcentaje('');
                     setRecargoMonto('');
                     setRedondearMonto(false);
+                    setRedondearMontoArriba(false);
                     
                     // Verificar si la tienda tiene facturación configurada
                     // Asegurarnos de tener la información más actualizada de la tienda
@@ -1027,6 +1076,15 @@ const PuntoVenta = () => {
                         {isMetodoFinancieroActivo && arancelSeleccionadoId && (
                             <p style={styles.arancelDisplay}>Arancel: {formatearMonto(calculateArancel())}</p>
                         )}
+                        {isMercadoLibre && (() => {
+                            const { arancel, envio } = calculateArancelEnvioML();
+                            return (
+                                <div style={styles.arancelDisplay}>
+                                    <p>Arancel ML: {formatearMonto(arancel)}</p>
+                                    <p>Costo envío: {formatearMonto(envio)}</p>
+                                </div>
+                            );
+                        })()}
                         <div style={styles.ajustesContainer} className="ajustesContainer">
                             <div style={styles.ajusteGrupo} className="ajusteGrupo">
                                 <label htmlFor="recargoMonto" style={styles.ajusteLabel}>Recargo $</label>
@@ -1087,9 +1145,25 @@ const PuntoVenta = () => {
                                 type="checkbox"
                                 id="redondearMonto"
                                 checked={redondearMonto}
-                                onChange={(e) => setRedondearMonto(e.target.checked)}
+                                onChange={(e) => {
+                                    const v = e.target.checked;
+                                    setRedondearMonto(v);
+                                    if (v) setRedondearMontoArriba(false);
+                                }}
                             />
                             <label htmlFor="redondearMonto" style={styles.redondearLabel}>Redondear total (múlt. 100 ↓)</label>
+                            <input
+                                type="checkbox"
+                                id="redondearMontoArriba"
+                                checked={redondearMontoArriba}
+                                onChange={(e) => {
+                                    const v = e.target.checked;
+                                    setRedondearMontoArriba(v);
+                                    if (v) setRedondearMonto(false);
+                                }}
+                                style={{ marginLeft: '16px' }}
+                            />
+                            <label htmlFor="redondearMontoArriba" style={styles.redondearLabel}>Redondear total (múlt. 100 ↑)</label>
                         </div>
                         <h4 style={styles.finalTotalVenta}>Total: {formatearMonto(calculateFinalTotal())}</h4>
                         <button onClick={handleProcesarVenta} style={styles.processSaleButton} className="process-sale-button">
