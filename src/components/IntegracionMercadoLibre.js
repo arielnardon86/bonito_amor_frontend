@@ -29,6 +29,7 @@ const IntegracionMercadoLibre = () => {
     const [loading, setLoading] = useState(true);
     const [sincronizando, setSincronizando] = useState(false);
     const [desconectando, setDesconectando] = useState(false);
+    const [importarActualizarExistentes, setImportarActualizarExistentes] = useState(false);
     const [error, setError] = useState(null);
     const [authUrl, setAuthUrl] = useState(null);
 
@@ -410,7 +411,7 @@ const IntegracionMercadoLibre = () => {
 
             const response = await axios.post(
                 `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/import-products/`,
-                { solo_nuevos: true },
+                { solo_nuevos: !importarActualizarExistentes },
                 { 
                     headers: { 'Authorization': `Bearer ${token}` },
                     timeout: 300000
@@ -686,6 +687,15 @@ const IntegracionMercadoLibre = () => {
                         <p style={{ marginBottom: '15px' }}>
                             Si tenés productos publicados en Mercado Libre que aún no están en tu sistema, importalos para vincularlos. Las ventas se registrarán automáticamente.
                         </p>
+                        <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={importarActualizarExistentes}
+                                onChange={(e) => setImportarActualizarExistentes(e.target.checked)}
+                                style={{ marginRight: '10px', width: '18px', height: '18px' }}
+                            />
+                            <span>Actualizar también productos ya importados (refresca precios con promoción y stock)</span>
+                        </label>
                         <button
                             onClick={handleImportarProductos}
                             disabled={sincronizando}
