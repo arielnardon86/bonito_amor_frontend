@@ -71,9 +71,9 @@ const ImportarProductosSeleccionadosML = ({ tiendaId, token, onClose, onImport }
 
     return (
         <div style={{ padding: '20px', minHeight: '400px' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Importar productos seleccionados</h3>
+            <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Importar productos</h3>
             <p style={{ color: '#666', marginBottom: '15px', fontSize: '14px' }}>
-                Seleccioná los productos de Mercado Libre que querés traer a Total Stock.
+                Elegí los productos de Mercado Libre que querés traer a Total Stock.
             </p>
             {loading ? (
                 <p style={{ textAlign: 'center', padding: '40px' }}>Cargando productos...</p>
@@ -82,8 +82,8 @@ const ImportarProductosSeleccionadosML = ({ tiendaId, token, onClose, onImport }
             ) : (
                 <>
                     <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={Object.values(seleccionados).some(Boolean) && Object.keys(seleccionados).every(k => seleccionados[k])} onChange={toggleTodos} style={{ marginRight: '8px' }} />
+                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 500 }}>
+                            <input type="checkbox" checked={Object.keys(seleccionados).length > 0 && Object.keys(seleccionados).every(k => seleccionados[k])} onChange={toggleTodos} style={{ marginRight: '10px', width: '18px', height: '18px' }} />
                             <span>Seleccionar todos</span>
                         </label>
                         <span style={{ fontSize: '14px', color: '#666' }}>
@@ -114,8 +114,8 @@ const ImportarProductosSeleccionadosML = ({ tiendaId, token, onClose, onImport }
                     )}
                     <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                         <button type="button" onClick={onClose} style={{ padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 5, cursor: 'pointer' }}>Cancelar</button>
-                        <button type="button" onClick={handleImportar} style={{ padding: '10px 20px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: 5, cursor: 'pointer' }}>
-                            Importar seleccionados ({seleccionadosIds().length})
+                        <button type="button" onClick={handleImportar} style={{ padding: '10px 20px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 500 }}>
+                            Importar ({seleccionadosIds().length})
                         </button>
                     </div>
                 </>
