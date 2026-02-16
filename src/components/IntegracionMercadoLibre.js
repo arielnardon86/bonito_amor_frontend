@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../AuthContext';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import SeleccionarProductosML from './SeleccionarProductosML';
+import ImportarProductosSeleccionadosML from './ImportarProductosSeleccionadosML';
 
 const normalizeApiUrl = (url) => {
     if (!url) {
@@ -261,74 +261,85 @@ const IntegracionMercadoLibre = () => {
         }
     };
 
-    // Estado para mostrar modal de selección
-    const [mostrarModalSeleccion, setMostrarModalSeleccion] = useState(false);
+    const [mostrarModalImportarSeleccionados, setMostrarModalImportarSeleccionados] = useState(false);
 
-    // Sincronizar productos con selección
-    const handleSincronizarProductos = async (productosParaSincronizar) => {
-        if (!tiendaId) return;
-
+    // Importar productos seleccionados desde ML
+    const handleImportarSeleccionados = async (mlItemIds) => {
+        if (!tiendaId || !mlItemIds?.length) return;
         setSincronizando(true);
         try {
-            Swal.fire({
-                title: 'Sincronizando productos...',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-
+            Swal.fire({ title: 'Importando productos...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
             const response = await axios.post(
-                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/sync-products/`,
-                { productos: productosParaSincronizar },
-                { 
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    timeout: 600000
-                }
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/import-products/`,
+                { ml_item_ids: mlItemIds },
+                { headers: { 'Authorization': `Bearer ${token}` }, timeout: 300000 }
             );
-
-            const { total, success, errors, results } = response.data;
-
-            let detallesHtml = '<ul style="text-align: left; max-height: 400px; overflow-y: auto;">';
-            results.details.forEach(detail => {
-                const icon = detail.status === 'success' ? '✅' : '❌';
-                detallesHtml += `<li style="margin: 5px 0;">${icon} <strong>${detail.nombre}</strong>: ${detail.message}</li>`;
-            });
-            detallesHtml += '</ul>';
-
-            Swal.fire({
-                title: 'Sincronización Completada',
-                html: `
-                    <p><strong>Total:</strong> ${total} productos</p>
-                    <p><strong>Exitosos:</strong> ${success}</p>
-                    <p><strong>Errores:</strong> ${errors}</p>
-                    ${results.details.length > 0 ? `<hr/><h4>Detalles:</h4>${detallesHtml}` : ''}
-                `,
-                icon: errors === 0 ? 'success' : 'warning',
-                width: '600px'
-            });
-
-            await fetchTienda();
-            setMostrarModalSeleccion(false);
-        } catch (err) {
-            let errorMsg = 'Error desconocido';
-            if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
-                errorMsg = 'La sincronización tardó demasiado tiempo. Algunos productos pueden haberse sincronizado. Por favor, verifica el estado.';
-            } else if (err.response?.data?.error) {
-                errorMsg = err.response.data.error;
-            } else if (err.response?.data?.message) {
-                errorMsg = err.response.data.message;
-            } else if (err.message) {
-                errorMsg = err.message;
+            const { success, actualizados, errors, results } = response.data;
+            let detallesHtml = '';
+            if (results?.details?.length) {
+                detallesHtml = '<ul style="text-align: left; max-height: 300px; overflow-y: auto;">';
+                results.details.slice(0, 25).forEach(d => {
+                    const icon = d.status === 'success' ? '✅' : '❌';
+                    detallesHtml += `<li style="margin: 5px 0;">${icon} <strong>${d.nombre || d.ml_item_id}</strong>: ${d.message}</li>`;
+                });
+                if (results.details.length > 25) detallesHtml += `<li><em>... y ${results.details.length - 25} más</em></li>`;
+                detallesHtml += '</ul>';
             }
-            Swal.fire('Error', `Error al sincronizar productos: ${errorMsg}`, 'error');
-            console.error('Error sincronizando productos:', err);
+            Swal.fire({
+                title: 'Importación completada',
+                html: `<p><strong>Nuevos:</strong> ${success} · <strong>Actualizados:</strong> ${actualizados || 0} · <strong>Errores:</strong> ${errors}</p>${detallesHtml}`,
+                icon: errors === 0 ? 'success' : 'warning',
+                width: '550px'
+            });
+            await fetchTienda();
+        } catch (err) {
+            const data = err.response?.data || {};
+            if (data.reconnect_required) {
+                Swal.fire({ title: 'Reconectar Mercado Libre', text: data.error, icon: 'warning' });
+                await fetchMLStatus();
+            } else {
+                Swal.fire('Error', data.error || err.message || 'Error al importar', 'error');
+            }
         } finally {
             setSincronizando(false);
         }
     };
 
-    // Actualizar solo el stock de productos existentes
+    // Actualizar precios y stock de productos existentes desde ML
+    const handleActualizarExistentes = async () => {
+        if (!tiendaId) return;
+        setSincronizando(true);
+        try {
+            Swal.fire({ title: 'Actualizando productos existentes...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+            const response = await axios.post(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/update-existing-products/`,
+                {},
+                { headers: { 'Authorization': `Bearer ${token}` }, timeout: 120000 }
+            );
+            const { success, errors, details } = response.data;
+            let html = `<p><strong>Actualizados:</strong> ${success} · <strong>Errores:</strong> ${errors}</p>`;
+            if (details?.length) {
+                html += '<ul style="text-align: left; max-height: 250px; overflow-y: auto;">';
+                details.slice(0, 20).forEach(d => { html += `<li>${d.status === 'success' ? '✅' : '❌'} ${d.nombre}: ${d.message}</li>`; });
+                if (details.length > 20) html += `<li><em>... y ${details.length - 20} más</em></li>`;
+                html += '</ul>';
+            }
+            Swal.fire({ title: 'Actualización completada', html, icon: errors === 0 ? 'success' : 'warning', width: '500px' });
+            await fetchTienda();
+        } catch (err) {
+            const data = err.response?.data || {};
+            if (data.reconnect_required) {
+                Swal.fire({ title: 'Reconectar Mercado Libre', text: data.error, icon: 'warning' });
+                await fetchMLStatus();
+            } else {
+                Swal.fire('Error', data.error || err.message || 'Error al actualizar', 'error');
+            }
+        } finally {
+            setSincronizando(false);
+        }
+    };
+
+    // Actualizar stock de Total Stock hacia Mercado Libre (solo stock, no precio)
     const handleActualizarStock = async () => {
         if (!tiendaId) return;
 
@@ -619,63 +630,36 @@ const IntegracionMercadoLibre = () => {
             {/* Configuración de sincronización */}
             {isAutenticado && (
                 <>
+                    {/* Desde Total Stock: solo actualizar stock a ML */}
                     <div style={{
-                        backgroundColor: '#f9f9f9',
+                        backgroundColor: '#e7f3ff',
                         padding: '20px',
                         borderRadius: '8px',
                         marginBottom: '30px',
-                        border: '1px solid #ddd'
+                        border: '1px solid #b3d9ff'
                     }}>
-                        <h3 style={{ marginTop: 0, color: '#333' }}>Configuración de Sincronización</h3>
-                        
-                        <div style={{ marginTop: '15px' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={tienda?.ml_sync_habilitado || false}
-                                    onChange={(e) => handleActualizarConfig('ml_sync_habilitado', e.target.checked)}
-                                    style={{ marginRight: '10px', width: '20px', height: '20px' }}
-                                />
-                                <span><strong>Habilitar sincronización automática</strong></span>
-                            </label>
-                            
-                            {tienda?.ml_sync_habilitado && (
-                                <>
-                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '15px', marginLeft: '30px' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={tienda?.ml_sincronizar_stock || false}
-                                            onChange={(e) => handleActualizarConfig('ml_sincronizar_stock', e.target.checked)}
-                                            style={{ marginRight: '10px', width: '20px', height: '20px' }}
-                                        />
-                                        <span>Sincronizar stock automáticamente</span>
-                                    </label>
-                                    
-                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '15px', marginLeft: '30px' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={tienda?.ml_sincronizar_precios || false}
-                                            onChange={(e) => handleActualizarConfig('ml_sincronizar_precios', e.target.checked)}
-                                            style={{ marginRight: '10px', width: '20px', height: '20px' }}
-                                        />
-                                        <span>Sincronizar precios automáticamente</span>
-                                    </label>
-                                    
-                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '15px', marginLeft: '30px' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={tienda?.ml_sincronizar_productos || false}
-                                            onChange={(e) => handleActualizarConfig('ml_sincronizar_productos', e.target.checked)}
-                                            style={{ marginRight: '10px', width: '20px', height: '20px' }}
-                                        />
-                                        <span>Sincronizar nuevos productos automáticamente</span>
-                                    </label>
-                                </>
-                            )}
-                        </div>
+                        <h3 style={{ marginTop: 0, color: '#004085' }}>Desde Total Stock hacia Mercado Libre</h3>
+                        <p style={{ marginBottom: '15px' }}>
+                            Si vendiste por otro canal y querés reflejar el stock actual en Mercado Libre, actualizalo acá. Solo se actualiza el stock (no el precio).
+                        </p>
+                        <button
+                            onClick={handleActualizarStock}
+                            disabled={sincronizando}
+                            style={{
+                                padding: '12px 24px',
+                                backgroundColor: sincronizando ? '#ccc' : '#17a2b8',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '5px',
+                                cursor: sincronizando ? 'not-allowed' : 'pointer',
+                                fontSize: '16px'
+                            }}
+                        >
+                            {sincronizando ? 'Procesando...' : 'Actualizar stock a Mercado Libre'}
+                        </button>
                     </div>
 
-                    {/* Traer productos desde Mercado Libre - Sección destacada */}
+                    {/* Traer productos desde Mercado Libre */}
                     <div style={{
                         backgroundColor: '#e8f5e9',
                         padding: '20px',
@@ -685,81 +669,72 @@ const IntegracionMercadoLibre = () => {
                     }}>
                         <h3 style={{ marginTop: 0, color: '#2e7d32' }}>Traer productos a Total Stock</h3>
                         <p style={{ marginBottom: '15px' }}>
-                            Si tenés productos publicados en Mercado Libre que aún no están en tu sistema, importalos para vincularlos. Las ventas se registrarán automáticamente.
+                            Importá tus productos publicados en Mercado Libre para vincularlos. Las ventas se registrarán automáticamente.
                         </p>
-                        <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
-                            <input
-                                type="checkbox"
-                                checked={importarActualizarExistentes}
-                                onChange={(e) => setImportarActualizarExistentes(e.target.checked)}
-                                style={{ marginRight: '10px', width: '18px', height: '18px' }}
-                            />
-                            <span>Actualizar también productos ya importados (refresca precios con promoción y stock)</span>
-                        </label>
-                        <button
-                            onClick={handleImportarProductos}
-                            disabled={sincronizando}
-                            style={{
-                                padding: '14px 28px',
-                                backgroundColor: sincronizando ? '#ccc' : '#2e7d32',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '5px',
-                                cursor: sincronizando ? 'not-allowed' : 'pointer',
-                                fontSize: '16px',
-                                fontWeight: 'bold'
-                            }}
-                        >
-                            {sincronizando ? 'Procesando...' : '📥 Importar productos desde Mercado Libre'}
-                        </button>
-                    </div>
-
-                    {/* Sincronización manual */}
-                    <div style={{
-                        backgroundColor: '#e7f3ff',
-                        padding: '20px',
-                        borderRadius: '8px',
-                        marginBottom: '30px',
-                        border: '1px solid #b3d9ff'
-                    }}>
-                        <h3 style={{ marginTop: 0, color: '#004085' }}>Sincronización Manual</h3>
-                        <p>Envía productos de Total Stock a Mercado Libre o actualiza el stock de los ya vinculados.</p>
-                        <div style={{ display: 'flex', gap: '15px', marginTop: '15px', flexWrap: 'wrap' }}>
-                            <button
-                                onClick={() => setMostrarModalSeleccion(true)}
-                                disabled={sincronizando}
-                                style={{
-                                    padding: '12px 24px',
-                                    backgroundColor: sincronizando ? '#ccc' : '#28a745',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '5px',
-                                    cursor: sincronizando ? 'not-allowed' : 'pointer',
-                                    fontSize: '16px'
-                                }}
-                            >
-                                {sincronizando ? 'Sincronizando...' : 'Seleccionar y Sincronizar Productos'}
-                            </button>
-                            <button
-                                onClick={handleActualizarStock}
-                                disabled={sincronizando}
-                                style={{
-                                    padding: '12px 24px',
-                                    backgroundColor: sincronizando ? '#ccc' : '#17a2b8',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '5px',
-                                    cursor: sincronizando ? 'not-allowed' : 'pointer',
-                                    fontSize: '16px'
-                                }}
-                            >
-                                {sincronizando ? 'Actualizando...' : 'Actualizar Stock'}
-                            </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={importarActualizarExistentes}
+                                        onChange={(e) => setImportarActualizarExistentes(e.target.checked)}
+                                        style={{ marginRight: '8px', width: '18px', height: '18px' }}
+                                    />
+                                    <span>Incluir actualización de productos ya importados</span>
+                                </label>
+                                <button
+                                    onClick={handleImportarProductos}
+                                    disabled={sincronizando}
+                                    style={{
+                                        padding: '10px 20px',
+                                        backgroundColor: sincronizando ? '#ccc' : '#2e7d32',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '5px',
+                                        cursor: sincronizando ? 'not-allowed' : 'pointer',
+                                        fontSize: '15px'
+                                    }}
+                                >
+                                    {sincronizando ? 'Procesando...' : '📥 Importar productos'}
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <button
+                                    onClick={() => setMostrarModalImportarSeleccionados(true)}
+                                    disabled={sincronizando}
+                                    style={{
+                                        padding: '10px 20px',
+                                        backgroundColor: sincronizando ? '#ccc' : '#388e3c',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '5px',
+                                        cursor: sincronizando ? 'not-allowed' : 'pointer',
+                                        fontSize: '15px'
+                                    }}
+                                >
+                                    Importar productos seleccionados
+                                </button>
+                                <button
+                                    onClick={handleActualizarExistentes}
+                                    disabled={sincronizando}
+                                    style={{
+                                        padding: '10px 20px',
+                                        backgroundColor: sincronizando ? '#ccc' : '#43a047',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '5px',
+                                        cursor: sincronizando ? 'not-allowed' : 'pointer',
+                                        fontSize: '15px'
+                                    }}
+                                >
+                                    Actualizar precios y stock de productos existentes
+                                </button>
+                            </div>
                         </div>
-                        <p style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
-                            <strong>Importar desde ML:</strong> Trae tus productos que ya publicaste en Mercado Libre hacia Total Stock y los vincula.<br/>
-                            <strong>Sincronizar productos:</strong> Sube productos de Total Stock a Mercado Libre.<br/>
-                            <strong>Actualizar Stock:</strong> Actualiza el stock en ML de productos que ya están vinculados.
+                        <p style={{ marginTop: '12px', fontSize: '13px', color: '#666' }}>
+                            <strong>Importar productos:</strong> Trae todos los de ML (con o sin actualizar los ya importados).<br/>
+                            <strong>Importar seleccionados:</strong> Elegí con checkboxes cuáles importar.<br/>
+                            <strong>Actualizar existentes:</strong> Refresca precio y stock de productos ya vinculados.
                         </p>
                     </div>
                 </>
@@ -776,15 +751,14 @@ const IntegracionMercadoLibre = () => {
             }}>
                 <h4 style={{ marginTop: 0, color: '#333' }}>Información</h4>
                 <ul style={{ marginBottom: 0 }}>
-                    <li><strong>Importar desde ML:</strong> Si ya tenés productos publicados en Mercado Libre, importalos para vincularlos. Las ventas se registrarán automáticamente.</li>
-                    <li><strong>Facturación automática:</strong> Cuando vendas en ML y tengas AFIP/ARCA configurado, las facturas se emiten automáticamente como Consumidor Final.</li>
-                    <li>La sincronización automática actualiza el stock y los precios cuando modificás productos en Total Stock.</li>
-                    <li>Podés seleccionar qué productos sincronizar y elegir la categoría de Mercado Libre para cada uno.</li>
+                    <li><strong>Desde Total Stock:</strong> Actualizá el stock en ML cuando vendas por otro canal (solo stock, no precio).</li>
+                    <li><strong>Traer de ML:</strong> Importá productos, elegí cuáles o actualizá existentes (precio y stock desde ML).</li>
+                    <li><strong>Facturación:</strong> Las ventas de ML se facturan automáticamente si tenés AFIP/ARCA configurado.</li>
                 </ul>
             </div>
 
-            {/* Modal de selección de productos */}
-            {mostrarModalSeleccion && (
+            {/* Modal importar productos seleccionados */}
+            {mostrarModalImportarSeleccionados && (
                 <div style={{
                     position: 'fixed',
                     top: 0,
@@ -807,12 +781,11 @@ const IntegracionMercadoLibre = () => {
                         overflow: 'auto',
                         position: 'relative'
                     }}>
-                        <SeleccionarProductosML
+                        <ImportarProductosSeleccionadosML
                             tiendaId={tiendaId}
-                            selectedStoreSlug={selectedStoreSlug}
                             token={token}
-                            onClose={() => setMostrarModalSeleccion(false)}
-                            onConfirm={handleSincronizarProductos}
+                            onClose={() => setMostrarModalImportarSeleccionados(false)}
+                            onImport={handleImportarSeleccionados}
                         />
                     </div>
                 </div>
