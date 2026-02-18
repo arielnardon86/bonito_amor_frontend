@@ -175,11 +175,9 @@ const Productos = () => {
             .filter(([id, cantidad]) => cantidad > 0)
             .map(([id, cantidad]) => {
                 const producto = productos.find(p => p.id == id);
-                return {
-                    ...producto,
-                    labelQuantity: parseInt(cantidad, 10)
-                };
-            });
+                return producto ? { ...producto, labelQuantity: parseInt(cantidad, 10) } : null;
+            })
+            .filter(Boolean);
         
         if (productosParaImprimir.length > 0) {
             navigate('/etiquetas', { state: { productosParaImprimir } });

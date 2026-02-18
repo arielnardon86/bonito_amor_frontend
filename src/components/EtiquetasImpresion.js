@@ -15,23 +15,29 @@ const EtiquetasImpresion = () => {
             labelsRef.current.innerHTML = '';
             
             productosParaImprimir.forEach((producto) => {
+                if (!producto || (!producto.id && !producto.nombre)) return;
+                const codigoBarras = producto.codigo_barras && String(producto.codigo_barras).trim() 
+                    ? String(producto.codigo_barras).trim() 
+                    : `PROD-${producto.id || 'N/A'}`;
+                const isEAN13 = /^\d{12,13}$/.test(codigoBarras);
+                
                 for (let i = 0; i < producto.labelQuantity; i++) {
                     const tempDiv = document.createElement('div');
                     tempDiv.className = 'label';
                     
                     const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                     try {
-                        JsBarcode(svgElement, String(producto.codigo_barras), {
-                            format: 'EAN13',
+                        JsBarcode(svgElement, codigoBarras, {
+                            format: isEAN13 ? 'EAN13' : 'CODE128',
                             displayValue: false, 
                             fontSize: 8,
                             width: 3, 
                             height: 60,
-                            margin: 0, // <- CAMBIO: Quitamos el margen de JsBarcode, lo manejaremos con CSS
+                            margin: 0,
                         });
                     } catch (e) {
                         console.error('Error generando código de barras:', e);
-                        tempDiv.innerHTML = `<p>Error en el código de barras</p><p>${producto.codigo_barras}</p>`;
+                        tempDiv.innerHTML = `<p>Sin código de barras</p><p class="product-name">${producto.nombre || ''}</p><p class="price">Precio: ${formatearMonto(producto.precio)}</p>`;
                         labelsRef.current.appendChild(tempDiv);
                         continue;
                     }
