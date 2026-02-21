@@ -4,7 +4,6 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-// Configuración de Firebase (debe coincidir con firebase.js)
 const firebaseConfig = {
   apiKey: "AIzaSyCg2Y9i8szsfi6Y1D8E05qC9j63zWrjuyU",
   authDomain: "total-stock.firebaseapp.com",
@@ -14,73 +13,58 @@ const firebaseConfig = {
   appId: "1:741099614305:web:7ec7e80dc1607fce7f3a20"
 };
 
-// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
-
-// Obtener instancia de messaging
 const messaging = firebase.messaging();
 
-// Manejar mensajes en background (cuando la app está cerrada o en segundo plano).
-// Este handler se llama para mensajes data-only (sin payload "notification").
-// Para mensajes con payload "notification", FCM los muestra automáticamente.
+// Manejar mensajes en background.
+// Con WebpushConfig.notification en el backend, FCM ya tiene título y cuerpo.
+// Este handler se llama de todas formas y mostramos la notificación explícitamente
+// para tener control total (tag único por venta, icono, etc.).
 messaging.onBackgroundMessage(async (payload) => {
-  console.log('[firebase-messaging-sw.js] Mensaje recibido en background:', payload);
+  console.log('[SW] Mensaje en background:', payload);
 
-  // Verificar si hay ventanas visibles y enfocadas para evitar duplicados.
-  // NOTA: Client.visibilityState no existe en la API SW; se usa client.focused.
-  const clientList = await self.clients.matchAll({
-    type: 'window',
-    includeUncontrolled: true
-  });
-
-  const hasVisibleWindow = clientList.some(client => client.focused === true);
-
-  // Si hay una ventana enfocada, la app está en primer plano y el listener
-  // onMessage del frontend mostrará la notificación. Evitar duplicados.
-  if (hasVisibleWindow) {
-    console.log('[firebase-messaging-sw.js] Ventana enfocada detectada, no mostrar desde SW');
+  // Evitar duplicados: si la app está enfocada, el listener onMessage del frontend
+  // ya mostrará la notificación.
+  const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  if (clientList.some(c => c.focused)) {
+    console.log('[SW] Ventana enfocada, el frontend maneja la notificación');
     return;
   }
 
-  // Leer título y cuerpo desde data (notif_title/notif_body para evitar conflicto con
-  // campos reservados de FCM) o desde notification como fallback.
-  const titulo = payload.data?.notif_title || payload.data?.title || payload.notification?.title || 'Nueva Venta';
-  const cuerpo  = payload.data?.notif_body  || payload.data?.body  || payload.notification?.body  || 'Se ha realizado una nueva venta';
+  // Leer título y cuerpo: primero desde notification (WebpushConfig.notification),
+  // luego desde data como fallback.
+  const titulo = payload.notification?.title
+    || payload.data?.notif_title
+    || payload.data?.title
+    || 'Nueva Venta';
+
+  const cuerpo = payload.notification?.body
+    || payload.data?.notif_body
+    || payload.data?.body
+    || 'Se ha realizado una nueva venta';
 
   const ventaId = payload.data?.venta_id || Date.now().toString();
-  const notificationTag = `venta-${ventaId}`;
 
-  const notificationOptions = {
+  return self.registration.showNotification(titulo, {
     body: cuerpo,
     icon: '/logo192.png',
     badge: '/logo192.png',
-    tag: notificationTag,
+    tag: `venta-${ventaId}`,
     requireInteraction: false,
     data: payload.data || {}
-  };
-
-  return self.registration.showNotification(titulo, notificationOptions);
+  });
 });
 
 // Manejar clics en notificaciones
 self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Notificación clickeada:', event);
-
   event.notification.close();
-
   const urlToOpen = event.notification.data?.click_action || '/ventas';
-
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (let i = 0; i < clientList.length; i++) {
-        const client = clientList[i];
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus();
-        }
+      for (const client of clientList) {
+        if (client.url.includes(urlToOpen) && 'focus' in client) return client.focus();
       }
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
+      if (clients.openWindow) return clients.openWindow(urlToOpen);
     })
   );
 });

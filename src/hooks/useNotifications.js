@@ -280,8 +280,8 @@ export const useNotifications = () => {
                 globalMessageUnsubscribe = onMessageListener((payload) => {
                     console.log('Notificación recibida en primer plano:', payload);
 
-                    // Soportar mensajes data-only (notif_title/notif_body en payload.data)
-                    // y mensajes con payload notification (compatibilidad)
+                    // Leer título y cuerpo desde notification (WebpushConfig.notification del backend)
+                    // con fallback a data para compatibilidad
                     const titulo = payload.notification?.title || payload.data?.notif_title || payload.data?.title || 'Nueva Venta';
                     const cuerpo  = payload.notification?.body  || payload.data?.notif_body  || payload.data?.body  || 'Nueva venta registrada';
                     const tieneContenido = titulo || cuerpo;
