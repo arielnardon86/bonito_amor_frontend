@@ -280,10 +280,10 @@ export const useNotifications = () => {
                 globalMessageUnsubscribe = onMessageListener((payload) => {
                     console.log('Notificación recibida en primer plano:', payload);
 
-                    // Soportar mensajes data-only (title/body en payload.data)
+                    // Soportar mensajes data-only (notif_title/notif_body en payload.data)
                     // y mensajes con payload notification (compatibilidad)
-                    const titulo = payload.notification?.title || payload.data?.title || 'Nueva Venta';
-                    const cuerpo  = payload.notification?.body  || payload.data?.body  || 'Nueva venta registrada';
+                    const titulo = payload.notification?.title || payload.data?.notif_title || payload.data?.title || 'Nueva Venta';
+                    const cuerpo  = payload.notification?.body  || payload.data?.notif_body  || payload.data?.body  || 'Nueva venta registrada';
                     const tieneContenido = titulo || cuerpo;
 
                     if (tieneContenido && typeof Notification !== 'undefined' && document.visibilityState === 'visible') {

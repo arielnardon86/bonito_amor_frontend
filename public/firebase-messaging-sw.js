@@ -42,9 +42,10 @@ messaging.onBackgroundMessage(async (payload) => {
     return;
   }
 
-  // Leer título y cuerpo desde data (para mensajes data-only) o desde notification
-  const titulo = payload.data?.title || payload.notification?.title || 'Nueva Venta';
-  const cuerpo  = payload.data?.body  || payload.notification?.body  || 'Se ha realizado una nueva venta';
+  // Leer título y cuerpo desde data (notif_title/notif_body para evitar conflicto con
+  // campos reservados de FCM) o desde notification como fallback.
+  const titulo = payload.data?.notif_title || payload.data?.title || payload.notification?.title || 'Nueva Venta';
+  const cuerpo  = payload.data?.notif_body  || payload.data?.body  || payload.notification?.body  || 'Se ha realizado una nueva venta';
 
   const ventaId = payload.data?.venta_id || Date.now().toString();
   const notificationTag = `venta-${ventaId}`;
