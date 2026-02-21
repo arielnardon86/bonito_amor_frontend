@@ -20,66 +20,63 @@ firebase.initializeApp(firebaseConfig);
 // Obtener instancia de messaging
 const messaging = firebase.messaging();
 
-// Manejar mensajes en background (cuando la app está cerrada o en segundo plano)
+// Manejar mensajes en background (cuando la app está cerrada o en segundo plano).
+// Este handler se llama para mensajes data-only (sin payload "notification").
+// Para mensajes con payload "notification", FCM los muestra automáticamente.
 messaging.onBackgroundMessage(async (payload) => {
   console.log('[firebase-messaging-sw.js] Mensaje recibido en background:', payload);
-  
-  // Verificar si hay ventanas visibles (app en primer plano)
-  // Si hay ventanas visibles, NO mostrar notificación aquí para evitar duplicados
-  // El listener de primer plano se encargará de mostrar la notificación si es necesario
+
+  // Verificar si hay ventanas visibles y enfocadas para evitar duplicados.
+  // NOTA: Client.visibilityState no existe en la API SW; se usa client.focused.
   const clientList = await self.clients.matchAll({
     type: 'window',
     includeUncontrolled: true
   });
-  
-  const hasVisibleWindow = clientList.some(client => 
-    client.visibilityState === 'visible' && client.focused
-  );
-  
-  // Si hay una ventana visible y enfocada, no mostrar notificación aquí
-  // Esto evita duplicados cuando la app está en primer plano
+
+  const hasVisibleWindow = clientList.some(client => client.focused === true);
+
+  // Si hay una ventana enfocada, la app está en primer plano y el listener
+  // onMessage del frontend mostrará la notificación. Evitar duplicados.
   if (hasVisibleWindow) {
-    console.log('[firebase-messaging-sw.js] Ventana visible detectada, no mostrar notificación desde SW para evitar duplicados');
+    console.log('[firebase-messaging-sw.js] Ventana enfocada detectada, no mostrar desde SW');
     return;
   }
-  
-  const notificationTitle = payload.notification?.title || 'Nueva Venta';
-  // Usar un tag único basado en el ID de la venta para evitar duplicados
-  // Si llegan múltiples notificaciones de la misma venta, se reemplazarán entre sí
+
+  // Leer título y cuerpo desde data (para mensajes data-only) o desde notification
+  const titulo = payload.data?.title || payload.notification?.title || 'Nueva Venta';
+  const cuerpo  = payload.data?.body  || payload.notification?.body  || 'Se ha realizado una nueva venta';
+
   const ventaId = payload.data?.venta_id || Date.now().toString();
   const notificationTag = `venta-${ventaId}`;
-  
+
   const notificationOptions = {
-    body: payload.notification?.body || 'Se ha realizado una nueva venta',
-    icon: payload.notification?.icon || '/logo192.png',
+    body: cuerpo,
+    icon: '/logo192.png',
     badge: '/logo192.png',
-    tag: notificationTag, // Tag único por venta para evitar duplicados
+    tag: notificationTag,
     requireInteraction: false,
     data: payload.data || {}
   };
 
-  return self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(titulo, notificationOptions);
 });
 
 // Manejar clics en notificaciones
 self.addEventListener('notificationclick', (event) => {
   console.log('[firebase-messaging-sw.js] Notificación clickeada:', event);
-  
+
   event.notification.close();
-  
-  // Abrir la app o redirigir a la página de ventas
+
   const urlToOpen = event.notification.data?.click_action || '/ventas';
-  
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Si hay una ventana abierta, enfocarla
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
         if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }
-      // Si no hay ventana abierta, abrir una nueva
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
