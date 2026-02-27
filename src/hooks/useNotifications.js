@@ -251,14 +251,17 @@ export const useNotifications = () => {
             const currentPermission = Notification.permission;
             setNotificationPermission(currentPermission);
             
-            // Si ya tiene permiso y no hay token, obtener y registrar el token sin solicitar permiso nuevamente
-            // PERO solo si no fue desactivado manualmente
-            if (currentPermission === 'granted' && !fcmToken && !isManuallyDisabled) {
-                console.log('Obteniendo token FCM automáticamente...');
+            // Si ya tiene permiso (y no desactivó manualmente), SIEMPRE obtener y registrar el token
+            // al cargar. Así si el backend marcó el token como inactivo (UnregisteredError), lo
+            // reactivamos en la próxima carga y las notificaciones vuelven a llegar.
+            if (currentPermission === 'granted' && !isManuallyDisabled) {
+                console.log('Refrescando registro de token FCM en el backend...');
                 getFCMToken(
                     (token) => {
-                        setFcmToken(token);
-                        registrarToken(token);
+                        if (token) {
+                            setFcmToken(token);
+                            registrarToken(token);
+                        }
                     },
                     (error) => {
                         console.warn('Error al obtener token FCM (no crítico):', error);
@@ -313,7 +316,7 @@ export const useNotifications = () => {
             console.warn('Error al inicializar notificaciones (no crítico):', error);
             // No bloquear la app si fallan las notificaciones
         }
-    }, [isAuthenticated, token, fcmToken, isManuallyDisabled]); // Removido registrarToken de las dependencias para evitar re-registros
+    }, [isAuthenticated, token, isManuallyDisabled]); // Sin fcmToken para no re-ejecutar al actualizar token y provocar bucle
 
     // Eliminar token al cerrar sesión y desregistrar el listener global
     useEffect(() => {
