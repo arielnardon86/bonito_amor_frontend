@@ -160,7 +160,7 @@ const PanelAdministracionTienda = () => {
         tienda: selectedStoreSlug || ''
     });
 
-    // Cargar información de la tienda para verificar integración ML
+    // Cargar información de la tienda (ML, facturación, etc.)
     const fetchTiendaInfo = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
         try {
@@ -177,6 +177,123 @@ const PanelAdministracionTienda = () => {
             console.error('Error al cargar información de la tienda:', err);
         }
     }, [token, selectedStoreSlug]);
+
+    // Probar configuración de facturación: emite una factura de prueba de $1 y muestra el resultado
+    const handleProbarFacturacion = useCallback(async () => {
+        if (!token || !tiendaInfo?.id) {
+            Swal.fire('Error', 'No se encontró la tienda o falta autenticación.', 'error');
+            return;
+        }
+
+        try {
+            Swal.fire({
+                title: 'Probando facturador...',
+                text: 'Se emitirá una factura de prueba por $1 para verificar la configuración.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const response = await axios.post(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/facturacion/test/`,
+                {},
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+
+            const data = response.data || {};
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Facturador verificado',
+                html: `
+                    <p>La factura de prueba se emitió correctamente.</p>
+                    ${data.numero_comprobante ? `<p><strong>Comprobante:</strong> ${data.tipo_comprobante || 'B'} ${data.punto_venta || ''}-${data.numero_comprobante}</p>` : ''}
+                `
+            });
+        } catch (err) {
+            const data = err.response?.data || {};
+            const msg = data.message || data.error || err.message || 'No se pudo emitir la factura de prueba.';
+            const faltantes = Array.isArray(data.missing_fields) && data.missing_fields.length
+                ? `<br/><small>Faltan campos: ${data.missing_fields.join(', ')}</small>`
+                : '';
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al probar facturador',
+                html: `${msg}${faltantes}`
+            });
+        }
+    }, [token, tiendaInfo]);
+
+    // Generar clave privada y CSR para AFIP (clave se guarda en la tienda en base64; se devuelve CSR para descargar)
+    const handleGenerarCsr = useCallback(async () => {
+        if (!token || !tiendaInfo?.id) {
+            Swal.fire('Error', 'No se encontró la tienda o falta autenticación.', 'error');
+            return;
+        }
+        if (!tiendaInfo.cuit || !String(tiendaInfo.cuit).trim()) {
+            Swal.fire('Error', 'La tienda debe tener CUIT configurado. Configurá el CUIT en la configuración de la tienda y volvé acá.', 'error');
+            return;
+        }
+
+        const { value: formValues } = await Swal.fire({
+            title: 'Generar clave y CSR para AFIP',
+            html: `
+                <p style="text-align:left; margin-bottom:12px;">Total Stock generará la clave privada (y la guardará) y un archivo CSR con los datos de tu tienda. Opcionalmente indicá alias y razón social para el certificado.</p>
+                <label style="display:block; text-align:left; margin-bottom:4px;">Alias (CN) – ej. TotalStock</label>
+                <input id="swal-alias" class="swal2-input" value="TotalStock" placeholder="TotalStock" style="width:100%; margin:0 0 12px 0;">
+                <label style="display:block; text-align:left; margin-bottom:4px;">Razón social (O) – ej. nombre de la empresa</label>
+                <input id="swal-razon" class="swal2-input" value="${(tiendaInfo.nombre || '').replace(/"/g, '&quot;')}" placeholder="Nombre de la empresa" style="width:100%; margin:0;">
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Generar y descargar CSR',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => ({
+                alias: document.getElementById('swal-alias').value.trim() || 'TotalStock',
+                razon_social: document.getElementById('swal-razon').value.trim() || (tiendaInfo.nombre || 'Empresa')
+            })
+        });
+
+        if (!formValues) return;
+
+        try {
+            Swal.fire({ title: 'Generando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+            const response = await axios.post(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/facturacion/generar-csr/`,
+                { alias: formValues.alias, razon_social: formValues.razon_social },
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            const data = response.data || {};
+            if (!data.success || !data.csr_pem) {
+                Swal.fire('Error', data.message || 'No se pudo generar el CSR.', 'error');
+                return;
+            }
+
+            // Descargar archivo .csr
+            const blob = new Blob([data.csr_pem], { type: 'application/x-pem-file' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pedido_certificado_afip_${tiendaInfo.id}.csr`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listo',
+                html: `
+                    <p>La clave privada quedó guardada en Total Stock.</p>
+                    <p>Se descargó el archivo <strong>.csr</strong>. Subilo en AFIP (Certificados → Obtener certificado), descargá el .crt y pegá su contenido en base64 en el campo "Certificado AFIP" en la configuración de la tienda.</p>
+                `
+            });
+        } catch (err) {
+            const msg = err.response?.data?.message || err.message || 'No se pudo generar el CSR.';
+            Swal.fire('Error', msg, 'error');
+        }
+    }, [token, tiendaInfo]);
 
     useEffect(() => {
         if (!authLoading) {
@@ -847,6 +964,13 @@ const PanelAdministracionTienda = () => {
                 >
                     Medios de Pago y Aranceles
                 </button>
+                <button
+                    onClick={() => setActiveTab('habilitar-facturador')}
+                    style={activeTab === 'habilitar-facturador' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
+                    className="panel-admin-tab"
+                >
+                    Habilitar facturador
+                </button>
                 {tiendaInfo && tiendaInfo.plataforma_ecommerce === 'MERCADO_LIBRE' && (
                     <button
                         onClick={() => setActiveTab('aranceles-ml')}
@@ -1241,6 +1365,92 @@ const PanelAdministracionTienda = () => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB: HABILITAR FACTURADOR - Información para alta en facturación electrónica (AFIP) */}
+            {activeTab === 'habilitar-facturador' && (
+                <div style={styles.tabContent}>
+                    <div style={{ maxWidth: '780px', marginBottom: 24 }}>
+                        <h2 style={{ marginTop: 0, marginBottom: 8, fontSize: '1.35rem', color: '#2c3e50' }}>Información para la emisión de facturas electrónicas</h2>
+                        <p style={{ marginBottom: 24, color: '#555', lineHeight: 1.5 }}>
+                            Seguí estos pasos para habilitar la facturación electrónica en tu tienda con <strong>AFIP</strong>. Una vez configurado, vas a poder emitir facturas desde Total Stock cuando realices ventas.
+                        </p>
+
+                        <div style={{ background: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: 8, padding: '20px 24px', marginBottom: 24 }}>
+                            <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: '1.1rem', color: '#495057' }}>Requisitos previos</h3>
+                            <ul style={{ margin: 0, paddingLeft: 20, color: '#495057', lineHeight: 1.7 }}>
+                                <li><strong>CUIT</strong> al día (persona física o jurídica).</li>
+                                <li><strong>Clave fiscal nivel 3</strong> (o la que exija AFIP para facturación electrónica).</li>
+                                <li>Estar inscripto en el <strong>régimen que corresponda</strong> (Monotributo, Responsable Inscripto, IVA Exento, etc.).</li>
+                                <li>Tener (o crear) un <strong>punto de venta</strong> para facturación electrónica en AFIP.</li>
+                            </ul>
+                        </div>
+
+                        <h3 style={{ marginBottom: 12, marginTop: 28, fontSize: '1.15rem', color: '#2c3e50' }}>Pasos para habilitar el facturador (AFIP)</h3>
+                        <ol style={{ margin: 0, paddingLeft: 22, color: '#333', lineHeight: 1.75 }}>
+                            <li style={{ marginBottom: 12 }}>Configurá el <strong>CUIT</strong> de la tienda en la configuración de la tienda (si aún no lo hiciste).</li>
+                            <li style={{ marginBottom: 12 }}>Ingresá a <a href="https://www.afip.gob.ar" target="_blank" rel="noopener noreferrer" style={{ color: '#3483fa' }}>AFIP</a> con tu CUIT y clave fiscal.</li>
+                            <li style={{ marginBottom: 12 }}><strong>Punto de venta:</strong> entrá a “Comprobantes en línea” → “Punto de venta” y solicitá uno para factura electrónica. Anotá el número (ej. 1, 2) y cargalo en la configuración de la tienda.</li>
+                            <li style={{ marginBottom: 12 }}><strong>Clave y CSR generados por Total Stock:</strong> usá el botón de abajo “Generar clave privada y CSR”. Total Stock genera la clave (y la guarda) y un archivo .csr con tu CUIT y alias; descargá el .csr.</li>
+                            <li style={{ marginBottom: 12 }}>En AFIP, “Certificados” → “Obtener certificado”, subí el archivo .csr que descargaste, obtené el certificado .crt. Convertí el .crt a base64 (en la carpeta del backend: <code style={{ background: '#eee', padding: '2px 6px', borderRadius: 4 }}>python manage.py convertir_certificados_afip certificado.crt</code> o cualquier herramienta base64) y pegá solo el certificado en base64 en el campo “Certificado AFIP” en la configuración de la tienda. No hace falta cargar la clave privada: ya quedó guardada al generar el CSR.</li>
+                            <li style={{ marginBottom: 0 }}>Emití una factura de prueba desde Total Stock (botón de abajo) y verificá que figure en AFIP.</li>
+                        </ol>
+
+                        <div style={{ marginTop: 24, padding: 16, borderRadius: 8, border: '1px solid #0d6efd', background: '#e7f1ff' }}>
+                            <h4 style={{ marginTop: 0, marginBottom: 8, color: '#0d6efd' }}>Generar clave privada y CSR</h4>
+                            <p style={{ marginBottom: 12, fontSize: 14, color: '#333' }}>
+                                Total Stock genera la clave privada RSA y el CSR con los datos de tu tienda (CUIT, alias, razón social). La clave se guarda automáticamente; solo tenés que descargar el .csr, subirlo a AFIP y luego cargar el certificado .crt en base64.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={handleGenerarCsr}
+                                style={{
+                                    padding: '10px 20px',
+                                    backgroundColor: '#0d6efd',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    fontSize: 14,
+                                    fontWeight: 500
+                                }}
+                            >
+                                Generar clave privada y CSR
+                            </button>
+                        </div>
+
+                        <div style={{ marginTop: 28, padding: 16, background: '#e7f3ff', border: '1px solid #b3d9ff', borderRadius: 8 }}>
+                            <h4 style={{ marginTop: 0, marginBottom: 8, color: '#004085' }}>Enlaces útiles</h4>
+                            <ul style={{ margin: 0, paddingLeft: 20, color: '#004085' }}>
+                                <li><a href="https://www.afip.gob.ar" target="_blank" rel="noopener noreferrer" style={{ color: '#3483fa' }}>AFIP – Inicio</a></li>
+                                <li><a href="https://www.afip.gob.ar/fe/comprobantes/" target="_blank" rel="noopener noreferrer" style={{ color: '#3483fa' }}>AFIP – Facturación electrónica</a></li>
+                            </ul>
+                        </div>
+
+                        <div style={{ marginTop: 24, padding: 16, borderRadius: 8, border: '1px solid #dee2e6', background: '#fdfdfd' }}>
+                            <h4 style={{ marginTop: 0, marginBottom: 8, color: '#333' }}>Paso final: probar el facturador</h4>
+                            <p style={{ marginBottom: 12, fontSize: 14, color: '#555' }}>
+                                Cuando completes todos los pasos y cargues los datos en Total Stock, podés hacer una prueba automática emitendo una factura de $1.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={handleProbarFacturacion}
+                                style={{
+                                    padding: '10px 20px',
+                                    backgroundColor: '#28a745',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    fontSize: 14,
+                                    fontWeight: 500
+                                }}
+                            >
+                                Probar configuración (emitir factura de prueba de $1)
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
