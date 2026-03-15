@@ -7,6 +7,7 @@ import { formatearMonto } from '../utils/formatearMonto';
 const EtiquetasImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const productosParaImprimir = location.state?.productosParaImprimir || [];
     const labelsRef = useRef(null);
 

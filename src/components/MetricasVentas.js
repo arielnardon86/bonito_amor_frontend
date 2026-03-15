@@ -31,8 +31,6 @@ const MetricasVentas = () => {
     const [validationError, setValidationError] = useState(null);
 
     const today = new Date();
-    const currentYear = today.getFullYear().toString();
-    const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0');
 
     // Navegación por mes (cuando no hay filtro de rango personalizado)
     const [navYear, setNavYear] = useState(today.getFullYear());
@@ -145,8 +143,8 @@ const MetricasVentas = () => {
                 // Cargar mes anterior solo si es necesario (lazy loading)
                 const fullMonth = !filterDateFrom && !filterDateTo;
                 if (fullMonth) {
-                    const m = parseInt(currentMonth, 10);
-                    const y = parseInt(currentYear, 10);
+                    const m = navMonth;
+                    const y = navYear;
                     const prevM = m === 1 ? 12 : m - 1;
                     const prevY = m === 1 ? y - 1 : y;
                     promises.push(
