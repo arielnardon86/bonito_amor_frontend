@@ -50,7 +50,7 @@ const VentasPage = () => {
 
     const [expandedSaleId, setExpandedSaleId] = useState(null);
     const [cambioDevolucionDetalle, setCambioDevolucionDetalle] = useState(null);
-    const [loadingCambioDevolucion, setLoadingCambioDevolucion] = useState(false);
+    const [, setLoadingCambioDevolucion] = useState(false);
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmMessage, setConfirmMessage] = useState('');
@@ -749,6 +749,28 @@ const VentasPage = () => {
                                 </React.Fragment>
                             ))}
                         </tbody>
+                        <tfoot>
+                            <tr>
+                                {(() => {
+                                    const ventasActivas = ventas.filter(v => !v.anulada);
+                                    const ventasAnuladas = ventas.filter(v => v.anulada);
+                                    const totalActivas = ventasActivas.reduce((s, v) => s + parseFloat(v.total || 0), 0);
+                                    const totalAnuladas = ventasAnuladas.reduce((s, v) => s + parseFloat(v.total || 0), 0);
+                                    return (
+                                        <td colSpan={6} style={{ padding: '10px 12px', background: '#f7faf9', borderTop: '2px solid #d8eae4', fontSize: 13 }}>
+                                            <span style={{ fontWeight: 700, color: '#1a2926' }}>
+                                                {ventasActivas.length} venta{ventasActivas.length !== 1 ? 's' : ''}: {formatearMonto(totalActivas)}
+                                            </span>
+                                            {ventasAnuladas.length > 0 && (
+                                                <span style={{ marginLeft: 16, color: '#dc2626', fontWeight: 600 }}>
+                                                    · {ventasAnuladas.length} anulada{ventasAnuladas.length !== 1 ? 's' : ''}: {formatearMonto(totalAnuladas)}
+                                                </span>
+                                            )}
+                                        </td>
+                                    );
+                                })()}
+                            </tr>
+                        </tfoot>
                     </table>
                     </div>
 
@@ -963,13 +985,13 @@ const VentasPage = () => {
 const styles = {
     container: {
         padding: '0',
-        fontFamily: 'Inter, sans-serif',
+        fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
         width: '100%',
         maxWidth: '100%',
-        color: '#333',
+        color: '#1a2926',
     },
     header: {
-        color: '#2c3e50',
+        color: '#1a2926',
         marginBottom: '1.25rem',
         fontSize: '1.5rem',
         fontWeight: '600',
@@ -977,32 +999,32 @@ const styles = {
     loadingMessage: {
         padding: '20px',
         textAlign: 'center',
-        color: '#555',
+        color: '#4a6660',
         fontSize: '1.1em',
     },
     accessDeniedMessage: {
-        color: '#dc3545',
+        color: '#e25252',
         marginBottom: '10px',
         padding: '20px',
-        border: '1px solid #dc3545',
+        border: '1px solid #fca5a5',
         textAlign: 'center',
-        borderRadius: '8px',
-        backgroundColor: '#ffe3e6',
+        borderRadius: '10px',
+        backgroundColor: '#fef2f2',
         fontWeight: 'bold',
     },
     noStoreSelectedMessage: {
         padding: '50px',
         textAlign: 'center',
-        color: '#777',
+        color: '#8aa8a0',
         fontSize: '1.2em',
     },
     errorMessage: {
-        color: '#dc3545',
+        color: '#e25252',
         marginBottom: '20px',
-        border: '1px solid #dc3545',
+        border: '1px solid #fca5a5',
         padding: '15px',
-        borderRadius: '8px',
-        backgroundColor: '#ffe3e6',
+        borderRadius: '10px',
+        backgroundColor: '#fef2f2',
         textAlign: 'center',
         fontWeight: 'bold',
     },
@@ -1012,9 +1034,9 @@ const styles = {
         gap: '15px',
         marginBottom: '20px',
         padding: '15px',
-        border: '1px solid #e0e0e0',
-        borderRadius: '8px',
-        backgroundColor: '#f9f9f9',
+        border: '1px solid #d8eae4',
+        borderRadius: '10px',
+        backgroundColor: '#f7faf9',
         alignItems: 'flex-end',
     },
     filterGroup: {
@@ -1024,20 +1046,20 @@ const styles = {
     filterLabel: {
         marginBottom: '5px',
         fontWeight: 'bold',
-        color: '#555',
+        color: '#4a6660',
     },
     filterInput: {
         padding: '8px',
-        border: '1px solid #ccc',
+        border: '1px solid #d8eae4',
         borderRadius: '4px',
         minWidth: '150px',
     },
     filterButton: {
         padding: '10px 15px',
-        backgroundColor: '#007bff',
+        backgroundColor: '#5dc87a',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '14px',
         transition: 'background-color 0.3s ease',
@@ -1047,7 +1069,7 @@ const styles = {
         backgroundColor: '#6c757d',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '14px',
         transition: 'background-color 0.3s ease',
@@ -1065,11 +1087,11 @@ const styles = {
         fontSize: '0.9em',
         color: 'white',
         transition: 'background-color 0.3s ease',
-        backgroundColor: '#17a2b8',
+        backgroundColor: '#3b9ede',
     },
     facturaButton: {
         padding: '8px 16px',
-        backgroundColor: '#28a745',
+        backgroundColor: '#5dc87a',
         color: 'white',
         border: 'none',
         borderRadius: '4px',
@@ -1085,7 +1107,7 @@ const styles = {
         fontSize: '0.9em',
         color: 'white',
         transition: 'background-color 0.3s ease',
-        backgroundColor: '#dc3545',
+        backgroundColor: '#e25252',
     },
     reprintButton: {
         padding: '6px 10px',
@@ -1095,7 +1117,7 @@ const styles = {
         fontSize: '0.9em',
         color: 'white',
         transition: 'background-color 0.3s ease',
-        backgroundColor: '#28a745',
+        backgroundColor: '#5dc87a',
     },
     tableResponsive: {
         overflowX: 'auto',
@@ -1104,36 +1126,36 @@ const styles = {
         width: '100%',
         borderCollapse: 'collapse',
         marginTop: '15px',
-        borderRadius: '8px',
+        borderRadius: '10px',
         overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        boxShadow: '0 1px 3px rgba(0,0,0,.07)',
     },
     tableHeaderRow: {
-        backgroundColor: '#f2f2f2',
+        backgroundColor: '#f7faf9',
     },
     th: {
         padding: '12px 15px',
-        borderBottom: '1px solid #ddd',
+        borderBottom: '1px solid #d8eae4',
         textAlign: 'left',
         fontWeight: 'bold',
         fontSize: '0.95em',
-        color: '#555',
+        color: '#4a6660',
     },
     td: {
         padding: '10px 15px',
-        borderBottom: '1px solid #eee',
+        borderBottom: '1px solid #edf5f2',
         verticalAlign: 'middle',
         fontSize: '0.9em',
     },
     detailRow: {
-        backgroundColor: '#fdfdfd',
+        backgroundColor: '#f7faf9',
         padding: '15px',
-        borderTop: '2px solid #eee',
+        borderTop: '2px solid #edf5f2',
     },
     detailHeader: {
         marginTop: '0',
         marginBottom: '10px',
-        color: '#333',
+        color: '#1a2926',
     },
     detailTableWrapper: {
         overflowX: 'auto',
@@ -1144,18 +1166,18 @@ const styles = {
         marginTop: '10px',
     },
     detailTh: {
-        backgroundColor: '#e9ecef',
+        backgroundColor: '#edf5f2',
         padding: '10px',
         textAlign: 'left',
-        borderBottom: '1px solid #dee2e6',
+        borderBottom: '1px solid #d8eae4',
     },
     detailTd: {
         padding: '10px',
-        borderBottom: '1px solid #dee2e6',
+        borderBottom: '1px solid #d8eae4',
     },
     anularDetalleButton: {
         padding: '5px 8px',
-        backgroundColor: '#ffc107',
+        backgroundColor: '#f59e0b',
         color: 'black',
         border: 'none',
         borderRadius: '3px',
@@ -1172,10 +1194,10 @@ const styles = {
     },
     paginationButton: {
         padding: '8px 15px',
-        backgroundColor: '#007bff',
+        backgroundColor: '#5dc87a',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '1em',
         transition: 'background-color 0.3s ease',
@@ -1183,7 +1205,7 @@ const styles = {
     pageNumber: {
         fontSize: '1em',
         fontWeight: 'bold',
-        color: '#555',
+        color: '#4a6660',
     },
     modalOverlay: {
         position: 'fixed',
@@ -1200,7 +1222,7 @@ const styles = {
     modalContent: {
         backgroundColor: 'white',
         padding: '30px',
-        borderRadius: '8px',
+        borderRadius: '10px',
         boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
         maxWidth: '500px',
         width: '90%',
@@ -1209,7 +1231,7 @@ const styles = {
     modalMessage: {
         fontSize: '1.1em',
         marginBottom: '20px',
-        color: '#333',
+        color: '#1a2926',
     },
     modalActions: {
         display: 'flex',
@@ -1218,20 +1240,20 @@ const styles = {
     },
     modalConfirmButton: {
         padding: '10px 20px',
-        backgroundColor: '#28a745',
+        backgroundColor: '#5dc87a',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '1em',
         transition: 'background-color 0.3s ease',
     },
     modalCancelButton: {
         padding: '10px 20px',
-        backgroundColor: '#dc3545',
+        backgroundColor: '#e25252',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '1em',
         transition: 'background-color 0.3s ease',
@@ -1242,7 +1264,7 @@ const styles = {
         right: '20px',
         color: 'white',
         padding: '15px 25px',
-        borderRadius: '8px',
+        borderRadius: '10px',
         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
         zIndex: 1001,
         opacity: 0,
@@ -1252,7 +1274,7 @@ const styles = {
         textAlign: 'right',
         fontStyle: 'italic',
         marginTop: '10px',
-        color: '#555',
+        color: '#4a6660',
     },
 };
 

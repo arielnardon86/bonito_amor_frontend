@@ -104,9 +104,24 @@ const PanelAdministracionTienda = () => {
     const navigate = useNavigate();
     const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken, error: notificationError } = useNotifications();
     
-    const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios', 'medios-pago-aranceles', 'aranceles-ml'
+    const [activeTab, setActiveTab] = useState('usuarios');
     const [loading, setLoading] = useState(true);
-    const [tiendaInfo, setTiendaInfo] = useState(null); // Para verificar integración ML
+    const [tiendaInfo, setTiendaInfo] = useState(null);
+
+    // Estados para el wizard AFIP
+    const [afipEstado, setAfipEstado] = useState(null); // resultado de facturacion/estado
+    const [afipPasoActivo, setAfipPasoActivo] = useState(1);
+    const [afipForm, setAfipForm] = useState({
+        cuit: '',
+        punto_venta: 1,
+        tipo_facturacion: 'AFIP',
+        condicion_iva_emisor: 'MT',
+        modo_test_afip: true,
+    });
+    const [afipCertFile, setAfipCertFile] = useState(null);
+    const [afipCertB64, setAfipCertB64] = useState('');
+    const [afipCertModo, setAfipCertModo] = useState('archivo'); // 'archivo' | 'base64'
+    const [afipSaving, setAfipSaving] = useState(false);
     
     // Estados para usuarios
     const [users, setUsers] = useState([]);
@@ -161,6 +176,34 @@ const PanelAdministracionTienda = () => {
     });
 
     // Cargar información de la tienda (ML, facturación, etc.)
+    // Cargar estado AFIP desde el backend (debe ir ANTES de fetchTiendaInfo)
+    const fetchAfipEstado = useCallback(async (tiendaId) => {
+        if (!token || !tiendaId) return;
+        try {
+            const res = await axios.get(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/facturacion/estado/`,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            const d = res.data;
+            setAfipEstado(d);
+            setAfipForm(prev => ({
+                ...prev,
+                cuit: d.cuit || '',
+                punto_venta: d.punto_venta || 1,
+                tipo_facturacion: d.tipo_facturacion || 'AFIP',
+                condicion_iva_emisor: d.condicion_iva_emisor || 'MT',
+                modo_test_afip: d.modo_test_afip !== false,
+            }));
+            // Ir al primer paso incompleto
+            if (!d.paso1_config) setAfipPasoActivo(1);
+            else if (!d.paso2_csr) setAfipPasoActivo(2);
+            else if (!d.paso4_cert) setAfipPasoActivo(4);
+            else setAfipPasoActivo(5);
+        } catch (err) {
+            console.error('Error al cargar estado AFIP:', err);
+        }
+    }, [token]);
+
     const fetchTiendaInfo = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
         try {
@@ -172,11 +215,76 @@ const PanelAdministracionTienda = () => {
             const tienda = Array.isArray(tiendas) ? tiendas.find(t => t.nombre === selectedStoreSlug) : tiendas;
             if (tienda) {
                 setTiendaInfo(tienda);
+                fetchAfipEstado(tienda.id);
             }
         } catch (err) {
             console.error('Error al cargar información de la tienda:', err);
         }
-    }, [token, selectedStoreSlug]);
+    }, [token, selectedStoreSlug, fetchAfipEstado]);
+
+    // Guardar configuración básica AFIP (paso 1)
+    const handleGuardarConfigAfip = useCallback(async () => {
+        if (!tiendaInfo?.id) return;
+        const cuitDigits = afipForm.cuit.replace(/\D/g, '');
+        if (cuitDigits.length !== 11) {
+            Swal.fire('Error', 'El CUIT debe tener 11 dígitos (formato: XX-XXXXXXXX-X).', 'error');
+            return;
+        }
+        setAfipSaving(true);
+        try {
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/facturacion/configurar/`,
+                afipForm,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            await fetchAfipEstado(tiendaInfo.id);
+            await fetchTiendaInfo();
+            Swal.fire({ icon: 'success', title: 'Configuración guardada', timer: 1800, showConfirmButton: false });
+            setAfipPasoActivo(2);
+        } catch (err) {
+            const msg = err.response?.data?.error || err.message || 'Error al guardar.';
+            Swal.fire('Error', msg, 'error');
+        } finally {
+            setAfipSaving(false);
+        }
+    }, [token, tiendaInfo, afipForm, fetchAfipEstado, fetchTiendaInfo]);
+
+    // Cargar certificado AFIP (paso 4)
+    const handleCargarCertificado = useCallback(async () => {
+        if (!tiendaInfo?.id) return;
+        setAfipSaving(true);
+        try {
+            let body, headers;
+            if (afipCertModo === 'archivo' && afipCertFile) {
+                const formData = new FormData();
+                formData.append('certificado_file', afipCertFile);
+                body = formData;
+                headers = { 'Authorization': `Bearer ${token}` };
+            } else if (afipCertModo === 'base64' && afipCertB64.trim()) {
+                body = { certificado_base64: afipCertB64.trim() };
+                headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+            } else {
+                Swal.fire('Error', 'Seleccioná un archivo .crt o pegá el certificado en base64.', 'error');
+                setAfipSaving(false);
+                return;
+            }
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/facturacion/cargar-certificado/`,
+                body,
+                { headers }
+            );
+            await fetchAfipEstado(tiendaInfo.id);
+            setAfipCertFile(null);
+            setAfipCertB64('');
+            Swal.fire({ icon: 'success', title: 'Certificado cargado', timer: 1800, showConfirmButton: false });
+            setAfipPasoActivo(5);
+        } catch (err) {
+            const msg = err.response?.data?.error || err.message || 'Error al cargar certificado.';
+            Swal.fire('Error', msg, 'error');
+        } finally {
+            setAfipSaving(false);
+        }
+    }, [token, tiendaInfo, afipCertModo, afipCertFile, afipCertB64, fetchAfipEstado]);
 
     // Probar configuración de facturación: emite una factura de prueba de $1 y muestra el resultado
     const handleProbarFacturacion = useCallback(async () => {
@@ -313,6 +421,7 @@ const PanelAdministracionTienda = () => {
                 }
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [authLoading, isAuthenticated, user, navigate, activeTab, selectedStoreSlug, fetchTiendaInfo]);
 
     // ========== FUNCIONES PARA USUARIOS ==========
@@ -970,6 +1079,19 @@ const PanelAdministracionTienda = () => {
                     className="panel-admin-tab"
                 >
                     Habilitar facturador
+                    {afipEstado && (
+                        <span style={{
+                            marginLeft: 8, fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+                            ...(afipEstado.paso1_config && afipEstado.paso2_csr && afipEstado.paso4_cert
+                                ? { background: '#edfaf3', color: '#1a7a3f', border: '1px solid #a8e6c5' }
+                                : afipEstado.paso1_config
+                                    ? { background: '#fffbeb', color: '#92400e', border: '1px solid #fcd34d' }
+                                    : { background: '#fef2f2', color: '#991b1b', border: '1px solid #fca5a5' }
+                            )
+                        }}>
+                            {afipEstado.paso1_config && afipEstado.paso2_csr && afipEstado.paso4_cert ? '✅ Operativo' : afipEstado.paso1_config ? '⚠️ Incompleto' : '❌ Sin config'}
+                        </span>
+                    )}
                 </button>
                 {tiendaInfo && tiendaInfo.plataforma_ecommerce === 'MERCADO_LIBRE' && (
                     <button
@@ -1370,90 +1492,312 @@ const PanelAdministracionTienda = () => {
             )}
 
             {/* TAB: HABILITAR FACTURADOR - Información para alta en facturación electrónica (AFIP) */}
-            {activeTab === 'habilitar-facturador' && (
+            {activeTab === 'habilitar-facturador' && (() => {
+                const pasos = [
+                    { num: 1, label: 'Configurar datos', ok: afipEstado?.paso1_config },
+                    { num: 2, label: 'Generar clave y CSR', ok: afipEstado?.paso2_csr },
+                    { num: 3, label: 'Subir CSR a AFIP', ok: afipEstado?.paso2_csr }, // completado si ya generó el CSR
+                    { num: 4, label: 'Cargar certificado', ok: afipEstado?.paso4_cert },
+                    { num: 5, label: 'Probar conexión', ok: false },
+                ];
+                const todoListo = afipEstado?.paso1_config && afipEstado?.paso2_csr && afipEstado?.paso4_cert;
+
+                const stepStyle = (num) => ({
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
+                    borderRadius: 8, cursor: 'pointer', marginBottom: 6,
+                    background: afipPasoActivo === num ? '#e8f0fe' : 'transparent',
+                    border: afipPasoActivo === num ? '1.5px solid #3c7ef3' : '1.5px solid transparent',
+                    fontWeight: afipPasoActivo === num ? 600 : 400,
+                    color: '#2c3e50',
+                    transition: 'all 0.15s',
+                });
+                const badgeStyle = (ok) => ({
+                    width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0,
+                    background: ok ? '#28a745' : '#dee2e6',
+                    color: ok ? '#fff' : '#888',
+                });
+                const inputStyle = {
+                    width: '100%', padding: '9px 12px', borderRadius: 6,
+                    border: '1px solid #ced4da', fontSize: 14, boxSizing: 'border-box',
+                    marginTop: 4, marginBottom: 12,
+                };
+                const btnPrimary = (disabled) => ({
+                    padding: '10px 22px', backgroundColor: disabled ? '#adb5bd' : '#3c7ef3',
+                    color: '#fff', border: 'none', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer',
+                    fontSize: 14, fontWeight: 600,
+                });
+                const btnSuccess = (disabled) => ({
+                    padding: '10px 22px', backgroundColor: disabled ? '#adb5bd' : '#28a745',
+                    color: '#fff', border: 'none', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer',
+                    fontSize: 14, fontWeight: 600,
+                });
+
+                return (
                 <div style={styles.tabContent}>
-                    <div style={{ maxWidth: '780px', marginBottom: 24 }}>
-                        <h2 style={{ marginTop: 0, marginBottom: 8, fontSize: '1.35rem', color: '#2c3e50' }}>Información para la emisión de facturas electrónicas</h2>
-                        <p style={{ marginBottom: 24, color: '#555', lineHeight: 1.5 }}>
-                            Seguí estos pasos para habilitar la facturación electrónica en tu tienda con <strong>AFIP</strong>. Una vez configurado, vas a poder emitir facturas desde Total Stock cuando realices ventas.
+                    <div style={{ maxWidth: 820 }}>
+                        <h2 style={{ marginTop: 0, marginBottom: 4, fontSize: '1.35rem', color: '#2c3e50' }}>
+                            Facturación electrónica AFIP
+                        </h2>
+                        <p style={{ marginBottom: 24, color: '#666', fontSize: 14 }}>
+                            Seguí los pasos para conectar tu tienda con AFIP y emitir facturas electrónicas.
                         </p>
 
-                        <div style={{ background: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: 8, padding: '20px 24px', marginBottom: 24 }}>
-                            <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: '1.1rem', color: '#495057' }}>Requisitos previos</h3>
-                            <ul style={{ margin: 0, paddingLeft: 20, color: '#495057', lineHeight: 1.7 }}>
+                        {/* Estado general */}
+                        {todoListo && (
+                            <div style={{ background: '#d4edda', border: '1px solid #c3e6cb', borderRadius: 8, padding: '12px 18px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: 20 }}>✅</span>
+                                <span style={{ color: '#155724', fontWeight: 600 }}>
+                                    Facturador configurado. Podés probar la conexión en el paso 5.
+                                </span>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: 28 }}>
+
+                            {/* Sidebar de pasos */}
+                            <div style={{ minWidth: 200, flexShrink: 0 }}>
+                                {pasos.map(p => (
+                                    <div key={p.num} style={stepStyle(p.num)} onClick={() => setAfipPasoActivo(p.num)}>
+                                        <div style={badgeStyle(p.ok)}>{p.ok ? '✓' : p.num}</div>
+                                        <span style={{ fontSize: 14 }}>{p.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Contenido del paso activo */}
+                            <div style={{ flex: 1, background: '#fff', border: '1px solid #dee2e6', borderRadius: 10, padding: '24px 28px', minHeight: 300 }}>
+
+                                {/* PASO 1: Configurar datos */}
+                                {afipPasoActivo === 1 && (
+                                    <div>
+                                        <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Paso 1 — Configurar datos AFIP</h3>
+                                        <p style={{ color: '#666', fontSize: 14, marginBottom: 20 }}>
+                                            Ingresá los datos fiscales de la tienda. Necesitás tener un <strong>punto de venta habilitado para factura electrónica</strong> en AFIP (Comprobantes en línea → Punto de venta).
+                                        </p>
+
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>CUIT <span style={{ color: '#dc3545' }}>*</span></label>
+                                        <input
+                                            style={inputStyle}
+                                            type="text"
+                                            placeholder="Ej: 20-12345678-9"
+                                            value={afipForm.cuit}
+                                            onChange={e => setAfipForm(p => ({ ...p, cuit: e.target.value }))}
+                                        />
+
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>Número de punto de venta AFIP <span style={{ color: '#dc3545' }}>*</span></label>
+                                        <input
+                                            style={inputStyle}
+                                            type="number"
+                                            min={1}
+                                            placeholder="Ej: 1"
+                                            value={afipForm.punto_venta}
+                                            onChange={e => setAfipForm(p => ({ ...p, punto_venta: parseInt(e.target.value) || 1 }))}
+                                        />
+
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>Condición IVA del emisor <span style={{ color: '#dc3545' }}>*</span></label>
+                                        <select
+                                            style={{ ...inputStyle, background: '#fff' }}
+                                            value={afipForm.condicion_iva_emisor}
+                                            onChange={e => setAfipForm(p => ({ ...p, condicion_iva_emisor: e.target.value }))}
+                                        >
+                                            <option value="MT">Monotributo — emite Factura C</option>
+                                            <option value="RI">Responsable Inscripto — emite A, B o C según el cliente</option>
+                                            <option value="EX">IVA Exento — emite Factura B</option>
+                                            <option value="CF">Consumidor Final</option>
+                                            <option value="NR">No Responsable</option>
+                                        </select>
+
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>Sistema de facturación</label>
+                                        <select
+                                            style={{ ...inputStyle, background: '#fff' }}
+                                            value={afipForm.tipo_facturacion}
+                                            onChange={e => setAfipForm(p => ({ ...p, tipo_facturacion: e.target.value }))}
+                                        >
+                                            <option value="AFIP">AFIP (recomendado)</option>
+                                            <option value="ARCA">ARCA</option>
+                                        </select>
+
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#444', marginBottom: 20, cursor: 'pointer' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={afipForm.modo_test_afip}
+                                                onChange={e => setAfipForm(p => ({ ...p, modo_test_afip: e.target.checked }))}
+                                            />
+                                            Modo de prueba (homologación AFIP) — desactivar para producción
+                                        </label>
+
+                                        <button style={btnPrimary(afipSaving)} onClick={handleGuardarConfigAfip} disabled={afipSaving}>
+                                            {afipSaving ? 'Guardando...' : 'Guardar y continuar →'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* PASO 2: Generar clave y CSR */}
+                                {afipPasoActivo === 2 && (
+                                    <div>
+                                        <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Paso 2 — Generar clave privada y CSR</h3>
+                                        {!afipEstado?.paso1_config && (
+                                            <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14 }}>
+                                                ⚠️ Completá el paso 1 (CUIT y punto de venta) antes de continuar.
+                                            </div>
+                                        )}
+                                        <p style={{ color: '#666', fontSize: 14, marginBottom: 16 }}>
+                                            Total Stock genera una <strong>clave privada RSA</strong> y un <strong>CSR</strong> (Certificate Signing Request) con los datos de tu tienda. La clave privada queda guardada de forma segura; vos solo te llevás el archivo <code>.csr</code> para subirlo a AFIP en el siguiente paso.
+                                        </p>
+                                        {afipEstado?.paso2_csr && (
+                                            <div style={{ background: '#d4edda', border: '1px solid #c3e6cb', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14, color: '#155724' }}>
+                                                ✅ Ya generaste la clave y el CSR. Podés regenerarlos si es necesario.
+                                            </div>
+                                        )}
+                                        <button
+                                            style={btnPrimary(!afipEstado?.paso1_config)}
+                                            onClick={handleGenerarCsr}
+                                            disabled={!afipEstado?.paso1_config}
+                                        >
+                                            Generar clave privada y descargar CSR
+                                        </button>
+                                        {afipEstado?.paso2_csr && (
+                                            <button
+                                                style={{ ...btnPrimary(false), marginLeft: 12 }}
+                                                onClick={() => setAfipPasoActivo(3)}
+                                            >
+                                                Siguiente →
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* PASO 3: Subir CSR a AFIP */}
+                                {afipPasoActivo === 3 && (
+                                    <div>
+                                        <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Paso 3 — Subir el CSR a AFIP</h3>
+                                        <p style={{ color: '#666', fontSize: 14, marginBottom: 16 }}>
+                                            Con el archivo <code>.csr</code> que descargaste, hacé lo siguiente en AFIP:
+                                        </p>
+                                        <ol style={{ paddingLeft: 20, color: '#444', lineHeight: 1.9, fontSize: 14 }}>
+                                            <li>Ingresá a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" rel="noopener noreferrer" style={{ color: '#3c7ef3' }}>AFIP con tu CUIT y clave fiscal</a>.</li>
+                                            <li>Buscá el servicio <strong>"Administración de Certificados Digitales"</strong>.</li>
+                                            <li>Hacé clic en <strong>"Agregar alias"</strong> y completá un nombre (ej. <em>TotalStock</em>).</li>
+                                            <li>En el alias creado, elegí <strong>"Nueva solicitud de certificado"</strong> y subí el archivo <code>.csr</code>.</li>
+                                            <li>AFIP te devuelve un archivo <strong>.crt</strong> — descargalo.</li>
+                                        </ol>
+                                        <div style={{ background: '#e7f3ff', border: '1px solid #b3d9ff', borderRadius: 8, padding: '12px 16px', marginTop: 16, marginBottom: 20 }}>
+                                            <strong style={{ color: '#004085' }}>🔗 Enlace directo:</strong>{' '}
+                                            <a href="https://wsaahomo.afip.gov.ar/ws/services/LoginCms" target="_blank" rel="noopener noreferrer" style={{ color: '#3c7ef3' }}>AFIP – Administración de Certificados</a>
+                                            <br />
+                                            <span style={{ fontSize: 13, color: '#555' }}>Si tu modo está en "prueba", usá el ambiente de <strong>homologación</strong>; si es producción, usá el ambiente real.</span>
+                                        </div>
+                                        <button style={btnPrimary(false)} onClick={() => setAfipPasoActivo(4)}>
+                                            Ya tengo el .crt — continuar →
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* PASO 4: Cargar certificado */}
+                                {afipPasoActivo === 4 && (
+                                    <div>
+                                        <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Paso 4 — Cargar el certificado AFIP</h3>
+                                        <p style={{ color: '#666', fontSize: 14, marginBottom: 16 }}>
+                                            Cargá el certificado que obtuviste de AFIP. Podés subir el archivo <code>.crt</code> directamente o pegar el contenido en base64.
+                                        </p>
+
+                                        {/* Selector de modo */}
+                                        <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+                                            {['archivo', 'base64'].map(modo => (
+                                                <label key={modo} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: afipCertModo === modo ? 700 : 400, fontSize: 14 }}>
+                                                    <input type="radio" name="certModo" value={modo} checked={afipCertModo === modo} onChange={() => setAfipCertModo(modo)} />
+                                                    {modo === 'archivo' ? '📁 Subir archivo .crt / .pem' : '📋 Pegar en base64'}
+                                                </label>
+                                            ))}
+                                        </div>
+
+                                        {afipCertModo === 'archivo' ? (
+                                            <div>
+                                                <input
+                                                    type="file"
+                                                    accept=".crt,.pem,.cer"
+                                                    style={{ fontSize: 14, marginBottom: 16 }}
+                                                    onChange={e => setAfipCertFile(e.target.files[0] || null)}
+                                                />
+                                                {afipCertFile && (
+                                                    <p style={{ fontSize: 13, color: '#28a745', marginBottom: 16 }}>
+                                                        ✅ Archivo seleccionado: <strong>{afipCertFile.name}</strong>
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>
+                                                    Podés pegar el bloque PEM completo (con <code>-----BEGIN CERTIFICATE-----</code>) o solo el base64 sin encabezados.
+                                                </p>
+                                                <textarea
+                                                    style={{ ...inputStyle, height: 140, fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }}
+                                                    placeholder="-----BEGIN CERTIFICATE-----&#10;MIIDxTC...&#10;-----END CERTIFICATE-----"
+                                                    value={afipCertB64}
+                                                    onChange={e => setAfipCertB64(e.target.value)}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {afipEstado?.paso4_cert && (
+                                            <div style={{ background: '#d4edda', border: '1px solid #c3e6cb', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14, color: '#155724' }}>
+                                                ✅ Ya hay un certificado cargado. Podés reemplazarlo si es necesario.
+                                            </div>
+                                        )}
+
+                                        <button style={btnSuccess(afipSaving)} onClick={handleCargarCertificado} disabled={afipSaving}>
+                                            {afipSaving ? 'Cargando...' : 'Guardar certificado'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* PASO 5: Probar conexión */}
+                                {afipPasoActivo === 5 && (
+                                    <div>
+                                        <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Paso 5 — Probar la conexión</h3>
+                                        {!todoListo && (
+                                            <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14 }}>
+                                                ⚠️ Completá los pasos anteriores antes de probar.
+                                                {!afipEstado?.paso1_config && <div>— Falta: configurar CUIT y punto de venta (paso 1)</div>}
+                                                {!afipEstado?.paso2_csr && <div>— Falta: generar clave y CSR (paso 2)</div>}
+                                                {!afipEstado?.paso4_cert && <div>— Falta: cargar el certificado (paso 4)</div>}
+                                            </div>
+                                        )}
+                                        <p style={{ color: '#666', fontSize: 14, marginBottom: 20 }}>
+                                            Total Stock va a emitir una <strong>factura de prueba por $1</strong> para verificar que la conexión con AFIP funciona correctamente. El comprobante quedará registrado en AFIP.
+                                        </p>
+                                        <button style={btnSuccess(!todoListo)} onClick={handleProbarFacturacion} disabled={!todoListo}>
+                                            Probar facturación (emitir $1 de prueba)
+                                        </button>
+                                        <div style={{ marginTop: 24, padding: '12px 16px', background: '#f8f9fa', borderRadius: 8, fontSize: 13, color: '#555' }}>
+                                            ¿Algo no funciona?{' '}
+                                            <a href="https://www.afip.gob.ar/fe/comprobantes/" target="_blank" rel="noopener noreferrer" style={{ color: '#3c7ef3' }}>
+                                                Documentación AFIP — Facturación electrónica
+                                            </a>
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
+                        </div>
+
+                        {/* Requisitos previos colapsados */}
+                        <details style={{ marginTop: 24, border: '1px solid #dee2e6', borderRadius: 8, padding: '12px 16px' }}>
+                            <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#495057', fontSize: 14 }}>
+                                Ver requisitos previos
+                            </summary>
+                            <ul style={{ margin: '12px 0 0 0', paddingLeft: 20, color: '#495057', lineHeight: 1.8, fontSize: 14 }}>
                                 <li><strong>CUIT</strong> al día (persona física o jurídica).</li>
-                                <li><strong>Clave fiscal nivel 3</strong> (o la que exija AFIP para facturación electrónica).</li>
-                                <li>Estar inscripto en el <strong>régimen que corresponda</strong> (Monotributo, Responsable Inscripto, IVA Exento, etc.).</li>
-                                <li>Tener (o crear) un <strong>punto de venta</strong> para facturación electrónica en AFIP.</li>
+                                <li><strong>Clave fiscal nivel 3</strong> en AFIP.</li>
+                                <li>Inscripción en el <strong>régimen correspondiente</strong> (Monotributo, Responsable Inscripto, IVA Exento, etc.).</li>
+                                <li>Un <strong>punto de venta</strong> habilitado para facturación electrónica en AFIP (Comprobantes en línea → Punto de venta).</li>
                             </ul>
-                        </div>
-
-                        <h3 style={{ marginBottom: 12, marginTop: 28, fontSize: '1.15rem', color: '#2c3e50' }}>Pasos para habilitar el facturador (AFIP)</h3>
-                        <ol style={{ margin: 0, paddingLeft: 22, color: '#333', lineHeight: 1.75 }}>
-                            <li style={{ marginBottom: 12 }}>Configurá el <strong>CUIT</strong> de la tienda en la configuración de la tienda (si aún no lo hiciste).</li>
-                            <li style={{ marginBottom: 12 }}>Ingresá a <a href="https://www.afip.gob.ar" target="_blank" rel="noopener noreferrer" style={{ color: '#3483fa' }}>AFIP</a> con tu CUIT y clave fiscal.</li>
-                            <li style={{ marginBottom: 12 }}><strong>Punto de venta:</strong> entrá a “Comprobantes en línea” → “Punto de venta” y solicitá uno para factura electrónica. Anotá el número (ej. 1, 2) y cargalo en la configuración de la tienda.</li>
-                            <li style={{ marginBottom: 12 }}><strong>Clave y CSR generados por Total Stock:</strong> usá el botón de abajo “Generar clave privada y CSR”. Total Stock genera la clave (y la guarda) y un archivo .csr con tu CUIT y alias; descargá el .csr.</li>
-                            <li style={{ marginBottom: 12 }}>En AFIP, “Certificados” → “Obtener certificado”, subí el archivo .csr que descargaste, obtené el certificado .crt. Convertí el .crt a base64 (en la carpeta del backend: <code style={{ background: '#eee', padding: '2px 6px', borderRadius: 4 }}>python manage.py convertir_certificados_afip certificado.crt</code> o cualquier herramienta base64) y pegá solo el certificado en base64 en el campo “Certificado AFIP” en la configuración de la tienda. No hace falta cargar la clave privada: ya quedó guardada al generar el CSR.</li>
-                            <li style={{ marginBottom: 0 }}>Emití una factura de prueba desde Total Stock (botón de abajo) y verificá que figure en AFIP.</li>
-                        </ol>
-
-                        <div style={{ marginTop: 24, padding: 16, borderRadius: 8, border: '1px solid #0d6efd', background: '#e7f1ff' }}>
-                            <h4 style={{ marginTop: 0, marginBottom: 8, color: '#0d6efd' }}>Generar clave privada y CSR</h4>
-                            <p style={{ marginBottom: 12, fontSize: 14, color: '#333' }}>
-                                Total Stock genera la clave privada RSA y el CSR con los datos de tu tienda (CUIT, alias, razón social). La clave se guarda automáticamente; solo tenés que descargar el .csr, subirlo a AFIP y luego cargar el certificado .crt en base64.
-                            </p>
-                            <button
-                                type="button"
-                                onClick={handleGenerarCsr}
-                                style={{
-                                    padding: '10px 20px',
-                                    backgroundColor: '#0d6efd',
-                                    color: '#fff',
-                                    border: 'none',
-                                    borderRadius: 6,
-                                    cursor: 'pointer',
-                                    fontSize: 14,
-                                    fontWeight: 500
-                                }}
-                            >
-                                Generar clave privada y CSR
-                            </button>
-                        </div>
-
-                        <div style={{ marginTop: 28, padding: 16, background: '#e7f3ff', border: '1px solid #b3d9ff', borderRadius: 8 }}>
-                            <h4 style={{ marginTop: 0, marginBottom: 8, color: '#004085' }}>Enlaces útiles</h4>
-                            <ul style={{ margin: 0, paddingLeft: 20, color: '#004085' }}>
-                                <li><a href="https://www.afip.gob.ar" target="_blank" rel="noopener noreferrer" style={{ color: '#3483fa' }}>AFIP – Inicio</a></li>
-                                <li><a href="https://www.afip.gob.ar/fe/comprobantes/" target="_blank" rel="noopener noreferrer" style={{ color: '#3483fa' }}>AFIP – Facturación electrónica</a></li>
-                            </ul>
-                        </div>
-
-                        <div style={{ marginTop: 24, padding: 16, borderRadius: 8, border: '1px solid #dee2e6', background: '#fdfdfd' }}>
-                            <h4 style={{ marginTop: 0, marginBottom: 8, color: '#333' }}>Paso final: probar el facturador</h4>
-                            <p style={{ marginBottom: 12, fontSize: 14, color: '#555' }}>
-                                Cuando completes todos los pasos y cargues los datos en Total Stock, podés hacer una prueba automática emitendo una factura de $1.
-                            </p>
-                            <button
-                                type="button"
-                                onClick={handleProbarFacturacion}
-                                style={{
-                                    padding: '10px 20px',
-                                    backgroundColor: '#28a745',
-                                    color: '#fff',
-                                    border: 'none',
-                                    borderRadius: 6,
-                                    cursor: 'pointer',
-                                    fontSize: 14,
-                                    fontWeight: 500
-                                }}
-                            >
-                                Probar configuración (emitir factura de prueba de $1)
-                            </button>
-                        </div>
+                        </details>
                     </div>
                 </div>
-            )}
+                );
+            })()}
 
             {/* TAB: NOTIFICACIONES */}
             {activeTab === 'notificaciones' && (
@@ -1842,31 +2186,31 @@ const PanelAdministracionTienda = () => {
 const styles = {
     container: {
         padding: 0,
-        fontFamily: 'Inter, sans-serif',
+        fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
         width: '100%',
         maxWidth: '100%',
-        color: '#333',
+        color: '#1a2926',
     },
     loadingMessage: {
         padding: '20px',
         textAlign: 'center',
-        color: '#555',
+        color: '#4a6660',
         fontSize: '1.1em',
     },
     header: {
         marginBottom: '30px',
         paddingBottom: '20px',
-        borderBottom: '2px solid #e0e0e0',
+        borderBottom: '2px solid #d8eae4',
     },
     title: {
         fontSize: '1.5rem',
         fontWeight: 600,
         marginBottom: '10px',
-        color: '#2c3e50',
+        color: '#1a2926',
     },
     subtitle: {
         fontSize: '1.1em',
-        color: '#666',
+        color: '#4a6660',
         marginBottom: '15px',
     },
     backButton: {
@@ -1874,7 +2218,7 @@ const styles = {
         backgroundColor: '#6c757d',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '1em',
     },
@@ -1882,7 +2226,7 @@ const styles = {
         display: 'flex',
         gap: '10px',
         marginBottom: '30px',
-        borderBottom: '2px solid #e0e0e0',
+        borderBottom: '2px solid #d8eae4',
     },
     tab: {
         padding: '12px 24px',
@@ -1893,12 +2237,12 @@ const styles = {
         borderBottomColor: 'transparent',
         cursor: 'pointer',
         fontSize: '1em',
-        color: '#666',
+        color: '#4a6660',
         transition: 'all 0.3s',
     },
     tabActive: {
-        color: '#007bff',
-        borderBottomColor: '#007bff',
+        color: '#5dc87a',
+        borderBottomColor: '#5dc87a',
         fontWeight: 'bold',
     },
     tabContent: {
@@ -1910,22 +2254,22 @@ const styles = {
         alignItems: 'center',
         marginBottom: '20px',
     },
-    sectionTitle: { fontSize: '1.1rem', fontWeight: 600, color: '#2c3e50', margin: 0 },
+    sectionTitle: { fontSize: '1.1rem', fontWeight: 600, color: '#1a2926', margin: 0 },
     addButton: {
         padding: '10px 20px',
-        backgroundColor: '#28a745',
+        backgroundColor: '#5dc87a',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '1em',
     },
     formContainer: {
         backgroundColor: 'white',
         padding: '20px',
-        borderRadius: '8px',
+        borderRadius: '10px',
         marginBottom: '20px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        boxShadow: '0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.05)',
     },
     formGrid: {
         display: 'grid',
@@ -1940,12 +2284,12 @@ const styles = {
     formLabel: {
         marginBottom: '5px',
         fontWeight: 'bold',
-        color: '#555',
+        color: '#4a6660',
     },
     input: {
         padding: '10px',
-        border: '1px solid #ccc',
-        borderRadius: '5px',
+        border: '1px solid #d8eae4',
+        borderRadius: '6px',
         fontSize: '1em',
     },
     checkbox: {
@@ -1959,10 +2303,10 @@ const styles = {
     },
     saveButton: {
         padding: '10px 20px',
-        backgroundColor: '#007bff',
+        backgroundColor: '#5dc87a',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '1em',
     },
@@ -1971,17 +2315,17 @@ const styles = {
         backgroundColor: '#6c757d',
         color: 'white',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '1em',
     },
     tableContainer: {
         backgroundColor: 'white',
-        borderRadius: '8px',
+        borderRadius: '10px',
         overflowX: 'auto',
         overflowY: 'visible',
         WebkitOverflowScrolling: 'touch',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        boxShadow: '0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.05)',
     },
     table: {
         width: '100%',
@@ -1989,16 +2333,16 @@ const styles = {
         borderCollapse: 'collapse',
     },
     th: {
-        backgroundColor: '#f8f9fa',
+        backgroundColor: '#f7faf9',
         padding: '12px',
         textAlign: 'left',
-        borderBottom: '2px solid #dee2e6',
+        borderBottom: '2px solid #d8eae4',
         fontWeight: 'bold',
-        color: '#495057',
+        color: '#4a6660',
     },
     td: {
         padding: '12px',
-        borderBottom: '1px solid #dee2e6',
+        borderBottom: '1px solid #d8eae4',
     },
     actionButtons: {
         display: 'flex',
@@ -2007,7 +2351,7 @@ const styles = {
     },
     editButton: {
         padding: '5px 10px',
-        backgroundColor: '#ffc107',
+        backgroundColor: '#f59e0b',
         color: 'black',
         border: 'none',
         borderRadius: '3px',
@@ -2016,7 +2360,7 @@ const styles = {
     },
     passwordButton: {
         padding: '5px 10px',
-        backgroundColor: '#17a2b8',
+        backgroundColor: '#3b9ede',
         color: 'white',
         border: 'none',
         borderRadius: '3px',
@@ -2025,7 +2369,7 @@ const styles = {
     },
     deleteButton: {
         padding: '5px 10px',
-        backgroundColor: '#dc3545',
+        backgroundColor: '#e25252',
         color: 'white',
         border: 'none',
         borderRadius: '3px',
@@ -2033,12 +2377,12 @@ const styles = {
         fontSize: '0.9em',
     },
     infoBox: {
-        backgroundColor: '#d1ecf1',
-        border: '1px solid #bee5eb',
-        borderRadius: '5px',
+        backgroundColor: '#eff6ff',
+        border: '1px solid #93c5fd',
+        borderRadius: '6px',
         padding: '15px',
         marginBottom: '20px',
-        color: '#0c5460',
+        color: '#1e4a8a',
     },
     modalOverlay: {
         position: 'fixed',
@@ -2055,7 +2399,7 @@ const styles = {
     modalContent: {
         backgroundColor: 'white',
         padding: '30px',
-        borderRadius: '8px',
+        borderRadius: '10px',
         maxWidth: '500px',
         width: '90%',
         boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
@@ -2068,15 +2412,15 @@ const styles = {
     label: {
         marginBottom: '5px',
         fontWeight: 'bold',
-        color: '#555',
+        color: '#4a6660',
         display: 'block',
     },
     modalInput: {
         width: '100%',
         padding: '8px',
         boxSizing: 'border-box',
-        border: '1px solid #ccc',
-        borderRadius: '5px',
+        border: '1px solid #d8eae4',
+        borderRadius: '6px',
         fontSize: '1em',
     },
     modalActions: {
@@ -2087,7 +2431,7 @@ const styles = {
     },
     modalConfirmButton: {
         padding: '10px 15px',
-        backgroundColor: '#28a745',
+        backgroundColor: '#5dc87a',
         color: 'white',
         border: 'none',
         borderRadius: '4px',
@@ -2095,7 +2439,7 @@ const styles = {
     },
     modalCancelButton: {
         padding: '10px 15px',
-        backgroundColor: '#dc3545',
+        backgroundColor: '#e25252',
         color: 'white',
         border: 'none',
         borderRadius: '4px',

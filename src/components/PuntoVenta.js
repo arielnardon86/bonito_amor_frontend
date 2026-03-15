@@ -81,6 +81,7 @@ const PuntoVenta = () => {
 
     const [redondearMonto, setRedondearMonto] = useState(false);
     const [redondearMontoArriba, setRedondearMontoArriba] = useState(false);
+    const [procesandoVenta, setProcesandoVenta] = useState(false);
 
     const [pageInfo, setPageInfo] = useState({
         next: null,
@@ -129,6 +130,7 @@ const PuntoVenta = () => {
             setError('Error al cargar métodos de pago.');
             throw err;
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token]);
 
     // FUNCIÓN 1: Fetch de Productos
@@ -282,7 +284,8 @@ const PuntoVenta = () => {
             }
         };
         loadInitialData();
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, token, 
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, token,
         fetchMetodosPago, fetchAranceles, fetchArancelesML, fetchTiendaInfo, fetchProductos]);
         // NOTA: filterTerm NO está en las dependencias para evitar llamadas duplicadas
 
@@ -555,6 +558,20 @@ const PuntoVenta = () => {
         const isDiscountApplied = parseFloat(descuentoMonto) > 0 || parseFloat(descuentoPorcentaje) > 0;
         const isSurchargeApplied = parseFloat(recargoMonto) > 0 || parseFloat(recargoPorcentaje) > 0;
 
+        // Warn when discount percentage exceeds 50%
+        if (parseFloat(descuentoPorcentaje) > 50) {
+            const confirmHighDiscount = await Swal.fire({
+                title: `Descuento del ${descuentoPorcentaje}%`,
+                text: '¿Confirmás aplicar un descuento mayor al 50%?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, aplicar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#d97706',
+            });
+            if (!confirmHighDiscount.isConfirmed) return;
+        }
+
         if ((redondearMonto || redondearMontoArriba) && (isDiscountApplied || isSurchargeApplied)) {
             const confirmOverride = await Swal.fire({
                 title: 'Aviso de Redondeo',
@@ -646,6 +663,7 @@ const PuntoVenta = () => {
             cancelButtonText: 'Cancelar',
         }).then(async (result) => {
             if (result.isConfirmed) {
+                setProcesandoVenta(true);
                 try {
                     const ventaData = {
                         tienda_slug: selectedStoreSlug,
@@ -860,6 +878,8 @@ const PuntoVenta = () => {
                         icon: 'error',
                         confirmButtonText: 'Ok'
                     });
+                } finally {
+                    setProcesandoVenta(false);
                 }
             }
         });
@@ -1166,8 +1186,13 @@ const PuntoVenta = () => {
                             <label htmlFor="redondearMontoArriba" style={styles.redondearLabel}>Redondear total (múlt. 100 ↑)</label>
                         </div>
                         <h4 style={styles.finalTotalVenta}>Total: {formatearMonto(calculateFinalTotal())}</h4>
-                        <button onClick={handleProcesarVenta} style={styles.processSaleButton} className="process-sale-button">
-                            Procesar venta
+                        <button
+                            onClick={handleProcesarVenta}
+                            style={{ ...styles.processSaleButton, ...(procesandoVenta ? { opacity: 0.65, cursor: 'not-allowed' } : {}) }}
+                            className="process-sale-button"
+                            disabled={procesandoVenta}
+                        >
+                            {procesandoVenta ? 'Procesando...' : 'Procesar venta'}
                         </button>
                     </>
                 ) : (
@@ -1230,8 +1255,11 @@ const PuntoVenta = () => {
                                 <tbody>
                                     {productos.length > 0 ? (
                                         productos.map(product => (
-                                            <tr key={product.id} style={styles.tableRow}>
-                                                <td style={styles.td}>{product.nombre}</td>
+                                            <tr key={product.id} style={{ ...styles.tableRow, ...(product.stock === 0 ? { opacity: 0.5, background: '#f7faf9' } : {}) }}>
+                                                <td style={styles.td}>
+                                                    {product.nombre}
+                                                    {product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 4, padding: '1px 5px' }}>SIN STOCK</span>}
+                                                </td>
                                                 <td style={styles.td}>{formatearMonto(product.precio)}</td>
                                                 <td style={styles.td}>{product.stock}</td>
                                                 <td style={styles.td}>
@@ -1247,8 +1275,13 @@ const PuntoVenta = () => {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="4" style={styles.noDataMessage}>
-                                                No se encontraron productos con el filtro aplicado.
+                                            <td colSpan="4" style={{ ...styles.noDataMessage, textAlign: 'center', padding: '24px 16px' }}>
+                                                {filterTerm ? (
+                                                    <span>
+                                                        No se encontraron productos para <strong>"{filterTerm}"</strong>.{' '}
+                                                        <a href="/productos" style={{ color: '#16a34a', fontWeight: 700, textDecoration: 'none' }}>¿Querés crearlo?</a>
+                                                    </span>
+                                                ) : 'No hay productos cargados para esta tienda.'}
                                             </td>
                                         </tr>
                                     )}
@@ -1457,78 +1490,78 @@ const PuntoVenta = () => {
 
 // --- OBJETO DE ESTILOS (Se mantiene) ---
 const styles = {
-    container: { padding: 0, fontFamily: 'Arial, sans-serif', width: '100%' },
-    header: { color: '#2c3e50', marginBottom: '1.25rem', fontSize: '1.5rem', fontWeight: '600' },
-    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' },
-    sectionHeader: { color: '#34495e', borderBottom: '1px solid #eee', paddingBottom: '10px' },
+    container: { padding: 0, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", width: '100%' },
+    header: { color: '#1a2926', marginBottom: '1.25rem', fontSize: '1.5rem', fontWeight: '600' },
+    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f7faf9', border: '1px solid #d8eae4', borderRadius: '10px' },
+    sectionHeader: { color: '#4a6660', borderBottom: '1px solid #edf5f2', paddingBottom: '10px' },
     loadingMessage: { textAlign: 'center', color: '#777' },
-    accessDeniedMessage: { color: '#dc3545', textAlign: 'center' },
+    accessDeniedMessage: { color: '#e25252', textAlign: 'center' },
     noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },
-    errorMessage: { color: '#dc3545', padding: '10px', backgroundColor: '#ffe3e6', border: '1px solid #dc3545', borderRadius: '5px' },
+    errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },
     cartSelectionContainer: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' },
-    activeCartButton: { padding: '10px 15px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
-    inactiveCartButton: { padding: '10px 15px', backgroundColor: '#ecf0f1', color: '#333', border: '1px solid #ccc', borderRadius: '5px', cursor: 'pointer' },
-    newCartButton: { padding: '10px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    activeCartButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
+    inactiveCartButton: { padding: '10px 15px', backgroundColor: '#edf5f2', color: '#333', border: '1px solid #d8eae4', borderRadius: '6px', cursor: 'pointer' },
+    newCartButton: { padding: '10px 15px', backgroundColor: '#3ab87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
     activeCartInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap', gap: '10px' },
-    activeCartTitle: { margin: 0, color: '#3498db', fontSize: '1rem' },
+    activeCartTitle: { margin: 0, color: '#5dc87a', fontSize: '1rem' },
     activeCartActions: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
     searchRow: { marginTop: '12px', marginBottom: '12px' },
     cartTableWrap: { marginTop: '16px', marginBottom: '8px', overflow: 'hidden' },
-    arancelWarning: { padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404', fontSize: '0.9em', margin: 0 },
+    arancelWarning: { padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '4px', color: '#92400e', fontSize: '0.9em', margin: 0 },
     redondearRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' },
     redondearLabel: { margin: 0, fontSize: '0.9em', cursor: 'pointer' },
-    inputField: { padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }, // Añadido boxSizing
-    deleteCartButton: { backgroundColor: '#e74c3c', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    inputField: { padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px', boxSizing: 'border-box' }, // Añadido boxSizing
+    deleteCartButton: { backgroundColor: '#e25252', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-    modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center', width: '90%', maxWidth: '400px' },
+    modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', textAlign: 'center', width: '90%', maxWidth: '400px' },
     modalHeader: { margin: '0 0 15px 0' },
     modalActions: { display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' },
-    modalConfirmButton: { padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
-    modalCancelButton: { padding: '8px 15px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    modalConfirmButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
+    modalCancelButton: { padding: '8px 15px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
     inputGroup: { display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' },
-    primaryButton: { padding: '10px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
-    foundProductCard: { border: '1px solid #ccc', padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' },
+    primaryButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
+    foundProductCard: { border: '1px solid #d8eae4', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' },
     foundProductText: { margin: 0 },
     productActions: { display: 'flex', gap: '10px' },
-    addProductButton: { padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    disabledButton: { padding: '8px 15px', backgroundColor: '#ccc', color: '#666', border: 'none', borderRadius: '4px', cursor: 'not-allowed' },
+    addProductButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    disabledButton: { padding: '8px 15px', backgroundColor: '#d8eae4', color: '#8aa8a0', border: 'none', borderRadius: '4px', cursor: 'not-allowed' },
     tableResponsive: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse', marginTop: '15px' },
-    tableHeaderRow: { backgroundColor: '#f2f2f2' },
-    th: { padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' },
-    tableRow: { '&:nth-child(even)': { backgroundColor: '#f9f9f9' } },
-    td: { padding: '10px', borderBottom: '1px solid #eee', verticalAlign: 'middle' },
+    tableHeaderRow: { backgroundColor: '#f7faf9' },
+    th: { padding: '10px', borderBottom: '2px solid #d8eae4', textAlign: 'left', color: '#4a6660' },
+    tableRow: { '&:nth-child(even)': { backgroundColor: '#f7faf9' } },
+    td: { padding: '10px', borderBottom: '1px solid #edf5f2', verticalAlign: 'middle' },
     quantityControl: { display: 'flex', alignItems: 'center', gap: '5px' },
-    quantityButton: { padding: '4px 8px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' },
+    quantityButton: { padding: '4px 8px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' },
     quantityText: { padding: '0 5px' },
-    removeButton: { padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    totalVenta: { textAlign: 'right', fontSize: '1.2em', color: '#333' },
+    removeButton: { padding: '8px 12px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    totalVenta: { textAlign: 'right', fontSize: '1.2em', color: '#1a2926' },
     paymentMethodSelectContainer: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' },
     paymentMethodLabel: { fontWeight: 'bold' },
-    
+
     // --- NUEVOS ESTILOS PARA AJUSTES ---
     ajustesContainer: { display: 'flex', justifyContent: 'space-between', gap: '15px', marginTop: '15px' },
-    ajusteGrupo: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '5px', backgroundColor: '#fff' },
+    ajusteGrupo: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1, padding: '10px', border: '1px solid #d8eae4', borderRadius: '6px', backgroundColor: '#fff' },
     ajusteLabel: { fontWeight: 'bold', fontSize: '0.9em' },
-    ajusteInput: { width: '70px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
-    ajusteSeparador: { fontWeight: 'bold', color: '#777' },
+    ajusteInput: { width: '70px', padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px' },
+    ajusteSeparador: { fontWeight: 'bold', color: '#8aa8a0' },
     // --- FIN NUEVOS ESTILOS ---
 
-    finalTotalVenta: { textAlign: 'right', fontSize: '1.5em', color: '#28a745' },
-    processSaleButton: { display: 'block', width: '100%', padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', marginTop: '20px' },
-    addButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#777' },
+    finalTotalVenta: { textAlign: 'right', fontSize: '1.5em', color: '#5dc87a' },
+    processSaleButton: { display: 'block', width: '100%', padding: '15px', background: 'linear-gradient(135deg, #5dc87a, #38a080)', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', marginTop: '20px', fontSize: '1.1em', fontWeight: 700, boxShadow: '0 4px 14px rgba(93,200,122,.30)' },
+    addButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#8aa8a0' },
     paginationContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', gap: '10px' },
-    paginationButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
-    pageNumber: { fontSize: '1em', fontWeight: 'bold', color: '#555' },
-    arancelDisplay: { textAlign: 'right', fontSize: '1em', color: '#e74c3c', marginTop: '5px' },
+    paginationButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
+    pageNumber: { fontSize: '1em', fontWeight: 'bold', color: '#4a6660' },
+    arancelDisplay: { textAlign: 'right', fontSize: '1em', color: '#e25252', marginTop: '5px' },
     alertBox: {
         position: 'fixed',
         bottom: '20px',
         right: '20px',
         padding: '15px 20px',
         color: 'white',
-        borderRadius: '5px',
+        borderRadius: '6px',
         zIndex: 1001,
         boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
     },

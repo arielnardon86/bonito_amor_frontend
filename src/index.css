@@ -1,13 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --ts-green:           #5dc87a;
+  --ts-green-dark:      #3ab87a;
+  --ts-green-darker:    #2a9668;
+  --ts-teal:            #38a080;
+  --ts-teal-dark:       #1e8068;
+  --ts-gradient:        linear-gradient(135deg, #5dc87a 0%, #38a080 100%);
+
+  --ts-sidebar-bg:      #1a2926;
+  --ts-sidebar-hover:   #243832;
+  --ts-sidebar-active:  rgba(93, 200, 122, 0.13);
+  --ts-sidebar-text:    #c8ddd9;
+  --ts-sidebar-muted:   #7aa49c;
+
+  --ts-bg:              #f2f7f5;
+  --ts-surface:         #ffffff;
+  --ts-surface-alt:     #f7faf9;
+
+  --ts-text:            #1a2926;
+  --ts-text-2:          #4a6660;
+  --ts-text-muted:      #8aa8a0;
+
+  --ts-border:          #d8eae4;
+  --ts-border-light:    #edf5f2;
+
+  --ts-success:         #5dc87a;
+  --ts-success-bg:      #edfaf3;
+  --ts-success-border:  #a8e6c5;
+  --ts-success-text:    #1a6a40;
+
+  --ts-danger:          #e25252;
+  --ts-danger-bg:       #fef2f2;
+  --ts-danger-border:   #fca5a5;
+  --ts-danger-text:     #991b1b;
+
+  --ts-warning:         #f59e0b;
+  --ts-warning-bg:      #fffbeb;
+  --ts-warning-border:  #fcd34d;
+  --ts-warning-text:    #92400e;
+
+  --ts-info:            #3b9ede;
+  --ts-info-bg:         #eff6ff;
+  --ts-info-border:     #93c5fd;
+  --ts-info-text:       #1e4a8a;
+
+  --ts-radius-sm:       6px;
+  --ts-radius:          10px;
+  --ts-radius-lg:       16px;
+  --ts-radius-xl:       24px;
+
+  --ts-shadow-sm:       0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  --ts-shadow:          0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.05);
+  --ts-shadow-lg:       0 10px 30px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
+  --ts-shadow-green:    0 4px 14px rgba(93,200,122,.30);
+
+  --ts-font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Reset & base ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--ts-font);
+  font-size: 15px;
+  color: var(--ts-text);
+  background-color: var(--ts-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  background: var(--ts-surface-alt);
+  border: 1px solid var(--ts-border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: .875em;
 }
+
+a { color: var(--ts-green-dark); text-decoration: none; }
+a:hover { text-decoration: underline; color: var(--ts-green-darker); }
+
+/* ── SweetAlert2 theme ──────────────────────────────────────────────────────── */
+.swal2-confirm {
+  background: var(--ts-gradient) !important;
+  box-shadow: var(--ts-shadow-green) !important;
+  font-family: var(--ts-font) !important;
+}
+.swal2-confirm:hover { filter: brightness(1.07) !important; }
+.swal2-cancel {
+  background-color: var(--ts-surface) !important;
+  color: var(--ts-text) !important;
+  border: 1px solid var(--ts-border) !important;
+  box-shadow: var(--ts-shadow-sm) !important;
+  font-family: var(--ts-font) !important;
+}
+.swal2-popup {
+  font-family: var(--ts-font) !important;
+  border-radius: var(--ts-radius-lg) !important;
+  border: 1px solid var(--ts-border-light) !important;
+}
+.swal2-title { color: var(--ts-text) !important; font-weight: 700 !important; }
+.swal2-html-container { color: var(--ts-text-2) !important; }

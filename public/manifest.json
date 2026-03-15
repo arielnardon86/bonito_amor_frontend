@@ -3,25 +3,25 @@
   "name": "Total Stock - Sistema de Gestión",
   "icons": [
     {
-      "src": "logo-icon-only.png",
+      "src": "logo192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "logo-icon-only.png",
+      "src": "logo192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "logo-icon-only.png",
+      "src": "logo512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "logo-icon-only.png",
+      "src": "logo512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
@@ -29,7 +29,7 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#007bff",
+  "theme_color": "#3dbf7a",
   "background_color": "#ffffff",
   "gcm_sender_id": "741099614305"
 }

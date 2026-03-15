@@ -18,7 +18,6 @@ const ImportarProductosSeleccionadosML = ({ tiendaId, token, onClose, onImport }
     const [loading, setLoading] = useState(true);
     const [seleccionados, setSeleccionados] = useState({});
     const [total, setTotal] = useState(0);
-    const [offset, setOffset] = useState(0);
     const limit = 100;
 
     const cargarItems = async (off = 0) => {
@@ -35,7 +34,6 @@ const ImportarProductosSeleccionadosML = ({ tiendaId, token, onClose, onImport }
             const list = res.data.items || [];
             setItems(list);
             setTotal(res.data.paging?.total ?? list.length);
-            setOffset(off);
             const sel = {};
             list.forEach(it => { sel[it.id] = false; });
             setSeleccionados(prev => ({ ...prev, ...sel }));
@@ -48,6 +46,7 @@ const ImportarProductosSeleccionadosML = ({ tiendaId, token, onClose, onImport }
 
     useEffect(() => {
         if (tiendaId && token) cargarItems(0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tiendaId, token]);
 
     const toggle = (id) => setSeleccionados(prev => ({ ...prev, [id]: !prev[id] }));
@@ -70,51 +69,51 @@ const ImportarProductosSeleccionadosML = ({ tiendaId, token, onClose, onImport }
     };
 
     return (
-        <div style={{ padding: '20px', minHeight: '400px' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Importar productos</h3>
-            <p style={{ color: '#666', marginBottom: '15px', fontSize: '14px' }}>
+        <div style={{ padding: '24px', minHeight: '400px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '8px', color: '#1a2926', fontSize: '1.1rem', fontWeight: 700 }}>Importar productos</h3>
+            <p style={{ color: '#4a6660', marginBottom: '20px', fontSize: '14px' }}>
                 Elegí los productos de Mercado Libre que querés traer a Total Stock.
             </p>
             {loading ? (
-                <p style={{ textAlign: 'center', padding: '40px' }}>Cargando productos...</p>
+                <p style={{ textAlign: 'center', padding: '40px', color: '#8aa8a0' }}>Cargando productos...</p>
             ) : items.length === 0 ? (
-                <p style={{ textAlign: 'center', padding: '40px', color: '#666' }}>No hay productos en tu tienda de Mercado Libre.</p>
+                <p style={{ textAlign: 'center', padding: '40px', color: '#8aa8a0' }}>No hay productos en tu tienda de Mercado Libre.</p>
             ) : (
                 <>
-                    <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 500 }}>
-                            <input type="checkbox" checked={Object.keys(seleccionados).length > 0 && Object.keys(seleccionados).every(k => seleccionados[k])} onChange={toggleTodos} style={{ marginRight: '10px', width: '18px', height: '18px' }} />
+                    <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 600, color: '#1a2926', fontSize: '14px' }}>
+                            <input type="checkbox" checked={Object.keys(seleccionados).length > 0 && Object.keys(seleccionados).every(k => seleccionados[k])} onChange={toggleTodos} style={{ marginRight: '10px', width: '18px', height: '18px', accentColor: '#5dc87a' }} />
                             <span>Seleccionar todos</span>
                         </label>
-                        <span style={{ fontSize: '14px', color: '#666' }}>
+                        <span style={{ fontSize: '13px', color: '#8aa8a0' }}>
                             {seleccionadosIds().length} de {items.length} seleccionados
                         </span>
                     </div>
-                    <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '6px', padding: '10px' }}>
+                    <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #d8eae4', borderRadius: '10px', padding: '8px 12px', backgroundColor: '#f7faf9' }}>
                         {items.map(it => (
-                            <div key={it.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eee', gap: '12px' }}>
+                            <div key={it.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #edf5f2', gap: '12px' }}>
                                 <input
                                     type="checkbox"
                                     checked={!!seleccionados[it.id]}
                                     onChange={() => toggle(it.id)}
-                                    style={{ width: '18px', height: '18px', flexShrink: 0 }}
+                                    style={{ width: '18px', height: '18px', flexShrink: 0, accentColor: '#5dc87a' }}
                                 />
                                 {it.thumbnail && (
-                                    <img src={it.thumbnail} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4 }} />
+                                    <img src={it.thumbnail} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: '8px', border: '1px solid #d8eae4' }} />
                                 )}
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.title || it.id}</div>
-                                    <div style={{ fontSize: '13px', color: '#666' }}>${it.price?.toLocaleString('es-AR')} · Stock ML: {it.available_quantity ?? '-'}</div>
+                                    <div style={{ fontWeight: 600, color: '#1a2926', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '14px' }}>{it.title || it.id}</div>
+                                    <div style={{ fontSize: '13px', color: '#8aa8a0', marginTop: '2px' }}>${it.price?.toLocaleString('es-AR')} · Stock ML: {it.available_quantity ?? '-'}</div>
                                 </div>
                             </div>
                         ))}
                     </div>
                     {total > limit && (
-                        <p style={{ fontSize: '13px', color: '#888', marginTop: '10px' }}>Mostrando los primeros {limit} de {total} productos.</p>
+                        <p style={{ fontSize: '13px', color: '#8aa8a0', marginTop: '10px' }}>Mostrando los primeros {limit} de {total} productos.</p>
                     )}
                     <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                        <button type="button" onClick={onClose} style={{ padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: 5, cursor: 'pointer' }}>Cancelar</button>
-                        <button type="button" onClick={handleImportar} style={{ padding: '10px 20px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 500 }}>
+                        <button type="button" onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', padding: '9px 20px', backgroundColor: '#ffffff', color: '#1a2926', border: '1px solid #d8eae4', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>Cancelar</button>
+                        <button type="button" onClick={handleImportar} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 20px', background: 'linear-gradient(135deg, #5dc87a 0%, #38a080 100%)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, boxShadow: '0 4px 14px rgba(93,200,122,0.30)' }}>
                             Importar ({seleccionadosIds().length})
                         </button>
                     </div>

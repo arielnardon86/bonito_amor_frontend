@@ -52,7 +52,7 @@ const CambioDevolucion = () => {
     const [busquedaProducto, setBusquedaProducto] = useState('');
     const [filterTerm, setFilterTerm] = useState('');
     const [productoSeleccionado, setProductoSeleccionado] = useState(null);
-    const [loadingProducts, setLoadingProducts] = useState(true);
+    const [, setLoadingProducts] = useState(true);
     
     // Métodos de pago y aranceles
     const [metodosPago, setMetodosPago] = useState([]);
@@ -183,6 +183,7 @@ const CambioDevolucion = () => {
 
         input.addEventListener('input', handleInput);
         return () => input.removeEventListener('input', handleInput);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [busquedaVentaId]);
 
     // Toggle producto a devolver
@@ -234,6 +235,7 @@ const CambioDevolucion = () => {
             console.error("Error al buscar producto:", err);
             setProductoSeleccionado(null);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [busquedaProducto, selectedStoreSlug, token]);
 
     // Agregar producto al carrito
@@ -1274,46 +1276,46 @@ const CambioDevolucion = () => {
 
 // --- OBJETO DE ESTILOS (Igual que PuntoVenta.js) ---
 const styles = {
-    container: { padding: 0, fontFamily: 'Arial, sans-serif', width: '100%' },
-    pageTitle: { color: '#2c3e50', fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' },
-    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' },
-    sectionHeader: { color: '#34495e', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '8px', marginTop: '1rem', marginBottom: '0.5rem' },
-    loadingMessage: { textAlign: 'center', color: '#777' },
-    accessDeniedMessage: { color: '#dc3545', textAlign: 'center' },
+    container: { padding: 0, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", width: '100%' },
+    pageTitle: { color: '#1a2926', fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' },
+    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f7faf9', borderRadius: '10px' },
+    sectionHeader: { color: '#4a6660', fontSize: '1.1rem', borderBottom: '1px solid #edf5f2', paddingBottom: '8px', marginTop: '1rem', marginBottom: '0.5rem' },
+    loadingMessage: { textAlign: 'center', color: '#8aa8a0' },
+    accessDeniedMessage: { color: '#e25252', textAlign: 'center' },
     noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },
-    errorMessage: { color: '#dc3545', padding: '10px', backgroundColor: '#ffe3e6', border: '1px solid #dc3545', borderRadius: '5px' },
+    errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },
     inputGroup: { display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' },
-    inputField: { padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', flex: 1 },
-    primaryButton: { padding: '10px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
-    foundProductCard: { border: '1px solid #ccc', padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginTop: '15px' },
+    inputField: { padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px', boxSizing: 'border-box', flex: 1 },
+    primaryButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
+    foundProductCard: { border: '1px solid #d8eae4', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginTop: '15px' },
     foundProductText: { margin: 0 },
     productActions: { display: 'flex', gap: '10px' },
-    addProductButton: { padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    disabledButton: { padding: '8px 15px', backgroundColor: '#ccc', color: '#666', border: 'none', borderRadius: '4px', cursor: 'not-allowed' },
+    addProductButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    disabledButton: { padding: '8px 15px', backgroundColor: '#d8eae4', color: '#8aa8a0', border: 'none', borderRadius: '4px', cursor: 'not-allowed' },
     tableResponsive: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse', marginTop: '15px' },
-    tableHeaderRow: { backgroundColor: '#f2f2f2' },
-    th: { padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' },
-    tableRow: { '&:nth-child(even)': { backgroundColor: '#f9f9f9' } },
-    td: { padding: '10px', borderBottom: '1px solid #eee', verticalAlign: 'middle' },
+    tableHeaderRow: { backgroundColor: '#f7faf9' },
+    th: { padding: '10px', borderBottom: '2px solid #d8eae4', textAlign: 'left' },
+    tableRow: { '&:nth-child(even)': { backgroundColor: '#f7faf9' } },
+    td: { padding: '10px', borderBottom: '1px solid #edf5f2', verticalAlign: 'middle' },
     quantityControl: { display: 'flex', alignItems: 'center', gap: '5px' },
-    quantityButton: { padding: '4px 8px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' },
+    quantityButton: { padding: '4px 8px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' },
     quantityText: { padding: '0 5px' },
-    removeButton: { padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    totalVenta: { textAlign: 'right', fontSize: '1.2em', color: '#333', marginTop: '15px' },
+    removeButton: { padding: '8px 12px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    totalVenta: { textAlign: 'right', fontSize: '1.2em', color: '#1a2926', marginTop: '15px' },
     paymentMethodSelectContainer: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' },
     paymentMethodLabel: { fontWeight: 'bold' },
     ajustesContainer: { display: 'flex', justifyContent: 'space-between', gap: '15px', marginTop: '15px' },
-    ajusteGrupo: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '5px', backgroundColor: '#fff' },
+    ajusteGrupo: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1, padding: '10px', border: '1px solid #d8eae4', borderRadius: '6px', backgroundColor: '#fff' },
     ajusteLabel: { fontWeight: 'bold', fontSize: '0.9em' },
-    ajusteInput: { width: '70px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
-    ajusteSeparador: { fontWeight: 'bold', color: '#777' },
-    finalTotalVenta: { textAlign: 'right', fontSize: '1.5em', color: '#28a745', marginTop: '15px' },
-    processSaleButton: { display: 'block', width: '100%', padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', marginTop: '20px' },
-    addButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#777' },
-    arancelDisplay: { textAlign: 'right', fontSize: '1em', color: '#e74c3c', marginTop: '5px' },
-    modalCancelButton: { padding: '8px 15px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    ajusteInput: { width: '70px', padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px' },
+    ajusteSeparador: { fontWeight: 'bold', color: '#8aa8a0' },
+    finalTotalVenta: { textAlign: 'right', fontSize: '1.5em', color: '#5dc87a', marginTop: '15px' },
+    processSaleButton: { display: 'block', width: '100%', padding: '15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', marginTop: '20px' },
+    addButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#8aa8a0' },
+    arancelDisplay: { textAlign: 'right', fontSize: '1em', color: '#e25252', marginTop: '5px' },
+    modalCancelButton: { padding: '8px 15px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
 };
 
 export default CambioDevolucion;

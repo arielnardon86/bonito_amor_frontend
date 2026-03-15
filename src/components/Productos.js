@@ -53,6 +53,10 @@ const Productos = () => {
 
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
     const [mostrarTalle, setMostrarTalle] = useState(false);
+    const [stockBajoFilter, setStockBajoFilter] = useState(false);
+    const STOCK_BAJO_THRESHOLD = 5;
+    const [showEtiquetasModal, setShowEtiquetasModal] = useState(false);
+    const [cantidadesModal, setCantidadesModal] = useState({});
 
     const generarCodigoDeBarrasEAN13 = () => {
         let code = '779' + Math.floor(100000000 + Math.random() * 900000000).toString();
@@ -163,26 +167,42 @@ const Productos = () => {
         }
     };
 
-    const handleEtiquetasChange = (id, cantidad) => {
-        setEtiquetasSeleccionadas(prev => ({
-            ...prev,
-            [id]: cantidad
-        }));
+    const handleToggleEtiqueta = (id, isChecked) => {
+        setEtiquetasSeleccionadas(prev => {
+            const next = { ...prev };
+            if (isChecked) {
+                next[id] = true;
+            } else {
+                delete next[id];
+            }
+            return next;
+        });
     };
-    
+
     const handleImprimirEtiquetas = () => {
-        const productosParaImprimir = Object.entries(etiquetasSeleccionadas)
-            .filter(([id, cantidad]) => cantidad > 0)
+        const selectedIds = Object.keys(etiquetasSeleccionadas);
+        if (selectedIds.length === 0) {
+            alert('Seleccioná al menos un producto para imprimir etiquetas.');
+            return;
+        }
+        // Inicializar cantidades en 1 para cada producto seleccionado
+        const initial = {};
+        selectedIds.forEach(id => { initial[id] = 1; });
+        setCantidadesModal(initial);
+        setShowEtiquetasModal(true);
+    };
+
+    const handleConfirmarEtiquetas = () => {
+        const productosParaImprimir = Object.entries(cantidadesModal)
+            .filter(([, cantidad]) => cantidad > 0)
             .map(([id, cantidad]) => {
-                const producto = productos.find(p => p.id == id);
+                const producto = productos.find(p => String(p.id) === String(id));
                 return producto ? { ...producto, labelQuantity: parseInt(cantidad, 10) } : null;
             })
             .filter(Boolean);
-        
         if (productosParaImprimir.length > 0) {
+            setShowEtiquetasModal(false);
             navigate('/etiquetas', { state: { productosParaImprimir } });
-        } else {
-            alert('No hay etiquetas seleccionadas para imprimir.');
         }
     };
 
@@ -212,6 +232,7 @@ const Productos = () => {
                         <label style={styles.label}>Nombre</label>
                         <input
                             type="text"
+                            maxLength={25}
                             value={newProduct.nombre}
                             onChange={(e) => setNewProduct({ ...newProduct, nombre: e.target.value })}
                             style={styles.input}
@@ -276,17 +297,48 @@ const Productos = () => {
             <div style={styles.section}>
                 <div style={styles.tableHeader}>
                     <h2 style={styles.sectionTitle}>Listado</h2>
-                    <button onClick={handleImprimirEtiquetas} style={styles.printButton}>Imprimir Etiquetas</button>
+                    <button onClick={handleImprimirEtiquetas} style={styles.printButton}>
+                        Imprimir Etiquetas
+                        {Object.keys(etiquetasSeleccionadas).length > 0 && (
+                            <span style={{ marginLeft: 7, background: '#fff', color: '#1a7a3f', borderRadius: 10, padding: '1px 7px', fontSize: 12, fontWeight: 800 }}>
+                                {Object.keys(etiquetasSeleccionadas).length}
+                            </span>
+                        )}
+                    </button>
                 </div>
                 <div style={styles.filtersContainer}>
-                    <input
-                        type="text"
-                        placeholder="Buscar por nombre..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={styles.filterInput}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre o código de barras..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={styles.filterInput}
+                        />
+                        {/^\d{6,}$/.test(searchTerm) && (
+                            <span style={{ fontSize: 11, color: '#1a7a3f', fontWeight: 600 }}>🔍 Buscando por código de barras</span>
+                        )}
+                    </div>
                     <button onClick={() => fetchProductos()} style={styles.searchButton}>Buscar</button>
+                    {(() => {
+                        const stockBajoCount = productos.filter(p => p.stock <= STOCK_BAJO_THRESHOLD).length;
+                        return stockBajoCount > 0 ? (
+                            <button
+                                type="button"
+                                onClick={() => setStockBajoFilter(v => !v)}
+                                style={{
+                                    padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                                    background: stockBajoFilter ? '#fef2f2' : '#f7faf9',
+                                    color: stockBajoFilter ? '#991b1b' : '#4a6660',
+                                    border: `1px solid ${stockBajoFilter ? '#fca5a5' : '#d8eae4'}`,
+                                    transition: 'all 0.15s',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                ⚠️ Stock bajo ({stockBajoCount})
+                            </button>
+                        ) : null;
+                    })()}
                     {productos.some(p => p.talle && String(p.talle).trim() !== '') && (
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginLeft: '12px' }}>
                             <input
@@ -309,45 +361,41 @@ const Productos = () => {
                             <table style={styles.table}>
                                 <thead>
                                     <tr>
-                                        <th style={styles.th}>Seleccionar</th>
-                                        <th style={styles.th}>Cantidad de etiquetas</th>
+                                        <th style={styles.th}>Etiqueta</th>
                                         <th style={styles.th}>Nombre</th>
                                         {mostrarTalle && <th style={styles.th}>Talle</th>}
                                         <th style={styles.th}>Precio</th>
                                         <th style={styles.th}>Costo</th>
+                                        <th style={styles.th}>Margen</th>
                                         <th style={styles.th}>Stock</th>
                                         <th style={styles.th}>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {productos.map(producto => (
-                                        <tr key={producto.id}><td style={styles.td}>
+                                    {(stockBajoFilter ? productos.filter(p => p.stock <= STOCK_BAJO_THRESHOLD) : productos).map(producto => {
+                                        const precio = parseFloat(producto.precio) || 0;
+                                        const costo = parseFloat(producto.costo) || 0;
+                                        const margen = precio > 0 && costo > 0 ? ((precio - costo) / precio * 100) : null;
+                                        const margenColor = margen === null ? '#8aa8a0' : margen >= 30 ? '#16a34a' : margen >= 15 ? '#d97706' : '#dc2626';
+                                        return (
+                                        <tr key={producto.id} style={producto.stock <= STOCK_BAJO_THRESHOLD ? { background: '#fef9ec' } : {}}>
+                                            <td style={{ ...styles.td, textAlign: 'center' }}>
                                                 <input
                                                     type="checkbox"
                                                     checked={!!etiquetasSeleccionadas[producto.id]}
-                                                    onChange={(e) => {
-                                                        const isChecked = e.target.checked;
-                                                        if (isChecked) {
-                                                            handleEtiquetasChange(producto.id, 1);
-                                                        } else {
-                                                            const newSelections = { ...etiquetasSeleccionadas };
-                                                            delete newSelections[producto.id];
-                                                            setEtiquetasSeleccionadas(newSelections);
-                                                        }
-                                                    }}
+                                                    onChange={(e) => handleToggleEtiqueta(producto.id, e.target.checked)}
+                                                    style={{ width: 16, height: 16, cursor: 'pointer' }}
                                                 />
-                                            </td><td style={styles.td}>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    value={etiquetasSeleccionadas[producto.id] || ''}
-                                                    onChange={(e) => handleEtiquetasChange(producto.id, parseInt(e.target.value, 10) || 0)}
-                                                    style={styles.etiquetasInput}
-                                                    disabled={!etiquetasSeleccionadas[producto.id]}
-                                                />
-                                            </td><td style={styles.td}>{producto.nombre}</td>
+                                            </td>
+                                            <td style={styles.td}>{producto.nombre}</td>
                                             {mostrarTalle && <td style={styles.td}>{producto.talle || '-'}</td>}
-                                            <td style={styles.td}>{formatearMonto(producto.precio)}</td><td style={styles.td}>{formatearMonto(producto.costo || 0)}</td><td style={styles.td}>{producto.stock}</td><td style={styles.td}>
+                                            <td style={styles.td}>{formatearMonto(producto.precio)}</td>
+                                            <td style={styles.td}>{formatearMonto(producto.costo || 0)}</td>
+                                            <td style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
+                                                {margen !== null ? `${margen.toFixed(1)}%` : <span style={{ color: '#8aa8a0', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
+                                            </td>
+                                            <td style={{ ...styles.td, color: producto.stock <= STOCK_BAJO_THRESHOLD ? '#dc2626' : undefined, fontWeight: producto.stock <= STOCK_BAJO_THRESHOLD ? 700 : undefined }}>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</td>
+                                            <td style={styles.td}>
                                                 <button onClick={() => {
                                                     setEditProduct({ ...producto });
                                                     setShowEditModal(true);
@@ -357,7 +405,8 @@ const Productos = () => {
                                                     setShowDeleteModal(true);
                                                 }} style={styles.deleteButton}>Eliminar</button>
                                             </td></tr>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -392,6 +441,7 @@ const Productos = () => {
                             <label style={styles.label}>Nombre:</label>
                             <input
                                 type="text"
+                                maxLength={25}
                                 value={editProduct.nombre}
                                 onChange={(e) => setEditProduct({ ...editProduct, nombre: e.target.value })}
                                 style={styles.modalInput}
@@ -443,6 +493,40 @@ const Productos = () => {
                 </div>
             )}
             
+            {/* Modal de cantidad de etiquetas */}
+            {showEtiquetasModal && (
+                <div style={styles.modalOverlay} onClick={() => setShowEtiquetasModal(false)}>
+                    <div style={{ ...styles.modalContent, maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: '1rem', fontWeight: 700 }}>¿Cuántas etiquetas imprimir?</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 340, overflowY: 'auto', paddingRight: 4 }}>
+                            {Object.keys(cantidadesModal).map(id => {
+                                const producto = productos.find(p => String(p.id) === String(id));
+                                if (!producto) return null;
+                                return (
+                                    <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                        <span style={{ fontSize: 14, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {producto.nombre}
+                                        </span>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="100"
+                                            value={cantidadesModal[id]}
+                                            onChange={e => setCantidadesModal(prev => ({ ...prev, [id]: Math.max(1, parseInt(e.target.value) || 1) }))}
+                                            style={{ width: 70, padding: '6px 10px', border: '1px solid #d8eae4', borderRadius: 8, fontSize: 15, fontWeight: 700, textAlign: 'center' }}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+                            <button onClick={() => setShowEtiquetasModal(false)} style={styles.modalCancelButton}>Cancelar</button>
+                            <button onClick={handleConfirmarEtiquetas} style={styles.modalConfirmButton}>Imprimir</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal de confirmación para eliminar */}
             {showDeleteModal && productToDelete && (
                 <div style={styles.modalOverlay}>
@@ -499,40 +583,40 @@ const Productos = () => {
     );
 };
 const styles = {
-    container: { padding: 0, fontFamily: 'Arial, sans-serif', width: '100%' },
-    title: { color: '#2c3e50', fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.25rem' },
-    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' },
-    sectionTitle: { color: '#34495e', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '8px', marginTop: '1.5rem', marginBottom: '0.5rem' },
+    container: { padding: 0, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", width: '100%' },
+    title: { color: '#1a2926', fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.25rem' },
+    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f7faf9', borderRadius: '10px' },
+    sectionTitle: { color: '#4a6660', fontSize: '1.1rem', borderBottom: '1px solid #edf5f2', paddingBottom: '8px', marginTop: '1.5rem', marginBottom: '0.5rem' },
     form: { display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-end' },
     inputGroup: { flex: '1 1 200px', display: 'flex', flexDirection: 'column' },
     label: { marginBottom: '5px', fontWeight: 'bold' },
-    input: { padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
-    submitButton: { padding: '10px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', alignSelf: 'flex-end' },
+    input: { padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px' },
+    submitButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', alignSelf: 'flex-end' },
     tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
-    printButton: { padding: '10px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    printButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
     filtersContainer: { display: 'flex', gap: '10px', marginBottom: '20px' },
-    filterInput: { flex: '1', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
-    searchButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    filterInput: { flex: '1', padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px' },
+    searchButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
     loadingMessage: { textAlign: 'center', color: '#777' },
-    errorMessage: { color: '#dc3545', padding: '10px', backgroundColor: '#ffe3e6', border: '1px solid #dc3545', borderRadius: '5px' },
+    errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },
     tableResponsive: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse' },
-    th: { padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left', backgroundColor: '#f2f2f2' },
-    td: { padding: '10px', borderBottom: '1px solid #ddd' },
+    th: { padding: '10px', borderBottom: '2px solid #d8eae4', textAlign: 'left', backgroundColor: '#f7faf9' },
+    td: { padding: '10px', borderBottom: '1px solid #d8eae4' },
     etiquetasInput: { width: '50px' },
-    editButton: { padding: '5px 10px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' },
-    deleteButton: { padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    editButton: { padding: '5px 10px', backgroundColor: '#f59e0b', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' },
+    deleteButton: { padding: '5px 10px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
     paginationContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', gap: '10px' },
-    paginationButton: { padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' },
+    paginationButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
     pageNumber: { fontSize: '1em', fontWeight: 'bold' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-    modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center', width: '90%', maxWidth: '500px' },
+    modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', textAlign: 'center', width: '90%', maxWidth: '500px' },
     inputGroupModal: { marginBottom: '15px' },
     modalInput: { width: '100%', padding: '8px', boxSizing: 'border-box' },
     modalActions: { display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' },
-    modalConfirmButton: { padding: '10px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    modalCancelButton: { padding: '10px 15px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    accessDeniedMessage: { color: '#dc3545', textAlign: 'center', fontWeight: 'bold' },
+    modalConfirmButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    modalCancelButton: { padding: '10px 15px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    accessDeniedMessage: { color: '#e25252', textAlign: 'center', fontWeight: 'bold' },
     noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },
 };
 export default Productos;

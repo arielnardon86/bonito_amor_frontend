@@ -1,5 +1,5 @@
 // BONITO_AMOR/frontend/src/components/FacturaImpresion.js
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
@@ -54,13 +54,6 @@ const FacturaImpresion = () => {
             // Generar código numérico de 13 dígitos (mismo que lee el código de barras)
             const codigoNumerico = venta?.id ? generarCodigoNumerico13Digitos(venta.id) : 'N/A';
 
-            // Formatear número de factura
-            const formatearNumeroFactura = (puntoVenta, numero) => {
-                const pv = String(puntoVenta || 0).padStart(4, '0');
-                const num = String(numero || 0).padStart(8, '0');
-                return `${pv}-${num}`;
-            };
-
             const tipoFacturaText = {
                 'A': 'Factura A',
                 'B': 'Factura B',
@@ -78,25 +71,6 @@ const FacturaImpresion = () => {
             // Obtener detalles de la venta si están disponibles
             const detalles = venta?.detalles || [];
             
-            // IMPORTANTE: Los precios ya tienen IVA incluido (21%)
-            // Calcular subtotal sin IVA y IVA
-            let subtotalSinIva = 0;
-            let totalIva = 0;
-            
-            detalles.forEach(item => {
-                if (!item.anulado_individualmente) {
-                    const precioConIva = parseFloat(item.precio_unitario || 0);
-                    const cantidad = item.cantidad || 0;
-                    const subtotalItemConIva = precioConIva * cantidad;
-                    // Calcular precio sin IVA: precio_con_iva / 1.21
-                    const precioSinIva = precioConIva / 1.21;
-                    const subtotalItemSinIva = precioSinIva * cantidad;
-                    const ivaItem = subtotalItemSinIva * 0.21;
-                    
-                    subtotalSinIva += subtotalItemSinIva;
-                    totalIva += ivaItem;
-                }
-            });
             
             // IMPORTANTE: El descuento/recargo se aplica sobre el TOTAL CON IVA, no sobre el subtotal sin IVA
             // Calcular el subtotal inicial con IVA (suma de todos los items con IVA incluido)
@@ -215,11 +189,8 @@ const FacturaImpresion = () => {
         }
     }, [factura, venta]);
 
-    const [hasPrinted, setHasPrinted] = useState(false);
-
     const handlePrint = () => {
         window.print();
-        setHasPrinted(true);
         
         // Solo preguntar por recibo si NO viene del flujo de facturación (skipReciboPrompt)
         if (!skipReciboPrompt) {

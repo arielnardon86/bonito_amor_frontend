@@ -44,7 +44,7 @@ const normalizeApiUrl = (url) => {
 const BASE_API_ENDPOINT = normalizeApiUrl(process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
 export const useNotifications = () => {
-    const { token, isAuthenticated, selectedStoreSlug } = useAuth();
+    const { token, isAuthenticated } = useAuth();
     const [notificationPermission, setNotificationPermission] = useState(
         typeof Notification !== 'undefined' ? Notification.permission : 'default'
     );
@@ -233,6 +233,7 @@ export const useNotifications = () => {
             setError('No se pudieron solicitar permisos de notificaciones: ' + (error.message || error));
             setNotificationPermission(Notification.permission);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fcmToken, registrarToken]);
 
     // Inicializar notificaciones cuando el usuario está autenticado
@@ -316,6 +317,7 @@ export const useNotifications = () => {
             console.warn('Error al inicializar notificaciones (no crítico):', error);
             // No bloquear la app si fallan las notificaciones
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, token, isManuallyDisabled]); // Sin fcmToken para no re-ejecutar al actualizar token y provocar bucle
 
     // Eliminar token al cerrar sesión y desregistrar el listener global

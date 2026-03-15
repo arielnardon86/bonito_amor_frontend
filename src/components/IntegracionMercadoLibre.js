@@ -201,35 +201,6 @@ const IntegracionMercadoLibre = () => {
         }
     };
 
-    // Completar OAuth con el código
-    const handleCompletarOAuth = async (code) => {
-        if (!tiendaId) return;
-
-        try {
-            Swal.fire({
-                title: 'Completando autorización...',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-
-            await axios.post(
-                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/mercadolibre/callback/`,
-                { code },
-                { headers: { 'Authorization': `Bearer ${token}` } }
-            );
-
-            Swal.fire('Éxito', 'Autorización completada correctamente', 'success');
-            await fetchMLStatus();
-            await fetchTienda();
-        } catch (err) {
-            const errorMsg = err.response?.data?.error || err.message;
-            Swal.fire('Error', `Error al completar autorización: ${errorMsg}`, 'error');
-            console.error('Error completando OAuth:', err);
-        }
-    };
-
     // Desconectar integración ML (borra tokens para poder reconectar con otra cuenta/App)
     const handleDesconectar = async () => {
         if (!tiendaId) return;
@@ -424,7 +395,7 @@ const IntegracionMercadoLibre = () => {
 
     if (loading) {
         return (
-            <div style={{ padding: '20px', textAlign: 'center' }}>
+            <div style={{ padding: '20px', textAlign: 'center', color: '#4a6660' }}>
                 <p>Cargando información...</p>
             </div>
         );
@@ -432,27 +403,27 @@ const IntegracionMercadoLibre = () => {
 
     if (!tiendaId) {
         return (
-            <div style={{ padding: '20px', textAlign: 'center' }}>
+            <div style={{ padding: '20px', textAlign: 'center', color: '#4a6660' }}>
                 <p>No se encontró la tienda seleccionada.</p>
             </div>
         );
     }
 
-    const isMLConfigurado = mlStatus?.plataforma_ecommerce === 'MERCADO_LIBRE';
     const isAutenticado = mlStatus?.authenticated === true;
 
     return (
         <div style={{ padding: 0, width: '100%', maxWidth: '100%' }}>
-            <h1 style={{ marginBottom: '1.25rem', color: '#2c3e50', fontSize: '1.5rem', fontWeight: 600 }}>Mercado Libre</h1>
+            <h1 style={{ marginBottom: '1.25rem', color: '#1a2926', fontSize: '1.5rem', fontWeight: 700 }}>Mercado Libre</h1>
 
             {error && (
                 <div style={{
-                    padding: '15px',
-                    backgroundColor: '#fee',
-                    border: '1px solid #fcc',
-                    borderRadius: '5px',
+                    padding: '14px 16px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fca5a5',
+                    borderRadius: '10px',
                     marginBottom: '20px',
-                    color: '#c33'
+                    color: '#991b1b',
+                    fontSize: '14px'
                 }}>
                     {error}
                 </div>
@@ -460,45 +431,46 @@ const IntegracionMercadoLibre = () => {
 
             {/* Estado de la integración */}
             <div style={{
-                backgroundColor: '#f9f9f9',
-                padding: '20px',
-                borderRadius: '8px',
-                marginBottom: '30px',
-                border: '1px solid #ddd'
+                backgroundColor: '#f7faf9',
+                padding: '20px 24px',
+                borderRadius: '12px',
+                marginBottom: '20px',
+                border: '1px solid #d8eae4',
+                boxShadow: '0 1px 3px rgba(0,0,0,.07)'
             }}>
-                <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.1rem', color: '#34495e' }}>Estado</h2>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px', marginTop: '15px' }}>
+                <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 600, color: '#4a6660', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Estado de la integración</h2>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginTop: '14px' }}>
                     <div>
-                        <strong>Plataforma:</strong>
-                        <p>{mlStatus?.plataforma_ecommerce || 'No configurada'}</p>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#8aa8a0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Plataforma</span>
+                        <p style={{ margin: '4px 0 0', color: '#1a2926', fontWeight: 500 }}>{mlStatus?.plataforma_ecommerce || 'No configurada'}</p>
                     </div>
                     <div>
-                        <strong>Autenticación:</strong>
-                        <p>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#8aa8a0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Autenticación</span>
+                        <p style={{ margin: '4px 0 0' }}>
                             {isAutenticado ? (
-                                <span style={{ color: 'green' }}>✅ Autenticado</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: '9999px', fontSize: 12, fontWeight: 600, backgroundColor: '#edfaf3', color: '#1a6a40', border: '1px solid #a8e6c5' }}>✅ Autenticado</span>
                             ) : (
-                                <span style={{ color: 'red' }}>❌ No autenticado</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: '9999px', fontSize: 12, fontWeight: 600, backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fca5a5' }}>❌ No autenticado</span>
                             )}
                         </p>
                     </div>
                     {mlStatus?.user_id && (
                         <div>
-                            <strong>User ID ML:</strong>
-                            <p>{mlStatus.user_id}</p>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#8aa8a0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>User ID ML</span>
+                            <p style={{ margin: '4px 0 0', color: '#1a2926', fontWeight: 500 }}>{mlStatus.user_id}</p>
                         </div>
                     )}
                     {mlStatus?.token_expires_at && (
                         <div>
-                            <strong>Token expira:</strong>
-                            <p>{new Date(mlStatus.token_expires_at).toLocaleString('es-AR')}</p>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#8aa8a0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Token expira</span>
+                            <p style={{ margin: '4px 0 0', color: '#1a2926' }}>{new Date(mlStatus.token_expires_at).toLocaleString('es-AR')}</p>
                         </div>
                     )}
                 </div>
                 {isAutenticado && (
-                    <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #ddd' }}>
-                        <p style={{ marginBottom: '10px', color: '#666', fontSize: '14px' }}>
+                    <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #d8eae4' }}>
+                        <p style={{ marginBottom: '12px', color: '#4a6660', fontSize: '13px' }}>
                             Si cambiaste de cuenta de Mercado Libre o de aplicación, desconectá y volvé a autorizar.
                         </p>
                         <button
@@ -506,19 +478,21 @@ const IntegracionMercadoLibre = () => {
                             onClick={handleDesconectar}
                             disabled={desconectando}
                             style={{
-                                padding: '10px 20px',
-                                backgroundColor: desconectando ? '#ccc' : '#dc3545',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '5px',
+                                display: 'inline-flex', alignItems: 'center', gap: 8,
+                                padding: '9px 20px',
+                                backgroundColor: desconectando ? '#d8eae4' : 'rgba(226,82,82,0.10)',
+                                color: desconectando ? '#8aa8a0' : '#e25252',
+                                border: '1px solid ' + (desconectando ? '#d8eae4' : 'rgba(226,82,82,0.3)'),
+                                borderRadius: '10px',
                                 cursor: desconectando ? 'not-allowed' : 'pointer',
-                                fontSize: '14px'
+                                fontSize: '14px', fontWeight: 600,
+                                transition: 'all 0.18s ease'
                             }}
                         >
                             {desconectando ? 'Desconectando...' : 'Desconectar y reconectar'}
                         </button>
-                        <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
+                        <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #edf5f2' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', color: '#1a2926' }}>
                                 <input
                                     type="checkbox"
                                     checked={tienda?.ml_facturar_ventas !== false}
@@ -526,7 +500,7 @@ const IntegracionMercadoLibre = () => {
                                 />
                                 <span><strong>Facturar automáticamente</strong> las ventas de Mercado Libre</span>
                             </label>
-                            <p style={{ margin: '8px 0 0 26px', fontSize: '12px', color: '#666' }}>
+                            <p style={{ margin: '8px 0 0 26px', fontSize: '12px', color: '#8aa8a0' }}>
                                 Si está desactivado, las ventas se registran pero solo se emite recibo (no se genera factura electrónica AFIP/ARCA).
                             </p>
                         </div>
@@ -537,31 +511,35 @@ const IntegracionMercadoLibre = () => {
             {/* Configuración OAuth */}
             {!isAutenticado && (
                 <div style={{
-                    backgroundColor: '#fff3cd',
-                    padding: '20px',
-                    borderRadius: '8px',
-                    marginBottom: '30px',
-                    border: '1px solid #ffc107'
+                    backgroundColor: '#fffbeb',
+                    padding: '20px 24px',
+                    borderRadius: '12px',
+                    marginBottom: '20px',
+                    border: '1px solid #fcd34d',
+                    boxShadow: '0 1px 3px rgba(0,0,0,.07)'
                 }}>
-                    <h3 style={{ marginTop: 0, color: '#856404' }}>Paso 1: Autenticación</h3>
-                    <p>Para comenzar a usar la integración con Mercado Libre, necesitas autorizar la aplicación.</p>
+                    <h3 style={{ marginTop: 0, color: '#92400e', fontSize: '1rem', fontWeight: 700 }}>Paso 1: Autenticación</h3>
+                    <p style={{ color: '#4a6660', fontSize: '14px' }}>Para comenzar a usar la integración con Mercado Libre, necesitas autorizar la aplicación.</p>
                     <button
                         onClick={handleIniciarOAuth}
                         style={{
-                            padding: '12px 24px',
+                            display: 'inline-flex', alignItems: 'center', gap: 8,
+                            padding: '11px 24px',
                             backgroundColor: '#3483fa',
                             color: 'white',
                             border: 'none',
-                            borderRadius: '5px',
+                            borderRadius: '10px',
                             cursor: 'pointer',
-                            fontSize: '16px',
-                            marginTop: '15px'
+                            fontSize: '15px', fontWeight: 600,
+                            marginTop: '12px',
+                            boxShadow: '0 4px 12px rgba(52,131,250,0.30)',
+                            transition: 'all 0.18s ease'
                         }}
                     >
                         Iniciar Autorización OAuth
                     </button>
                     {authUrl && (
-                        <p style={{ marginTop: '15px', fontSize: '12px', color: '#666' }}>
+                        <p style={{ marginTop: '15px', fontSize: '12px', color: '#8aa8a0' }}>
                             O copia y pega esta URL en tu navegador:<br />
                             <code style={{ wordBreak: 'break-all' }}>{authUrl}</code>
                         </p>
@@ -574,27 +552,31 @@ const IntegracionMercadoLibre = () => {
                 <>
                     {/* Desde Total Stock: solo actualizar stock a ML */}
                     <div style={{
-                        backgroundColor: '#e7f3ff',
-                        padding: '20px',
-                        borderRadius: '8px',
-                        marginBottom: '30px',
-                        border: '1px solid #b3d9ff'
+                        backgroundColor: '#eff6ff',
+                        padding: '20px 24px',
+                        borderRadius: '12px',
+                        marginBottom: '20px',
+                        border: '1px solid #93c5fd',
+                        boxShadow: '0 1px 3px rgba(0,0,0,.07)'
                     }}>
-                        <h3 style={{ marginTop: 0, color: '#004085' }}>Desde Total Stock hacia Mercado Libre</h3>
-                        <p style={{ marginBottom: '15px' }}>
+                        <h3 style={{ marginTop: 0, color: '#1e4a8a', fontSize: '1rem', fontWeight: 700 }}>Desde Total Stock hacia Mercado Libre</h3>
+                        <p style={{ marginBottom: '16px', color: '#4a6660', fontSize: '14px' }}>
                             Si vendiste por otro canal y querés reflejar el stock actual en Mercado Libre, actualizalo acá. Solo se actualiza el stock (no el precio).
                         </p>
                         <button
                             onClick={handleActualizarStock}
                             disabled={sincronizando}
                             style={{
-                                padding: '12px 24px',
-                                backgroundColor: sincronizando ? '#ccc' : '#17a2b8',
-                                color: 'white',
+                                display: 'inline-flex', alignItems: 'center', gap: 8,
+                                padding: '11px 24px',
+                                backgroundColor: sincronizando ? '#d8eae4' : '#38a080',
+                                color: sincronizando ? '#8aa8a0' : 'white',
                                 border: 'none',
-                                borderRadius: '5px',
+                                borderRadius: '10px',
                                 cursor: sincronizando ? 'not-allowed' : 'pointer',
-                                fontSize: '16px'
+                                fontSize: '15px', fontWeight: 600,
+                                boxShadow: sincronizando ? 'none' : '0 4px 12px rgba(56,160,128,0.25)',
+                                transition: 'all 0.18s ease'
                             }}
                         >
                             {sincronizando ? 'Procesando...' : 'Actualizar stock a Mercado Libre'}
@@ -603,14 +585,15 @@ const IntegracionMercadoLibre = () => {
 
                     {/* Traer productos desde Mercado Libre */}
                     <div style={{
-                        backgroundColor: '#e8f5e9',
-                        padding: '20px',
-                        borderRadius: '8px',
-                        marginBottom: '30px',
-                        border: '1px solid #4caf50'
+                        backgroundColor: '#edfaf3',
+                        padding: '20px 24px',
+                        borderRadius: '12px',
+                        marginBottom: '20px',
+                        border: '1px solid #a8e6c5',
+                        boxShadow: '0 1px 3px rgba(0,0,0,.07)'
                     }}>
-                        <h3 style={{ marginTop: 0, color: '#2e7d32' }}>Traer productos a Total Stock</h3>
-                        <p style={{ marginBottom: '15px' }}>
+                        <h3 style={{ marginTop: 0, color: '#1a6a40', fontSize: '1rem', fontWeight: 700 }}>Traer productos a Total Stock</h3>
+                        <p style={{ marginBottom: '16px', color: '#4a6660', fontSize: '14px' }}>
                             Importá tus productos publicados en Mercado Libre para vincularlos. Las ventas se registrarán automáticamente.
                         </p>
                         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -618,14 +601,16 @@ const IntegracionMercadoLibre = () => {
                                 onClick={() => setMostrarModalImportarSeleccionados(true)}
                                 disabled={sincronizando}
                                 style={{
-                                    padding: '12px 24px',
-                                    backgroundColor: sincronizando ? '#ccc' : '#2e7d32',
-                                    color: 'white',
+                                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                                    padding: '11px 24px',
+                                    background: sincronizando ? '#d8eae4' : 'linear-gradient(135deg, #5dc87a 0%, #38a080 100%)',
+                                    color: sincronizando ? '#8aa8a0' : 'white',
                                     border: 'none',
-                                    borderRadius: '5px',
+                                    borderRadius: '10px',
                                     cursor: sincronizando ? 'not-allowed' : 'pointer',
-                                    fontSize: '16px',
-                                    fontWeight: 500
+                                    fontSize: '15px', fontWeight: 600,
+                                    boxShadow: sincronizando ? 'none' : '0 4px 14px rgba(93,200,122,0.30)',
+                                    transition: 'all 0.18s ease'
                                 }}
                             >
                                 {sincronizando ? 'Procesando...' : '📥 Importar productos'}
@@ -634,19 +619,21 @@ const IntegracionMercadoLibre = () => {
                                 onClick={handleActualizarExistentes}
                                 disabled={sincronizando}
                                 style={{
-                                    padding: '12px 24px',
-                                    backgroundColor: sincronizando ? '#ccc' : '#43a047',
-                                    color: 'white',
+                                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                                    padding: '11px 24px',
+                                    backgroundColor: sincronizando ? '#d8eae4' : '#3ab87a',
+                                    color: sincronizando ? '#8aa8a0' : 'white',
                                     border: 'none',
-                                    borderRadius: '5px',
+                                    borderRadius: '10px',
                                     cursor: sincronizando ? 'not-allowed' : 'pointer',
-                                    fontSize: '15px'
+                                    fontSize: '14px', fontWeight: 600,
+                                    transition: 'all 0.18s ease'
                                 }}
                             >
-                                Actualizar precios y stock de productos existentes
+                                Actualizar precios y stock de existentes
                             </button>
                         </div>
-                        <p style={{ marginTop: '12px', fontSize: '13px', color: '#666' }}>
+                        <p style={{ marginTop: '12px', fontSize: '13px', color: '#4a6660' }}>
                             <strong>Importar productos:</strong> Elegí con checkboxes cuáles traer desde ML (incluye seleccionar todos).<br/>
                             <strong>Actualizar existentes:</strong> Refresca precio y stock de productos ya vinculados.
                         </p>
@@ -656,15 +643,15 @@ const IntegracionMercadoLibre = () => {
 
             {/* Información adicional */}
             <div style={{
-                backgroundColor: '#f9f9f9',
-                padding: '15px',
-                borderRadius: '8px',
-                border: '1px solid #ddd',
-                fontSize: '14px',
-                color: '#666'
+                backgroundColor: '#f7faf9',
+                padding: '16px 20px',
+                borderRadius: '10px',
+                border: '1px solid #d8eae4',
+                fontSize: '13px',
+                color: '#4a6660'
             }}>
-                <h4 style={{ marginTop: 0, color: '#333' }}>Información</h4>
-                <ul style={{ marginBottom: 0 }}>
+                <h4 style={{ marginTop: 0, marginBottom: '10px', color: '#1a2926', fontSize: '0.875rem', fontWeight: 600 }}>Información</h4>
+                <ul style={{ marginBottom: 0, paddingLeft: '18px', lineHeight: 1.7 }}>
                     <li><strong>Desde Total Stock:</strong> Actualizá el stock en ML cuando vendas por otro canal (solo stock, no precio).</li>
                     <li><strong>Traer de ML:</strong> Importá productos, elegí cuáles o actualizá existentes (precio y stock desde ML).</li>
                     <li><strong>Facturación:</strong> Podés elegir si las ventas de ML se facturan automáticamente (AFIP/ARCA) o solo se emite recibo.</li>
@@ -679,7 +666,8 @@ const IntegracionMercadoLibre = () => {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    backgroundColor: 'rgba(15,25,22,0.55)',
+                    backdropFilter: 'blur(2px)',
                     zIndex: 1000,
                     display: 'flex',
                     alignItems: 'center',
@@ -687,8 +675,10 @@ const IntegracionMercadoLibre = () => {
                     padding: '20px'
                 }}>
                     <div style={{
-                        backgroundColor: 'white',
-                        borderRadius: '8px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '16px',
+                        border: '1px solid #d8eae4',
+                        boxShadow: '0 10px 30px rgba(0,0,0,.10)',
                         maxWidth: '900px',
                         width: '100%',
                         maxHeight: '90vh',

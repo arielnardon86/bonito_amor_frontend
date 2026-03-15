@@ -13,25 +13,25 @@ const EtiquetasImpresion = () => {
     useEffect(() => {
         if (productosParaImprimir.length > 0 && labelsRef.current) {
             labelsRef.current.innerHTML = '';
-            
+
             productosParaImprimir.forEach((producto) => {
                 if (!producto || (!producto.id && !producto.nombre)) return;
-                const codigoBarras = producto.codigo_barras && String(producto.codigo_barras).trim() 
-                    ? String(producto.codigo_barras).trim() 
+                const codigoBarras = producto.codigo_barras && String(producto.codigo_barras).trim()
+                    ? String(producto.codigo_barras).trim()
                     : `PROD-${producto.id || 'N/A'}`;
                 const isEAN13 = /^\d{12,13}$/.test(codigoBarras);
-                
+
                 for (let i = 0; i < producto.labelQuantity; i++) {
                     const tempDiv = document.createElement('div');
                     tempDiv.className = 'label';
-                    
+
                     const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                     try {
                         JsBarcode(svgElement, codigoBarras, {
                             format: isEAN13 ? 'EAN13' : 'CODE128',
-                            displayValue: false, 
+                            displayValue: false,
                             fontSize: 8,
-                            width: 3, 
+                            width: 3,
                             height: 60,
                             margin: 0,
                         });
@@ -50,7 +50,7 @@ const EtiquetasImpresion = () => {
                     if (svgElement) {
                         tempDiv.querySelector('.barcode-wrapper').appendChild(svgElement);
                     }
-                    
+
                     labelsRef.current.appendChild(tempDiv);
                 }
             });
@@ -98,14 +98,14 @@ const EtiquetasImpresion = () => {
                         flex-wrap: wrap;
                         justify-content: center;
                         align-items: flex-start;
-                        width: 72mm; 
-                        margin: 0 auto; 
+                        width: 72mm;
+                        margin: 0 auto;
                         box-sizing: border-box;
                     }
 
                     .label {
-                        width: 37mm; 
-                        height: 37mm; 
+                        width: 37mm;
+                        height: 37mm;
                         padding: 1mm 2mm; /* <- CAMBIO: Reducimos padding vertical, mantenemos horizontal */
                         display: inline-block;
                         text-align: center;
@@ -144,7 +144,7 @@ const EtiquetasImpresion = () => {
                         font-size: 3mm;
                         margin-top: 2px;
                     }
-                    
+
                     /* Aseguramos que el SVG se ajuste bien al contenedor */
                     .label .barcode-wrapper svg {
                         max-width: 100%;
@@ -157,13 +157,13 @@ const EtiquetasImpresion = () => {
                         .no-print {
                             display: none !important;
                         }
-                        
+
                         body, html {
                             margin: 0;
                             padding: 0;
                         }
 
-                        @page { 
+                        @page {
                             margin: 0;
                             @top-left { content: none; }
                             @top-center { content: none; }
@@ -181,32 +181,32 @@ const EtiquetasImpresion = () => {
 
 const mobileStyles = {
     noLabelsContainer: {
-        textAlign: 'center', 
-        marginTop: '50px' 
+        textAlign: 'center',
+        marginTop: '50px'
     },
     labelsContainer: {
-        padding: '20px', 
-        fontFamily: 'Arial, sans-serif' 
+        padding: '20px',
+        fontFamily: 'Arial, sans-serif'
     },
     printControls: {
-        display: 'flex', 
-        justifyContent: 'center', 
-        gap: '10px', 
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '10px',
         marginBottom: '20px'
     },
     backButton: {
-        padding: '10px 20px', 
-        cursor: 'pointer', 
-        border: '1px solid #ccc', 
-        borderRadius: '5px', 
+        padding: '10px 20px',
+        cursor: 'pointer',
+        border: '1px solid #ccc',
+        borderRadius: '5px',
         backgroundColor: '#f0f0f0'
     },
     printButton: {
-        padding: '10px 20px', 
-        cursor: 'pointer', 
-        border: 'none', 
-        borderRadius: '5px', 
-        backgroundColor: '#28a745', 
+        padding: '10px 20px',
+        cursor: 'pointer',
+        border: 'none',
+        borderRadius: '5px',
+        backgroundColor: '#28a745',
         color: 'white'
     },
 };

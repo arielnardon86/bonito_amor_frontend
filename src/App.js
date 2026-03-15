@@ -17,6 +17,7 @@ import CambioDevolucion from './components/CambioDevolucion';
 import PanelAdministracionTienda from './components/PanelAdministracionTienda';
 
 import MetricasVentas from './components/MetricasVentas';
+import ComprasStock from './components/ComprasStock';
 import VentasPage from './components/VentasPage';
 import HomePage from './components/HomePage';
 import IntegracionMercadoLibre from './components/IntegracionMercadoLibre'; 
@@ -25,9 +26,9 @@ import { useNotifications } from './hooks/useNotifications';
 import './App.css';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faBars, 
-  faTimes, 
+import {
+  faBars,
+  faTimes,
   faShoppingCart,
   faListAlt,
   faBox,
@@ -38,7 +39,8 @@ import {
   faSignOutAlt,
   faUser,
   faStore,
-  faBell
+  faBell,
+  faTruck
 } from '@fortawesome/free-solid-svg-icons';
 
 // Soporte de notificaciones push (gesto de usuario requerido en móvil)
@@ -52,7 +54,6 @@ const Navbar = () => {
   const { isAuthenticated, user, logout, selectedStoreSlug, stores, token } = useAuth(); 
   const [isOpen, setIsOpen] = useState(false);
   const [mlConfigurado, setMlConfigurado] = useState(false);
-  const [verificandoML, setVerificandoML] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const location = useLocation();
   const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken } = useNotifications();
@@ -108,7 +109,6 @@ const Navbar = () => {
         return;
       }
 
-      setVerificandoML(true);
       try {
         // Obtener el ID de la tienda desde stores
         let tiendaId = null;
@@ -161,8 +161,6 @@ const Navbar = () => {
         // Si hay error, asumir que no está configurado
         console.log('ML no configurado o error al verificar:', err);
         setMlConfigurado(false);
-      } finally {
-        setVerificandoML(false);
       }
     };
 
@@ -255,6 +253,12 @@ const Navbar = () => {
                   <Link to="/registro-compras" className={location.pathname === '/registro-compras' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faMoneyBillWave} className="nav-icon" />
                     <span>Registro de Egresos</span>
+                  </Link>
+                </li>
+                <li onClick={() => setIsOpen(false)}>
+                  <Link to="/compras-stock" className={location.pathname === '/compras-stock' ? 'active' : ''}>
+                    <FontAwesomeIcon icon={faTruck} className="nav-icon" />
+                    <span>Compras / Stock</span>
                   </Link>
                 </li>
                 <li onClick={() => setIsOpen(false)}>
@@ -395,9 +399,14 @@ const AppContent = () => {
                   <MetricasVentas />
                 </ProtectedRoute>
               } />
-              <Route path="/registro-compras" element={ 
+              <Route path="/registro-compras" element={
                 <ProtectedRoute adminOnly={true}>
                   <RegistroCompras />
+                </ProtectedRoute>
+              } />
+              <Route path="/compras-stock" element={
+                <ProtectedRoute adminOnly={true}>
+                  <ComprasStock />
                 </ProtectedRoute>
               } />
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />

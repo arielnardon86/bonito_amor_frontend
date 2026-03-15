@@ -1,6 +1,6 @@
 // BONITO_AMOR/frontend/src/components/HomePage.js
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -15,8 +15,7 @@ import {
     faUsers,
     faStore as faStoreIcon,
     faShoppingBag,
-    faCheck,
-    faTimes
+    faCheck
 } from '@fortawesome/free-solid-svg-icons';
 
 const HomePage = () => {
