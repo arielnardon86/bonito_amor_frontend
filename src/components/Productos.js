@@ -232,7 +232,7 @@ const Productos = () => {
                         <label style={styles.label}>Nombre</label>
                         <input
                             type="text"
-                            maxLength={25}
+                            maxLength={35}
                             value={newProduct.nombre}
                             onChange={(e) => setNewProduct({ ...newProduct, nombre: e.target.value })}
                             style={styles.input}
@@ -441,7 +441,7 @@ const Productos = () => {
                             <label style={styles.label}>Nombre:</label>
                             <input
                                 type="text"
-                                maxLength={25}
+                                maxLength={35}
                                 value={editProduct.nombre}
                                 onChange={(e) => setEditProduct({ ...editProduct, nombre: e.target.value })}
                                 style={styles.modalInput}
