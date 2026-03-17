@@ -93,7 +93,7 @@ export default function NotasCreditoPage() {
         const hasta = ultimoDia(navYear, navMonth);
         try {
             const [facRes, ncRes] = await Promise.all([
-                axios.get(`${BASE}/api/facturas/?estado=EMITIDA&fecha_desde=${desde}&fecha_hasta=${hasta}`, { headers }),
+                axios.get(`${BASE}/api/facturas/?estado=EMITIDA&venta_anulada=true&fecha_desde=${desde}&fecha_hasta=${hasta}`, { headers }),
                 axios.get(`${BASE}/api/notas-credito/`, { headers }),
             ]);
             const facts = Array.isArray(facRes.data) ? facRes.data : (facRes.data.results ?? []);
@@ -210,14 +210,15 @@ export default function NotasCreditoPage() {
 
             {!loading && !error && facturas.length === 0 && (
                 <div style={{ textAlign: 'center', padding: 48, color: '#9ca3af' }}>
-                    No hay facturas emitidas en {MESES[navMonth - 1]} {navYear}.
+                    No hay facturas de ventas anuladas en {MESES[navMonth - 1]} {navYear}.
                 </div>
             )}
 
             {!loading && !error && facturas.map(f => {
                 const ncs = ncPorFactura[f.id] || [];
+                const tieneNcEmitida = ncs.some(nc => nc.estado === 'EMITIDA');
                 return (
-                    <div key={f.id} style={card}>
+                    <div key={f.id} style={{ ...card, opacity: tieneNcEmitida ? 0.75 : 1 }}>
                         <div style={cardHead}>
                             <div>
                                 <div style={{ fontWeight: 700, fontSize: 15, color: '#1f2937' }}>
@@ -230,7 +231,11 @@ export default function NotasCreditoPage() {
                                     {' · CAE: '}{f.cae || '—'}
                                 </div>
                             </div>
-                            <button style={btnGen} onClick={() => abrirModal(f)}>+ Generar NC</button>
+                            {tieneNcEmitida ? (
+                                <span style={badgeNcEmitida}>NC emitida</span>
+                            ) : (
+                                <button style={btnGen} onClick={() => abrirModal(f)}>+ Generar NC</button>
+                            )}
                         </div>
 
                         {ncs.map(nc => (
@@ -349,4 +354,8 @@ const btnCan = {
 const btnConf = {
     padding: '8px 18px', background: '#2563eb', color: '#fff',
     border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600,
+};
+const badgeNcEmitida = {
+    padding: '6px 14px', background: '#d1fae5', color: '#065f46',
+    borderRadius: 8, fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap',
 };
