@@ -6,6 +6,7 @@ import { useNotifications } from '../hooks/useNotifications';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
+import NotasCreditoPage from './NotasCreditoPage';
 
 const normalizeApiUrl = (url) => {
     if (!url) {
@@ -1093,6 +1094,15 @@ const PanelAdministracionTienda = () => {
                         </span>
                     )}
                 </button>
+                {afipEstado?.paso1_config && afipEstado?.paso2_csr && afipEstado?.paso4_cert && (
+                    <button
+                        onClick={() => setActiveTab('notas-credito')}
+                        style={activeTab === 'notas-credito' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
+                        className="panel-admin-tab"
+                    >
+                        Notas de Crédito
+                    </button>
+                )}
                 {tiendaInfo && tiendaInfo.plataforma_ecommerce === 'MERCADO_LIBRE' && (
                     <button
                         onClick={() => setActiveTab('aranceles-ml')}
@@ -1798,6 +1808,13 @@ const PanelAdministracionTienda = () => {
                 </div>
                 );
             })()}
+
+            {/* TAB: NOTAS DE CRÉDITO */}
+            {activeTab === 'notas-credito' && (
+                <div style={styles.tabContent}>
+                    <NotasCreditoPage />
+                </div>
+            )}
 
             {/* TAB: NOTIFICACIONES */}
             {activeTab === 'notificaciones' && (
