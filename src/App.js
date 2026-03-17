@@ -20,7 +20,8 @@ import MetricasVentas from './components/MetricasVentas';
 import ComprasStock from './components/ComprasStock';
 import VentasPage from './components/VentasPage';
 import HomePage from './components/HomePage';
-import IntegracionMercadoLibre from './components/IntegracionMercadoLibre'; 
+import IntegracionMercadoLibre from './components/IntegracionMercadoLibre';
+import NotasCreditoPage from './components/NotasCreditoPage';
 import { useNotifications } from './hooks/useNotifications';
 
 import './App.css';
@@ -40,7 +41,8 @@ import {
   faUser,
   faStore,
   faBell,
-  faTruck
+  faTruck,
+  faFileInvoice,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Soporte de notificaciones push (gesto de usuario requerido en móvil)
@@ -267,6 +269,12 @@ const Navbar = () => {
                     <span>Panel de Administración</span>
                   </Link>
                 </li>
+                <li onClick={() => setIsOpen(false)}>
+                  <Link to="/notas-credito" className={location.pathname === '/notas-credito' ? 'active' : ''}>
+                    <FontAwesomeIcon icon={faFileInvoice} className="nav-icon" />
+                    <span>Notas de Crédito</span>
+                  </Link>
+                </li>
                 {mlConfigurado && (
                   <li onClick={() => setIsOpen(false)}>
                     <Link to="/integracion-mercadolibre" className={location.pathname === '/integracion-mercadolibre' ? 'active' : ''}>
@@ -418,6 +426,11 @@ const AppContent = () => {
               <Route path="/integracion-mercadolibre" element={
                 <ProtectedRoute superuserOnly={true}>
                   <IntegracionMercadoLibre />
+                </ProtectedRoute>
+              } />
+              <Route path="/notas-credito" element={
+                <ProtectedRoute adminOnly={true}>
+                  <NotasCreditoPage />
                 </ProtectedRoute>
               } />
             </>
