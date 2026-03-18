@@ -23,11 +23,12 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage(async (payload) => {
   console.log('[SW] Mensaje en background:', payload);
 
-  // Evitar duplicados: si la app está enfocada, el listener onMessage del frontend
-  // ya mostrará la notificación.
+  // Evitar duplicados: si la app está visible, el listener onMessage del frontend
+  // ya mostrará la notificación. En mobile (PWA), focused puede ser false aunque
+  // la app esté en pantalla, por eso se chequea visibilityState.
   const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-  if (clientList.some(c => c.focused)) {
-    console.log('[SW] Ventana enfocada, el frontend maneja la notificación');
+  if (clientList.some(c => c.visibilityState === 'visible')) {
+    console.log('[SW] Ventana visible, el frontend maneja la notificación');
     return;
   }
 
