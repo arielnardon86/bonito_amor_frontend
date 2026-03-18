@@ -92,9 +92,10 @@ export default function NotasCreditoPage() {
         const desde = primerDia(navYear, navMonth);
         const hasta = ultimoDia(navYear, navMonth);
         try {
+            const tienda = encodeURIComponent(selectedStoreSlug);
             const [facRes, ncRes] = await Promise.all([
-                axios.get(`${BASE}/api/facturas/?estado=EMITIDA&venta_anulada=true&fecha_desde=${desde}&fecha_hasta=${hasta}`, { headers }),
-                axios.get(`${BASE}/api/notas-credito/`, { headers }),
+                axios.get(`${BASE}/api/facturas/?estado=EMITIDA&venta_anulada=true&tienda_nombre=${tienda}&fecha_desde=${desde}&fecha_hasta=${hasta}`, { headers }),
+                axios.get(`${BASE}/api/notas-credito/?tienda_nombre=${tienda}`, { headers }),
             ]);
             const facts = Array.isArray(facRes.data) ? facRes.data : (facRes.data.results ?? []);
             const ncs   = Array.isArray(ncRes.data)  ? ncRes.data  : (ncRes.data.results  ?? []);
