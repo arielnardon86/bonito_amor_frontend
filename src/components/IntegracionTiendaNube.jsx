@@ -24,6 +24,7 @@ export default function IntegracionTiendaNube() {
     const [registrando,  setRegistrando]  = useState(false);
     const [desconectando,setDesconectando]= useState(false);
     const [importando,   setImportando]  = useState(false);
+    const [exportando,   setExportando]  = useState(false);
     const [sincStockTN,  setSincStockTN] = useState(false);
     const [error,        setError]       = useState(null);
     const [successMsg,   setSuccessMsg]  = useState('');
@@ -155,6 +156,26 @@ export default function IntegracionTiendaNube() {
         } catch (e) {
             showError(e.response?.data?.error || 'Error al registrar el webhook.');
         } finally { setRegistrando(false); }
+    };
+
+    // ── Publicar productos de Total Stock → TN ───────────────────────────────
+    const handleExportarProductos = async () => {
+        if (!tiendaId) return;
+        setExportando(true);
+        try {
+            const res = await axios.post(
+                `${BASE}/api/tiendas/${tiendaId}/tiendanube/export-products/`,
+                {},
+                { headers },
+            );
+            const { publicados, errores, mensaje } = res.data;
+            if (mensaje) { showSuccess(mensaje); return; }
+            let msg = `Publicados en Tienda Nube: ${publicados} productos.`;
+            if (errores?.length) msg += ` (${errores.length} errores)`;
+            showSuccess(msg);
+        } catch (e) {
+            showError(e.response?.data?.error || 'Error al publicar productos.');
+        } finally { setExportando(false); }
     };
 
     // ── Importar productos desde TN ───────────────────────────────────────────
@@ -349,26 +370,36 @@ export default function IntegracionTiendaNube() {
                         Importá los productos de tu tienda online o actualizá el stock en Tienda Nube
                         con los valores actuales de Total Stock.
                     </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
                         <button
                             style={s.btnPrimary}
+                            onClick={handleExportarProductos}
+                            disabled={exportando}
+                            title="Publica en Tienda Nube los productos de Total Stock que aún no están allí."
+                        >
+                            {exportando ? 'Publicando…' : '↑ Publicar productos en Tienda Nube'}
+                        </button>
+                        <button
+                            style={s.btnSecondary}
                             onClick={handleImportarProductos}
                             disabled={importando}
-                            title="Trae todos los productos de Tienda Nube. Los vincula por SKU o nombre si ya existen, o los crea nuevos."
+                            title="Trae los productos de Tienda Nube y los vincula con los de Total Stock por SKU o nombre."
                         >
-                            {importando ? 'Importando…' : '↓ Importar productos desde Tienda Nube'}
+                            {importando ? 'Importando…' : '↓ Importar desde Tienda Nube'}
                         </button>
                         <button
                             style={s.btnSecondary}
                             onClick={handleSyncStockTN}
                             disabled={sincStockTN}
-                            title="Envía el stock actual de Total Stock hacia Tienda Nube para todos los productos sincronizados."
+                            title="Envía el stock actual de Total Stock hacia Tienda Nube para todos los productos vinculados."
                         >
                             {sincStockTN ? 'Actualizando…' : '↑ Actualizar stock en Tienda Nube'}
                         </button>
                     </div>
-                    <p style={{ ...s.cardDesc, marginTop: 12, marginBottom: 0 }}>
-                        Después de importar, las ventas de Tienda Nube descontarán stock automáticamente vía webhook.
+                    <p style={{ ...s.cardDesc, marginBottom: 0 }}>
+                        <strong>Publicar</strong>: crea en TN los productos que no están aún.
+                        <strong> Importar</strong>: vincula los de TN con los de Total Stock por SKU o nombre.
+                        Para vincular manualmente un producto existente, editalo en Gestión de Productos e ingresá su ID de variante de Tienda Nube.
                     </p>
                 </div>
             )}

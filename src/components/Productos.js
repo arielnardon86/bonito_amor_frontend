@@ -485,6 +485,19 @@ const Productos = () => {
                                 placeholder="Ej: M, L, XL, 42, etc."
                             />
                         </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>ID Variante Tienda Nube (Opcional):</label>
+                            <input
+                                type="text"
+                                value={editProduct.tn_variant_id || ''}
+                                onChange={(e) => setEditProduct({ ...editProduct, tn_variant_id: e.target.value })}
+                                style={styles.modalInput}
+                                placeholder="Ej: 123456789"
+                            />
+                            <small style={{ color: '#6b7280', fontSize: 11 }}>
+                                Ingresalo si el producto ya existe en Tienda Nube y querés vincularlo manualmente.
+                            </small>
+                        </div>
                         <div style={styles.modalActions}>
                             <button onClick={handleEditProduct} style={styles.modalConfirmButton}>Guardar</button>
                             <button onClick={() => setShowEditModal(false)} style={styles.modalCancelButton}>Cancelar</button>
