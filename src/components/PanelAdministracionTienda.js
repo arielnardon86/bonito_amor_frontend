@@ -8,6 +8,7 @@ import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
 import NotasCreditoPage from './NotasCreditoPage';
 import IntegracionTiendaNube from './IntegracionTiendaNube';
+import IntegracionMercadoLibrePanel from './IntegracionMercadoLibrePanel';
 
 const normalizeApiUrl = (url) => {
     if (!url) {
@@ -1120,6 +1121,13 @@ const PanelAdministracionTienda = () => {
                 >
                     Tienda Nube
                 </button>
+                <button
+                    onClick={() => setActiveTab('mercadolibre-panel')}
+                    style={activeTab === 'mercadolibre-panel' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
+                    className="panel-admin-tab"
+                >
+                    Mercado Libre
+                </button>
             </div>
 
             {/* TAB: USUARIOS */}
@@ -1828,6 +1836,13 @@ const PanelAdministracionTienda = () => {
             {activeTab === 'tiendanube' && (
                 <div style={styles.tabContent}>
                     <IntegracionTiendaNube />
+                </div>
+            )}
+
+            {/* TAB: MERCADO LIBRE PANEL */}
+            {activeTab === 'mercadolibre-panel' && (
+                <div style={styles.tabContent}>
+                    <IntegracionMercadoLibrePanel />
                 </div>
             )}
 
