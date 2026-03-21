@@ -168,11 +168,7 @@ export default function IntegracionTiendaNube() {
                 {},
                 { headers },
             );
-            const { publicados, errores, mensaje } = res.data;
-            if (mensaje) { showSuccess(mensaje); return; }
-            let msg = `Publicados en Tienda Nube: ${publicados} productos.`;
-            if (errores?.length) msg += ` (${errores.length} errores)`;
-            showSuccess(msg);
+            showSuccess(res.data.mensaje || 'Publicación iniciada.');
         } catch (e) {
             showError(e.response?.data?.error || 'Error al publicar productos.');
         } finally { setExportando(false); }
