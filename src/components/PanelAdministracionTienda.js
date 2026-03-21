@@ -1113,15 +1113,13 @@ const PanelAdministracionTienda = () => {
                         Aranceles Mercado Libre
                     </button>
                 )}
-                {tiendaInfo && (tiendaInfo.plataforma_ecommerce === 'TIENDA_NUBE' || tiendaInfo.tn_app_id) && (
-                    <button
-                        onClick={() => setActiveTab('tiendanube')}
-                        style={activeTab === 'tiendanube' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
-                        className="panel-admin-tab"
-                    >
-                        Tienda Nube
-                    </button>
-                )}
+                <button
+                    onClick={() => setActiveTab('tiendanube')}
+                    style={activeTab === 'tiendanube' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
+                    className="panel-admin-tab"
+                >
+                    Tienda Nube
+                </button>
             </div>
 
             {/* TAB: USUARIOS */}
