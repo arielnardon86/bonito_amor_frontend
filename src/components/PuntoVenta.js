@@ -55,7 +55,8 @@ const PuntoVenta = () => {
     const [busquedaProducto, setBusquedaProducto] = useState('');
     
     // CAMBIO 1: NUEVO ESTADO PARA EL FILTRO INSTANTÁNEO DE LA TABLA
-    const [filterTerm, setFilterTerm] = useState(''); 
+    const [filterTerm, setFilterTerm] = useState('');
+    const [mostrarTalle, setMostrarTalle] = useState(false);
     
     const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
@@ -1234,6 +1235,14 @@ const PuntoVenta = () => {
                         className="input-field"
                     />
                     {/* El botón de Buscar ya no es necesario aquí */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <input
+                            type="checkbox"
+                            checked={mostrarTalle}
+                            onChange={(e) => setMostrarTalle(e.target.checked)}
+                        />
+                        <span>Mostrar talle</span>
+                    </label>
                 </div>
 
                 {loadingProducts ? (
@@ -1247,6 +1256,7 @@ const PuntoVenta = () => {
                                 <thead>
                                     <tr style={styles.tableHeaderRow}>
                                         <th style={styles.th}>Nombre</th>
+                                        {mostrarTalle && <th style={styles.th}>Talle</th>}
                                         <th style={styles.th}>Precio</th>
                                         <th style={styles.th}>Stock</th>
                                         <th style={styles.th}>Acción</th>
@@ -1260,6 +1270,7 @@ const PuntoVenta = () => {
                                                     {product.nombre}
                                                     {product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 4, padding: '1px 5px' }}>SIN STOCK</span>}
                                                 </td>
+                                                {mostrarTalle && <td style={styles.td}>{product.talle || '-'}</td>}
                                                 <td style={styles.td}>{formatearMonto(product.precio)}</td>
                                                 <td style={styles.td}>{product.stock}</td>
                                                 <td style={styles.td}>
@@ -1275,7 +1286,7 @@ const PuntoVenta = () => {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="4" style={{ ...styles.noDataMessage, textAlign: 'center', padding: '24px 16px' }}>
+                                            <td colSpan={mostrarTalle ? 5 : 4} style={{ ...styles.noDataMessage, textAlign: 'center', padding: '24px 16px' }}>
                                                 {filterTerm ? (
                                                     <span>
                                                         No se encontraron productos para <strong>"{filterTerm}"</strong>.{' '}
