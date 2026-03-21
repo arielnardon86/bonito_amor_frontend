@@ -23,8 +23,10 @@ export default function IntegracionTiendaNube() {
     const [conectando,   setConectando]   = useState(false);
     const [registrando,  setRegistrando]  = useState(false);
     const [desconectando,setDesconectando]= useState(false);
-    const [error,        setError]        = useState(null);
-    const [successMsg,   setSuccessMsg]   = useState('');
+    const [importando,   setImportando]  = useState(false);
+    const [sincStockTN,  setSincStockTN] = useState(false);
+    const [error,        setError]       = useState(null);
+    const [successMsg,   setSuccessMsg]  = useState('');
 
     // Campos del formulario de configuración
     const [appId,       setAppId]       = useState('');
@@ -153,6 +155,44 @@ export default function IntegracionTiendaNube() {
         } catch (e) {
             showError(e.response?.data?.error || 'Error al registrar el webhook.');
         } finally { setRegistrando(false); }
+    };
+
+    // ── Importar productos desde TN ───────────────────────────────────────────
+    const handleImportarProductos = async () => {
+        if (!tiendaId) return;
+        setImportando(true);
+        try {
+            const res = await axios.post(
+                `${BASE}/api/tiendas/${tiendaId}/tiendanube/import-products/`,
+                {},
+                { headers },
+            );
+            const { creados, vinculados, actualizados, errores } = res.data;
+            let msg = `Importación completada: ${creados} nuevos, ${vinculados} vinculados, ${actualizados} actualizados.`;
+            if (errores?.length) msg += ` (${errores.length} errores)`;
+            showSuccess(msg);
+        } catch (e) {
+            showError(e.response?.data?.error || 'Error al importar productos.');
+        } finally { setImportando(false); }
+    };
+
+    // ── Push de stock hacia TN ────────────────────────────────────────────────
+    const handleSyncStockTN = async () => {
+        if (!tiendaId) return;
+        setSincStockTN(true);
+        try {
+            const res = await axios.post(
+                `${BASE}/api/tiendas/${tiendaId}/tiendanube/sync-stock/`,
+                {},
+                { headers },
+            );
+            const { actualizados, errores } = res.data;
+            let msg = `Stock actualizado en Tienda Nube: ${actualizados} productos.`;
+            if (errores?.length) msg += ` (${errores.length} errores)`;
+            showSuccess(msg);
+        } catch (e) {
+            showError(e.response?.data?.error || 'Error al sincronizar stock.');
+        } finally { setSincStockTN(false); }
     };
 
     // ── Desconectar ───────────────────────────────────────────────────────────
@@ -298,6 +338,38 @@ export default function IntegracionTiendaNube() {
                             {registrando ? 'Registrando…' : 'Registrar webhook'}
                         </button>
                     )}
+                </div>
+            )}
+
+            {/* Paso 4 — Sincronización de productos */}
+            {conectado && (
+                <div style={s.card}>
+                    <div style={s.cardTitle}>Paso 4 — Sincronización de productos</div>
+                    <p style={s.cardDesc}>
+                        Importá los productos de tu tienda online o actualizá el stock en Tienda Nube
+                        con los valores actuales de Total Stock.
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        <button
+                            style={s.btnPrimary}
+                            onClick={handleImportarProductos}
+                            disabled={importando}
+                            title="Trae todos los productos de Tienda Nube. Los vincula por SKU o nombre si ya existen, o los crea nuevos."
+                        >
+                            {importando ? 'Importando…' : '↓ Importar productos desde Tienda Nube'}
+                        </button>
+                        <button
+                            style={s.btnSecondary}
+                            onClick={handleSyncStockTN}
+                            disabled={sincStockTN}
+                            title="Envía el stock actual de Total Stock hacia Tienda Nube para todos los productos sincronizados."
+                        >
+                            {sincStockTN ? 'Actualizando…' : '↑ Actualizar stock en Tienda Nube'}
+                        </button>
+                    </div>
+                    <p style={{ ...s.cardDesc, marginTop: 12, marginBottom: 0 }}>
+                        Después de importar, las ventas de Tienda Nube descontarán stock automáticamente vía webhook.
+                    </p>
                 </div>
             )}
         </div>
