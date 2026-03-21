@@ -7,6 +7,7 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
 import NotasCreditoPage from './NotasCreditoPage';
+import IntegracionTiendaNube from './IntegracionTiendaNube';
 
 const normalizeApiUrl = (url) => {
     if (!url) {
@@ -1112,6 +1113,15 @@ const PanelAdministracionTienda = () => {
                         Aranceles Mercado Libre
                     </button>
                 )}
+                {tiendaInfo && (tiendaInfo.plataforma_ecommerce === 'TIENDA_NUBE' || tiendaInfo.tn_app_id) && (
+                    <button
+                        onClick={() => setActiveTab('tiendanube')}
+                        style={activeTab === 'tiendanube' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
+                        className="panel-admin-tab"
+                    >
+                        Tienda Nube
+                    </button>
+                )}
             </div>
 
             {/* TAB: USUARIOS */}
@@ -1813,6 +1823,13 @@ const PanelAdministracionTienda = () => {
             {activeTab === 'notas-credito' && (
                 <div style={styles.tabContent}>
                     <NotasCreditoPage />
+                </div>
+            )}
+
+            {/* TAB: TIENDA NUBE */}
+            {activeTab === 'tiendanube' && (
+                <div style={styles.tabContent}>
+                    <IntegracionTiendaNube />
                 </div>
             )}
 

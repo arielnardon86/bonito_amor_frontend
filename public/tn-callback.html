@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Conectando Tienda Nube…</title></head>
+<body style="font-family:sans-serif;text-align:center;padding:60px;color:#374151">
+  <p>Conectando con Tienda Nube…</p>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const code  = params.get('code');
+    const error = params.get('error');
+    if (code) {
+      window.opener && window.opener.postMessage({ type: 'TN_OAUTH_SUCCESS', code }, '*');
+      document.querySelector('p').textContent = '¡Autorización exitosa! Cerrando…';
+    } else {
+      window.opener && window.opener.postMessage({ type: 'TN_OAUTH_ERROR', error: error || 'Sin código' }, '*');
+      document.querySelector('p').textContent = 'Error en la autorización. Cerrando…';
+    }
+    setTimeout(() => window.close(), 1500);
+  </script>
+</body>
+</html>
