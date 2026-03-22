@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-    faStore, 
-    faShoppingCart, 
-    faChartLine, 
+import {
+    faStore,
+    faShoppingCart,
+    faChartLine,
     faExchangeAlt,
     faFileInvoice,
     faWarehouse,
@@ -15,7 +15,8 @@ import {
     faUsers,
     faStore as faStoreIcon,
     faShoppingBag,
-    faCheck
+    faCheck,
+    faGlobe
 } from '@fortawesome/free-solid-svg-icons';
 
 const HomePage = () => {
@@ -143,6 +144,11 @@ const HomePage = () => {
             icon: faUsers,
             title: 'Control de Usuarios',
             description: 'Gestión de roles (admin/staff) con permisos diferenciados y control de acceso granular.'
+        },
+        {
+            icon: faGlobe,
+            title: 'Integración E-Commerce',
+            description: 'Sincronización con Mercado Libre y Tienda Nube. Importá órdenes automáticamente, actualizá stock y publicá productos desde Total Stock.'
         }
     ];
 
@@ -327,7 +333,7 @@ const HomePage = () => {
             {/* Benefits Section */}
             <section id="beneficios" style={styles.benefitsSection}>
                 <div style={styles.benefitsContainer}>
-                    <h2 style={styles.sectionTitle}>¿Por qué elegir Total Stock?</h2>
+                    <h2 style={{ ...styles.sectionTitle, color: '#ffffff' }}>¿Por qué elegir Total Stock?</h2>
                     <div style={styles.benefitsGrid}>
                         <div style={styles.benefitItem}>
                             <h3 style={styles.benefitTitle}>Eficiencia</h3>
@@ -438,41 +444,46 @@ const HomePage = () => {
                         </div>
 
                         {/* Advanced Plan */}
-                        <div 
-                            style={styles.pricingCard}
+                        <div
+                            style={styles.pricingCardAdvanced}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.transform = 'translateY(-8px)';
-                                e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.15)';
+                                e.currentTarget.style.boxShadow = '0 16px 50px rgba(16, 185, 129, 0.35)';
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.1)';
+                                e.currentTarget.style.boxShadow = '0 12px 40px rgba(16, 185, 129, 0.2)';
                             }}
                         >
+                            <div style={styles.pricingBadgeAdvanced}>ADVANCED</div>
                             <div style={styles.pricingHeader}>
-                                <h3 style={styles.pricingPlanName}>Advanced</h3>
+                                <h3 style={{ ...styles.pricingPlanName, color: '#064e3b' }}>Advanced</h3>
                                 <div style={styles.pricingPriceContainer}>
-                                    <span style={styles.pricingCurrency}>$</span>
-                                    <span style={styles.pricingAmount}>50.000</span>
+                                    <span style={{ ...styles.pricingCurrency, color: '#10b981' }}>$</span>
+                                    <span style={{ ...styles.pricingAmount, color: '#064e3b' }}>60.000</span>
                                 </div>
                                 <p style={styles.pricingPeriod}>Por tienda, por mes</p>
                             </div>
                             <div style={styles.pricingFeatures}>
                                 <div style={styles.pricingFeature}>
-                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <FontAwesomeIcon icon={faCheck} style={{ ...styles.featureIconCheck, color: '#10b981' }} />
                                     <span>Carga ilimitada de productos en stock</span>
                                 </div>
                                 <div style={styles.pricingFeature}>
-                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <FontAwesomeIcon icon={faCheck} style={{ ...styles.featureIconCheck, color: '#10b981' }} />
                                     <span>Usuarios ilimitados por caja</span>
                                 </div>
                                 <div style={styles.pricingFeature}>
-                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <FontAwesomeIcon icon={faCheck} style={{ ...styles.featureIconCheck, color: '#10b981' }} />
                                     <span>Emisión de Recibos de compra</span>
                                 </div>
                                 <div style={styles.pricingFeature}>
-                                    <FontAwesomeIcon icon={faCheck} style={styles.featureIconCheck} />
+                                    <FontAwesomeIcon icon={faCheck} style={{ ...styles.featureIconCheck, color: '#10b981' }} />
                                     <span>Emisión de Factura electrónica (Integración con ARCA)</span>
+                                </div>
+                                <div style={styles.pricingFeature}>
+                                    <FontAwesomeIcon icon={faCheck} style={{ ...styles.featureIconCheck, color: '#10b981' }} />
+                                    <span><strong>Integración E-Commerce</strong> (Mercado Libre y Tienda Nube)</span>
                                 </div>
                             </div>
                         </div>
@@ -679,7 +690,7 @@ const styles = {
         color: '#666',
     },
     hero: {
-        backgroundImage: 'linear-gradient(135deg, rgba(30, 58, 138, 0.9) 0%, rgba(67, 56, 202, 0.9) 100%), url("https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2015&q=80")',
+        backgroundImage: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 45%, #1d4ed8 100%)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -750,7 +761,7 @@ const styles = {
     },
     businessSection: {
         padding: '100px 20px',
-        backgroundColor: '#f8f9fa',
+        background: 'linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%)',
     },
     businessContainer: {
         maxWidth: '1200px',
@@ -794,7 +805,7 @@ const styles = {
     },
     businessIcon: {
         fontSize: '3.5em',
-        color: '#3b82f6',
+        color: '#2563eb',
     },
     businessTitle: {
         fontSize: '1.5em',
@@ -835,10 +846,16 @@ const styles = {
         marginBottom: '20px',
         display: 'flex',
         justifyContent: 'center',
+        width: 60,
+        height: 60,
+        borderRadius: 16,
+        background: 'linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%)',
+        alignItems: 'center',
+        margin: '0 auto 20px',
     },
     featureIcon: {
-        fontSize: '2.5em',
-        color: '#3b82f6',
+        fontSize: '1.7em',
+        color: '#2563eb',
     },
     featureTitle: {
         fontSize: '1.3em',
@@ -853,7 +870,7 @@ const styles = {
     },
     benefitsSection: {
         padding: '100px 20px',
-        backgroundColor: '#f1f5f9',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
     },
     benefitsContainer: {
         maxWidth: '1200px',
@@ -872,12 +889,12 @@ const styles = {
     benefitTitle: {
         fontSize: '1.8em',
         fontWeight: '700',
-        color: '#1e3a8a',
+        color: '#ffffff',
         marginBottom: '15px',
     },
     benefitText: {
         fontSize: '1.1em',
-        color: '#475569',
+        color: '#cbd5e1',
         lineHeight: '1.7',
     },
     pricingSection: {
@@ -985,6 +1002,33 @@ const styles = {
         fontSize: '1.2em',
         marginTop: '3px',
         flexShrink: 0,
+    },
+    pricingCardAdvanced: {
+        backgroundColor: '#f0fdf4',
+        borderRadius: '16px',
+        padding: '40px 30px',
+        textAlign: 'center',
+        boxShadow: '0 12px 40px rgba(16, 185, 129, 0.2)',
+        border: '2px solid #10b981',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        cursor: 'default',
+        position: 'relative',
+    },
+    pricingBadgeAdvanced: {
+        position: 'absolute',
+        top: '-15px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        color: '#ffffff',
+        padding: '8px 20px',
+        borderRadius: '20px',
+        fontSize: '0.85em',
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
+        whiteSpace: 'nowrap',
     },
     footer: {
         backgroundColor: '#1e293b',

@@ -20,7 +20,6 @@ import MetricasVentas from './components/MetricasVentas';
 import ComprasStock from './components/ComprasStock';
 import VentasPage from './components/VentasPage';
 import HomePage from './components/HomePage';
-import IntegracionMercadoLibre from './components/IntegracionMercadoLibre';
 import { useNotifications } from './hooks/useNotifications';
 
 import './App.css';
@@ -53,7 +52,6 @@ const notificacionesSoportadas = () =>
 const Navbar = () => {
   const { isAuthenticated, user, logout, selectedStoreSlug, stores, token } = useAuth(); 
   const [isOpen, setIsOpen] = useState(false);
-  const [mlConfigurado, setMlConfigurado] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const location = useLocation();
   const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken } = useNotifications();
@@ -100,72 +98,6 @@ const Navbar = () => {
       document.documentElement.style.removeProperty('overflow');
     };
   }, [isOpen]);
-
-  // Verificar si Mercado Libre está configurado para la tienda
-  useEffect(() => {
-    const verificarMLConfigurado = async () => {
-      if (!isAuthenticated || !selectedStoreSlug || !token || !user?.is_superuser) {
-        setMlConfigurado(false);
-        return;
-      }
-
-      try {
-        // Obtener el ID de la tienda desde stores
-        let tiendaId = null;
-        if (Array.isArray(stores) && stores.length > 0) {
-          const tiendaEncontrada = stores.find(s => s.nombre === selectedStoreSlug);
-          if (tiendaEncontrada?.id) {
-            tiendaId = tiendaEncontrada.id;
-          }
-        }
-
-        // Si no está en stores, buscar en la API
-        if (!tiendaId) {
-          const response = await axios.get(`${process.env.REACT_APP_API_URL?.replace(/\/api\/?$/, '')}/api/tiendas/`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const tiendas = response.data.results || response.data;
-          if (Array.isArray(tiendas)) {
-            const tiendaEncontrada = tiendas.find(t => t.nombre === selectedStoreSlug);
-            if (tiendaEncontrada?.id) {
-              tiendaId = tiendaEncontrada.id;
-            }
-          }
-        }
-
-        if (tiendaId) {
-          // Verificar estado de ML
-          try {
-            const mlResponse = await axios.get(
-              `${process.env.REACT_APP_API_URL?.replace(/\/api\/?$/, '')}/api/tiendas/${tiendaId}/mercadolibre/status/`,
-              {
-                headers: { 'Authorization': `Bearer ${token}` }
-              }
-            );
-            
-            // ML está configurado si tiene connected = true (tiene todas las credenciales)
-            // O si tiene app_id y client_secret (aunque no tenga token aún)
-            const mlData = mlResponse.data;
-            const configurado = mlData.connected === true || 
-                               (mlData.has_app_id && mlData.has_client_secret);
-            setMlConfigurado(configurado);
-          } catch (mlErr) {
-            // Si el endpoint devuelve error (ej: 400 porque no está configurado para ML)
-            // o si la tienda no tiene plataforma_ecommerce = MERCADO_LIBRE
-            setMlConfigurado(false);
-          }
-        } else {
-          setMlConfigurado(false);
-        }
-      } catch (err) {
-        // Si hay error, asumir que no está configurado
-        console.log('ML no configurado o error al verificar:', err);
-        setMlConfigurado(false);
-      }
-    };
-
-    verificarMLConfigurado();
-  }, [isAuthenticated, selectedStoreSlug, token, user, stores]);
 
   // Si estamos en la página de etiquetas, recibo, factura o ticket de cambio, no mostramos la barra de navegación
   if (location.pathname === '/etiquetas' || location.pathname === '/recibo' || location.pathname === '/factura' || location.pathname === '/ticket-cambio' || location.pathname === '/cambio-devolucion') {
@@ -267,14 +199,6 @@ const Navbar = () => {
                     <span>Panel de Administración</span>
                   </Link>
                 </li>
-                {mlConfigurado && (
-                  <li onClick={() => setIsOpen(false)}>
-                    <Link to="/integracion-mercadolibre" className={location.pathname === '/integracion-mercadolibre' ? 'active' : ''}>
-                      <FontAwesomeIcon icon={faShoppingBag} className="nav-icon" />
-                      <span>Integración Mercado Libre</span>
-                    </Link>
-                  </li>
-                )}
               </>
             )}
             
@@ -413,11 +337,6 @@ const AppContent = () => {
               <Route path="/panel-administracion-tienda" element={
                 <ProtectedRoute adminOnly={true}>
                   <PanelAdministracionTienda />
-                </ProtectedRoute>
-              } />
-              <Route path="/integracion-mercadolibre" element={
-                <ProtectedRoute superuserOnly={true}>
-                  <IntegracionMercadoLibre />
                 </ProtectedRoute>
               } />
             </>
