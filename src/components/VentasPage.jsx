@@ -44,6 +44,7 @@ const VentasPage = () => {
     const barcodeInputRef = React.useRef(null);
     const barcodeInputValueRef = React.useRef(''); // Referencia para mantener el valor sin re-renderizar
 
+    const [totalesGlobal, setTotalesGlobal] = useState(null);
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
     const [currentPageNumber, setCurrentPageNumber] = useState(1);
@@ -113,6 +114,11 @@ const VentasPage = () => {
             setVentas(ventasData);
             setNextPageUrl(response.data.next);
             setPrevPageUrl(response.data.previous);
+            if (response.data.totales_global) {
+                setTotalesGlobal(response.data.totales_global);
+            } else {
+                setTotalesGlobal(null);
+            }
             if (pageUrl) {
                 const urlParams = new URLSearchParams(new URL(pageUrl).search);
                 setCurrentPageNumber(parseInt(urlParams.get('page')) || 1);
@@ -752,18 +758,18 @@ const VentasPage = () => {
                         <tfoot>
                             <tr>
                                 {(() => {
-                                    const ventasActivas = ventas.filter(v => !v.anulada);
-                                    const ventasAnuladas = ventas.filter(v => v.anulada);
-                                    const totalActivas = ventasActivas.reduce((s, v) => s + parseFloat(v.total || 0), 0);
-                                    const totalAnuladas = ventasAnuladas.reduce((s, v) => s + parseFloat(v.total || 0), 0);
+                                    const activas  = totalesGlobal ? totalesGlobal.total_activas  : ventas.filter(v => !v.anulada).length;
+                                    const anuladas = totalesGlobal ? totalesGlobal.total_anuladas : ventas.filter(v => v.anulada).length;
+                                    const montoActivas  = totalesGlobal ? parseFloat(totalesGlobal.monto_activas  || 0) : ventas.filter(v => !v.anulada).reduce((s, v) => s + parseFloat(v.total || 0), 0);
+                                    const montoAnuladas = totalesGlobal ? parseFloat(totalesGlobal.monto_anuladas || 0) : ventas.filter(v => v.anulada).reduce((s, v) => s + parseFloat(v.total || 0), 0);
                                     return (
                                         <td colSpan={6} style={{ padding: '10px 12px', background: '#f7faf9', borderTop: '2px solid #d8eae4', fontSize: 13 }}>
                                             <span style={{ fontWeight: 700, color: '#1a2926' }}>
-                                                {ventasActivas.length} venta{ventasActivas.length !== 1 ? 's' : ''}: {formatearMonto(totalActivas)}
+                                                {activas} venta{activas !== 1 ? 's' : ''}: {formatearMonto(montoActivas)}
                                             </span>
-                                            {ventasAnuladas.length > 0 && (
+                                            {anuladas > 0 && (
                                                 <span style={{ marginLeft: 16, color: '#dc2626', fontWeight: 600 }}>
-                                                    · {ventasAnuladas.length} anulada{ventasAnuladas.length !== 1 ? 's' : ''}: {formatearMonto(totalAnuladas)}
+                                                    · {anuladas} anulada{anuladas !== 1 ? 's' : ''}: {formatearMonto(montoAnuladas)}
                                                 </span>
                                             )}
                                         </td>
