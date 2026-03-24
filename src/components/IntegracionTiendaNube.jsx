@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../AuthContext';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const normalizeApiUrl = (url) => {
     if (!url) return 'http://localhost:8000';
@@ -161,6 +162,17 @@ export default function IntegracionTiendaNube() {
     // ── Publicar productos de Total Stock → TN ───────────────────────────────
     const handleExportarProductos = async () => {
         if (!tiendaId) return;
+        const result = await Swal.fire({
+            title: '¿Publicar productos en Tienda Nube?',
+            text: 'Se crearán en tu tienda online todos los productos de Total Stock que aún no están publicados. Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, publicar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!result.isConfirmed) return;
         setExportando(true);
         try {
             const res = await axios.post(
@@ -177,6 +189,17 @@ export default function IntegracionTiendaNube() {
     // ── Importar productos desde TN ───────────────────────────────────────────
     const handleImportarProductos = async () => {
         if (!tiendaId) return;
+        const result = await Swal.fire({
+            title: '¿Importar productos desde Tienda Nube?',
+            text: 'Se traerán todos los productos de tu tienda online. Los que coincidan por SKU o nombre se vincularán automáticamente; los que no, se crearán como nuevos en Total Stock.',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, importar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!result.isConfirmed) return;
         setImportando(true);
         try {
             const res = await axios.post(
@@ -196,6 +219,17 @@ export default function IntegracionTiendaNube() {
     // ── Push de stock hacia TN ────────────────────────────────────────────────
     const handleSyncStockTN = async () => {
         if (!tiendaId) return;
+        const result = await Swal.fire({
+            title: '¿Actualizar stock en Tienda Nube?',
+            text: 'Se enviará el stock actual de Total Stock a todos los productos vinculados en tu tienda online. Esta acción sobreescribe el stock en Tienda Nube.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, actualizar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!result.isConfirmed) return;
         setSincStockTN(true);
         try {
             const res = await axios.post(

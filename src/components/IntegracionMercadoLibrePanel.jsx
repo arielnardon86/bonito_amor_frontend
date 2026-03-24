@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../AuthContext';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import ImportarProductosSeleccionadosML from './ImportarProductosSeleccionadosML';
 
 const normalizeApiUrl = (url) => {
@@ -150,6 +151,17 @@ export default function IntegracionMercadoLibrePanel() {
 
     // ── Acciones de sync ──────────────────────────────────────────────────────
     const handleActualizarStock = async () => {
+        const result = await Swal.fire({
+            title: '¿Actualizar stock en Mercado Libre?',
+            text: 'Se enviará el stock actual de Total Stock a todos los productos sincronizados en ML. Esta acción sobreescribe el stock en Mercado Libre.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, actualizar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!result.isConfirmed) return;
         setSincronizando(true);
         try {
             const res = await axios.post(
@@ -163,6 +175,17 @@ export default function IntegracionMercadoLibrePanel() {
     };
 
     const handleActualizarExistentes = async () => {
+        const result = await Swal.fire({
+            title: '¿Actualizar precio y stock de productos existentes?',
+            text: 'Se actualizarán el precio y el stock en Mercado Libre para todos los productos que ya están publicados. Esta acción sobreescribe los valores actuales en ML.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, actualizar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!result.isConfirmed) return;
         setSincronizando(true);
         try {
             const res = await axios.post(
