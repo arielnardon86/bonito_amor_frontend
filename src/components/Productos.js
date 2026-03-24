@@ -36,6 +36,7 @@ const Productos = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [nextPage, setNextPage] = useState(null);
     const [prevPage, setPrevPage] = useState(null);
+    const [currentPageUrl, setCurrentPageUrl] = useState(null);
 
     const [newProduct, setNewProduct] = useState({
         nombre: '',
@@ -78,6 +79,7 @@ const Productos = () => {
         setError(null);
         try {
             const url = pageUrl || `${BASE_API_ENDPOINT}/api/productos/`;
+            setCurrentPageUrl(url);
             const response = await axios.get(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: {
@@ -144,7 +146,7 @@ const Productos = () => {
             });
             setEditProduct(null);
             setShowEditModal(false);
-            fetchProductos();
+            fetchProductos(currentPageUrl);
         } catch (err) {
             setError('Error al editar producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
@@ -160,7 +162,7 @@ const Productos = () => {
             });
             setShowDeleteModal(false);
             setProductToDelete(null);
-            fetchProductos();
+            fetchProductos(currentPageUrl);
         } catch (err) {
             setError('Error al eliminar producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
