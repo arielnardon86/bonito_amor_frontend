@@ -527,14 +527,19 @@ const VentasPage = () => {
                                                 </span>
                                             )}
                                             {venta.es_diferencia_pendiente && (
-                                                <span style={{ marginLeft: '10px', padding: '2px 6px', backgroundColor: '#ffc107', color: 'black', borderRadius: '3px', fontSize: '0.75em' }}>
-                                                    Cambio/Devolución
-                                                </span>
+                                                <>
+                                                    <span style={{ marginLeft: '10px', padding: '2px 6px', backgroundColor: '#ffc107', color: 'black', borderRadius: '3px', fontSize: '0.75em' }}>
+                                                        Cambio/Devolución
+                                                    </span>
+                                                    <span style={{ marginLeft: '6px', padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: '3px', fontSize: '0.75em' }}>
+                                                        Diferencia abonada
+                                                    </span>
+                                                </>
                                             )}
                                         </td>
                                         <td style={styles.td}>{formatearMonto(venta.total || 0)}</td>
                                         <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
-                                        <td style={styles.td}>{venta.es_diferencia_pendiente ? 'Diferencia abonada' : (venta.metodo_pago || 'N/A')}</td>
+                                        <td style={styles.td}>{venta.metodo_pago || 'N/A'}</td>
                                         <td style={styles.td}>
                                             {venta.anulada ? 'Sí' : 'No'}
                                         </td>
