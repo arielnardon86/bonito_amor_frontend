@@ -1,6 +1,7 @@
 // BONITO_AMOR/frontend/src/components/VentasPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
@@ -37,7 +38,8 @@ const VentasPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const [filterDate, setFilterDate] = useState(defaultDate);
+    const [filterDateFrom, setFilterDateFrom] = useState(defaultDate);
+    const [filterDateTo, setFilterDateTo] = useState(defaultDate);
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterAnulada, setFilterAnulada] = useState('');
     const [filterVentaId, setFilterVentaId] = useState('');
@@ -92,12 +94,10 @@ const VentasPage = () => {
             if (filterVentaId) {
                 params.id = filterVentaId;
             } else {
-                // Solo aplicar filtro de fecha si no hay ID de venta
-                if (filterDate) {
-                    params.fecha_venta__date = filterDate;
-                }
+                if (filterDateFrom) params.fecha_desde = filterDateFrom;
+                if (filterDateTo) params.fecha_hasta = filterDateTo;
             }
-            
+
             if (filterSellerId) {
                 params.usuario = filterSellerId;
             }
@@ -131,7 +131,7 @@ const VentasPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [token, selectedStoreSlug, filterDate, filterSellerId, filterAnulada, filterVentaId]);
+    }, [token, selectedStoreSlug, filterDateFrom, filterDateTo, filterSellerId, filterAnulada, filterVentaId]);
 
     const fetchSellers = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
@@ -355,10 +355,8 @@ const VentasPage = () => {
                 if (ventaIdParaBuscar) {
                     params.id = ventaIdParaBuscar;
                 } else {
-                    // Solo aplicar filtro de fecha si no hay ID de venta
-                    if (filterDate) {
-                        params.fecha_venta__date = filterDate;
-                    }
+                    if (filterDateFrom) params.fecha_desde = filterDateFrom;
+                    if (filterDateTo) params.fecha_hasta = filterDateTo;
                 }
                 
                 if (filterSellerId) {
@@ -390,7 +388,8 @@ const VentasPage = () => {
     };
 
     const clearFilters = () => {
-        setFilterDate(defaultDate);
+        setFilterDateFrom(defaultDate);
+        setFilterDateTo(defaultDate);
         setFilterSellerId('');
         setFilterAnulada('');
         setFilterVentaId('');
@@ -405,6 +404,91 @@ const VentasPage = () => {
     };
 
 
+
+    const handleDownloadExcel = async () => {
+        if (!token || !selectedStoreSlug) return;
+
+        // Obtener TODAS las ventas (sin paginar) con los filtros activos
+        try {
+            const params = { tienda_slug: selectedStoreSlug, page_size: 10000 };
+            if (filterVentaId) {
+                params.id = filterVentaId;
+            } else {
+                if (filterDateFrom) params.fecha_desde = filterDateFrom;
+                if (filterDateTo) params.fecha_hasta = filterDateTo;
+            }
+            if (filterSellerId) params.usuario = filterSellerId;
+            if (filterAnulada !== '') params.anulada = filterAnulada;
+
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params,
+            });
+
+            const todas = response.data.results || response.data || [];
+            if (todas.length === 0) {
+                showCustomAlert('No hay ventas para exportar con los filtros actuales.', 'info');
+                return;
+            }
+
+            const fmtDate = (iso) => iso ? new Date(iso).toLocaleString() : '';
+            const fmtNum = (v) => parseFloat(v || 0);
+
+            // ── Hoja: Detalle de ventas ────────────────────────────────────
+            const rows = [['Fecha', 'Vendedor', 'Método de pago', 'Total', 'Anulada', 'Tipo']];
+            todas.forEach(v => {
+                const tipo = v.es_nota_credito ? 'Nota de Crédito'
+                    : v.es_diferencia_pendiente ? 'Diferencia Cambio'
+                    : 'Normal';
+                rows.push([
+                    fmtDate(v.fecha_venta),
+                    v.usuario?.username || 'N/A',
+                    v.metodo_pago || 'N/A',
+                    fmtNum(v.total),
+                    v.anulada ? 'Sí' : 'No',
+                    tipo,
+                ]);
+            });
+
+            // ── Hoja: Resumen ───────────────────────────────────────────────
+            const desde = filterDateFrom || '—';
+            const hasta = filterDateTo   || '—';
+            const vendedor = filterSellerId
+                ? (sellers.find(s => String(s.id) === String(filterSellerId))?.username || filterSellerId)
+                : 'Todos';
+            const estado = filterAnulada === '' ? 'Todas' : filterAnulada === 'false' ? 'No anuladas' : 'Anuladas';
+
+            const totales = response.data.totales_global;
+            const resumen = [
+                ['Filtros aplicados', ''],
+                ['Desde', desde],
+                ['Hasta', hasta],
+                ['Vendedor', vendedor],
+                ['Estado', estado],
+                [],
+                ['Resumen', ''],
+                ['Total ventas activas', totales ? parseInt(totales.total_activas) : todas.filter(v => !v.anulada).length],
+                ['Monto ventas activas', totales ? fmtNum(totales.monto_activas) : todas.filter(v => !v.anulada).reduce((s, v) => s + fmtNum(v.total), 0)],
+                ['Total anuladas', totales ? parseInt(totales.total_anuladas) : todas.filter(v => v.anulada).length],
+                ['Monto anuladas', totales ? fmtNum(totales.monto_anuladas) : todas.filter(v => v.anulada).reduce((s, v) => s + fmtNum(v.total), 0)],
+            ];
+
+            const wb = XLSX.utils.book_new();
+
+            const wsResumen = XLSX.utils.aoa_to_sheet(resumen);
+            wsResumen['!cols'] = [{ wch: 24 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+
+            const wsDetalle = XLSX.utils.aoa_to_sheet(rows);
+            wsDetalle['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 14 }, { wch: 10 }, { wch: 18 }];
+            XLSX.utils.book_append_sheet(wb, wsDetalle, 'Ventas');
+
+            const safeName = `ventas_${selectedStoreSlug}_${desde}_${hasta}`.replace(/[/\\?%*:|"<>]/g, '-');
+            XLSX.writeFile(wb, `${safeName}.xlsx`);
+        } catch (err) {
+            showCustomAlert('Error al generar el Excel: ' + err.message, 'error');
+        }
+    };
 
     if (authLoading || (isAuthenticated && !user)) {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
@@ -441,11 +525,20 @@ const VentasPage = () => {
                 {!isStaffOnly && (
                     <>
                         <div style={styles.filterGroup}>
-                            <label style={styles.filterLabel}>Fecha:</label>
+                            <label style={styles.filterLabel}>Desde:</label>
                             <input
                                 type="date"
-                                value={filterDate}
-                                onChange={(e) => setFilterDate(e.target.value)}
+                                value={filterDateFrom}
+                                onChange={(e) => setFilterDateFrom(e.target.value)}
+                                style={styles.filterInput}
+                            />
+                        </div>
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Hasta:</label>
+                            <input
+                                type="date"
+                                value={filterDateTo}
+                                onChange={(e) => setFilterDateTo(e.target.value)}
                                 style={styles.filterInput}
                             />
                         </div>
@@ -477,12 +570,12 @@ const VentasPage = () => {
                     </>
                 )}
                 <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Buscar por ID de Venta (Código de barras):</label>
+                    <label style={styles.filterLabel}>Buscar por ID / código de barras:</label>
                     <input
                         ref={barcodeInputRef}
                         type="text"
                         defaultValue={filterVentaId}
-                        onKeyPress={(e) => { 
+                        onKeyPress={(e) => {
                             if (e.key === 'Enter') {
                                 e.preventDefault();
                                 applyFilters();
@@ -493,10 +586,28 @@ const VentasPage = () => {
                         autoComplete="off"
                     />
                 </div>
-                <button onClick={applyFilters} style={styles.filterButton}>Buscar</button>
-                {!isStaffOnly && (
-                    <button onClick={clearFilters} style={styles.filterButtonSecondary}>Limpiar Filtros</button>
-                )}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <button onClick={applyFilters} style={styles.filterButton}>Buscar</button>
+                    {!isStaffOnly && (
+                        <>
+                            <button onClick={clearFilters} style={styles.filterButtonSecondary}>Limpiar</button>
+                            <button
+                                onClick={handleDownloadExcel}
+                                disabled={loading}
+                                title="Descargar Excel con los filtros aplicados"
+                                style={{
+                                    ...styles.filterButton,
+                                    background: loading ? '#d8eae4' : 'linear-gradient(135deg, #1d6f42 0%, #2a9668 100%)',
+                                    boxShadow: loading ? 'none' : '0 2px 8px rgba(29,111,66,0.25)',
+                                    color: loading ? '#4a6660' : 'white',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                }}
+                            >
+                                ⬇ Excel
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             {ventas.length === 0 ? (
