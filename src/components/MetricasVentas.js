@@ -288,8 +288,9 @@ const MetricasVentas = () => {
             ['Total de egresos', fmt(metrics.total_compras_periodo)],
             ['Rentabilidad bruta', fmt(metrics.rentabilidad_bruta_periodo)],
             ['Costo productos vendidos', fmt(metrics.total_costo_vendido_periodo)],
-            ['Arancel ML', fmt(metrics.total_arancel_ventas)],
-            ['Costo envío ML', fmt(metrics.total_costo_envio_ml)],
+            ['Aranceles (manual)', fmt(metrics.total_arancel_ventas) + fmt(metrics.total_costo_envio_ml)],
+            metrics.tienda_tiene_ml ? ['Descuentos Mercado Libre', fmt(metrics.total_ml_descuentos)] : null,
+            metrics.tienda_tiene_ml ? ['Impuestos Mercado Libre', fmt(metrics.total_ml_impuestos)] : null,
             ['Margen de rentabilidad (%)', fmt(metrics.margen_rentabilidad_periodo)],
             [],
             ['Stock total (unidades)', inventoryMetrics?.total_stock || 0],
@@ -542,9 +543,21 @@ const MetricasVentas = () => {
                         <p style={styles.cardValue}>{formatearMonto(metrics?.total_costo_vendido_periodo || 0)}</p>
                     </div>
                     <div style={styles.card}>
-                        <h3 style={styles.cardTitle}>Arancel + Envío ML</h3>
+                        <h3 style={styles.cardTitle}>Aranceles</h3>
                         <p style={styles.cardValue}>{formatearMonto((parseFloat(metrics?.total_arancel_ventas || 0) + parseFloat(metrics?.total_costo_envio_ml || 0)))}</p>
                     </div>
+                    {metrics?.tienda_tiene_ml && (
+                        <div style={styles.card}>
+                            <h3 style={styles.cardTitle}>Descuentos Mercado Libre</h3>
+                            <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_descuentos || 0))}</p>
+                        </div>
+                    )}
+                    {metrics?.tienda_tiene_ml && (
+                        <div style={styles.card}>
+                            <h3 style={styles.cardTitle}>Impuestos</h3>
+                            <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_impuestos || 0))}</p>
+                        </div>
+                    )}
                     <div style={{ ...styles.card, backgroundColor: margenBg, borderColor: margenBorder }}>
                         <h3 style={{ ...styles.cardTitle, color: margenColor }}>Margen de rentabilidad</h3>
                         <p style={{ ...styles.cardValue, color: margenColor }}>{margen.toFixed(2)}%</p>
