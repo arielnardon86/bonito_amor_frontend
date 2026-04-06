@@ -550,6 +550,19 @@ const MetricasVentas = () => {
                         <div style={styles.card}>
                             <h3 style={styles.cardTitle}>Descuentos Mercado Libre</h3>
                             <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_descuentos || 0))}</p>
+                            <div style={{ marginTop: 10, borderTop: '1px solid #edf5f2', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {[
+                                    ['Cargo por ventas', metrics?.total_ml_sale_fee],
+                                    ['Costo fijo', metrics?.total_ml_fixed_fee],
+                                    ['Costo por cuotas', metrics?.total_ml_financing_fee],
+                                    ['Costo de envío', metrics?.total_ml_shipping_cost],
+                                ].map(([label, val]) => (
+                                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#4a6660' }}>
+                                        <span>{label}</span>
+                                        <span style={{ fontWeight: 600 }}>{formatearMonto(parseFloat(val || 0))}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                     {metrics?.tienda_tiene_ml && (
@@ -572,7 +585,7 @@ const MetricasVentas = () => {
                     </div>
                     <div style={styles.card}>
                         <h3 style={styles.cardTitle}>Valor total del stock</h3>
-                        <p style={styles.cardValue}>{formatearMonto(inventoryMetrics?.total_monto_stock_precio || 0)}</p>
+                        <p style={{ ...styles.cardValue, fontSize: '1.05rem', wordBreak: 'break-word' }}>{formatearMonto(inventoryMetrics?.total_monto_stock_precio || 0)}</p>
                     </div>
                 </div>
 
