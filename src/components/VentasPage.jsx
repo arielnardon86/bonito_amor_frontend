@@ -43,6 +43,11 @@ const VentasPage = () => {
     const [filterSellerId, setFilterSellerId] = useState('');
     const [filterAnulada, setFilterAnulada] = useState('');
     const [filterVentaId, setFilterVentaId] = useState('');
+    // Estados pendientes (ligados a los inputs, se aplican al hacer click en "Aplicar")
+    const [pendingDateFrom, setPendingDateFrom] = useState(defaultDate);
+    const [pendingDateTo, setPendingDateTo] = useState(defaultDate);
+    const [pendingSellerId, setPendingSellerId] = useState('');
+    const [pendingAnulada, setPendingAnulada] = useState('');
     const barcodeInputRef = React.useRef(null);
     const barcodeInputValueRef = React.useRef(''); // Referencia para mantener el valor sin re-renderizar
 
@@ -172,11 +177,7 @@ const VentasPage = () => {
 
         const handleInput = (e) => {
             const val = e.target.value.replace(/-/g, '');
-            // Solo actualizar si el valor es diferente para evitar loops
-            if (val !== filterVentaId) {
-                setFilterVentaId(val);
-                barcodeInputValueRef.current = val;
-            }
+            barcodeInputValueRef.current = val;
         };
 
         // Usar addEventListener en lugar de React events para mejor control
@@ -185,7 +186,7 @@ const VentasPage = () => {
         return () => {
             input.removeEventListener('input', handleInput);
         };
-    }, [filterVentaId]);
+    }, []);
 
     const handleAnularVenta = async (ventaId) => {
         console.log('Botón Anular Venta presionado para ID:', ventaId);
@@ -329,78 +330,30 @@ const VentasPage = () => {
     };
 
     const applyFilters = () => {
-        // Leer el valor directamente del DOM si el estado no está actualizado
-        let ventaIdParaBuscar = filterVentaId;
-        if (barcodeInputRef.current) {
-            const currentValue = barcodeInputRef.current.value.replace(/-/g, '');
-            if (currentValue !== filterVentaId) {
-                ventaIdParaBuscar = currentValue;
-                setFilterVentaId(currentValue);
-            }
-        }
-        
-        // Usar fetchVentas pero con el valor correcto
-        const buscarVentas = async () => {
-            if (!token || !selectedStoreSlug) return;
-            
-            setLoading(true);
-            setError(null);
-            try {
-                const url = `${BASE_API_ENDPOINT}/api/ventas/`;
-                const params = {
-                    tienda_slug: selectedStoreSlug,
-                };
-
-                // Si hay un ID de venta, no aplicar filtro de fecha
-                if (ventaIdParaBuscar) {
-                    params.id = ventaIdParaBuscar;
-                } else {
-                    if (filterDateFrom) params.fecha_desde = filterDateFrom;
-                    if (filterDateTo) params.fecha_hasta = filterDateTo;
-                }
-                
-                if (filterSellerId) {
-                    params.usuario = filterSellerId;
-                }
-                if (filterAnulada !== '') {
-                    params.anulada = filterAnulada;
-                }
-
-                const response = await axios.get(url, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    params: params
-                });
-
-                const ventasData = response.data.results || [];
-                setVentas(ventasData);
-                setNextPageUrl(response.data.next);
-                setPrevPageUrl(response.data.previous);
-                setCurrentPageNumber(1);
-            } catch (err) {
-                setError('Error al cargar las ventas: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
-                console.error('Error fetching ventas:', err.response || err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-        
-        buscarVentas();
+        const ventaId = barcodeInputRef.current
+            ? barcodeInputRef.current.value.replace(/-/g, '')
+            : filterVentaId;
+        setFilterVentaId(ventaId);
+        setFilterDateFrom(pendingDateFrom);
+        setFilterDateTo(pendingDateTo);
+        setFilterSellerId(pendingSellerId);
+        setFilterAnulada(pendingAnulada);
     };
 
     const clearFilters = () => {
+        setPendingDateFrom(defaultDate);
+        setPendingDateTo(defaultDate);
+        setPendingSellerId('');
+        setPendingAnulada('');
         setFilterDateFrom(defaultDate);
         setFilterDateTo(defaultDate);
         setFilterSellerId('');
         setFilterAnulada('');
         setFilterVentaId('');
-        // Limpiar el input no controlado
         if (barcodeInputRef.current) {
             barcodeInputRef.current.value = '';
             barcodeInputValueRef.current = '';
         }
-        setTimeout(() => {
-            fetchVentas();
-        }, 0);
     };
 
 
@@ -528,8 +481,8 @@ const VentasPage = () => {
                             <label style={styles.filterLabel}>Desde:</label>
                             <input
                                 type="date"
-                                value={filterDateFrom}
-                                onChange={(e) => setFilterDateFrom(e.target.value)}
+                                value={pendingDateFrom}
+                                onChange={(e) => setPendingDateFrom(e.target.value)}
                                 style={styles.filterInput}
                             />
                         </div>
@@ -537,16 +490,16 @@ const VentasPage = () => {
                             <label style={styles.filterLabel}>Hasta:</label>
                             <input
                                 type="date"
-                                value={filterDateTo}
-                                onChange={(e) => setFilterDateTo(e.target.value)}
+                                value={pendingDateTo}
+                                onChange={(e) => setPendingDateTo(e.target.value)}
                                 style={styles.filterInput}
                             />
                         </div>
                         <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>Vendedor:</label>
                             <select
-                                value={filterSellerId}
-                                onChange={(e) => setFilterSellerId(e.target.value)}
+                                value={pendingSellerId}
+                                onChange={(e) => setPendingSellerId(e.target.value)}
                                 style={styles.filterInput}
                             >
                                 <option value="">Todos</option>
@@ -558,8 +511,8 @@ const VentasPage = () => {
                         <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>Anulada:</label>
                             <select
-                                value={filterAnulada}
-                                onChange={(e) => setFilterAnulada(e.target.value)}
+                                value={pendingAnulada}
+                                onChange={(e) => setPendingAnulada(e.target.value)}
                                 style={styles.filterInput}
                             >
                                 <option value="">Todas</option>
@@ -587,7 +540,7 @@ const VentasPage = () => {
                     />
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <button onClick={applyFilters} style={styles.filterButton}>Buscar</button>
+                    <button onClick={applyFilters} style={styles.filterButton}>Aplicar</button>
                     {!isStaffOnly && (
                         <>
                             <button onClick={clearFilters} style={styles.filterButtonSecondary}>Limpiar</button>
