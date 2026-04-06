@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../AuthContext';
 import { formatearMonto } from '../utils/formatearMonto';
 
@@ -269,6 +270,95 @@ const MetricasVentas = () => {
     const margenLabel  = margen >= 15 ? 'saludable' : margen >= 5 ? 'bajo'     : 'negativo';
     const margenDot    = margen >= 15 ? '#5dc87a'   : margen >= 5 ? '#f59e0b'  : '#e25252';
 
+    const handleDownloadExcel = () => {
+        if (!metrics) return;
+
+        const fmt = (v) => parseFloat(v || 0);
+        const wb = XLSX.utils.book_new();
+
+        // ── Hoja 1: Resumen ──────────────────────────────────────────────────
+        const resumenData = [
+            ['Período', periodLabel],
+            ['Tienda', selectedStoreSlug],
+            filterSellerId ? ['Vendedor', sellers.find(s => String(s.id) === String(filterSellerId))?.username || filterSellerId] : null,
+            filterPaymentMethod ? ['Método de pago', filterPaymentMethod] : null,
+            [],
+            ['Indicador', 'Valor'],
+            ['Total de ventas', fmt(metrics.total_ventas_periodo)],
+            ['Total de egresos', fmt(metrics.total_compras_periodo)],
+            ['Rentabilidad bruta', fmt(metrics.rentabilidad_bruta_periodo)],
+            ['Costo productos vendidos', fmt(metrics.total_costo_vendido_periodo)],
+            ['Arancel ML', fmt(metrics.total_arancel_ventas)],
+            ['Costo envío ML', fmt(metrics.total_costo_envio_ml)],
+            ['Margen de rentabilidad (%)', fmt(metrics.margen_rentabilidad_periodo)],
+            [],
+            ['Stock total (unidades)', inventoryMetrics?.total_stock || 0],
+            ['Valor total del stock', fmt(inventoryMetrics?.total_monto_stock_precio)],
+        ].filter(Boolean);
+
+        const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+        wsResumen['!cols'] = [{ wch: 30 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+
+        // ── Hoja 2: Productos más vendidos ──────────────────────────────────
+        if (metrics.productos_mas_vendidos?.length > 0) {
+            const rows = [['#', 'Producto', 'Talle', 'Cantidad vendida', 'Monto total']];
+            metrics.productos_mas_vendidos.forEach((p, i) => {
+                rows.push([
+                    i + 1,
+                    p.producto__nombre || 'Sin nombre',
+                    p.producto__talle && p.producto__talle !== 'UNICO' ? p.producto__talle : '',
+                    p.cantidad_total,
+                    fmt(p.monto_total),
+                ]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            ws['!cols'] = [{ wch: 4 }, { wch: 35 }, { wch: 8 }, { wch: 18 }, { wch: 16 }];
+            XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+        }
+
+        // ── Hoja 3: Ventas por vendedor ──────────────────────────────────────
+        if (metrics.ventas_por_usuario?.length > 0) {
+            const rows = [['#', 'Vendedor', 'Cantidad de ventas', 'Total vendido']];
+            metrics.ventas_por_usuario.forEach((u, i) => {
+                rows.push([i + 1, u.usuario__username, u.cantidad_ventas, fmt(u.total_vendido)]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            ws['!cols'] = [{ wch: 4 }, { wch: 25 }, { wch: 20 }, { wch: 18 }];
+            XLSX.utils.book_append_sheet(wb, ws, 'Por vendedor');
+        }
+
+        // ── Hoja 4: Ventas por método de pago ───────────────────────────────
+        if (metrics.ventas_por_metodo_pago?.length > 0) {
+            const total = metrics.ventas_por_metodo_pago.reduce((s, m) => s + fmt(m.total_vendido), 0);
+            const rows = [['Método de pago', 'Total vendido', '% del total']];
+            metrics.ventas_por_metodo_pago.forEach((m) => {
+                const pct = total > 0 ? ((fmt(m.total_vendido) / total) * 100).toFixed(1) : '0.0';
+                rows.push([m.metodo_pago, fmt(m.total_vendido), parseFloat(pct)]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            ws['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 14 }];
+            XLSX.utils.book_append_sheet(wb, ws, 'Métodos de pago');
+        }
+
+        // ── Hoja 5: Egresos por mes ──────────────────────────────────────────
+        if (metrics.egresos_por_mes?.length > 0) {
+            const mesesNombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            const rows = [['Mes', 'Total egresos']];
+            metrics.egresos_por_mes.forEach((e) => {
+                const mesNombre = mesesNombres[(parseInt(e.mes, 10) - 1)] || e.mes;
+                rows.push([mesNombre, fmt(e.total_egresos)]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            ws['!cols'] = [{ wch: 16 }, { wch: 18 }];
+            XLSX.utils.book_append_sheet(wb, ws, 'Egresos por mes');
+        }
+
+        // Nombre del archivo
+        const safePeriod = periodLabel.replace(/[/\\?%*:|"<> –]/g, '_').replace(/_+/g, '_');
+        XLSX.writeFile(wb, `metricas_${selectedStoreSlug}_${safePeriod}.xlsx`);
+    };
+
     if (authLoading || (isAuthenticated && !user)) {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
@@ -394,6 +484,23 @@ const MetricasVentas = () => {
                             <button onClick={handleMesActual} style={{ ...styles.filterButton, ...styles.filterButtonSecondary }}>Mes actual</button>
                             <button onClick={handleApplyFilters} style={styles.filterButton}>Aplicar</button>
                             <button onClick={handleClearFilters} style={{ ...styles.filterButton, ...styles.filterButtonMuted }}>Limpiar</button>
+                            <button
+                                onClick={handleDownloadExcel}
+                                disabled={!metrics || loading}
+                                title="Descargar reporte Excel con los filtros aplicados"
+                                style={{
+                                    ...styles.filterButton,
+                                    background: (!metrics || loading) ? '#d8eae4' : 'linear-gradient(135deg, #1d6f42 0%, #2a9668 100%)',
+                                    boxShadow: (!metrics || loading) ? 'none' : '0 2px 8px rgba(29,111,66,0.25)',
+                                    color: (!metrics || loading) ? '#4a6660' : 'white',
+                                    cursor: (!metrics || loading) ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                }}
+                            >
+                                ⬇ Excel
+                            </button>
                         </div>
                     </div>
                 </div>
