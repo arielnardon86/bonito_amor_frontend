@@ -552,9 +552,7 @@ const MetricasVentas = () => {
                             <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_descuentos || 0))}</p>
                             <div style={{ marginTop: 10, borderTop: '1px solid #edf5f2', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 {[
-                                    ['Cargo por ventas', metrics?.total_ml_sale_fee],
-                                    ['Costo fijo', metrics?.total_ml_fixed_fee],
-                                    ['Costo por cuotas', metrics?.total_ml_financing_fee],
+                                    ['Comisión ML (venta + costo fijo + cuotas)', metrics?.total_ml_sale_fee],
                                     ['Costo de envío', metrics?.total_ml_shipping_cost],
                                 ].map(([label, val]) => (
                                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#4a6660' }}>
