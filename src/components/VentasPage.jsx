@@ -607,8 +607,8 @@ const VentasPage = () => {
                                             {venta.metodo_pago || 'N/A'}
                                             {venta.origen_mercadolibre && (
                                                 parseFloat(venta.ml_sale_fee || 0) > 0 || parseFloat(venta.ml_shipping_cost || 0) > 0
-                                                    ? <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>Pago acreditado</span>
-                                                    : <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#ffc107', color: '#333', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>Pago pendiente</span>
+                                                    ? <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>Entregado</span>
+                                                    : <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#ffc107', color: '#333', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>No entregado</span>
                                             )}
                                         </td>
                                         <td style={styles.td}>
