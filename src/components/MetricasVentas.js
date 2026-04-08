@@ -552,8 +552,8 @@ const MetricasVentas = () => {
                             <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_descuentos || 0))}</p>
                             <div style={{ marginTop: 10, borderTop: '1px solid #edf5f2', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 {[
-                                    ['Comisión ML (venta + costo fijo + cuotas)', metrics?.total_ml_sale_fee],
-                                    ['Costo de envío', metrics?.total_ml_shipping_cost],
+                                    ['Comisión ML (cargo por venta)', metrics?.total_ml_sale_fee],
+                                    ['Costo de envío al vendedor', metrics?.total_ml_shipping_cost],
                                 ].map(([label, val]) => (
                                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#4a6660' }}>
                                         <span>{label}</span>
@@ -609,7 +609,14 @@ const MetricasVentas = () => {
                                                         ? <span style={{ color: '#8aa8a0', fontWeight: 400 }}> · T: {p.producto__talle}</span>
                                                         : ''}
                                                 </span>
-                                                <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2926', flexShrink: 0 }}>{p.cantidad_total}</span>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0, gap: 2 }}>
+                                                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2926' }}>{p.cantidad_total}</span>
+                                                    {metrics?.tienda_tiene_ml && parseInt(p.cantidad_pagados_ml) > 0 && (
+                                                        <span style={{ fontSize: 11, fontWeight: 600, color: '#1a6a40', background: '#edfaf3', borderRadius: 4, padding: '1px 5px' }}>
+                                                            {parseInt(p.cantidad_pagados_ml)} pagados ML
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div style={{ marginLeft: 32, height: 5, backgroundColor: '#edf5f2', borderRadius: 3, overflow: 'hidden' }}>
                                                 <div style={{ height: '100%', width: `${(p.cantidad_total / maxQty) * 100}%`, background: 'linear-gradient(90deg, #5dc87a, #38a080)', borderRadius: 3, transition: 'width 0.4s ease' }} />
