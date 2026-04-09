@@ -513,6 +513,11 @@ const MetricasVentas = () => {
                         <h3 style={styles.heroCardTitle}>Total de ventas</h3>
                         <p style={styles.heroCardValue}>{formatearMonto(metrics?.total_ventas_periodo || 0)}</p>
                         <VarBadge v={varVentas} />
+                        {metrics?.tienda_tiene_ml && metrics?.ml_pct_cobradas !== null && metrics?.ml_pct_cobradas !== undefined && (
+                            <div style={{ marginTop: 8, fontSize: '0.72rem', color: '#1a6a40', background: '#edfaf3', borderRadius: 6, padding: '4px 8px', fontWeight: 600 }}>
+                                {metrics.ml_pct_cobradas}% cobrado por ML
+                            </div>
+                        )}
                     </div>
                     <div style={{ ...styles.heroCard, borderTopColor: '#f59e0b' }}>
                         <div style={{ ...styles.heroCardIconWrap, backgroundColor: '#fffbeb' }}>🛒</div>
