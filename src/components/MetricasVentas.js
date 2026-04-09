@@ -613,7 +613,7 @@ const MetricasVentas = () => {
                                                     <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2926' }}>{p.cantidad_total}</span>
                                                     {metrics?.tienda_tiene_ml && parseInt(p.cantidad_pagados_ml) > 0 && (
                                                         <span style={{ fontSize: 11, fontWeight: 600, color: '#1a6a40', background: '#edfaf3', borderRadius: 4, padding: '1px 5px' }}>
-                                                            {parseInt(p.cantidad_pagados_ml)} pagados ML
+                                                            {parseInt(p.cantidad_pagados_ml)} entregados
                                                         </span>
                                                     )}
                                                 </div>

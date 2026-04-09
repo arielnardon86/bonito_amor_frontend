@@ -605,13 +605,16 @@ const VentasPage = () => {
                                         <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
                                         <td style={styles.td}>
                                             {venta.metodo_pago || 'N/A'}
-                                            {venta.origen_mercadolibre && (
-                                                venta.ml_fecha_entrega
+                                            {venta.origen_mercadolibre && (() => {
+                                                const entregado = venta.ml_fecha_entrega || parseFloat(venta.ml_sale_fee || 0) > 0 || parseFloat(venta.ml_shipping_cost || 0) > 0;
+                                                return entregado
                                                     ? <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>
-                                                        Entregado {new Date(venta.ml_fecha_entrega).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                                        {venta.ml_fecha_entrega
+                                                            ? `Entregado ${new Date(venta.ml_fecha_entrega).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}`
+                                                            : 'Entregado'}
                                                       </span>
-                                                    : <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#ffc107', color: '#333', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>No entregado</span>
-                                            )}
+                                                    : <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#ffc107', color: '#333', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>No entregado</span>;
+                                            })()}
                                         </td>
                                         <td style={styles.td}>
                                             {venta.anulada ? 'Sí' : 'No'}
