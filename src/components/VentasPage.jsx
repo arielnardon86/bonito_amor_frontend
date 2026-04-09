@@ -606,8 +606,10 @@ const VentasPage = () => {
                                         <td style={styles.td}>
                                             {venta.metodo_pago || 'N/A'}
                                             {venta.origen_mercadolibre && (
-                                                parseFloat(venta.ml_sale_fee || 0) > 0 || parseFloat(venta.ml_shipping_cost || 0) > 0
-                                                    ? <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>Entregado</span>
+                                                venta.ml_fecha_entrega
+                                                    ? <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>
+                                                        Entregado {new Date(venta.ml_fecha_entrega).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                                      </span>
                                                     : <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#ffc107', color: '#333', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>No entregado</span>
                                             )}
                                         </td>
