@@ -606,7 +606,7 @@ const VentasPage = () => {
                                         <td style={styles.td}>
                                             {venta.metodo_pago || 'N/A'}
                                             {venta.origen_mercadolibre && (() => {
-                                                const entregado = venta.ml_fecha_entrega || parseFloat(venta.ml_sale_fee || 0) > 0 || parseFloat(venta.ml_shipping_cost || 0) > 0;
+                                                const entregado = !!venta.ml_fecha_entrega;
                                                 return entregado
                                                     ? <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>
                                                         {venta.ml_fecha_entrega
