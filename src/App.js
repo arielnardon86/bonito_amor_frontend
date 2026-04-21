@@ -50,7 +50,7 @@ const notificacionesSoportadas = () =>
 
 // Componente para la navegación
 const Navbar = () => {
-  const { isAuthenticated, user, logout, selectedStoreSlug, stores, token } = useAuth(); 
+  const { isAuthenticated, user, logout, selectedStoreSlug, selectStore, tiendasAutorizadas } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const location = useLocation();
@@ -140,10 +140,26 @@ const Navbar = () => {
             <img src="/logo-completo.png" alt="Total Stock Logo" className="app-logo-image" />
           </Link>
           {selectedStoreSlug && (
-            <div className="store-name-sidebar">
-              <FontAwesomeIcon icon={faStore} className="store-icon" />
-              <span><strong>{selectedStoreSlug}</strong></span>
-            </div>
+            tiendasAutorizadas.length > 1 ? (
+              <div className="store-selector-sidebar">
+                <FontAwesomeIcon icon={faStore} className="store-icon" />
+                <select
+                  value={selectedStoreSlug}
+                  onChange={e => { selectStore(e.target.value); setIsOpen(false); }}
+                  className="store-select"
+                  title="Cambiar tienda"
+                >
+                  {tiendasAutorizadas.map(t => (
+                    <option key={t.id} value={t.nombre}>{t.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="store-name-sidebar">
+                <FontAwesomeIcon icon={faStore} className="store-icon" />
+                <span><strong>{selectedStoreSlug}</strong></span>
+              </div>
+            )
           )}
         </div>
 

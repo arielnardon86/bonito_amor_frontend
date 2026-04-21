@@ -29,6 +29,10 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [stores, setStores] = useState([]);
     const [selectedStoreSlug, setSelectedStoreSlug] = useState(localStorage.getItem('selectedStoreSlug'));
+    const [tiendasAutorizadas, setTiendasAutorizadas] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('tiendasAutorizadas') || '[]'); }
+        catch { return []; }
+    });
     const [authError, setAuthError] = useState(null);
 
     const fetchStores = useCallback(async () => {
@@ -54,10 +58,12 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('selectedStoreSlug');
+        localStorage.removeItem('tiendasAutorizadas');
         setToken(null);
         setUser(null);
         setIsAuthenticated(false);
         setSelectedStoreSlug(null);
+        setTiendasAutorizadas([]);
         setAuthError(null);
         delete axios.defaults.headers.common['Authorization'];
     }, []);
@@ -70,7 +76,10 @@ export const AuthProvider = ({ children }) => {
             const newToken = response.data.access;
             const decodedUser = jwtDecode(newToken);
 
-            if (!decodedUser.tienda_nombre) {
+            const autorizadas = decodedUser.tiendas_autorizadas || [];
+            const tiendaInicial = decodedUser.tienda_nombre || (autorizadas[0]?.nombre ?? null);
+
+            if (!tiendaInicial) {
                 setLoading(false);
                 setAuthError('El usuario no tiene una tienda asignada.');
                 logout();
@@ -91,8 +100,10 @@ export const AuthProvider = ({ children }) => {
             setUser(userData);
             setToken(newToken);
             setIsAuthenticated(true);
-            setSelectedStoreSlug(decodedUser.tienda_nombre);
-            localStorage.setItem('selectedStoreSlug', decodedUser.tienda_nombre);
+            setTiendasAutorizadas(autorizadas);
+            localStorage.setItem('tiendasAutorizadas', JSON.stringify(autorizadas));
+            setSelectedStoreSlug(tiendaInicial);
+            localStorage.setItem('selectedStoreSlug', tiendaInicial);
 
             setLoading(false);
             return true;
@@ -126,6 +137,9 @@ export const AuthProvider = ({ children }) => {
                 };
                 setUser(userData);
                 setIsAuthenticated(true);
+                const autorizadas = decodedToken.tiendas_autorizadas || [];
+                setTiendasAutorizadas(autorizadas);
+                localStorage.setItem('tiendasAutorizadas', JSON.stringify(autorizadas));
             } catch (err) {
                 console.error('Error al decodificar token o cargar usuario:', err);
                 logout();
@@ -142,16 +156,15 @@ export const AuthProvider = ({ children }) => {
     }, [token, logout, fetchStores]);
 
     const selectStore = useCallback((slug) => {
-        const storeExists = stores.some(store => store.nombre === slug);
-        if (storeExists) {
+        const permitida = tiendasAutorizadas.some(t => t.nombre === slug)
+            || stores.some(s => s.nombre === slug);
+        if (permitida) {
             setSelectedStoreSlug(slug);
             localStorage.setItem('selectedStoreSlug', slug);
         } else {
-            console.error("Tienda no encontrada en la lista del usuario.");
-            setSelectedStoreSlug(null);
-            localStorage.removeItem('selectedStoreSlug');
+            console.error("Tienda no autorizada para este usuario.");
         }
-    }, [stores]);
+    }, [tiendasAutorizadas, stores]);
 
     useEffect(() => {
         loadUserInitial();
@@ -172,6 +185,7 @@ export const AuthProvider = ({ children }) => {
         selectedStoreSlug,
         selectStore,
         fetchStores,
+        tiendasAutorizadas,
         error: authError,
         clearError
     };

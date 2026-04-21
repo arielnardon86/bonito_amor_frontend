@@ -94,7 +94,35 @@ body {
   justify-content: center;
 }
 
-.store-icon { font-size: 0.9em; color: var(--ts-green); }
+.store-icon { font-size: 0.9em; color: var(--ts-green); flex-shrink: 0; }
+
+.store-selector-sidebar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  background: var(--ts-sidebar-active);
+  border: 1px solid rgba(93,200,122,0.2);
+  border-radius: var(--ts-radius-sm);
+  width: 100%;
+}
+
+.store-select {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--ts-sidebar-text);
+  font-size: 0.85em;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  min-width: 0;
+}
+
+.store-select option {
+  background: var(--ts-sidebar-bg, #1a2a1f);
+  color: var(--ts-sidebar-text);
+}
 
 /* ── Nav links ──────────────────────────────────────────────────────────────── */
 .sidebar-links {
