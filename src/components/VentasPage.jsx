@@ -48,6 +48,22 @@ const VentasPage = () => {
     const [pendingDateTo, setPendingDateTo] = useState(defaultDate);
     const [pendingSellerId, setPendingSellerId] = useState('');
     const [pendingAnulada, setPendingAnulada] = useState('');
+    const [pendingTimeFrom, setPendingTimeFrom] = useState('');
+    const [pendingTimeTo, setPendingTimeTo] = useState('');
+    const [filterTimeFrom, setFilterTimeFrom] = useState('');
+    const [filterTimeTo, setFilterTimeTo] = useState('');
+
+    const halfHourOptions = React.useMemo(() => {
+        const opts = [];
+        for (let h = 0; h < 24; h++) {
+            for (let m of [0, 30]) {
+                const hh = h.toString().padStart(2, '0');
+                const mm = m.toString().padStart(2, '0');
+                opts.push(`${hh}:${mm}`);
+            }
+        }
+        return opts;
+    }, []);
     const barcodeInputRef = React.useRef(null);
     const barcodeInputValueRef = React.useRef(''); // Referencia para mantener el valor sin re-renderizar
 
@@ -103,6 +119,9 @@ const VentasPage = () => {
                 if (filterDateTo) params.fecha_hasta = filterDateTo;
             }
 
+            if (filterTimeFrom) params.hora_desde = filterTimeFrom;
+            if (filterTimeTo) params.hora_hasta = filterTimeTo;
+
             if (filterSellerId) {
                 params.usuario = filterSellerId;
             }
@@ -136,7 +155,7 @@ const VentasPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [token, selectedStoreSlug, filterDateFrom, filterDateTo, filterSellerId, filterAnulada, filterVentaId]);
+    }, [token, selectedStoreSlug, filterDateFrom, filterDateTo, filterTimeFrom, filterTimeTo, filterSellerId, filterAnulada, filterVentaId]);
 
     const fetchSellers = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
@@ -336,6 +355,8 @@ const VentasPage = () => {
         setFilterVentaId(ventaId);
         setFilterDateFrom(pendingDateFrom);
         setFilterDateTo(pendingDateTo);
+        setFilterTimeFrom(pendingTimeFrom);
+        setFilterTimeTo(pendingTimeTo);
         setFilterSellerId(pendingSellerId);
         setFilterAnulada(pendingAnulada);
     };
@@ -343,10 +364,14 @@ const VentasPage = () => {
     const clearFilters = () => {
         setPendingDateFrom(defaultDate);
         setPendingDateTo(defaultDate);
+        setPendingTimeFrom('');
+        setPendingTimeTo('');
         setPendingSellerId('');
         setPendingAnulada('');
         setFilterDateFrom(defaultDate);
         setFilterDateTo(defaultDate);
+        setFilterTimeFrom('');
+        setFilterTimeTo('');
         setFilterSellerId('');
         setFilterAnulada('');
         setFilterVentaId('');
@@ -494,6 +519,32 @@ const VentasPage = () => {
                                 onChange={(e) => setPendingDateTo(e.target.value)}
                                 style={styles.filterInput}
                             />
+                        </div>
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Hora desde:</label>
+                            <select
+                                value={pendingTimeFrom}
+                                onChange={(e) => setPendingTimeFrom(e.target.value)}
+                                style={styles.filterInput}
+                            >
+                                <option value="">00:00 (inicio del día)</option>
+                                {halfHourOptions.map(t => (
+                                    <option key={t} value={t}>{t}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Hora hasta:</label>
+                            <select
+                                value={pendingTimeTo}
+                                onChange={(e) => setPendingTimeTo(e.target.value)}
+                                style={styles.filterInput}
+                            >
+                                <option value="">23:59 (fin del día)</option>
+                                {halfHourOptions.map(t => (
+                                    <option key={t} value={t}>{t}</option>
+                                ))}
+                            </select>
                         </div>
                         <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>Vendedor:</label>
