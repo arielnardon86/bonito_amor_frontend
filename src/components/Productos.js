@@ -52,6 +52,9 @@ const Productos = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [productToDelete, setProductToDelete] = useState(null);
 
+    const [barcodeNombreSugerido, setBarcodeNombreSugerido] = useState('');
+    const [barcodeLoading, setBarcodeLoading] = useState(false);
+
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
     const [mostrarTalle, setMostrarTalle] = useState(false);
     const [stockBajoFilter, setStockBajoFilter] = useState(false);
@@ -67,6 +70,30 @@ const Productos = () => {
         }
         const checksum = (10 - (sum % 10)) % 10;
         return code + checksum.toString();
+    };
+
+    const handleBarcodeChange = async (e) => {
+        const barcode = e.target.value;
+        setNewProduct(prev => ({ ...prev, codigo_barras: barcode }));
+        setBarcodeNombreSugerido('');
+
+        if (barcode.length < 4) return;
+
+        setBarcodeLoading(true);
+        try {
+            const resp = await axios.get(`${BASE_API_ENDPOINT}/api/productos/nombre_por_barcode/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { barcode }
+            });
+            if (resp.data.nombre) {
+                setBarcodeNombreSugerido(resp.data.nombre);
+                setNewProduct(prev => ({ ...prev, nombre: resp.data.nombre }));
+            }
+        } catch {
+            // barcode no existe en ninguna tienda, ok
+        } finally {
+            setBarcodeLoading(false);
+        }
     };
 
     const fetchProductos = useCallback(async (pageUrl = null) => {
@@ -125,7 +152,8 @@ const Productos = () => {
             await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productToCreate, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', talle: '' }); // Reset del formulario
+            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', talle: '' });
+            setBarcodeNombreSugerido('');
             fetchProductos();
         } catch (err) {
             setError('Error al crear producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
@@ -231,12 +259,29 @@ const Productos = () => {
                 <h2 style={styles.sectionTitle}>Nuevo producto</h2>
                 <form onSubmit={handleCreateProduct} style={styles.form}>
                     <div style={styles.inputGroup}>
+                        <label style={styles.label}>
+                            Código de barras {barcodeLoading && <span style={{ fontWeight: 400, fontSize: '0.85em', color: '#888' }}>buscando...</span>}
+                        </label>
+                        <input
+                            type="text"
+                            value={newProduct.codigo_barras}
+                            onChange={handleBarcodeChange}
+                            style={styles.input}
+                            placeholder="Escaneá o ingresá el código de barras"
+                        />
+                        {barcodeNombreSugerido && (
+                            <span style={{ fontSize: '0.82em', color: '#5dc87a', marginTop: 2 }}>
+                                Nombre auto-completado desde otra sucursal
+                            </span>
+                        )}
+                    </div>
+                    <div style={styles.inputGroup}>
                         <label style={styles.label}>Nombre</label>
                         <input
                             type="text"
                             maxLength={35}
                             value={newProduct.nombre}
-                            onChange={(e) => setNewProduct({ ...newProduct, nombre: e.target.value })}
+                            onChange={(e) => { setBarcodeNombreSugerido(''); setNewProduct({ ...newProduct, nombre: e.target.value }); }}
                             style={styles.input}
                             required
                         />
@@ -279,15 +324,6 @@ const Productos = () => {
                             onChange={(e) => setNewProduct({ ...newProduct, talle: e.target.value })}
                             style={styles.input}
                             placeholder="Ej: M, L, XL, 42, etc."
-                        />
-                    </div>
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Código de barras (si no se completa, se genera automáticamente)</label>
-                        <input
-                            type="text"
-                            value={newProduct.codigo_barras}
-                            onChange={(e) => setNewProduct({ ...newProduct, codigo_barras: e.target.value })}
-                            style={styles.input}
                         />
                     </div>
                     <button type="submit" style={styles.submitButton} disabled={loadingProducts}>
