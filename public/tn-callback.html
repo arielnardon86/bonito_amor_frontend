@@ -1,20 +1,529 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Conectando Tienda Nube…</title></head>
-<body style="font-family:sans-serif;text-align:center;padding:60px;color:#374151">
-  <p>Conectando con Tienda Nube…</p>
-  <script>
-    const params = new URLSearchParams(window.location.search);
-    const code  = params.get('code');
-    const error = params.get('error');
-    if (code) {
-      window.opener && window.opener.postMessage({ type: 'TN_OAUTH_SUCCESS', code }, '*');
-      document.querySelector('p').textContent = '¡Autorización exitosa! Cerrando…';
-    } else {
-      window.opener && window.opener.postMessage({ type: 'TN_OAUTH_ERROR', error: error || 'Sin código' }, '*');
-      document.querySelector('p').textContent = 'Error en la autorización. Cerrando…';
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Conectar Tienda Nube — Total Stock</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f1e14 0%, #162d1e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #1a1a1a;
     }
+
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 40px 36px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      animation: slideUp 0.4s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .logo-ts {
+      height: 48px;
+      border-radius: 10px;
+      background: #0f1e14;
+      padding: 6px 10px;
+    }
+
+    .logo-sep {
+      color: #d1d5db;
+      font-size: 22px;
+      font-weight: 300;
+    }
+
+    .logo-tn {
+      height: 38px;
+      border-radius: 8px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 28px;
+    }
+
+    /* Steps */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      border-radius: 50%;
+      background: #10b981;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-text strong {
+      font-size: 14px;
+      color: #111827;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .step-text span {
+      font-size: 13px;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+
+    /* Form */
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      color: #111827;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 20px;
+    }
+
+    input[type="text"]:focus {
+      border-color: #10b981;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* States */
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* Loading */
+    .spinner-wrap {
+      text-align: center;
+      padding: 20px 0 10px;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #d1fae5;
+      border-top-color: #10b981;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-msg {
+      color: #374151;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .loading-sub {
+      color: #9ca3af;
+      font-size: 13px;
+      text-align: center;
+      margin-top: 6px;
+    }
+
+    /* Success */
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      background: #d1fae5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 30px;
+    }
+
+    .success-title {
+      text-align: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #065f46;
+      margin-bottom: 8px;
+    }
+
+    .success-sub {
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .info-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .info-box .store-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #065f46;
+      margin-bottom: 4px;
+    }
+
+    .info-box .store-id {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .next-steps {
+      border-top: 1px solid #f3f4f6;
+      padding-top: 20px;
+    }
+
+    .next-steps h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 12px;
+    }
+
+    .next-steps ol {
+      padding-left: 18px;
+    }
+
+    .next-steps li {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .close-btn {
+      width: 100%;
+      margin-top: 20px;
+      padding: 11px;
+      background: #f3f4f6;
+      color: #374151;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .close-btn:hover { background: #e5e7eb; }
+
+    /* Error */
+    .error-icon {
+      width: 64px;
+      height: 64px;
+      background: #fee2e2;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 30px;
+    }
+
+    .error-title {
+      text-align: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #991b1b;
+      margin-bottom: 8px;
+    }
+
+    .error-msg {
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .error-detail {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #991b1b;
+      margin-bottom: 20px;
+      word-break: break-word;
+    }
+
+    .retry-btn {
+      width: 100%;
+      padding: 11px;
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- ESTADO: Formulario de instalación -->
+  <div id="state-form" class="state active">
+    <div class="logos">
+      <img src="/logo-completo.png" alt="Total Stock" class="logo-ts"
+           onerror="this.style.display='none'" />
+      <span class="logo-sep">+</span>
+      <img src="/tiendanube-icon.png" alt="Tienda Nube" class="logo-tn"
+           onerror="this.style.display='none'" />
+    </div>
+
+    <h1>Conectar con Total Stock</h1>
+    <p class="subtitle">Tu tienda de Tienda Nube quedará vinculada para importar ventas y sincronizar stock automáticamente.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <strong>Confirmá el nombre de tu tienda</strong>
+          <span>Se usará para identificarla dentro de Total Stock</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <strong>Hacé clic en Conectar</strong>
+          <span>El proceso tarda unos segundos</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <strong>Listo — el administrador te da acceso</strong>
+          <span>Te enviaremos las credenciales para ingresar al sistema</span>
+        </div>
+      </div>
+    </div>
+
+    <label for="nombre">Nombre de tu tienda</label>
+    <input type="text" id="nombre" placeholder="Ej: Mi Tienda Online" autocomplete="off" />
+
+    <button class="btn" id="btn-conectar" onclick="iniciarInstalacion()">
+      Conectar tienda
+    </button>
+  </div>
+
+  <!-- ESTADO: Cargando -->
+  <div id="state-loading" class="state">
+    <div class="logos">
+      <img src="/logo-completo.png" alt="Total Stock" class="logo-ts"
+           onerror="this.style.display='none'" />
+    </div>
+    <div class="spinner-wrap">
+      <div class="spinner"></div>
+      <div class="loading-msg" id="loading-msg">Conectando tu tienda…</div>
+      <div class="loading-sub">Esto puede tardar unos segundos</div>
+    </div>
+  </div>
+
+  <!-- ESTADO: Éxito -->
+  <div id="state-success" class="state">
+    <div class="success-icon">✅</div>
+    <div class="success-title">¡Tienda conectada!</div>
+    <p class="success-sub">Tu tienda quedó vinculada con Total Stock exitosamente.</p>
+
+    <div class="info-box">
+      <div class="store-name" id="success-nombre"></div>
+      <div class="store-id" id="success-id"></div>
+    </div>
+
+    <div class="next-steps">
+      <h3>Próximos pasos</h3>
+      <ol>
+        <li>El administrador de Total Stock recibirá la notificación de tu nueva tienda.</li>
+        <li>Te enviarán las credenciales (usuario y contraseña) para ingresar.</li>
+        <li>Ingresá en <strong>totalstock.onrender.com</strong> con tus credenciales.</li>
+        <li>Las ventas pagas en Tienda Nube se importarán automáticamente.</li>
+      </ol>
+    </div>
+
+    <button class="close-btn" onclick="cerrar()">Cerrar ventana</button>
+  </div>
+
+  <!-- ESTADO: Error -->
+  <div id="state-error" class="state">
+    <div class="error-icon">❌</div>
+    <div class="error-title">No se pudo conectar</div>
+    <p class="error-msg">Ocurrió un error durante la instalación. Por favor intentá de nuevo o contactá al administrador.</p>
+    <div class="error-detail" id="error-detail"></div>
+    <button class="retry-btn" onclick="resetear()">Intentar de nuevo</button>
+  </div>
+
+</div>
+
+<script>
+  const BACKEND = 'https://bonito-amor-backend.onrender.com';
+
+  const params = new URLSearchParams(window.location.search);
+  const code   = params.get('code');
+  const error  = params.get('error');
+
+  // Si llegó con error desde TN
+  if (error) {
+    mostrarError('Tienda Nube rechazó la autorización: ' + error);
+  }
+
+  // Si es popup (abierto desde el panel), usar flujo anterior
+  const esPopup = !!window.opener;
+
+  if (esPopup && code) {
+    window.opener.postMessage({ type: 'TN_OAUTH_SUCCESS', code }, '*');
+    document.querySelector('#state-form').innerHTML =
+      '<div style="text-align:center;padding:40px 0"><div style="font-size:40px;margin-bottom:16px">✅</div>' +
+      '<div style="font-size:18px;font-weight:700;color:#065f46;margin-bottom:8px">¡Autorización exitosa!</div>' +
+      '<div style="color:#6b7280;font-size:14px">Cerrando esta ventana…</div></div>';
     setTimeout(() => window.close(), 1500);
-  </script>
+  } else if (esPopup && error) {
+    window.opener.postMessage({ type: 'TN_OAUTH_ERROR', error }, '*');
+    setTimeout(() => window.close(), 1500);
+  }
+
+  // Pre-cargar nombre detectado desde TN si existe en params
+  const tnNombre = params.get('store_name') || '';
+  if (tnNombre) {
+    document.getElementById('nombre').value = tnNombre;
+  }
+
+  function mostrarEstado(id) {
+    ['state-form','state-loading','state-success','state-error'].forEach(s => {
+      document.getElementById(s).classList.remove('active');
+    });
+    document.getElementById(id).classList.add('active');
+  }
+
+  function mostrarError(msg) {
+    document.getElementById('error-detail').textContent = msg;
+    mostrarEstado('state-error');
+  }
+
+  function resetear() {
+    mostrarEstado('state-form');
+  }
+
+  function cerrar() {
+    if (window.opener) { window.close(); }
+    else { window.location.href = 'https://totalstock.onrender.com'; }
+  }
+
+  async function iniciarInstalacion() {
+    if (!code) {
+      mostrarError('No se recibió el código de autorización de Tienda Nube. Intentá volver a instalar la app.');
+      return;
+    }
+
+    const nombre = document.getElementById('nombre').value.trim();
+    document.getElementById('btn-conectar').disabled = true;
+    mostrarEstado('state-loading');
+
+    try {
+      const resp = await fetch(`${BACKEND}/api/tn/install/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, nombre }),
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok || !data.success) {
+        throw new Error(data.error || `Error del servidor (${resp.status})`);
+      }
+
+      document.getElementById('success-nombre').textContent = data.nombre;
+      document.getElementById('success-id').textContent =
+        `Tienda Nube Store ID: ${data.store_id}` +
+        (data.created ? '' : ' · Reconectada');
+
+      mostrarEstado('state-success');
+
+    } catch (e) {
+      mostrarError(e.message || 'Error de conexión. Verificá tu internet e intentá de nuevo.');
+      document.getElementById('btn-conectar').disabled = false;
+    }
+  }
+</script>
 </body>
 </html>
