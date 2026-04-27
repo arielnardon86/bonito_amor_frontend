@@ -29,6 +29,10 @@ export default function IntegracionTiendaNube() {
     const [error,         setError]        = useState(null);
     const [successMsg,    setSuccessMsg]   = useState('');
 
+    // Credenciales del cliente (app propia en TN Partners)
+    const [customAppId,        setCustomAppId]        = useState('');
+    const [customClientSecret, setCustomClientSecret] = useState('');
+
     // Conexión manual
     const [mostrarManual,    setMostrarManual]    = useState(false);
     const [manualToken,      setManualToken]      = useState('');
@@ -106,8 +110,19 @@ export default function IntegracionTiendaNube() {
     const handleConectar = () => {
         setConectando(true);
         setError(null);
+
+        // Guardar credenciales en sessionStorage para que tn-callback.html las use
+        const appId = customAppId.trim() || '28208';
+        sessionStorage.setItem('tn_app_id', appId);
+        if (customClientSecret.trim()) {
+            sessionStorage.setItem('tn_client_secret', customClientSecret.trim());
+        } else {
+            sessionStorage.removeItem('tn_client_secret');
+        }
+
+        const authUrl = `https://www.tiendanube.com/apps/${appId}/authorize`;
         window.addEventListener('message', handleMessage);
-        const popup = window.open(TN_AUTH_URL, 'tn_oauth', 'width=620,height=720');
+        const popup = window.open(authUrl, 'tn_oauth', 'width=620,height=720');
         popupRef.current = popup;
         intervalRef.current = setInterval(() => {
             if (popup?.closed) {
@@ -124,10 +139,14 @@ export default function IntegracionTiendaNube() {
         if (!code) { showError('Ingresá el código de autorización.'); return; }
         setCanjeando(true);
         try {
+            const body = { code };
+            if (customAppId.trim())        body.app_id        = customAppId.trim();
+            if (customClientSecret.trim()) body.client_secret = customClientSecret.trim();
+
             const resp = await fetch(`${BASE}/api/tn/install/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code }),
+                body: JSON.stringify(body),
             });
             const data = await resp.json();
             if (!resp.ok || !data.success) throw new Error(data.error || `Error ${resp.status}`);
@@ -295,12 +314,46 @@ export default function IntegracionTiendaNube() {
             {/* ── NO CONECTADO ── */}
             {!conectado && (
                 <>
+                    {/* Credenciales del cliente */}
+                    <div style={s.card}>
+                        <div style={s.cardTitle}>App ID y Client Secret del cliente</div>
+                        <p style={s.cardDesc}>
+                            Si el cliente creó su propia app en el{' '}
+                            <a href="https://partners.tiendanube.com" target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>
+                                panel de partners de Tienda Nube
+                            </a>{' '}
+                            con redirect URL <code>https://totalstock.onrender.com/tn-callback.html</code>,
+                            ingresá sus credenciales acá. Si no, se usarán las de la app global.
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <div>
+                                <label style={s.lbl}>App ID</label>
+                                <input
+                                    style={s.inp}
+                                    value={customAppId}
+                                    onChange={e => setCustomAppId(e.target.value)}
+                                    placeholder="Ej: 31234 (o vacío para usar la global)"
+                                />
+                            </div>
+                            <div>
+                                <label style={s.lbl}>Client Secret</label>
+                                <input
+                                    type="password"
+                                    style={s.inp}
+                                    value={customClientSecret}
+                                    onChange={e => setCustomClientSecret(e.target.value)}
+                                    placeholder="Client secret del cliente"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Botón OAuth */}
                     <div style={s.card}>
                         <div style={s.cardTitle}>Conectar con Tienda Nube</div>
                         <p style={s.cardDesc}>
-                            Hacé clic para autorizar Total Stock en la tienda. Se abre una ventana de Tienda Nube
-                            — funciona con tiendas demo mientras la app esté en desarrollo.
+                            Se abre una ventana de Tienda Nube para autorizar.
+                            Usará el App ID del cliente si lo completaste arriba.
                         </p>
                         <button
                             style={{ ...s.btnTN, opacity: conectando ? 0.7 : 1 }}

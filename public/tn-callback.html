@@ -231,10 +231,18 @@
     mostrarEstado('state-loading');
 
     try {
+      const body = { code };
+      const ssAppId     = sessionStorage.getItem('tn_app_id');
+      const ssSecret    = sessionStorage.getItem('tn_client_secret');
+      if (ssAppId)  body.app_id        = ssAppId;
+      if (ssSecret) body.client_secret = ssSecret;
+      sessionStorage.removeItem('tn_app_id');
+      sessionStorage.removeItem('tn_client_secret');
+
       const resp = await fetch(`${BACKEND}/api/tn/install/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify(body),
       });
 
       const data = await resp.json();
