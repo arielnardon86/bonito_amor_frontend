@@ -29,13 +29,24 @@ export default function IntegracionTiendaNube() {
     const [error,         setError]        = useState(null);
     const [successMsg,    setSuccessMsg]   = useState('');
 
-    const popupRef   = useRef(null);
+    // Conexión manual
+    const [mostrarManual,    setMostrarManual]    = useState(false);
+    const [manualToken,      setManualToken]      = useState('');
+    const [manualStoreId,    setManualStoreId]    = useState('');
+    const [guardandoManual,  setGuardandoManual]  = useState(false);
+
+    // Intercambio de code → token
+    const [mostrarCurl,  setMostrarCurl]  = useState(false);
+    const [manualCode,   setManualCode]   = useState('');
+    const [canjeando,    setCanjeando]    = useState(false);
+
+    const popupRef    = useRef(null);
     const intervalRef = useRef(null);
 
     const headers = { Authorization: `Bearer ${token}` };
 
-    const showSuccess = (msg) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 5000); };
-    const showError   = (msg) => { setError(msg);      setTimeout(() => setError(null),    6000); };
+    const showSuccess = (msg) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 6000); };
+    const showError   = (msg) => { setError(msg);      setTimeout(() => setError(null),    7000); };
 
     // ── ID de tienda ──────────────────────────────────────────────────────────
     const obtenerTiendaId = useCallback(async () => {
@@ -45,7 +56,7 @@ export default function IntegracionTiendaNube() {
             if (found?.id) return found.id;
         }
         try {
-            const res  = await axios.get(`${BASE}/api/tiendas/`, { headers });
+            const res   = await axios.get(`${BASE}/api/tiendas/`, { headers });
             const lista = res.data.results || res.data;
             return Array.isArray(lista) ? lista.find(t => t.nombre === selectedStoreSlug)?.id || null : null;
         } catch { return null; }
@@ -68,7 +79,6 @@ export default function IntegracionTiendaNube() {
         });
     }, [isAuthenticated, token, selectedStoreSlug]); // eslint-disable-line
 
-    // ── Limpiar listeners al desmontar ────────────────────────────────────────
     useEffect(() => {
         return () => {
             clearInterval(intervalRef.current);
@@ -76,35 +86,29 @@ export default function IntegracionTiendaNube() {
         };
     }, []); // eslint-disable-line
 
-    // ── Conectar vía popup ────────────────────────────────────────────────────
+    // ── Conectar vía popup OAuth ──────────────────────────────────────────────
     const handleMessage = useCallback((event) => {
         if (event.data?.type === 'TN_INSTALL_SUCCESS') {
             window.removeEventListener('message', handleMessage);
             clearInterval(intervalRef.current);
             setConectando(false);
-
-            const id = tiendaId;
-            if (id) fetchStatus(id);
+            if (tiendaId) fetchStatus(tiendaId);
             showSuccess(`¡Tienda Nube conectada! (${event.data.nombre})`);
         }
         if (event.data?.type === 'TN_INSTALL_ERROR') {
             window.removeEventListener('message', handleMessage);
             clearInterval(intervalRef.current);
             setConectando(false);
-            showError('Error al conectar con Tienda Nube: ' + (event.data.error || ''));
+            showError('Error al conectar: ' + (event.data.error || ''));
         }
     }, [tiendaId, fetchStatus]); // eslint-disable-line
 
     const handleConectar = () => {
         setConectando(true);
         setError(null);
-
         window.addEventListener('message', handleMessage);
-
         const popup = window.open(TN_AUTH_URL, 'tn_oauth', 'width=620,height=720');
         popupRef.current = popup;
-
-        // Fallback: si el popup se cierra sin enviar mensaje
         intervalRef.current = setInterval(() => {
             if (popup?.closed) {
                 clearInterval(intervalRef.current);
@@ -114,14 +118,67 @@ export default function IntegracionTiendaNube() {
         }, 800);
     };
 
-    // ── Registrar webhook ─────────────────────────────────────────────────────
+    // ── Canjear code por token (vía backend) ──────────────────────────────────
+    const handleCanjearCode = async () => {
+        const code = manualCode.trim();
+        if (!code) { showError('Ingresá el código de autorización.'); return; }
+        setCanjeando(true);
+        try {
+            const resp = await fetch(`${BASE}/api/tn/install/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code }),
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.success) throw new Error(data.error || `Error ${resp.status}`);
+
+            showSuccess(`¡Conectado! Store ID: ${data.store_id} — Tienda: "${data.nombre}"`);
+            setManualCode('');
+            setMostrarCurl(false);
+            if (tiendaId) fetchStatus(tiendaId);
+        } catch (e) {
+            showError('Error al canjear el código: ' + e.message);
+        } finally { setCanjeando(false); }
+    };
+
+    // ── Guardar token manualmente ─────────────────────────────────────────────
+    const handleGuardarManual = async () => {
+        if (!tiendaId) { showError('No se encontró la tienda.'); return; }
+        if (!manualToken.trim() || !manualStoreId.trim()) {
+            showError('Completá el Access Token y el Store ID.');
+            return;
+        }
+        setGuardandoManual(true);
+        try {
+            await axios.patch(`${BASE}/api/tiendas/${tiendaId}/`, {
+                tn_access_token:    manualToken.trim(),
+                tn_store_id:        manualStoreId.trim(),
+                tn_app_id:          '28208',
+                tn_client_secret:   '87f123d98ed49fe6424c1e6d6b582e0ab9b82c7a2f696b11',
+                tn_sync_habilitado: true,
+            }, { headers });
+
+            // Registrar webhook automáticamente
+            try {
+                await axios.post(`${BASE}/api/tiendas/${tiendaId}/tiendanube/register-webhook/`, {}, { headers });
+            } catch { /* webhook falla silencioso */ }
+
+            await fetchStatus(tiendaId);
+            showSuccess('¡Tienda Nube conectada manualmente y webhook registrado!');
+            setManualToken('');
+            setManualStoreId('');
+            setMostrarManual(false);
+        } catch (e) {
+            showError(e.response?.data?.error || 'Error al guardar el token.');
+        } finally { setGuardandoManual(false); }
+    };
+
+    // ── Webhook, sync, desconectar ────────────────────────────────────────────
     const handleRegistrarWebhook = async () => {
         if (!tiendaId) return;
         setRegistrando(true);
         try {
-            const res = await axios.post(
-                `${BASE}/api/tiendas/${tiendaId}/tiendanube/register-webhook/`, {}, { headers }
-            );
+            const res = await axios.post(`${BASE}/api/tiendas/${tiendaId}/tiendanube/register-webhook/`, {}, { headers });
             await fetchStatus(tiendaId);
             showSuccess(`Webhook registrado (ID: ${res.data.webhook_id})`);
         } catch (e) {
@@ -129,7 +186,6 @@ export default function IntegracionTiendaNube() {
         } finally { setRegistrando(false); }
     };
 
-    // ── Sincronización de productos ───────────────────────────────────────────
     const handleExportarProductos = async () => {
         if (!tiendaId) return;
         const { isConfirmed } = await Swal.fire({
@@ -153,7 +209,7 @@ export default function IntegracionTiendaNube() {
         if (!tiendaId) return;
         const { isConfirmed } = await Swal.fire({
             title: '¿Importar productos desde Tienda Nube?',
-            text: 'Se traerán todos los productos de tu tienda online y se vincularán por SKU o nombre.',
+            text: 'Se traerán todos los productos y se vincularán por SKU o nombre.',
             icon: 'info', showCancelButton: true,
             confirmButtonColor: '#2563eb', cancelButtonColor: '#6b7280',
             confirmButtonText: 'Sí, importar', cancelButtonText: 'Cancelar',
@@ -193,7 +249,6 @@ export default function IntegracionTiendaNube() {
         } finally { setSincStockTN(false); }
     };
 
-    // ── Desconectar ───────────────────────────────────────────────────────────
     const handleDesconectar = async () => {
         if (!tiendaId || !window.confirm('¿Desconectar Tienda Nube? Se eliminará el webhook y el token.')) return;
         setDesconectando(true);
@@ -237,35 +292,119 @@ export default function IntegracionTiendaNube() {
             {error      && <div style={s.alertErr}>{error}</div>}
             {successMsg && <div style={s.alertOk}>{successMsg}</div>}
 
-            {/* Conexión */}
-            {!conectado ? (
-                <div style={s.card}>
-                    <div style={s.cardTitle}>Conectar con Tienda Nube</div>
-                    <p style={s.cardDesc}>
-                        Hacé clic en el botón para autorizar Total Stock en tu tienda.
-                        Se abrirá una ventana de Tienda Nube — una vez que apruebes,
-                        la conexión queda lista automáticamente.
-                    </p>
-                    <button
-                        style={{ ...s.btnTN, opacity: conectando ? 0.7 : 1 }}
-                        onClick={handleConectar}
-                        disabled={conectando}
-                    >
-                        {conectando ? (
-                            'Esperando autorización…'
-                        ) : (
+            {/* ── NO CONECTADO ── */}
+            {!conectado && (
+                <>
+                    {/* Botón OAuth */}
+                    <div style={s.card}>
+                        <div style={s.cardTitle}>Conectar con Tienda Nube</div>
+                        <p style={s.cardDesc}>
+                            Hacé clic para autorizar Total Stock en la tienda. Se abre una ventana de Tienda Nube
+                            — funciona con tiendas demo mientras la app esté en desarrollo.
+                        </p>
+                        <button
+                            style={{ ...s.btnTN, opacity: conectando ? 0.7 : 1 }}
+                            onClick={handleConectar}
+                            disabled={conectando}
+                        >
+                            <img src="/tiendanube-icon.png" alt=""
+                                 style={{ width: 20, height: 20, borderRadius: 4, marginRight: 8 }}
+                                 onError={e => { e.target.style.display = 'none'; }} />
+                            {conectando ? 'Esperando autorización…' : 'Conectar con Tienda Nube'}
+                        </button>
+                    </div>
+
+                    {/* Separador */}
+                    <div style={s.divider}>
+                        <span style={s.dividerText}>o conectá manualmente con el código de autorización</span>
+                    </div>
+
+                    {/* Paso 1: canjear code por token */}
+                    <div style={s.card}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <div style={s.cardTitle}>Paso 1 — Obtener token desde el código</div>
+                            <button style={s.btnLink} onClick={() => setMostrarCurl(!mostrarCurl)}>
+                                {mostrarCurl ? 'Ocultar' : '¿Cómo obtengo el código?'}
+                            </button>
+                        </div>
+
+                        {mostrarCurl && (
+                            <div style={s.codeBox}>
+                                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>
+                                    1. Abrí este link en el navegador logueado en la tienda del cliente:
+                                </div>
+                                <code style={s.codeInline}>
+                                    https://www.tiendanube.com/apps/28208/authorize
+                                </code>
+                                <div style={{ fontSize: 12, color: '#6b7280', margin: '8px 0 4px' }}>
+                                    2. Después de autorizar, TN te redirige a una URL con <strong>?code=XXXX</strong> — copiá ese código.
+                                </div>
+                            </div>
+                        )}
+
+                        <label style={s.lbl}>Código de autorización (code)</label>
+                        <input
+                            style={s.inp}
+                            value={manualCode}
+                            onChange={e => setManualCode(e.target.value)}
+                            placeholder="Pegá el código que te dio Tienda Nube"
+                        />
+                        <button style={s.btnPrimary} onClick={handleCanjearCode} disabled={canjeando || !manualCode.trim()}>
+                            {canjeando ? 'Canjeando…' : 'Obtener token'}
+                        </button>
+                    </div>
+
+                    {/* Paso 2: pegar token manualmente */}
+                    <div style={s.card}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <div style={s.cardTitle}>Paso 2 — Guardar token manualmente</div>
+                            <button style={s.btnLink} onClick={() => setMostrarManual(!mostrarManual)}>
+                                {mostrarManual ? 'Ocultar' : 'Tengo el token del curl'}
+                            </button>
+                        </div>
+                        <p style={s.cardDesc}>
+                            Si ya corriste el curl y tenés el <code>access_token</code> y el <code>user_id</code>,
+                            pegálos acá y guardá.
+                        </p>
+
+                        {mostrarManual && (
                             <>
-                                <img src="/tiendanube-icon.png" alt=""
-                                     style={{ width: 20, height: 20, borderRadius: 4, marginRight: 8 }}
-                                     onError={e => { e.target.style.display = 'none'; }} />
-                                Conectar con Tienda Nube
+                                <label style={s.lbl}>Access Token</label>
+                                <input
+                                    style={s.inp}
+                                    value={manualToken}
+                                    onChange={e => setManualToken(e.target.value)}
+                                    placeholder="access_token del curl"
+                                />
+                                <label style={s.lbl}>Store ID (user_id)</label>
+                                <input
+                                    style={s.inp}
+                                    value={manualStoreId}
+                                    onChange={e => setManualStoreId(e.target.value)}
+                                    placeholder="user_id del curl (ej: 3103332)"
+                                />
+                                <button
+                                    style={s.btnPrimary}
+                                    onClick={handleGuardarManual}
+                                    disabled={guardandoManual || !manualToken.trim() || !manualStoreId.trim()}
+                                >
+                                    {guardandoManual ? 'Guardando…' : 'Guardar y registrar webhook'}
+                                </button>
                             </>
                         )}
-                    </button>
-                </div>
-            ) : (
+
+                        {!mostrarManual && (
+                            <div style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>
+                                Expandí esta sección si querés pegar el token directamente del curl.
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {/* ── CONECTADO ── */}
+            {conectado && (
                 <>
-                    {/* Info conexión */}
                     <div style={s.card}>
                         <div style={s.cardTitle}>Conexión activa</div>
                         <div style={s.infoRow}>
@@ -292,24 +431,19 @@ export default function IntegracionTiendaNube() {
                         </div>
                     </div>
 
-                    {/* Sincronización */}
                     <div style={s.card}>
                         <div style={s.cardTitle}>Sincronización de productos</div>
                         <p style={s.cardDesc}>
-                            Publicá los productos de Total Stock en tu tienda online,
-                            importá los existentes o actualizá el stock.
+                            Publicá los productos de Total Stock en tu tienda online, importá los existentes o actualizá el stock.
                         </p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                            <button style={s.btnPrimary} onClick={handleExportarProductos} disabled={exportando}
-                                    title="Publica en Tienda Nube los productos que aún no están allí.">
+                            <button style={s.btnPrimary} onClick={handleExportarProductos} disabled={exportando}>
                                 {exportando ? 'Publicando…' : '↑ Publicar productos'}
                             </button>
-                            <button style={s.btnSecondary} onClick={handleImportarProductos} disabled={importando}
-                                    title="Trae los productos de Tienda Nube y los vincula por SKU o nombre.">
+                            <button style={s.btnSecondary} onClick={handleImportarProductos} disabled={importando}>
                                 {importando ? 'Importando…' : '↓ Importar desde TN'}
                             </button>
-                            <button style={s.btnSecondary} onClick={handleSyncStockTN} disabled={sincStockTN}
-                                    title="Envía el stock actual de Total Stock a todos los productos vinculados.">
+                            <button style={s.btnSecondary} onClick={handleSyncStockTN} disabled={sincStockTN}>
                                 {sincStockTN ? 'Actualizando…' : '↑ Actualizar stock'}
                             </button>
                         </div>
@@ -337,20 +471,31 @@ const s = {
     card:      { background: '#fff', borderRadius: 10, padding: '18px 20px',
                  boxShadow: '0 1px 4px rgba(0,0,0,.08)', marginBottom: 14 },
     cardTitle: { fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 6 },
-    cardDesc:  { fontSize: 13, color: '#6b7280', marginBottom: 16, lineHeight: 1.5 },
+    cardDesc:  { fontSize: 13, color: '#6b7280', marginBottom: 14, lineHeight: 1.5 },
+    lbl:       { fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block', marginTop: 4 },
+    inp:       { width: '100%', padding: '9px 12px', border: '1.5px solid #d1d5db',
+                 borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginBottom: 10, outline: 'none' },
+    divider:   { display: 'flex', alignItems: 'center', margin: '4px 0 14px', gap: 10 },
+    dividerText: { fontSize: 12, color: '#9ca3af', whiteSpace: 'nowrap',
+                   background: 'transparent', padding: '0 4px' },
+    codeBox:   { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
+                 padding: '12px 14px', marginBottom: 12, fontSize: 13 },
+    codeInline:{ display: 'block', background: '#1e293b', color: '#7dd3fc', padding: '6px 10px',
+                 borderRadius: 6, fontSize: 12, wordBreak: 'break-all', margin: '4px 0' },
     btnTN: {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '12px 24px', background: '#00b1ea', color: '#fff',
         border: 'none', borderRadius: 10, cursor: 'pointer',
-        fontWeight: 700, fontSize: 15, width: '100%',
-        transition: 'opacity 0.2s',
+        fontWeight: 700, fontSize: 15, width: '100%', transition: 'opacity 0.2s',
     },
-    btnPrimary:  { padding: '9px 18px', background: '#2563eb', color: '#fff',
-                   border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
-    btnSecondary:{ padding: '9px 18px', background: '#f3f4f6', color: '#374151',
-                   border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
-    btnDanger:   { padding: '9px 18px', background: '#dc2626', color: '#fff',
-                   border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 },
+    btnPrimary:   { padding: '9px 18px', background: '#2563eb', color: '#fff',
+                    border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
+    btnSecondary: { padding: '9px 18px', background: '#f3f4f6', color: '#374151',
+                    border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
+    btnDanger:    { padding: '9px 18px', background: '#dc2626', color: '#fff',
+                    border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 },
+    btnLink:      { background: 'none', border: 'none', color: '#2563eb', fontSize: 12,
+                    cursor: 'pointer', textDecoration: 'underline', padding: 0 },
     infoRow:   { display: 'flex', gap: 10, marginBottom: 6, alignItems: 'center' },
     infoLabel: { fontSize: 13, color: '#6b7280', minWidth: 120 },
     infoVal:   { fontSize: 13, color: '#111827', fontWeight: 600 },
