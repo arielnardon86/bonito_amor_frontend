@@ -12,7 +12,7 @@ const normalizeApiUrl = (url) => {
 };
 
 const BASE        = normalizeApiUrl(process.env.REACT_APP_API_URL || 'http://localhost:8000');
-const TN_AUTH_URL = 'https://www.tiendanube.com/admin/apps/28208/authorize';
+const TN_AUTH_URL = 'https://www.tiendanube.com/apps/28208/authorize';
 
 export default function IntegracionTiendaNube() {
     const { token, isAuthenticated, selectedStoreSlug, stores } = useAuth();
