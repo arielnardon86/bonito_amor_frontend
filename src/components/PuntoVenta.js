@@ -695,12 +695,14 @@ const PuntoVenta = () => {
         let arancelMLParaBackend  = isMercadoLibreVenta ? arancelML : undefined;
         let envioMLParaBackend    = isMercadoLibreVenta ? envioML   : undefined;
 
+        let arancelCombinadoParaBackend = undefined;
         if (isModoCombinado) {
             const nombres = [...new Set(formasPago.map(f => f.metodo))];
-            metodoPagoParaBackend = nombres.length <= 2 ? nombres.join(' + ') : 'Combinado';
-            arancelIdParaBackend  = null;
-            arancelMLParaBackend  = undefined;
-            envioMLParaBackend    = undefined;
+            metodoPagoParaBackend      = nombres.length <= 2 ? nombres.join(' + ') : 'Combinado';
+            arancelIdParaBackend       = null;
+            arancelMLParaBackend       = undefined;
+            envioMLParaBackend         = undefined;
+            arancelCombinadoParaBackend = formasPago.reduce((s, f) => s + (f.arancelMonto || 0), 0);
         }
 
         let htmlMessage = isModoCombinado
@@ -768,6 +770,9 @@ const PuntoVenta = () => {
                     if (arancelMLParaBackend !== undefined) {
                         ventaData.arancel_total_ml = arancelMLParaBackend;
                         ventaData.costo_envio_ml   = envioMLParaBackend;
+                    }
+                    if (arancelCombinadoParaBackend !== undefined) {
+                        ventaData.arancel_combinado = arancelCombinadoParaBackend;
                     }
 
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
