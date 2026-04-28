@@ -1169,30 +1169,28 @@ const PuntoVenta = () => {
                         </div>
                         <h4 style={styles.totalVenta}>Subtotal: {formatearMonto(activeCart.total)}</h4>
                         <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                                <label htmlFor="metodoPago" style={{ ...styles.paymentMethodLabel, marginBottom: 0 }}>Método de pago</label>
-                                {formasPago.length === 0 && (
+                            <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de pago</label>
+                            {formasPago.length === 0 ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <select
+                                        id="metodoPago"
+                                        value={metodoPagoSeleccionado}
+                                        onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
+                                        style={{ ...styles.inputField, marginBottom: 0, flex: 1 }}
+                                    >
+                                        <option value="">Seleccionar método</option>
+                                        {metodosPago.map(method => (
+                                            <option key={method.id} value={method.nombre}>{method.nombre}</option>
+                                        ))}
+                                    </select>
                                     <button
                                         type="button"
                                         onClick={abrirModalPago}
-                                        style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                        style={{ background: 'none', border: 'none', color: 'inherit', fontSize: 'inherit', fontWeight: 'bold', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap', textDecoration: 'underline' }}
                                     >
                                         Combinar métodos de pago
                                     </button>
-                                )}
-                            </div>
-                            {formasPago.length === 0 ? (
-                                <select
-                                    id="metodoPago"
-                                    value={metodoPagoSeleccionado}
-                                    onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
-                                    style={styles.inputField}
-                                >
-                                    <option value="">Seleccionar método</option>
-                                    {metodosPago.map(method => (
-                                        <option key={method.id} value={method.nombre}>{method.nombre}</option>
-                                    ))}
-                                </select>
+                                </div>
                             ) : (
                                 <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
                                     {formasPago.map(f => (

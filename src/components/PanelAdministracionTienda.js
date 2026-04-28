@@ -1356,29 +1356,12 @@ const PanelAdministracionTienda = () => {
                                 <div style={styles.formGrid} className="panel-admin-form-grid">
                                     <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
                                         <label>Método de Pago *</label>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                                <input type="radio" name="metodo_pago_modo" checked={!arancelForm.metodo_pago_nuevo} onChange={() => setArancelForm({ ...arancelForm, metodo_pago_nuevo: false })} />
-                                                Seleccionar existente
-                                            </label>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                                <input type="radio" name="metodo_pago_modo" checked={arancelForm.metodo_pago_nuevo} onChange={() => setArancelForm({ ...arancelForm, metodo_pago_nuevo: true })} />
-                                                Crear nuevo
-                                            </label>
-                                        </div>
-                                        {!arancelForm.metodo_pago_nuevo ? (
-                                            <select name="metodo_pago" value={arancelForm.metodo_pago} onChange={handleArancelFormChange} required={!arancelForm.metodo_pago_nuevo} style={styles.input}>
-                                                <option value="">Seleccionar método...</option>
-                                                {metodosPago.filter(m => m.es_financiero && m.nombre !== 'Mercado Libre').map(metodo => (
-                                                    <option key={metodo.id} value={metodo.id}>{metodo.nombre}</option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                <input type="text" name="nuevo_metodo_nombre" value={arancelForm.nuevo_metodo_nombre} onChange={handleArancelFormChange} placeholder="Nombre del método (ej: Tarjeta Visa)" style={styles.input} required={arancelForm.metodo_pago_nuevo} />
-                                                <input type="text" name="nuevo_metodo_descripcion" value={arancelForm.nuevo_metodo_descripcion} onChange={handleArancelFormChange} placeholder="Descripción (opcional)" style={styles.input} />
-                                            </div>
-                                        )}
+                                        <select name="metodo_pago" value={arancelForm.metodo_pago} onChange={handleArancelFormChange} required style={styles.input}>
+                                            <option value="">Seleccionar método...</option>
+                                            {metodosPago.filter(m => m.es_financiero && m.nombre !== 'Mercado Libre').map(metodo => (
+                                                <option key={metodo.id} value={metodo.id}>{metodo.nombre}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
                                         <label>Plan *</label>
