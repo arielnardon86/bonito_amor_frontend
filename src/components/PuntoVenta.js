@@ -1394,7 +1394,7 @@ const PuntoVenta = () => {
                             {/* Selector de arancel si el método es financiero */}
                             {isModalFinanciero && (
                                 <div style={{ marginBottom: 12 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 3 }}>Plan / Arancel (cuotas):</label>
+                                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 3 }}>Plan / Arancel:</label>
                                     {arancelesModal.length > 0 ? (
                                         <select
                                             value={modalArancelId}
