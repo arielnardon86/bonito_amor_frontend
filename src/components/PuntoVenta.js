@@ -554,17 +554,25 @@ const PuntoVenta = () => {
         const montoReal = Math.min(monto, saldoPendienteModal);
         if (montoReal <= 0) return;
 
-        const metObj    = metodosPago.find(m => m.nombre === modalMetodo);
-        const isFinanc  = metObj?.es_financiero && modalMetodo !== 'Mercado Libre';
-        const arInfo    = isFinanc ? arancelesTienda.find(a => a.id === modalArancelId) : null;
-        const arPct     = arInfo ? parseFloat(arInfo.arancel_porcentaje) : 0;
+        const metObj   = metodosPago.find(m => m.nombre === modalMetodo);
+        const isFinanc = metObj?.es_financiero && modalMetodo !== 'Mercado Libre';
+        const arancelesDeMétodo = arancelesTienda.filter(a => (a.metodo_pago_nombre || '').trim() === modalMetodo.trim());
+
+        // Validar que eligió plan si el método es financiero y tiene planes configurados
+        if (isFinanc && arancelesDeMétodo.length > 0 && !modalArancelId) {
+            Swal.fire('Plan requerido', `Seleccioná el plan/cuotas para ${modalMetodo} antes de agregar.`, 'warning');
+            return;
+        }
+
+        const arInfo  = isFinanc ? arancelesTienda.find(a => a.id === modalArancelId) : null;
+        const arPct   = arInfo ? parseFloat(arInfo.arancel_porcentaje) : 0;
 
         setFormasPago(prev => [...prev, {
-            id:          Date.now(),
-            metodo:      modalMetodo,
-            monto:       montoReal,
-            arancelId:   isFinanc ? modalArancelId : null,
-            arancelPct:  arPct,
+            id:            Date.now(),
+            metodo:        modalMetodo,
+            monto:         montoReal,
+            arancelId:     isFinanc ? modalArancelId : null,
+            arancelPct:    arPct,
             arancelNombre: arInfo?.nombre_plan || null,
             arancelMonto:  montoReal * (arPct / 100),
         }]);
@@ -697,11 +705,21 @@ const PuntoVenta = () => {
 
         let arancelCombinadoParaBackend = undefined;
         if (isModoCombinado) {
-            const nombres = [...new Set(formasPago.map(f => f.metodo))];
-            metodoPagoParaBackend      = nombres.length <= 2 ? nombres.join(' + ') : 'Combinado';
-            arancelIdParaBackend       = null;
-            arancelMLParaBackend       = undefined;
-            envioMLParaBackend         = undefined;
+            const nombres    = [...new Set(formasPago.map(f => f.metodo))];
+            const hayRepetidos = formasPago.length > nombres.length;
+            // Si hay método repetido (ej: dos tarjetas con distintos planes) o más de 2 métodos → "Combinado"
+            if (hayRepetidos || nombres.length > 2) {
+                metodoPagoParaBackend = 'Combinado';
+            } else if (nombres.length === 2) {
+                metodoPagoParaBackend = nombres.join(' + ');
+            } else {
+                // Un solo método usado en modo combinado (raro pero posible)
+                metodoPagoParaBackend = 'Combinado';
+            }
+            arancelIdParaBackend        = null;
+            arancelMLParaBackend        = undefined;
+            envioMLParaBackend          = undefined;
+            // Siempre enviar aunque sea 0, para que el backend detecte el modo combinado
             arancelCombinadoParaBackend = formasPago.reduce((s, f) => s + (f.arancelMonto || 0), 0);
         }
 
