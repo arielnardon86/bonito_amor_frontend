@@ -35,6 +35,11 @@ export default function IntegracionTiendaNube() {
     const [clientSecret,setClientSecret]= useState('');
     const [facturar,    setFacturar]    = useState(true);
 
+    // Conexión manual con token
+    const [manualToken,   setManualToken]   = useState('');
+    const [manualStoreId, setManualStoreId] = useState('');
+    const [guardandoToken, setGuardandoToken] = useState(false);
+
     const headers = { Authorization: `Bearer ${token}` };
 
     const showSuccess = (msg) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 5000); };
@@ -96,6 +101,29 @@ export default function IntegracionTiendaNube() {
         } catch (e) {
             showError(e.response?.data?.error || 'Error al guardar la configuración.');
         } finally { setGuardando(false); }
+    };
+
+    // ── Conexión manual con access_token + store_id ──────────────────────────
+    const handleConectarManual = async () => {
+        if (!tiendaId) return;
+        if (!manualToken.trim() || !manualStoreId.trim()) {
+            showError('Completá el access_token y el store_id.');
+            return;
+        }
+        setGuardandoToken(true);
+        try {
+            await axios.post(
+                `${BASE}/api/tiendas/${tiendaId}/tiendanube/set-token/`,
+                { access_token: manualToken.trim(), store_id: manualStoreId.trim() },
+                { headers },
+            );
+            setManualToken('');
+            setManualStoreId('');
+            await Promise.all([fetchTienda(tiendaId), fetchStatus(tiendaId)]);
+            showSuccess('¡Tienda Nube conectada con token manual!');
+        } catch (e) {
+            showError(e.response?.data?.error || 'Error al guardar el token.');
+        } finally { setGuardandoToken(false); }
     };
 
     // ── OAuth: abrir popup ────────────────────────────────────────────────────
@@ -354,6 +382,32 @@ export default function IntegracionTiendaNube() {
                             <button style={s.btnPrimary} onClick={handleConectar} disabled={conectando}>
                                 {conectando ? 'Conectando…' : 'Conectar con Tienda Nube'}
                             </button>
+
+                            <div style={s.divider} />
+
+                            <div style={s.cardTitle}>Conexión manual (app en desarrollo)</div>
+                            <p style={s.cardDesc}>
+                                Si TN solo ofrece tiendas de prueba, ingresá el token directamente.
+                                El <strong>store_id</strong> es el número en la URL del admin de TN
+                                (<code>tiendanube.com/admin/</code> → el número que aparece en la URL o en el curl del portal de partners).
+                            </p>
+                            <label style={s.lbl}>Access Token</label>
+                            <input
+                                style={s.inp} value={manualToken}
+                                onChange={e => setManualToken(e.target.value)}
+                                placeholder="Pegá el access_token aquí"
+                                disabled={guardandoToken}
+                            />
+                            <label style={s.lbl}>Store ID (user_id)</label>
+                            <input
+                                style={s.inp} value={manualStoreId}
+                                onChange={e => setManualStoreId(e.target.value)}
+                                placeholder="Ej: 7452837"
+                                disabled={guardandoToken}
+                            />
+                            <button style={s.btnSecondary} onClick={handleConectarManual} disabled={guardandoToken}>
+                                {guardandoToken ? 'Guardando…' : 'Conectar con token manual'}
+                            </button>
                         </div>
                     )}
                 </div>
@@ -468,4 +522,5 @@ const s = {
     infoLabel: { fontSize: 13, color: '#6b7280', minWidth: 120 },
     infoVal:   { fontSize: 13, color: '#111827', fontWeight: 600 },
     link:      { color: '#2563eb' },
+    divider:   { borderTop: '1px solid #f3f4f6', margin: '18px 0' },
 };
