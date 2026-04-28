@@ -119,7 +119,7 @@ const PanelAdministracionTienda = () => {
         punto_venta: 1,
         tipo_facturacion: 'AFIP',
         condicion_iva_emisor: 'MT',
-        modo_test_afip: true,
+        modo_test_afip: false,
     });
     const [afipCertFile, setAfipCertFile] = useState(null);
     const [afipCertB64, setAfipCertB64] = useState('');
@@ -195,7 +195,7 @@ const PanelAdministracionTienda = () => {
                 punto_venta: d.punto_venta || 1,
                 tipo_facturacion: (d.tipo_facturacion && d.tipo_facturacion !== 'NINGUNA') ? d.tipo_facturacion : 'AFIP',
                 condicion_iva_emisor: d.condicion_iva_emisor || 'MT',
-                modo_test_afip: d.modo_test_afip !== false,
+                modo_test_afip: false,
             }));
             // Ir al primer paso incompleto
             if (!d.paso1_config) setAfipPasoActivo(1);
@@ -1627,15 +1627,6 @@ const PanelAdministracionTienda = () => {
                                             <option value="ARCA">ARCA</option>
                                         </select>
 
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#444', marginBottom: 20, cursor: 'pointer' }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={afipForm.modo_test_afip}
-                                                onChange={e => setAfipForm(p => ({ ...p, modo_test_afip: e.target.checked }))}
-                                            />
-                                            Modo de prueba (homologación AFIP) — desactivar para producción
-                                        </label>
-
                                         <button style={btnPrimary(afipSaving)} onClick={handleGuardarConfigAfip} disabled={afipSaving}>
                                             {afipSaving ? 'Guardando...' : 'Guardar y continuar →'}
                                         </button>
@@ -1773,8 +1764,20 @@ const PanelAdministracionTienda = () => {
                                                 {!afipEstado?.paso4_cert && <div>— Falta: cargar el certificado (paso 4)</div>}
                                             </div>
                                         )}
+                                        <div style={{ background: '#e8f4fd', border: '1px solid #bee3f8', borderRadius: 8, padding: '14px 18px', marginBottom: 20, fontSize: 14, color: '#2c3e50' }}>
+                                            <strong>⚠️ Antes de continuar, autorizá el certificado en AFIP:</strong>
+                                            <ol style={{ margin: '10px 0 0 0', paddingLeft: 20, lineHeight: 2 }}>
+                                                <li>Ingresá a <strong>afip.gob.ar</strong> con tu CUIT y clave fiscal.</li>
+                                                <li>Abrí <strong>Administrador de Relaciones de Clave Fiscal</strong>.</li>
+                                                <li>Hacé clic en <strong>Nueva Relación</strong>.</li>
+                                                <li>Seleccioná <strong>ARCA → Web Services → Facturación Electrónica</strong>.</li>
+                                                <li>En "Representante" elegí <strong>Computador Fiscal</strong>.</li>
+                                                <li>Seleccioná el alias que diste de alta al generar el certificado (por ejemplo, <em>TotalStock</em>).</li>
+                                                <li>Confirmá la relación.</li>
+                                            </ol>
+                                        </div>
                                         <p style={{ color: '#666', fontSize: 14, marginBottom: 20 }}>
-                                            Total Stock va a emitir una <strong>factura de prueba por $1</strong> para verificar que la conexión con AFIP funciona correctamente. El comprobante quedará registrado en AFIP.
+                                            Una vez autorizado el certificado en AFIP, Total Stock va a emitir una <strong>factura de prueba por $1</strong> para verificar que la conexión funciona correctamente. El comprobante quedará registrado en AFIP.
                                         </p>
                                         <button style={btnSuccess(!todoListo)} onClick={handleProbarFacturacion} disabled={!todoListo}>
                                             Probar facturación (emitir $1 de prueba)
