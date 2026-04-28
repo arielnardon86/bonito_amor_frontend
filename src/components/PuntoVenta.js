@@ -533,6 +533,12 @@ const PuntoVenta = () => {
     }, [metodoPagoSeleccionado, isMetodoFinancieroActivo, arancelesDisponibles, arancelSeleccionadoId]);
 
 
+    // Métodos visibles en los selects: todos los no-financieros + financieros con arancel configurado
+    const metodosPagoVisibles = metodosPago.filter(m =>
+        !m.es_financiero ||
+        arancelesTienda.some(a => (a.metodo_pago_nombre || '').trim() === m.nombre.trim())
+    );
+
     // --- FUNCIÓN handleProcesarVenta (LÓGICA DE REDONDEO INCLUIDA) ---
     // ── Helpers de pago combinado ─────────────────────────────────────────────
     const totalFormasPago = formasPago.reduce((s, f) => s + f.monto, 0);
@@ -1179,7 +1185,7 @@ const PuntoVenta = () => {
                                         style={{ ...styles.inputField, marginBottom: 0, flex: 1 }}
                                     >
                                         <option value="">Seleccionar método</option>
-                                        {metodosPago.map(method => (
+                                        {metodosPagoVisibles.map(method => (
                                             <option key={method.id} value={method.nombre}>{method.nombre}</option>
                                         ))}
                                     </select>
@@ -1368,7 +1374,7 @@ const PuntoVenta = () => {
                                         style={{ ...styles.inputField, marginBottom: 0 }}
                                     >
                                         <option value="">Seleccionar</option>
-                                        {metodosPago.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
+                                        {metodosPagoVisibles.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
                                     </select>
                                 </div>
                                 <div style={{ flex: '1 1 120px' }}>
