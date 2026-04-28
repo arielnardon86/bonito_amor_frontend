@@ -93,7 +93,14 @@ const PuntoVenta = () => {
     });
     
     const [tiendaInfo, setTiendaInfo] = useState(null);
-    
+
+    // ── Pago combinado ────────────────────────────────────────────────────────
+    const [mostrarModalPago,  setMostrarModalPago]  = useState(false);
+    const [formasPago,        setFormasPago]        = useState([]);   // [{id,metodo,monto,arancelId,arancelPct,arancelMonto}]
+    const [modalMetodo,       setModalMetodo]       = useState('');
+    const [modalImporte,      setModalImporte]      = useState('');
+    const [modalArancelId,    setModalArancelId]    = useState('');
+
     // Función de alerta (no necesita useCallback)
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
@@ -527,13 +534,74 @@ const PuntoVenta = () => {
 
 
     // --- FUNCIÓN handleProcesarVenta (LÓGICA DE REDONDEO INCLUIDA) ---
+    // ── Helpers de pago combinado ─────────────────────────────────────────────
+    const totalFormasPago = formasPago.reduce((s, f) => s + f.monto, 0);
+    const saldoPendienteModal = Math.max(0, calculateFinalTotal() - totalFormasPago);
+
+    const abrirModalPago = () => {
+        const finalTotal = calculateFinalTotal();
+        setModalMetodo(metodosPago.find(m => m.nombre === 'Efectivo')?.nombre || (metodosPago[0]?.nombre || ''));
+        setModalImporte(String(Math.round(finalTotal)));
+        setModalArancelId('');
+        if (formasPago.length === 0) setFormasPago([]);
+        setMostrarModalPago(true);
+    };
+
+    const handleAgregarForma = () => {
+        if (!modalMetodo) return;
+        const monto = parseFloat(modalImporte) || 0;
+        if (monto <= 0) return;
+        const montoReal = Math.min(monto, saldoPendienteModal);
+        if (montoReal <= 0) return;
+
+        const metObj    = metodosPago.find(m => m.nombre === modalMetodo);
+        const isFinanc  = metObj?.es_financiero && modalMetodo !== 'Mercado Libre';
+        const arInfo    = isFinanc ? arancelesTienda.find(a => a.id === modalArancelId) : null;
+        const arPct     = arInfo ? parseFloat(arInfo.arancel_porcentaje) : 0;
+
+        setFormasPago(prev => [...prev, {
+            id:          Date.now(),
+            metodo:      modalMetodo,
+            monto:       montoReal,
+            arancelId:   isFinanc ? modalArancelId : null,
+            arancelPct:  arPct,
+            arancelNombre: arInfo?.nombre_plan || null,
+            arancelMonto:  montoReal * (arPct / 100),
+        }]);
+
+        const nuevoSaldo = saldoPendienteModal - montoReal;
+        setModalImporte(nuevoSaldo > 0 ? String(Math.round(nuevoSaldo)) : '0');
+        setModalArancelId('');
+    };
+
+    const handleEliminarForma = (id) => {
+        const eliminada = formasPago.find(f => f.id === id);
+        if (!eliminada) return;
+        setFormasPago(prev => prev.filter(f => f.id !== id));
+        setModalImporte(String(Math.round((parseFloat(modalImporte) || 0) + eliminada.monto)));
+    };
+
+    const handleGuardarFormasPago = () => {
+        if (saldoPendienteModal > 0) {
+            Swal.fire('Saldo pendiente', `Falta cubrir ${formatearMonto(saldoPendienteModal)} para completar el pago.`, 'warning');
+            return;
+        }
+        setMostrarModalPago(false);
+    };
+
+    const cancelarPagoCombinado = () => {
+        setFormasPago([]);
+        setMostrarModalPago(false);
+    };
+
     const handleProcesarVenta = async () => {
-        
+        const isModoCombinado = formasPago.length > 0;
+
         if (!activeCart || activeCart.items.length === 0) {
             showCustomAlert('El carrito activo está vacío. Agrega productos para procesar la venta.', 'error');
             return;
         }
-        if (!metodoPagoSeleccionado) {
+        if (!isModoCombinado && !metodoPagoSeleccionado) {
             showCustomAlert('Por favor, selecciona un método de pago.', 'error');
             return;
         }
@@ -547,11 +615,11 @@ const PuntoVenta = () => {
         const isMercadoLibreVenta = metodoPagoSeleccionado === 'Mercado Libre';
         // Normalizar: convertir cadena vacía a null
         const arancelIdNormalizado = arancelSeleccionadoId && arancelSeleccionadoId.trim() !== '' ? arancelSeleccionadoId : null;
-        const finalArancelId = (isMetodoFinanciero && !isMercadoLibreVenta) ? arancelIdNormalizado : null;
+        const finalArancelId = (!isModoCombinado && isMetodoFinanciero && !isMercadoLibreVenta) ? arancelIdNormalizado : null;
         const arancelInfo = arancelesTienda.find(a => a.id === finalArancelId);
         const { arancel: arancelML, envio: envioML } = calculateArancelEnvioML();
 
-        if (isMetodoFinanciero && !isMercadoLibreVenta && !finalArancelId) {
+        if (!isModoCombinado && isMetodoFinanciero && !isMercadoLibreVenta && !finalArancelId) {
             Swal.fire('Error', 'Por favor, selecciona el Plan / Arancel.', 'error');
             return;
         }
@@ -621,10 +689,30 @@ const PuntoVenta = () => {
         }
         // --- FIN LÓGICA CÁLCULO BACKEND ---
 
-        let htmlMessage = `Confirmas la venta por un total de <strong>${formatearMonto(finalTotal)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?`;
+        // Descripción del método para el backend y la confirmación
+        let metodoPagoParaBackend = metodoPagoSeleccionado;
+        let arancelIdParaBackend  = finalArancelId;
+        let arancelMLParaBackend  = isMercadoLibreVenta ? arancelML : undefined;
+        let envioMLParaBackend    = isMercadoLibreVenta ? envioML   : undefined;
+
+        if (isModoCombinado) {
+            const nombres = [...new Set(formasPago.map(f => f.metodo))];
+            metodoPagoParaBackend = nombres.length <= 2 ? nombres.join(' + ') : 'Combinado';
+            arancelIdParaBackend  = null;
+            arancelMLParaBackend  = undefined;
+            envioMLParaBackend    = undefined;
+        }
+
+        let htmlMessage = isModoCombinado
+            ? `Confirmás la venta por <strong>${formatearMonto(finalTotal)}</strong> con:<br><br>` +
+              formasPago.map(f =>
+                  `• <strong>${f.metodo}</strong>: ${formatearMonto(f.monto)}` +
+                  (f.arancelNombre ? ` (${f.arancelNombre} — arancel ${formatearMonto(f.arancelMonto)})` : '')
+              ).join('<br>')
+            : `Confirmás la venta por un total de <strong>${formatearMonto(finalTotal)}</strong> con <strong>${metodoPagoSeleccionado}</strong>?`;
         
         const arancelMonto = isMercadoLibreVenta ? arancelML : calculateArancel();
-        if (arancelMonto > 0) {
+        if (!isModoCombinado && arancelMonto > 0) {
             if (isMercadoLibreVenta) {
                 htmlMessage += `<br><br><strong>Arancel ML:</strong> ${formatearMonto(arancelML)}`;
                 if (envioML > 0) htmlMessage += `<br><strong>Costo envío:</strong> ${formatearMonto(envioML)}`;
@@ -668,18 +756,18 @@ const PuntoVenta = () => {
                 try {
                     const ventaData = {
                         tienda_slug: selectedStoreSlug,
-                        metodo_pago: metodoPagoSeleccionado,
+                        metodo_pago: metodoPagoParaBackend,
                         ...datosAjusteParaBackend,
-                        arancel_aplicado_id: finalArancelId || null,
+                        arancel_aplicado_id: arancelIdParaBackend || null,
                         detalles: activeCart.items.map(item => ({
                             producto: item.product.id,
                             cantidad: item.quantity,
                             precio_unitario: parseFloat(item.product.precio),
                         })),
                     };
-                    if (isMercadoLibreVenta) {
-                        ventaData.arancel_total_ml = arancelML;
-                        ventaData.costo_envio_ml = envioML;
+                    if (arancelMLParaBackend !== undefined) {
+                        ventaData.arancel_total_ml = arancelMLParaBackend;
+                        ventaData.costo_envio_ml   = envioMLParaBackend;
                     }
 
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
@@ -698,7 +786,8 @@ const PuntoVenta = () => {
                         total: finalTotal, // El total final que VIO el usuario (redondeado o no)
                         fecha_venta: response.data.fecha_venta, 
                         usuario_nombre: user?.first_name || user?.username || 'Usuario Desconocido',
-                        metodo_pago: metodoPagoSeleccionado, 
+                        metodo_pago: metodoPagoParaBackend,
+                        formas_pago_combinadas: isModoCombinado ? formasPago : null,
                         arancel_aplicado_nombre: arancelInfo?.nombre_plan || null,
                         arancel_aplicado_porcentaje: arancelInfo?.arancel_porcentaje || null,
                         detalles: activeCart.items.map(item => ({
@@ -717,6 +806,7 @@ const PuntoVenta = () => {
                     setRecargoMonto('');
                     setRedondearMonto(false);
                     setRedondearMontoArriba(false);
+                    setFormasPago([]);
                     
                     // Verificar si la tienda tiene facturación configurada
                     // Asegurarnos de tener la información más actualizada de la tienda
@@ -1056,20 +1146,50 @@ const PuntoVenta = () => {
                         </div>
                         <h4 style={styles.totalVenta}>Subtotal: {formatearMonto(activeCart.total)}</h4>
                         <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
-                            <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de pago</label>
-                            <select
-                                id="metodoPago"
-                                value={metodoPagoSeleccionado}
-                                onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
-                                style={styles.inputField}
-                            >
-                                <option value="">Seleccionar método</option>
-                                {metodosPago.map(method => (
-                                    <option key={method.id} value={method.nombre}>{method.nombre}</option>
-                                ))}
-                            </select>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <label htmlFor="metodoPago" style={{ ...styles.paymentMethodLabel, marginBottom: 0 }}>Método de pago</label>
+                                {formasPago.length === 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={abrirModalPago}
+                                        style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                    >
+                                        Combinar métodos de pago
+                                    </button>
+                                )}
+                            </div>
+                            {formasPago.length === 0 ? (
+                                <select
+                                    id="metodoPago"
+                                    value={metodoPagoSeleccionado}
+                                    onChange={(e) => setMetodoPagoSeleccionado(e.target.value)}
+                                    style={styles.inputField}
+                                >
+                                    <option value="">Seleccionar método</option>
+                                    {metodosPago.map(method => (
+                                        <option key={method.id} value={method.nombre}>{method.nombre}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
+                                    {formasPago.map(f => (
+                                        <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                                            <span>{f.metodo}</span>
+                                            <strong>{formatearMonto(f.monto)}</strong>
+                                        </div>
+                                    ))}
+                                    <div style={{ borderTop: '1px solid #bbf7d0', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+                                        <button type="button" onClick={abrirModalPago} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+                                            Editar
+                                        </button>
+                                        <button type="button" onClick={cancelarPagoCombinado} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+                                            Cancelar combinado
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        {isMetodoFinancieroActivo && (
+                        {!formasPago.length && isMetodoFinancieroActivo && (
                             <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
                                 <label htmlFor="arancelPlan" style={styles.paymentMethodLabel}>Plan / Arancel</label>
                                 {arancelesDisponibles.length > 0 ? (
@@ -1094,7 +1214,7 @@ const PuntoVenta = () => {
                                 )}
                             </div>
                         )}
-                        {isMetodoFinancieroActivo && arancelSeleccionadoId && (
+                        {!formasPago.length && isMetodoFinancieroActivo && arancelSeleccionadoId && (
                             <p style={styles.arancelDisplay}>Arancel: {formatearMonto(calculateArancel())}</p>
                         )}
                         {isMercadoLibre && (() => {
@@ -1200,6 +1320,119 @@ const PuntoVenta = () => {
                     <p style={styles.noDataMessage}>Carrito vacío. Busca productos por código de barras o en la lista de abajo.</p>
                 )}
             </div>
+
+            {/* --- MODAL COMBINAR MÉTODOS DE PAGO --- */}
+            {mostrarModalPago && (() => {
+                const finalTotal = calculateFinalTotal();
+                const totalYaCargado = formasPago.reduce((s, f) => s + f.monto, 0);
+                const saldo = Math.max(0, finalTotal - totalYaCargado);
+                const modalMetodObj = metodosPago.find(m => m.nombre === modalMetodo);
+                const isModalFinanciero = modalMetodObj?.es_financiero && modalMetodo !== 'Mercado Libre';
+                const arancelesModal = arancelesTienda.filter(a => (a.metodo_pago_nombre || '').trim() === (modalMetodo || '').trim());
+                return (
+                    <div style={styles.modalOverlay}>
+                        <div style={{ ...styles.modalContent, maxWidth: 560, padding: '28px 28px 20px' }}>
+                            <h3 style={{ ...styles.modalHeader, marginBottom: 4 }}>Formas de pago</h3>
+                            <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 18 }}>
+                                Saldo a cancelar {formatearMonto(saldo)}
+                            </p>
+
+                            {/* Fila para agregar */}
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 12, flexWrap: 'wrap' }}>
+                                <div style={{ flex: '1 1 160px' }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 3 }}>Medio de pago:</label>
+                                    <select
+                                        value={modalMetodo}
+                                        onChange={e => { setModalMetodo(e.target.value); setModalArancelId(''); }}
+                                        style={{ ...styles.inputField, marginBottom: 0 }}
+                                    >
+                                        <option value="">Seleccionar</option>
+                                        {metodosPago.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{ flex: '1 1 120px' }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 3 }}>Importe:</label>
+                                    <input
+                                        type="number" min="0"
+                                        value={modalImporte}
+                                        onChange={e => setModalImporte(e.target.value)}
+                                        style={{ ...styles.inputField, marginBottom: 0 }}
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleAgregarForma}
+                                    disabled={saldo <= 0 || !modalMetodo}
+                                    style={{ padding: '9px 18px', background: saldo <= 0 ? '#9ca3af' : '#374151', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: saldo <= 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+                                >
+                                    Agregar
+                                </button>
+                            </div>
+
+                            {/* Selector de arancel si el método es financiero */}
+                            {isModalFinanciero && (
+                                <div style={{ marginBottom: 12 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 3 }}>Plan / Arancel (cuotas):</label>
+                                    {arancelesModal.length > 0 ? (
+                                        <select
+                                            value={modalArancelId}
+                                            onChange={e => setModalArancelId(e.target.value)}
+                                            style={{ ...styles.inputField, marginBottom: 0 }}
+                                        >
+                                            <option value="">Seleccionar plan</option>
+                                            {arancelesModal.map(a => (
+                                                <option key={a.id} value={a.id}>
+                                                    {a.nombre_plan} ({parseFloat(a.arancel_porcentaje).toFixed(2)}%)
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <p style={{ fontSize: 12, color: '#dc2626' }}>No hay planes configurados para {modalMetodo}.</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Tabla de formas ya agregadas */}
+                            {formasPago.length > 0 && (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 14, fontSize: 13 }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 700 }}>Forma</th>
+                                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 700 }}>Plan</th>
+                                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 700 }}>Fec. Acred.</th>
+                                            <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 700 }}>Total</th>
+                                            <th style={{ width: 32 }}></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {formasPago.map(f => (
+                                            <tr key={f.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                                <td style={{ padding: '6px 4px' }}>{f.metodo}</td>
+                                                <td style={{ padding: '6px 4px', color: '#6b7280', fontSize: 12 }}>{f.arancelNombre || '—'}</td>
+                                                <td style={{ padding: '6px 4px', color: '#6b7280' }}>{new Date().toLocaleDateString('es-AR')}</td>
+                                                <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 600 }}>{formatearMonto(f.monto)}</td>
+                                                <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                                                    <button onClick={() => handleEliminarForma(f.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 16 }}>🗑</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+
+                            <div style={styles.modalActions}>
+                                <button onClick={cancelarPagoCombinado} style={styles.modalCancelButton}>Cancelar</button>
+                                <button
+                                    onClick={handleGuardarFormasPago}
+                                    disabled={saldo > 0 || formasPago.length === 0}
+                                    style={{ ...styles.modalConfirmButton, background: saldo > 0 ? '#9ca3af' : '#be185d', cursor: saldo > 0 ? 'not-allowed' : 'pointer' }}
+                                >
+                                    Guardar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* --- MODAL NUEVA VENTA --- */}
             {showNewCartModal && (
