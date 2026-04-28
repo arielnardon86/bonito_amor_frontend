@@ -193,7 +193,7 @@ const PanelAdministracionTienda = () => {
                 ...prev,
                 cuit: d.cuit || '',
                 punto_venta: d.punto_venta || 1,
-                tipo_facturacion: d.tipo_facturacion || 'AFIP',
+                tipo_facturacion: (d.tipo_facturacion && d.tipo_facturacion !== 'NINGUNA') ? d.tipo_facturacion : 'AFIP',
                 condicion_iva_emisor: d.condicion_iva_emisor || 'MT',
                 modo_test_afip: d.modo_test_afip !== false,
             }));
@@ -218,7 +218,7 @@ const PanelAdministracionTienda = () => {
             const tienda = Array.isArray(tiendas) ? tiendas.find(t => t.nombre === selectedStoreSlug) : tiendas;
             if (tienda) {
                 setTiendaInfo(tienda);
-                fetchAfipEstado(tienda.id);
+                await fetchAfipEstado(tienda.id);
             }
         } catch (err) {
             console.error('Error al cargar información de la tienda:', err);
