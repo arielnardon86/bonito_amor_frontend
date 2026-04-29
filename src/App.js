@@ -328,12 +328,13 @@ const AppContent = () => {
         tienda_slug: selectedStoreSlug,
       }, { headers: { Authorization: `Bearer ${token}` } });
       setCierreActivoApp(res.data);
-    } catch (err) {
-      console.error('Error al crear cierre:', err);
-    } finally {
-      setGuardandoCambioInicial(false);
       setMostrarModalCambioInicial(false);
       setCambioInicialInput('');
+    } catch (err) {
+      console.error('Error al crear cierre:', err);
+      alert('No se pudo iniciar el turno. Intentá nuevamente.');
+    } finally {
+      setGuardandoCambioInicial(false);
     }
   };
 

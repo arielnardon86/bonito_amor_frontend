@@ -127,16 +127,28 @@ const PuntoVenta = () => {
     }, [token, selectedStoreSlug, user]);
 
     const abrirModalCierre = useCallback(async () => {
+        // Siempre re-fetch del cierre activo al abrir el modal (puede haberse creado después del mount)
+        let cierre = cierreActivo;
+        if (!cierre && token && selectedStoreSlug) {
+            try {
+                const res = await axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/activo/`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: { tienda: selectedStoreSlug },
+                });
+                cierre = res.data || null;
+                if (cierre) setCierreActivo(cierre);
+            } catch { /* no op */ }
+        }
         setMostrarModalCierre(true);
-        if (!cierreActivo) return;
+        if (!cierre) return;
         try {
             const res = await axios.get(
-                `${BASE_API_ENDPOINT}/api/cierre-caja/${cierreActivo.id}/ventas-efectivo/`,
+                `${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/ventas-efectivo/`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             setVentasEfectivo(res.data || []);
         } catch { setVentasEfectivo([]); }
-    }, [token, cierreActivo]);
+    }, [token, selectedStoreSlug, cierreActivo]);
 
     const handleAgregarEgreso = useCallback(async () => {
         if (!egresoForm.concepto.trim() || !egresoForm.importe) return;

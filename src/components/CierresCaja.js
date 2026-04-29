@@ -50,23 +50,30 @@ export default function CierresCaja() {
 
     useEffect(() => { fetchCierres(); }, [fetchCierres]);
 
+    const [ventasResumen, setVentasResumen] = useState({ por_metodo: [], ventas: [] });
+
     const abrirDetalle = async (cierre) => {
         setDetalle(cierre);
         setLoadingDetalle(true);
         try {
             const res = await axios.get(
-                `${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/ventas-efectivo/`,
+                `${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/ventas-resumen/`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            setVentasDetalle(res.data || []);
+            const data = res.data || {};
+            setVentasResumen({ por_metodo: data.por_metodo || [], ventas: data.ventas || [] });
+            setVentasDetalle((data.ventas || []).filter(v =>
+                v.metodo_pago && v.metodo_pago.toLowerCase().includes('efectivo')
+            ));
         } catch {
+            setVentasResumen({ por_metodo: [], ventas: [] });
             setVentasDetalle([]);
         } finally {
             setLoadingDetalle(false);
         }
     };
 
-    const cerrarDetalle = () => { setDetalle(null); setVentasDetalle([]); };
+    const cerrarDetalle = () => { setDetalle(null); setVentasDetalle([]); setVentasResumen({ por_metodo: [], ventas: [] }); };
 
     const imprimirRecibo = () => window.print();
 
@@ -206,12 +213,15 @@ export default function CierresCaja() {
             {detalle && (
                 <div style={s.overlay} onClick={cerrarDetalle}>
                     <div style={s.modal} onClick={e => e.stopPropagation()} className="no-print-close">
-                        <p style={s.modalTitulo}>Detalle de Cierre de Caja</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                            <p style={s.modalTitulo}>Detalle de Cierre de Caja</p>
+                            <span style={s.badge(detalle.estado)}>{detalle.estado}</span>
+                        </div>
                         <p style={s.modalSub}>
+                            <strong style={{ color: '#2d3748' }}>👤 {detalle.usuario_nombre}</strong>
+                            &nbsp;&nbsp;
                             {fmtFecha(detalle.fecha_apertura)}
-                            {detalle.fecha_cierre ? ` → ${fmtFecha(detalle.fecha_cierre)}` : ' (abierto)'}
-                            &nbsp;·&nbsp;{detalle.usuario_nombre}
-                            &nbsp;·&nbsp;<span style={s.badge(detalle.estado)}>{detalle.estado}</span>
+                            {detalle.fecha_cierre ? ` → ${fmtFecha(detalle.fecha_cierre)}` : ' (turno abierto)'}
                         </p>
 
                         {/* Resumen financiero */}
@@ -255,9 +265,47 @@ export default function CierresCaja() {
                             )}
                         </div>
 
+                        {/* Ventas por método de pago */}
+                        <div style={s.section}>
+                            <p style={s.sectionTitulo}>Ventas por Método de Pago</p>
+                            {loadingDetalle ? (
+                                <p style={{ color: '#718096', fontSize: 13 }}>Cargando…</p>
+                            ) : ventasResumen.por_metodo.length === 0 ? (
+                                <p style={{ color: '#718096', fontSize: 13 }}>Sin ventas en este turno.</p>
+                            ) : (
+                                <table style={s.tabla}>
+                                    <thead>
+                                        <tr>
+                                            <th style={s.th}>Método de pago</th>
+                                            <th style={{ ...s.th, textAlign: 'right' }}>Cantidad</th>
+                                            <th style={{ ...s.th, textAlign: 'right' }}>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {ventasResumen.por_metodo.map((m, i) => (
+                                            <tr key={i}>
+                                                <td style={s.td}>{m.metodo_pago || 'Sin especificar'}</td>
+                                                <td style={{ ...s.td, textAlign: 'right' }}>{m.cantidad}</td>
+                                                <td style={{ ...s.td, textAlign: 'right', fontWeight: 600 }}>{fmt(m.total)}</td>
+                                            </tr>
+                                        ))}
+                                        <tr style={s.totalRow}>
+                                            <td style={s.td}>Total general</td>
+                                            <td style={{ ...s.td, textAlign: 'right' }}>
+                                                {ventasResumen.por_metodo.reduce((a, m) => a + m.cantidad, 0)}
+                                            </td>
+                                            <td style={{ ...s.td, textAlign: 'right' }}>
+                                                {fmt(ventasResumen.por_metodo.reduce((a, m) => a + Number(m.total), 0))}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
                         {/* Ventas efectivo */}
                         <div style={s.section}>
-                            <p style={s.sectionTitulo}>Ventas en Efectivo</p>
+                            <p style={s.sectionTitulo}>Ventas en Efectivo (detalle)</p>
                             {loadingDetalle ? (
                                 <p style={{ color: '#718096', fontSize: 13 }}>Cargando ventas…</p>
                             ) : ventasDetalle.length === 0 ? (
