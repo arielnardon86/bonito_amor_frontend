@@ -139,6 +139,7 @@ const PanelAdministracionTienda = () => {
         last_name: '',
         is_staff: false,
         is_superuser: false,
+        cierre_caja_habilitado: false,
         tienda: selectedStoreSlug || ''
     });
     const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -513,6 +514,7 @@ const PanelAdministracionTienda = () => {
             last_name: user.last_name || '',
             is_staff: user.is_staff || false,
             is_superuser: user.is_superuser || false,
+            cierre_caja_habilitado: user.cierre_caja_habilitado || false,
             tienda: selectedStoreSlug
         });
         setShowUserForm(true);
@@ -529,6 +531,7 @@ const PanelAdministracionTienda = () => {
                 last_name: userForm.last_name,
                 is_staff: userForm.is_staff,
                 is_superuser: userForm.is_superuser,
+                cierre_caja_habilitado: userForm.cierre_caja_habilitado,
                 tienda: selectedStoreSlug
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -1247,6 +1250,18 @@ const PanelAdministracionTienda = () => {
                                                 style={styles.checkbox}
                                             />
                                             Es Administrador
+                                        </label>
+                                    </div>
+                                    <div style={styles.formGroup}>
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                name="cierre_caja_habilitado"
+                                                checked={userForm.cierre_caja_habilitado}
+                                                onChange={handleUserFormChange}
+                                                style={styles.checkbox}
+                                            />
+                                            Habilitar cierre de caja (turno)
                                         </label>
                                     </div>
                                 </div>

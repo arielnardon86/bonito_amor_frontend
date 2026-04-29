@@ -101,6 +101,95 @@ const PuntoVenta = () => {
     const [modalImporte,      setModalImporte]      = useState('');
     const [modalArancelId,    setModalArancelId]    = useState('');
 
+    // ── Cierre de Caja ───────────────────────────────────────────────────────
+    const [cierreActivo, setCierreActivo]           = useState(null);
+    const [mostrarModalCierre, setMostrarModalCierre] = useState(false);
+    const [ventasEfectivo, setVentasEfectivo]       = useState([]);
+    const [billetes, setBilletes] = useState({
+        billetes_20000: '', billetes_10000: '', billetes_2000: '',
+        billetes_1000: '', billetes_500: '', billetes_200: '',
+        billetes_100: '', monedas: '',
+    });
+    const [egresoForm, setEgresoForm] = useState({ tipo: 'EGRESO', concepto: '', importe: '' });
+    const [mostrarFormEgreso, setMostrarFormEgreso] = useState(false);
+    const [guardandoCierre, setGuardandoCierre] = useState(false);
+
+    // ── Cierre de Caja: helpers ───────────────────────────────────────────────
+    const fetchCierreActivo = useCallback(async () => {
+        if (!token || !selectedStoreSlug || !user?.cierre_caja_habilitado) return;
+        try {
+            const res = await axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/activo/`, {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { tienda: selectedStoreSlug },
+            });
+            setCierreActivo(res.data || null);
+        } catch { /* no op */ }
+    }, [token, selectedStoreSlug, user]);
+
+    const abrirModalCierre = useCallback(async () => {
+        setMostrarModalCierre(true);
+        if (!cierreActivo) return;
+        try {
+            const res = await axios.get(
+                `${BASE_API_ENDPOINT}/api/cierre-caja/${cierreActivo.id}/ventas-efectivo/`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setVentasEfectivo(res.data || []);
+        } catch { setVentasEfectivo([]); }
+    }, [token, cierreActivo]);
+
+    const handleAgregarEgreso = useCallback(async () => {
+        if (!egresoForm.concepto.trim() || !egresoForm.importe) return;
+        if (!cierreActivo) return;
+        try {
+            await axios.post(`${BASE_API_ENDPOINT}/api/egresos-caja/`, {
+                cierre_caja: cierreActivo.id,
+                tipo: egresoForm.tipo,
+                concepto: egresoForm.concepto.trim(),
+                importe: parseFloat(egresoForm.importe),
+                tienda_slug: selectedStoreSlug,
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            setEgresoForm({ tipo: 'EGRESO', concepto: '', importe: '' });
+            setMostrarFormEgreso(false);
+            // Refrescar cierre
+            const res = await axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierreActivo.id}/`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setCierreActivo(res.data);
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo registrar el egreso.', 'error');
+        }
+    }, [token, selectedStoreSlug, cierreActivo, egresoForm]);
+
+    const handleCerrarCaja = useCallback(async () => {
+        if (!cierreActivo) return;
+        const payload = {
+            billetes_20000: parseInt(billetes.billetes_20000 || 0),
+            billetes_10000: parseInt(billetes.billetes_10000 || 0),
+            billetes_2000:  parseInt(billetes.billetes_2000  || 0),
+            billetes_1000:  parseInt(billetes.billetes_1000  || 0),
+            billetes_500:   parseInt(billetes.billetes_500   || 0),
+            billetes_200:   parseInt(billetes.billetes_200   || 0),
+            billetes_100:   parseInt(billetes.billetes_100   || 0),
+            monedas:        parseFloat(billetes.monedas || 0),
+        };
+        setGuardandoCierre(true);
+        try {
+            const res = await axios.post(
+                `${BASE_API_ENDPOINT}/api/cierre-caja/${cierreActivo.id}/cerrar/`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setCierreActivo(res.data);
+            setMostrarModalCierre(false);
+            Swal.fire({ icon: 'success', title: 'Caja cerrada', timer: 2000, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo cerrar la caja.', 'error');
+        } finally {
+            setGuardandoCierre(false);
+        }
+    }, [token, cierreActivo, billetes]);
+
     // Función de alerta (no necesita useCallback)
     const showCustomAlert = (message, type = 'success') => {
         setAlertMessage(message);
@@ -274,7 +363,8 @@ const PuntoVenta = () => {
                         fetchMetodosPago(),
                         fetchAranceles(),
                         fetchArancelesML(),
-                        fetchTiendaInfo()
+                        fetchTiendaInfo(),
+                        fetchCierreActivo(),
                     ]);
                     // Carga inicial sin filtro (el efecto de filterTerm se encargará de aplicar el filtro si existe)
                     await fetchProductos(1, filterTerm || ''); 
@@ -294,7 +384,7 @@ const PuntoVenta = () => {
         loadInitialData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, token,
-        fetchMetodosPago, fetchAranceles, fetchArancelesML, fetchTiendaInfo, fetchProductos]);
+        fetchMetodosPago, fetchAranceles, fetchArancelesML, fetchTiendaInfo, fetchProductos, fetchCierreActivo]);
         // NOTA: filterTerm NO está en las dependencias para evitar llamadas duplicadas
 
     // **********************************************
@@ -1060,10 +1150,259 @@ const PuntoVenta = () => {
         return <div style={styles.errorMessage}>{error}</div>;
     }
 
+    // ── Cierre de Caja: derived values ───────────────────────────────────────
+    const totalBilletesActual = (() => {
+        const b = billetes;
+        return (parseInt(b.billetes_20000 || 0) * 20000) +
+               (parseInt(b.billetes_10000 || 0) * 10000) +
+               (parseInt(b.billetes_2000  || 0) * 2000)  +
+               (parseInt(b.billetes_1000  || 0) * 1000)  +
+               (parseInt(b.billetes_500   || 0) * 500)   +
+               (parseInt(b.billetes_200   || 0) * 200)   +
+               (parseInt(b.billetes_100   || 0) * 100)   +
+               parseFloat(b.monedas || 0);
+    })();
+
+    const totalVentasEfectivo = ventasEfectivo.reduce((s, v) => s + Number(v.total || 0), 0);
+    const totalEgresosCierre  = (cierreActivo?.egresos || []).reduce((s, e) => s + Number(e.importe || 0), 0);
+    const cambioInicial       = Number(cierreActivo?.cambio_inicial || 0);
+    const totalTeoricoCierre  = cambioInicial + totalVentasEfectivo - totalEgresosCierre;
+    const diferenciaCierre    = totalBilletesActual - totalTeoricoCierre;
+
     return (
         <div style={styles.container}>
-            <h1 style={styles.header}>Punto de Venta</h1>
-            
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+                <h1 style={{ ...styles.header, marginBottom: 0 }}>Punto de Venta</h1>
+                {user?.cierre_caja_habilitado && (
+                    <button
+                        onClick={abrirModalCierre}
+                        style={{
+                            padding: '9px 20px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                            fontWeight: 700, fontSize: 14,
+                            background: cierreActivo?.estado === 'CERRADO' ? '#718096' : '#e53e3e',
+                            color: '#fff', display: 'flex', alignItems: 'center', gap: 8,
+                        }}
+                    >
+                        🔒 Cerrar Caja
+                    </button>
+                )}
+            </div>
+
+            {/* Modal Cierre de Caja */}
+            {mostrarModalCierre && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+                    zIndex: 2000, overflowY: 'auto', padding: '16px 10px',
+                }}>
+                    <div style={{
+                        background: '#f7f8fa', borderRadius: 14, padding: '24px',
+                        width: '100%', maxWidth: 900, boxShadow: '0 20px 60px rgba(0,0,0,.3)',
+                    }}>
+                        {/* Cabecera */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1a202c' }}>Cierre de Caja</h2>
+                                <span style={{ fontSize: 13, color: '#718096' }}>
+                                    {cierreActivo
+                                        ? `Turno iniciado: ${new Date(cierreActivo.fecha_apertura).toLocaleString('es-AR')}`
+                                        : 'Sin turno activo'}
+                                </span>
+                            </div>
+                            <button onClick={() => setMostrarModalCierre(false)}
+                                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#718096' }}>
+                                ✕
+                            </button>
+                        </div>
+
+                        {!cierreActivo ? (
+                            <p style={{ color: '#718096' }}>No hay un turno abierto. Iniciá uno desde la pantalla de inicio de sesión.</p>
+                        ) : cierreActivo.estado === 'CERRADO' ? (
+                            <p style={{ color: '#718096' }}>La caja ya fue cerrada. Para un nuevo turno, cerrá sesión e iniciá nuevamente.</p>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+                                {/* ── Columna izquierda: ventas y egresos ── */}
+                                <div>
+                                    <div style={{ background: '#fff', borderRadius: 10, padding: '16px', marginBottom: 14, border: '1px solid #e2e8f0' }}>
+                                        <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 10 }}>
+                                            Ventas en Efectivo del turno
+                                        </p>
+                                        {ventasEfectivo.length === 0 ? (
+                                            <p style={{ color: '#a0aec0', fontSize: 13 }}>Sin ventas en efectivo.</p>
+                                        ) : (
+                                            <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ textAlign: 'left', padding: '4px 6px', color: '#718096' }}>Fecha</th>
+                                                        <th style={{ textAlign: 'left', padding: '4px 6px', color: '#718096' }}>Cliente</th>
+                                                        <th style={{ textAlign: 'right', padding: '4px 6px', color: '#718096' }}>Importe</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {ventasEfectivo.map(v => (
+                                                        <tr key={v.id} style={{ borderTop: '1px solid #f0f4f8' }}>
+                                                            <td style={{ padding: '4px 6px' }}>
+                                                                {new Date(v.fecha_venta).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                                            </td>
+                                                            <td style={{ padding: '4px 6px' }}>{v.cliente || 'CF'}</td>
+                                                            <td style={{ padding: '4px 6px', textAlign: 'right' }}>{formatearMonto(v.total)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+
+                                    {/* Resumen financiero */}
+                                    <div style={{ background: '#fff', borderRadius: 10, padding: '16px', border: '1px solid #e2e8f0', marginBottom: 14 }}>
+                                        <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 10 }}>Resumen</p>
+                                        {[
+                                            { label: 'Cambio inicial', val: cambioInicial },
+                                            { label: 'Ventas en efectivo', val: totalVentasEfectivo },
+                                            { label: 'Egresos', val: -totalEgresosCierre, neg: true },
+                                        ].map(({ label, val, neg }) => (
+                                            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '3px 0', color: neg ? '#c53030' : '#2d3748' }}>
+                                                <span>{label}</span>
+                                                <span style={{ fontWeight: 600 }}>{neg ? '- ' : ''}{formatearMonto(Math.abs(val))}</span>
+                                            </div>
+                                        ))}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: '1px solid #e2e8f0', marginTop: 8, paddingTop: 8 }}>
+                                            <span>Total teórico en caja</span>
+                                            <span>{formatearMonto(totalTeoricoCierre)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Egresos */}
+                                    <div style={{ background: '#fff', borderRadius: 10, padding: '16px', border: '1px solid #e2e8f0' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                            <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', margin: 0 }}>Egresos</p>
+                                            <button
+                                                onClick={() => setMostrarFormEgreso(v => !v)}
+                                                style={{ padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: '#3c7ef3', color: '#fff', fontSize: 13, fontWeight: 600 }}>
+                                                + Nuevo Egreso
+                                            </button>
+                                        </div>
+                                        {mostrarFormEgreso && (
+                                            <div style={{ background: '#f7fafc', borderRadius: 8, padding: 12, marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                <select
+                                                    value={egresoForm.tipo}
+                                                    onChange={e => setEgresoForm(p => ({ ...p, tipo: e.target.value }))}
+                                                    style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 13 }}>
+                                                    <option value="EGRESO">Egreso / Gasto</option>
+                                                    <option value="RETIRO">Retiro de caja</option>
+                                                    <option value="PAGO_PROVEEDOR">Pago a proveedor</option>
+                                                </select>
+                                                <input
+                                                    placeholder="Concepto"
+                                                    value={egresoForm.concepto}
+                                                    onChange={e => setEgresoForm(p => ({ ...p, concepto: e.target.value }))}
+                                                    style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 13 }} />
+                                                <input
+                                                    type="number" placeholder="Importe $"
+                                                    value={egresoForm.importe}
+                                                    onChange={e => setEgresoForm(p => ({ ...p, importe: e.target.value }))}
+                                                    style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 13 }} />
+                                                <button
+                                                    onClick={handleAgregarEgreso}
+                                                    style={{ padding: '7px', borderRadius: 6, border: 'none', cursor: 'pointer', background: '#48bb78', color: '#fff', fontWeight: 600, fontSize: 13 }}>
+                                                    Confirmar egreso
+                                                </button>
+                                            </div>
+                                        )}
+                                        {cierreActivo.egresos.length === 0 ? (
+                                            <p style={{ color: '#a0aec0', fontSize: 13 }}>Sin egresos.</p>
+                                        ) : (
+                                            cierreActivo.egresos.map(eg => (
+                                                <div key={eg.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0', borderTop: '1px solid #f0f4f8' }}>
+                                                    <span style={{ color: '#555' }}>{eg.tipo_display} — {eg.concepto}</span>
+                                                    <span style={{ color: '#c53030', fontWeight: 600 }}>- {formatearMonto(eg.importe)}</span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* ── Columna derecha: recuento físico ── */}
+                                <div>
+                                    <div style={{ background: '#276749', borderRadius: 10, padding: '18px', color: '#fff' }}>
+                                        <p style={{ fontWeight: 800, fontSize: 15, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 16 }}>
+                                            Recuento Físico
+                                        </p>
+                                        <table style={{ width: '100%', fontSize: 14, borderCollapse: 'collapse' }}>
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ textAlign: 'left', paddingBottom: 8, opacity: .8 }}>Billete</th>
+                                                    <th style={{ textAlign: 'center', paddingBottom: 8, opacity: .8 }}>Cantidad</th>
+                                                    <th style={{ textAlign: 'right', paddingBottom: 8, opacity: .8 }}>Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {[
+                                                    { label: '$20.000', key: 'billetes_20000', val: 20000 },
+                                                    { label: '$10.000', key: 'billetes_10000', val: 10000 },
+                                                    { label: '$2.000',  key: 'billetes_2000',  val: 2000 },
+                                                    { label: '$1.000',  key: 'billetes_1000',  val: 1000 },
+                                                    { label: '$500',    key: 'billetes_500',   val: 500 },
+                                                    { label: '$200',    key: 'billetes_200',   val: 200 },
+                                                    { label: '$100',    key: 'billetes_100',   val: 100 },
+                                                    { label: 'Monedas', key: 'monedas',        val: 1 },
+                                                ].map(({ label, key, val }) => (
+                                                    <tr key={key} style={{ borderTop: '1px solid rgba(255,255,255,.15)' }}>
+                                                        <td style={{ padding: '7px 4px' }}>{label}</td>
+                                                        <td style={{ padding: '7px 4px', textAlign: 'center' }}>
+                                                            <input
+                                                                type="number" min="0"
+                                                                value={billetes[key]}
+                                                                onChange={e => setBilletes(b => ({ ...b, [key]: e.target.value }))}
+                                                                style={{
+                                                                    width: 70, padding: '4px 6px', borderRadius: 5,
+                                                                    border: 'none', textAlign: 'center', fontSize: 14,
+                                                                    background: 'rgba(255,255,255,.2)', color: '#fff',
+                                                                }}
+                                                                placeholder="0"
+                                                            />
+                                                        </td>
+                                                        <td style={{ padding: '7px 4px', textAlign: 'right', fontWeight: 600 }}>
+                                                            {formatearMonto(parseInt(billetes[key] || 0) * val)}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <div style={{ borderTop: '2px solid rgba(255,255,255,.3)', marginTop: 10, paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 15 }}>
+                                            <span>Total recuento físico:</span>
+                                            <span>{formatearMonto(totalBilletesActual)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Diferencia */}
+                                    <div style={{
+                                        marginTop: 14, borderRadius: 10, padding: '16px', textAlign: 'center', fontWeight: 800, fontSize: 20,
+                                        background: diferenciaCierre >= 0 ? '#c6f6d5' : '#fed7d7',
+                                        color: diferenciaCierre >= 0 ? '#276749' : '#c53030',
+                                    }}>
+                                        DIFERENCIA DE CAJA: {formatearMonto(diferenciaCierre)}
+                                    </div>
+
+                                    <button
+                                        onClick={handleCerrarCaja}
+                                        disabled={guardandoCierre}
+                                        style={{
+                                            marginTop: 16, width: '100%', padding: '14px', borderRadius: 10,
+                                            border: 'none', cursor: guardandoCierre ? 'not-allowed' : 'pointer',
+                                            background: guardandoCierre ? '#a0aec0' : '#e53e3e',
+                                            color: '#fff', fontWeight: 700, fontSize: 16,
+                                        }}>
+                                        {guardandoCierre ? 'Cerrando...' : '🔒 Confirmar Cierre de Caja'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* --- SECCIÓN VENTAS ACTIVAS (buscador + carrito integrados) --- */}
             <div style={styles.section} className="punto-venta-ventas-activas">
                 <h2 style={styles.sectionHeader}>Ventas activas</h2>

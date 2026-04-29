@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
@@ -20,6 +20,7 @@ import MetricasVentas from './components/MetricasVentas';
 import ComprasStock from './components/ComprasStock';
 import VentasPage from './components/VentasPage';
 import HomePage from './components/HomePage';
+import CierresCaja from './components/CierresCaja';
 import { useNotifications } from './hooks/useNotifications';
 
 import './App.css';
@@ -40,6 +41,7 @@ import {
   faStore,
   faBell,
   faTruck,
+  faCashRegister,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Soporte de notificaciones push (gesto de usuario requerido en móvil)
@@ -215,6 +217,12 @@ const Navbar = () => {
                     <span>Panel de Administración</span>
                   </Link>
                 </li>
+                <li onClick={() => setIsOpen(false)}>
+                  <Link to="/cierres-caja" className={location.pathname === '/cierres-caja' ? 'active' : ''}>
+                    <FontAwesomeIcon icon={faCashRegister} className="nav-icon" />
+                    <span>Cierres de Caja</span>
+                  </Link>
+                </li>
               </>
             )}
             
@@ -277,9 +285,58 @@ const Navbar = () => {
   );
 };
 
+const BASE_API_URL = (() => {
+  const url = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+  return url.replace(/\/api\/?$/, '').replace(/\/$/, '');
+})();
+
 const AppContent = () => {
-  const { isAuthenticated, loading, selectedStoreSlug, user } = useAuth(); 
-  
+  const { isAuthenticated, loading, selectedStoreSlug, user, token } = useAuth();
+  const [mostrarModalCambioInicial, setMostrarModalCambioInicial] = useState(false);
+  const [cambioInicialInput, setCambioInicialInput] = useState('');
+  const [guardandoCambioInicial, setGuardandoCambioInicial] = useState(false);
+  const [cierreActivoApp, setCierreActivoApp] = useState(null);
+
+  const verificarCierreActivo = useCallback(async () => {
+    if (!token || !selectedStoreSlug || !user?.cierre_caja_habilitado) return;
+    try {
+      const res = await axios.get(`${BASE_API_URL}/api/cierre-caja/activo/`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { tienda: selectedStoreSlug },
+      });
+      if (res.data) {
+        setCierreActivoApp(res.data);
+        setMostrarModalCambioInicial(false);
+      } else {
+        setMostrarModalCambioInicial(true);
+      }
+    } catch { /* no op */ }
+  }, [token, selectedStoreSlug, user]);
+
+  useEffect(() => {
+    if (!loading && isAuthenticated && selectedStoreSlug && user?.cierre_caja_habilitado) {
+      verificarCierreActivo();
+    }
+  }, [loading, isAuthenticated, selectedStoreSlug, user, verificarCierreActivo]);
+
+  const handleConfirmarCambioInicial = async (saltar = false) => {
+    if (!token || !selectedStoreSlug) { setMostrarModalCambioInicial(false); return; }
+    setGuardandoCambioInicial(true);
+    try {
+      const res = await axios.post(`${BASE_API_URL}/api/cierre-caja/`, {
+        cambio_inicial: saltar ? 0 : (parseFloat(cambioInicialInput) || 0),
+        tienda_slug: selectedStoreSlug,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setCierreActivoApp(res.data);
+    } catch (err) {
+      console.error('Error al crear cierre:', err);
+    } finally {
+      setGuardandoCambioInicial(false);
+      setMostrarModalCambioInicial(false);
+      setCambioInicialInput('');
+    }
+  };
+
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando autenticación...</div>;
   }
@@ -287,6 +344,61 @@ const AppContent = () => {
   return (
     <>
       <Navbar />
+
+      {/* Modal cambio inicial al iniciar sesión */}
+      {mostrarModalCambioInicial && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000,
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 14, padding: '32px 28px', width: 360,
+            boxShadow: '0 20px 60px rgba(0,0,0,.3)', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>💰</div>
+            <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1a202c' }}>
+              Inicio de turno
+            </h2>
+            <p style={{ color: '#718096', fontSize: 14, marginBottom: 20 }}>
+              Ingresá el cambio inicial en efectivo con el que comenzás el turno.
+            </p>
+            <input
+              type="number"
+              min="0"
+              placeholder="$ Cambio inicial"
+              value={cambioInicialInput}
+              onChange={e => setCambioInicialInput(e.target.value)}
+              autoFocus
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 16,
+                border: '2px solid #e2e8f0', marginBottom: 16, boxSizing: 'border-box',
+                outline: 'none', textAlign: 'center',
+              }}
+              onKeyDown={e => e.key === 'Enter' && handleConfirmarCambioInicial(false)}
+            />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => handleConfirmarCambioInicial(true)}
+                disabled={guardandoCambioInicial}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #e2e8f0',
+                  background: '#f7f8fa', color: '#718096', cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                }}>
+                Omitir
+              </button>
+              <button
+                onClick={() => handleConfirmarCambioInicial(false)}
+                disabled={guardandoCambioInicial}
+                style={{
+                  flex: 2, padding: '10px', borderRadius: 8, border: 'none',
+                  background: '#3c7ef3', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
+                }}>
+                {guardandoCambioInicial ? 'Guardando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className={`main-content ${isAuthenticated && selectedStoreSlug ? 'with-sidebar' : 'no-sidebar'}`}>
         <div className="container">
         <Routes>
@@ -353,6 +465,11 @@ const AppContent = () => {
               <Route path="/panel-administracion-tienda" element={
                 <ProtectedRoute adminOnly={true}>
                   <PanelAdministracionTienda />
+                </ProtectedRoute>
+              } />
+              <Route path="/cierres-caja" element={
+                <ProtectedRoute adminOnly={true}>
+                  <CierresCaja />
                 </ProtectedRoute>
               } />
             </>

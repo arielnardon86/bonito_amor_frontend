@@ -95,6 +95,7 @@ export const AuthProvider = ({ children }) => {
                 email: decodedUser.email,
                 is_staff: decodedUser.is_staff,
                 is_superuser: decodedUser.is_superuser,
+                cierre_caja_habilitado: decodedUser.cierre_caja_habilitado || false,
             };
 
             setUser(userData);
@@ -134,6 +135,7 @@ export const AuthProvider = ({ children }) => {
                     email: decodedToken.email,
                     is_staff: decodedToken.is_staff,
                     is_superuser: decodedToken.is_superuser,
+                    cierre_caja_habilitado: decodedToken.cierre_caja_habilitado || false,
                 };
                 setUser(userData);
                 setIsAuthenticated(true);
