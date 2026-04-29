@@ -237,14 +237,34 @@ export default function CierresCaja() {
                                         <td style={s.td}>Ventas en efectivo</td>
                                         <td style={{ ...s.td, textAlign: 'right' }}>{fmt(detalle.total_ventas_efectivo || 0)}</td>
                                     </tr>
-                                    <tr>
-                                        <td style={s.td}>Total egresos</td>
-                                        <td style={{ ...s.td, textAlign: 'right', color: '#c53030' }}>- {fmt(detalle.total_egresos || 0)}</td>
-                                    </tr>
+                                    {Number(detalle.total_ingresos_extra || 0) > 0 && (
+                                        <tr>
+                                            <td style={s.td}>Ingresos extra</td>
+                                            <td style={{ ...s.td, textAlign: 'right', color: '#276749' }}>+ {fmt(detalle.total_ingresos_extra || 0)}</td>
+                                        </tr>
+                                    )}
+                                    {Number(detalle.total_gastos || 0) > 0 && (
+                                        <tr>
+                                            <td style={s.td}>Gastos</td>
+                                            <td style={{ ...s.td, textAlign: 'right', color: '#c53030' }}>- {fmt(detalle.total_gastos || 0)}</td>
+                                        </tr>
+                                    )}
+                                    {Number(detalle.total_retiros || 0) > 0 && (
+                                        <tr>
+                                            <td style={s.td}>Retiros de caja</td>
+                                            <td style={{ ...s.td, textAlign: 'right', color: '#c53030' }}>- {fmt(detalle.total_retiros || 0)}</td>
+                                        </tr>
+                                    )}
                                     <tr style={s.totalRow}>
                                         <td style={s.td}>Total teórico en caja</td>
                                         <td style={{ ...s.td, textAlign: 'right' }}>
-                                            {fmt(Number(detalle.cambio_inicial || 0) + Number(detalle.total_ventas_efectivo || 0) - Number(detalle.total_egresos || 0))}
+                                            {fmt(
+                                                Number(detalle.cambio_inicial || 0) +
+                                                Number(detalle.total_ventas_efectivo || 0) +
+                                                Number(detalle.total_ingresos_extra || 0) -
+                                                Number(detalle.total_gastos || 0) -
+                                                Number(detalle.total_retiros || 0)
+                                            )}
                                         </td>
                                     </tr>
                                     {detalle.estado === 'CERRADO' && (

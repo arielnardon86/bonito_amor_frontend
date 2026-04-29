@@ -102,17 +102,20 @@ const PuntoVenta = () => {
     const [modalArancelId,    setModalArancelId]    = useState('');
 
     // ── Cierre de Caja ───────────────────────────────────────────────────────
-    const [cierreActivo, setCierreActivo]           = useState(null);
+    const [cierreActivo, setCierreActivo]             = useState(null);
     const [mostrarModalCierre, setMostrarModalCierre] = useState(false);
-    const [ventasEfectivo, setVentasEfectivo]       = useState([]);
+    const [ventasEfectivo, setVentasEfectivo]         = useState([]);
     const [billetes, setBilletes] = useState({
         billetes_20000: '', billetes_10000: '', billetes_2000: '',
         billetes_1000: '', billetes_500: '', billetes_200: '',
         billetes_100: '', monedas: '',
     });
+    const [mostrarFormEgreso, setMostrarFormEgreso]   = useState(false);
+    const [guardandoCierre, setGuardandoCierre]       = useState(false);
+    // ── Modal rápido de Egresos ──────────────────────────────────────────────
+    const [mostrarModalEgresos, setMostrarModalEgresos] = useState(false);
     const [egresoForm, setEgresoForm] = useState({ tipo: 'EGRESO', concepto: '', importe: '' });
-    const [mostrarFormEgreso, setMostrarFormEgreso] = useState(false);
-    const [guardandoCierre, setGuardandoCierre] = useState(false);
+    const [guardandoEgreso, setGuardandoEgreso]         = useState(false);
 
     // ── Cierre de Caja: helpers ───────────────────────────────────────────────
     const fetchCierreActivo = useCallback(async () => {
@@ -150,28 +153,52 @@ const PuntoVenta = () => {
         } catch { setVentasEfectivo([]); }
     }, [token, selectedStoreSlug, cierreActivo]);
 
-    const handleAgregarEgreso = useCallback(async () => {
+    const _getCierreActivo = useCallback(async () => {
+        let cierre = cierreActivo;
+        if (!cierre && token && selectedStoreSlug) {
+            try {
+                const res = await axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/activo/`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: { tienda: selectedStoreSlug },
+                });
+                cierre = res.data || null;
+                if (cierre) setCierreActivo(cierre);
+            } catch { /* no op */ }
+        }
+        return cierre;
+    }, [token, selectedStoreSlug, cierreActivo]);
+
+    const handleAgregarEgreso = useCallback(async (cerrarModal = false) => {
         if (!egresoForm.concepto.trim() || !egresoForm.importe) return;
-        if (!cierreActivo) return;
+        const cierre = await _getCierreActivo();
+        if (!cierre) {
+            Swal.fire('Error', 'No hay un turno de caja abierto.', 'error');
+            return;
+        }
+        setGuardandoEgreso(true);
         try {
             await axios.post(`${BASE_API_ENDPOINT}/api/egresos-caja/`, {
-                cierre_caja: cierreActivo.id,
+                cierre_caja: cierre.id,
                 tipo: egresoForm.tipo,
                 concepto: egresoForm.concepto.trim(),
                 importe: parseFloat(egresoForm.importe),
                 tienda_slug: selectedStoreSlug,
             }, { headers: { Authorization: `Bearer ${token}` } });
             setEgresoForm({ tipo: 'EGRESO', concepto: '', importe: '' });
+            if (cerrarModal) setMostrarModalEgresos(false);
             setMostrarFormEgreso(false);
             // Refrescar cierre
-            const res = await axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierreActivo.id}/`, {
+            const res = await axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setCierreActivo(res.data);
+            Swal.fire({ icon: 'success', title: 'Movimiento registrado', timer: 1500, showConfirmButton: false });
         } catch (err) {
-            Swal.fire('Error', err.response?.data?.error || 'No se pudo registrar el egreso.', 'error');
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo registrar el movimiento.', 'error');
+        } finally {
+            setGuardandoEgreso(false);
         }
-    }, [token, selectedStoreSlug, cierreActivo, egresoForm]);
+    }, [token, selectedStoreSlug, egresoForm, _getCierreActivo]);
 
     const handleCerrarCaja = useCallback(async () => {
         if (!cierreActivo) return;
@@ -1176,9 +1203,12 @@ const PuntoVenta = () => {
     })();
 
     const totalVentasEfectivo = ventasEfectivo.reduce((s, v) => s + Number(v.total || 0), 0);
-    const totalEgresosCierre  = (cierreActivo?.egresos || []).reduce((s, e) => s + Number(e.importe || 0), 0);
+    const egresos_ = cierreActivo?.egresos || [];
+    const totalGastos   = egresos_.filter(e => e.tipo === 'EGRESO').reduce((s, e) => s + Number(e.importe || 0), 0);
+    const totalRetiros  = egresos_.filter(e => e.tipo === 'RETIRO').reduce((s, e) => s + Number(e.importe || 0), 0);
+    const totalIngresos = egresos_.filter(e => e.tipo === 'INGRESO').reduce((s, e) => s + Number(e.importe || 0), 0);
     const cambioInicial       = Number(cierreActivo?.cambio_inicial || 0);
-    const totalTeoricoCierre  = cambioInicial + totalVentasEfectivo - totalEgresosCierre;
+    const totalTeoricoCierre  = cambioInicial + totalVentasEfectivo + totalIngresos - totalGastos - totalRetiros;
     const diferenciaCierre    = totalBilletesActual - totalTeoricoCierre;
 
     return (
@@ -1186,17 +1216,31 @@ const PuntoVenta = () => {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
                 <h1 style={{ ...styles.header, marginBottom: 0 }}>Punto de Venta</h1>
                 {user?.cierre_caja_habilitado && (
-                    <button
-                        onClick={abrirModalCierre}
-                        style={{
-                            padding: '9px 20px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                            fontWeight: 700, fontSize: 14,
-                            background: cierreActivo?.estado === 'CERRADO' ? '#718096' : '#e53e3e',
-                            color: '#fff', display: 'flex', alignItems: 'center', gap: 8,
-                        }}
-                    >
-                        🔒 Cerrar Caja
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                            onClick={() => {
+                                setEgresoForm({ tipo: 'EGRESO', concepto: '', importe: '' });
+                                setMostrarModalEgresos(true);
+                            }}
+                            style={{
+                                padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                                fontWeight: 700, fontSize: 14, background: '#ed8936', color: '#fff',
+                            }}
+                        >
+                            💸 Egresos
+                        </button>
+                        <button
+                            onClick={abrirModalCierre}
+                            style={{
+                                padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                                fontWeight: 700, fontSize: 14,
+                                background: cierreActivo?.estado === 'CERRADO' ? '#718096' : '#e53e3e',
+                                color: '#fff',
+                            }}
+                        >
+                            🔒 Cerrar Caja
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -1270,11 +1314,13 @@ const PuntoVenta = () => {
                                     <div style={{ background: '#fff', borderRadius: 10, padding: '16px', border: '1px solid #e2e8f0', marginBottom: 14 }}>
                                         <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 10 }}>Resumen</p>
                                         {[
-                                            { label: 'Cambio inicial', val: cambioInicial },
-                                            { label: 'Ventas en efectivo', val: totalVentasEfectivo },
-                                            { label: 'Egresos', val: -totalEgresosCierre, neg: true },
-                                        ].map(({ label, val, neg }) => (
-                                            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '3px 0', color: neg ? '#c53030' : '#2d3748' }}>
+                                            { label: 'Cambio inicial', val: cambioInicial, color: '#2d3748' },
+                                            { label: 'Ventas en efectivo', val: totalVentasEfectivo, color: '#2d3748' },
+                                            ...(totalIngresos > 0 ? [{ label: '+ Ingresos de efectivo', val: totalIngresos, color: '#276749' }] : []),
+                                            ...(totalGastos > 0  ? [{ label: '- Gastos', val: totalGastos, color: '#c53030', neg: true }] : []),
+                                            ...(totalRetiros > 0 ? [{ label: '- Retiros de caja', val: totalRetiros, color: '#c53030', neg: true }] : []),
+                                        ].map(({ label, val, color, neg }) => (
+                                            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '3px 0', color }}>
                                                 <span>{label}</span>
                                                 <span style={{ fontWeight: 600 }}>{neg ? '- ' : ''}{formatearMonto(Math.abs(val))}</span>
                                             </div>
@@ -1328,7 +1374,10 @@ const PuntoVenta = () => {
                                             cierreActivo.egresos.map(eg => (
                                                 <div key={eg.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0', borderTop: '1px solid #f0f4f8' }}>
                                                     <span style={{ color: '#555' }}>{eg.tipo_display} — {eg.concepto}</span>
-                                                    <span style={{ color: '#c53030', fontWeight: 600 }}>- {formatearMonto(eg.importe)}</span>
+                                                    {eg.tipo === 'INGRESO'
+                                                        ? <span style={{ color: '#276749', fontWeight: 600 }}>+ {formatearMonto(eg.importe)}</span>
+                                                        : <span style={{ color: '#c53030', fontWeight: 600 }}>- {formatearMonto(eg.importe)}</span>
+                                                    }
                                                 </div>
                                             ))
                                         )}
@@ -1411,6 +1460,95 @@ const PuntoVenta = () => {
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Modal rápido de Egresos / Retiros / Ingresos */}
+            {mostrarModalEgresos && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100,
+                }}>
+                    <div style={{
+                        background: '#fff', borderRadius: 14, padding: '28px 28px 24px',
+                        width: 420, boxShadow: '0 20px 60px rgba(0,0,0,.3)',
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1a202c' }}>Registrar movimiento de caja</h2>
+                            <button onClick={() => setMostrarModalEgresos(false)}
+                                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#718096' }}>✕</button>
+                        </div>
+
+                        {/* Tipo */}
+                        <div style={{ marginBottom: 16 }}>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Tipo</label>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                {[
+                                    { val: 'EGRESO',  label: 'Gasto',            color: '#e53e3e', desc: 'Impacta en métricas' },
+                                    { val: 'RETIRO',  label: 'Retiro de caja',   color: '#dd6b20', desc: 'Solo en cierre' },
+                                    { val: 'INGRESO', label: 'Ingreso efectivo',  color: '#38a169', desc: 'Solo en cierre' },
+                                ].map(({ val, label, color, desc }) => (
+                                    <button key={val}
+                                        onClick={() => setEgresoForm(p => ({ ...p, tipo: val }))}
+                                        style={{
+                                            flex: 1, padding: '10px 6px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                                            border: egresoForm.tipo === val ? `2px solid ${color}` : '2px solid #e2e8f0',
+                                            background: egresoForm.tipo === val ? `${color}18` : '#f7f8fa',
+                                            color: egresoForm.tipo === val ? color : '#718096',
+                                            textAlign: 'center',
+                                        }}>
+                                        {label}
+                                        <div style={{ fontSize: 10, fontWeight: 400, marginTop: 3, opacity: .7 }}>{desc}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Concepto */}
+                        <div style={{ marginBottom: 14 }}>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Concepto</label>
+                            <input
+                                type="text"
+                                placeholder={egresoForm.tipo === 'INGRESO' ? 'Ej: Cambio adicional' : 'Ej: Compra de bolsas'}
+                                value={egresoForm.concepto}
+                                onChange={e => setEgresoForm(p => ({ ...p, concepto: e.target.value }))}
+                                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        {/* Importe */}
+                        <div style={{ marginBottom: 20 }}>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Importe $</label>
+                            <input
+                                type="number" min="0" step="0.01"
+                                placeholder="0.00"
+                                value={egresoForm.importe}
+                                onChange={e => setEgresoForm(p => ({ ...p, importe: e.target.value }))}
+                                onKeyDown={e => e.key === 'Enter' && handleAgregarEgreso(true)}
+                                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 16, boxSizing: 'border-box', textAlign: 'right' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <button onClick={() => setMostrarModalEgresos(false)}
+                                style={{ flex: 1, padding: '11px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f7f8fa', color: '#718096', cursor: 'pointer', fontWeight: 600 }}>
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => handleAgregarEgreso(true)}
+                                disabled={guardandoEgreso || !egresoForm.concepto.trim() || !egresoForm.importe}
+                                style={{
+                                    flex: 2, padding: '11px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 15,
+                                    background: guardandoEgreso ? '#a0aec0' :
+                                        egresoForm.tipo === 'INGRESO' ? '#38a169' :
+                                        egresoForm.tipo === 'RETIRO'  ? '#dd6b20' : '#e53e3e',
+                                    color: '#fff',
+                                    opacity: (!egresoForm.concepto.trim() || !egresoForm.importe) ? 0.5 : 1,
+                                }}>
+                                {guardandoEgreso ? 'Guardando...' : egresoForm.tipo === 'INGRESO' ? '+ Confirmar ingreso' : '- Confirmar egreso'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
