@@ -34,6 +34,10 @@ export const AuthProvider = ({ children }) => {
         catch { return []; }
     });
     const [authError, setAuthError] = useState(null);
+    const [sessionLocked, setSessionLocked] = useState(false);
+
+    const lockSession = useCallback(() => setSessionLocked(true), []);
+    const unlockSession = useCallback(() => setSessionLocked(false), []);
 
     const fetchStores = useCallback(async () => {
         try {
@@ -191,7 +195,10 @@ export const AuthProvider = ({ children }) => {
         fetchStores,
         tiendasAutorizadas,
         error: authError,
-        clearError
+        clearError,
+        sessionLocked,
+        lockSession,
+        unlockSession,
     };
 
     return (

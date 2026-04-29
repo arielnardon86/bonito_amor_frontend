@@ -43,6 +43,8 @@ import {
   faBell,
   faTruck,
   faCashRegister,
+  faLock,
+  faLockOpen,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Soporte de notificaciones push (gesto de usuario requerido en móvil)
@@ -58,7 +60,7 @@ const BASE_API_URL = (() => {
 
 // Componente para la navegación
 const Navbar = () => {
-  const { isAuthenticated, user, logout, token, selectedStoreSlug, selectStore, tiendasAutorizadas } = useAuth();
+  const { isAuthenticated, user, logout, token, selectedStoreSlug, selectStore, tiendasAutorizadas, lockSession } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const location = useLocation();
@@ -298,6 +300,16 @@ const Navbar = () => {
                   </button>
                 )}
 
+                {user?.cierre_caja_habilitado && (
+                  <button
+                    onClick={() => { lockSession(); setIsOpen(false); }}
+                    className="logout-button"
+                    style={{ background: '#4a5568', marginBottom: 4 }}
+                  >
+                    <FontAwesomeIcon icon={faLock} />
+                    <span>Bloquear sesión</span>
+                  </button>
+                )}
                 <button onClick={handleLogout} className="logout-button">
                   <FontAwesomeIcon icon={faSignOutAlt} />
                   <span>Cerrar Sesión</span>
@@ -312,11 +324,32 @@ const Navbar = () => {
 };
 
 const AppContent = () => {
-  const { isAuthenticated, loading, selectedStoreSlug, user, token } = useAuth();
+  const { isAuthenticated, loading, selectedStoreSlug, user, token, sessionLocked, unlockSession } = useAuth();
   const [mostrarModalCambioInicial, setMostrarModalCambioInicial] = useState(false);
   const [cambioInicialInput, setCambioInicialInput] = useState('');
   const [guardandoCambioInicial, setGuardandoCambioInicial] = useState(false);
   const [cierreActivoApp, setCierreActivoApp] = useState(null);
+  const [unlockPassword, setUnlockPassword] = useState('');
+  const [unlockError, setUnlockError] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
+
+  const handleUnlock = async () => {
+    if (!unlockPassword) { setUnlockError('Ingresá tu contraseña.'); return; }
+    setUnlocking(true);
+    setUnlockError('');
+    try {
+      await axios.post(`${BASE_API_URL}/api/token/`, {
+        username: user.username,
+        password: unlockPassword,
+      });
+      unlockSession();
+      setUnlockPassword('');
+    } catch {
+      setUnlockError('Contraseña incorrecta.');
+    } finally {
+      setUnlocking(false);
+    }
+  };
 
   const verificarCierreActivo = useCallback(async () => {
     if (!token || !selectedStoreSlug || !user?.cierre_caja_habilitado) return;
@@ -371,7 +404,54 @@ const AppContent = () => {
     <>
       <Navbar />
 
-      {/* Modal cambio inicial al iniciar sesión — obligatorio, no se puede omitir */}
+      {/* Pantalla de bloqueo de sesión */}
+      {sessionLocked && (
+        <div style={{
+          position: 'fixed', inset: 0, background: '#1a202c',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: '40px 32px', width: 360,
+            boxShadow: '0 24px 80px rgba(0,0,0,.5)', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>🔒</div>
+            <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#1a202c' }}>
+              Sesión bloqueada
+            </h2>
+            <p style={{ color: '#718096', fontSize: 14, marginBottom: 20 }}>
+              {user?.username} — ingresá tu contraseña para continuar
+            </p>
+            <input
+              type="password"
+              placeholder="Contraseña"
+              value={unlockPassword}
+              onChange={e => { setUnlockPassword(e.target.value); setUnlockError(''); }}
+              autoFocus
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 15,
+                border: `2px solid ${unlockError ? '#e53e3e' : '#e2e8f0'}`, marginBottom: 8,
+                boxSizing: 'border-box', outline: 'none', textAlign: 'center',
+              }}
+              onKeyDown={e => e.key === 'Enter' && handleUnlock()}
+            />
+            {unlockError && (
+              <p style={{ color: '#e53e3e', fontSize: 13, marginBottom: 8 }}>{unlockError}</p>
+            )}
+            <button
+              onClick={handleUnlock}
+              disabled={unlocking}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 8, border: 'none',
+                background: '#3c7ef3', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
+                marginBottom: 0,
+              }}>
+              {unlocking ? 'Verificando...' : 'Desbloquear'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal cambio inicial al iniciar sesión */}
       {mostrarModalCambioInicial && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)',
@@ -388,9 +468,11 @@ const AppContent = () => {
             <p style={{ color: '#718096', fontSize: 14, marginBottom: 4 }}>
               Ingresá el cambio inicial en efectivo con el que comenzás el turno.
             </p>
-            <p style={{ color: '#c53030', fontSize: 12, marginBottom: 16, fontWeight: 600 }}>
-              Este paso es obligatorio. Si no tenés efectivo, ingresá 0.
-            </p>
+            {!user?.is_superuser && (
+              <p style={{ color: '#c53030', fontSize: 12, marginBottom: 16, fontWeight: 600 }}>
+                Este paso es obligatorio. Si no tenés efectivo, ingresá 0.
+              </p>
+            )}
             <input
               type="number"
               min="0"
@@ -405,15 +487,28 @@ const AppContent = () => {
               }}
               onKeyDown={e => e.key === 'Enter' && handleConfirmarCambioInicial()}
             />
-            <button
-              onClick={handleConfirmarCambioInicial}
-              disabled={guardandoCambioInicial}
-              style={{
-                width: '100%', padding: '12px', borderRadius: 8, border: 'none',
-                background: '#3c7ef3', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
-              }}>
-              {guardandoCambioInicial ? 'Guardando...' : 'Iniciar turno'}
-            </button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {user?.is_superuser && (
+                <button
+                  onClick={() => { setMostrarModalCambioInicial(false); setCambioInicialInput(''); }}
+                  disabled={guardandoCambioInicial}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 8, border: '1px solid #e2e8f0',
+                    background: '#f7f8fa', color: '#718096', cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                  }}>
+                  Omitir
+                </button>
+              )}
+              <button
+                onClick={handleConfirmarCambioInicial}
+                disabled={guardandoCambioInicial}
+                style={{
+                  flex: 2, padding: '12px', borderRadius: 8, border: 'none',
+                  background: '#3c7ef3', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
+                }}>
+                {guardandoCambioInicial ? 'Guardando...' : 'Iniciar turno'}
+              </button>
+            </div>
           </div>
         </div>
       )}

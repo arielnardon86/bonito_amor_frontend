@@ -112,6 +112,10 @@ const PuntoVenta = () => {
     });
     const [mostrarFormEgreso, setMostrarFormEgreso]   = useState(false);
     const [guardandoCierre, setGuardandoCierre]       = useState(false);
+    // ── Modal Abrir Caja ─────────────────────────────────────────────────────
+    const [mostrarModalAbrirCaja, setMostrarModalAbrirCaja] = useState(false);
+    const [cambioAbrirInput, setCambioAbrirInput]           = useState('');
+    const [guardandoAbrirCaja, setGuardandoAbrirCaja]       = useState(false);
     // ── Modal rápido de Egresos ──────────────────────────────────────────────
     const [mostrarModalEgresos, setMostrarModalEgresos] = useState(false);
     const [egresoForm, setEgresoForm] = useState({ tipo: 'EGRESO', concepto: '', importe: '' });
@@ -228,6 +232,29 @@ const PuntoVenta = () => {
             setGuardandoCierre(false);
         }
     }, [token, cierreActivo, billetes]);
+
+    const handleAbrirCaja = useCallback(async () => {
+        if (cambioAbrirInput === '') {
+            Swal.fire('Campo requerido', 'Ingresá el cambio inicial. Si no tenés efectivo, ingresá 0.', 'warning');
+            return;
+        }
+        setGuardandoAbrirCaja(true);
+        try {
+            const res = await axios.post(
+                `${BASE_API_ENDPOINT}/api/cierre-caja/`,
+                { cambio_inicial: parseFloat(cambioAbrirInput) || 0, tienda_slug: selectedStoreSlug },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setCierreActivo(res.data);
+            setMostrarModalAbrirCaja(false);
+            setCambioAbrirInput('');
+            Swal.fire({ icon: 'success', title: 'Caja abierta', timer: 1500, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo abrir la caja.', 'error');
+        } finally {
+            setGuardandoAbrirCaja(false);
+        }
+    }, [token, selectedStoreSlug, cambioAbrirInput]);
 
     // Función de alerta (no necesita useCallback)
     const showCustomAlert = (message, type = 'success') => {
@@ -1217,32 +1244,100 @@ const PuntoVenta = () => {
                 <h1 style={{ ...styles.header, marginBottom: 0 }}>Punto de Venta</h1>
                 {user?.cierre_caja_habilitado && (
                     <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                            onClick={() => {
-                                setEgresoForm({ tipo: 'EGRESO', concepto: '', importe: '' });
-                                setMostrarModalEgresos(true);
-                            }}
-                            style={{
-                                padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                fontWeight: 700, fontSize: 14, background: '#ed8936', color: '#fff',
-                            }}
-                        >
-                            💸 Egresos
-                        </button>
-                        <button
-                            onClick={abrirModalCierre}
-                            style={{
-                                padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                fontWeight: 700, fontSize: 14,
-                                background: cierreActivo?.estado === 'CERRADO' ? '#718096' : '#e53e3e',
-                                color: '#fff',
-                            }}
-                        >
-                            🔒 Cerrar Caja
-                        </button>
+                        {/* Abrir caja: solo si no hay turno activo */}
+                        {!cierreActivo && (
+                            <button
+                                onClick={() => { setCambioAbrirInput(''); setMostrarModalAbrirCaja(true); }}
+                                style={{
+                                    padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                                    fontWeight: 700, fontSize: 14, background: '#38a169', color: '#fff',
+                                }}
+                            >
+                                🟢 Abrir Caja
+                            </button>
+                        )}
+                        {cierreActivo && cierreActivo.estado !== 'CERRADO' && (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        setEgresoForm({ tipo: 'EGRESO', concepto: '', importe: '' });
+                                        setMostrarModalEgresos(true);
+                                    }}
+                                    style={{
+                                        padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                                        fontWeight: 700, fontSize: 14, background: '#ed8936', color: '#fff',
+                                    }}
+                                >
+                                    💸 Egresos
+                                </button>
+                                <button
+                                    onClick={abrirModalCierre}
+                                    style={{
+                                        padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                                        fontWeight: 700, fontSize: 14, background: '#e53e3e', color: '#fff',
+                                    }}
+                                >
+                                    🔒 Cerrar Caja
+                                </button>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
+
+            {/* Modal Abrir Caja */}
+            {mostrarModalAbrirCaja && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
+                }}>
+                    <div style={{
+                        background: '#fff', borderRadius: 14, padding: '32px 28px', width: 360,
+                        boxShadow: '0 20px 60px rgba(0,0,0,.3)', textAlign: 'center',
+                    }}>
+                        <div style={{ fontSize: 40, marginBottom: 12 }}>🟢</div>
+                        <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1a202c' }}>
+                            Abrir Caja
+                        </h2>
+                        <p style={{ color: '#718096', fontSize: 14, marginBottom: 16 }}>
+                            Ingresá el cambio inicial. Si no tenés efectivo, ingresá 0.
+                        </p>
+                        <input
+                            type="number"
+                            min="0"
+                            placeholder="$ Cambio inicial"
+                            value={cambioAbrirInput}
+                            onChange={e => setCambioAbrirInput(e.target.value)}
+                            autoFocus
+                            style={{
+                                width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 16,
+                                border: '2px solid #e2e8f0', marginBottom: 16, boxSizing: 'border-box',
+                                outline: 'none', textAlign: 'center',
+                            }}
+                            onKeyDown={e => e.key === 'Enter' && handleAbrirCaja()}
+                        />
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <button
+                                onClick={() => setMostrarModalAbrirCaja(false)}
+                                style={{
+                                    flex: 1, padding: '11px', borderRadius: 8, border: '1px solid #e2e8f0',
+                                    background: '#f7f8fa', color: '#718096', cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                                }}>
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleAbrirCaja}
+                                disabled={guardandoAbrirCaja}
+                                style={{
+                                    flex: 2, padding: '11px', borderRadius: 8, border: 'none',
+                                    background: '#38a169', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
+                                }}>
+                                {guardandoAbrirCaja ? 'Abriendo...' : 'Confirmar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Cierre de Caja */}
             {mostrarModalCierre && (
@@ -1272,7 +1367,7 @@ const PuntoVenta = () => {
                         </div>
 
                         {!cierreActivo ? (
-                            <p style={{ color: '#718096' }}>No hay un turno abierto. Iniciá uno desde la pantalla de inicio de sesión.</p>
+                            <p style={{ color: '#718096' }}>No hay un turno abierto. Usá el botón "Abrir Caja" para iniciar uno.</p>
                         ) : cierreActivo.estado === 'CERRADO' ? (
                             <p style={{ color: '#718096' }}>La caja ya fue cerrada. Para un nuevo turno, cerrá sesión e iniciá nuevamente.</p>
                         ) : (
