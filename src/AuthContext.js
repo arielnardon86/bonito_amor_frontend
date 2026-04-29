@@ -96,6 +96,7 @@ export const AuthProvider = ({ children }) => {
                 is_staff: decodedUser.is_staff,
                 is_superuser: decodedUser.is_superuser,
                 cierre_caja_habilitado: decodedUser.cierre_caja_habilitado || false,
+                tienda_tiene_cierre_caja: decodedUser.tienda_tiene_cierre_caja || false,
             };
 
             setUser(userData);
@@ -136,6 +137,7 @@ export const AuthProvider = ({ children }) => {
                     is_staff: decodedToken.is_staff,
                     is_superuser: decodedToken.is_superuser,
                     cierre_caja_habilitado: decodedToken.cierre_caja_habilitado || false,
+                tienda_tiene_cierre_caja: decodedToken.tienda_tiene_cierre_caja || false,
                 };
                 setUser(userData);
                 setIsAuthenticated(true);

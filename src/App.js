@@ -50,15 +50,32 @@ const notificacionesSoportadas = () =>
   'Notification' in window &&
   'serviceWorker' in navigator;
 
+const BASE_API_URL = (() => {
+  const url = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+  return url.replace(/\/api\/?$/, '').replace(/\/$/, '');
+})();
+
 // Componente para la navegación
 const Navbar = () => {
-  const { isAuthenticated, user, logout, selectedStoreSlug, selectStore, tiendasAutorizadas } = useAuth();
+  const { isAuthenticated, user, logout, token, selectedStoreSlug, selectStore, tiendasAutorizadas } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const location = useLocation();
   const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken } = useNotifications();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (user?.cierre_caja_habilitado && token && selectedStoreSlug) {
+      try {
+        const res = await axios.get(`${BASE_API_URL}/api/cierre-caja/activo/`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { tienda: selectedStoreSlug },
+        });
+        if (res.data) {
+          alert('⚠️ Tenés un turno de caja abierto. Cerrá la caja antes de cerrar sesión.');
+          return;
+        }
+      } catch { /* si falla el check, permitir logout */ }
+    }
     logout();
     setIsOpen(false);
   };
@@ -217,12 +234,14 @@ const Navbar = () => {
                     <span>Panel de Administración</span>
                   </Link>
                 </li>
-                <li onClick={() => setIsOpen(false)}>
-                  <Link to="/cierres-caja" className={location.pathname === '/cierres-caja' ? 'active' : ''}>
-                    <FontAwesomeIcon icon={faCashRegister} className="nav-icon" />
-                    <span>Cierres de Caja</span>
-                  </Link>
-                </li>
+                {user?.tienda_tiene_cierre_caja && (
+                  <li onClick={() => setIsOpen(false)}>
+                    <Link to="/cierres-caja" className={location.pathname === '/cierres-caja' ? 'active' : ''}>
+                      <FontAwesomeIcon icon={faCashRegister} className="nav-icon" />
+                      <span>Cierres de Caja</span>
+                    </Link>
+                  </li>
+                )}
               </>
             )}
             
@@ -285,11 +304,6 @@ const Navbar = () => {
   );
 };
 
-const BASE_API_URL = (() => {
-  const url = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
-  return url.replace(/\/api\/?$/, '').replace(/\/$/, '');
-})();
-
 const AppContent = () => {
   const { isAuthenticated, loading, selectedStoreSlug, user, token } = useAuth();
   const [mostrarModalCambioInicial, setMostrarModalCambioInicial] = useState(false);
@@ -319,12 +333,16 @@ const AppContent = () => {
     }
   }, [loading, isAuthenticated, selectedStoreSlug, user, verificarCierreActivo]);
 
-  const handleConfirmarCambioInicial = async (saltar = false) => {
-    if (!token || !selectedStoreSlug) { setMostrarModalCambioInicial(false); return; }
+  const handleConfirmarCambioInicial = async () => {
+    if (!token || !selectedStoreSlug) return;
+    if (cambioInicialInput === '') {
+      alert('Ingresá el monto de cambio inicial. Si no tenés efectivo, ingresá 0.');
+      return;
+    }
     setGuardandoCambioInicial(true);
     try {
       const res = await axios.post(`${BASE_API_URL}/api/cierre-caja/`, {
-        cambio_inicial: saltar ? 0 : (parseFloat(cambioInicialInput) || 0),
+        cambio_inicial: parseFloat(cambioInicialInput) || 0,
         tienda_slug: selectedStoreSlug,
       }, { headers: { Authorization: `Bearer ${token}` } });
       setCierreActivoApp(res.data);
@@ -346,10 +364,10 @@ const AppContent = () => {
     <>
       <Navbar />
 
-      {/* Modal cambio inicial al iniciar sesión */}
+      {/* Modal cambio inicial al iniciar sesión — obligatorio, no se puede omitir */}
       {mostrarModalCambioInicial && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)',
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000,
         }}>
           <div style={{
@@ -360,8 +378,11 @@ const AppContent = () => {
             <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1a202c' }}>
               Inicio de turno
             </h2>
-            <p style={{ color: '#718096', fontSize: 14, marginBottom: 20 }}>
+            <p style={{ color: '#718096', fontSize: 14, marginBottom: 4 }}>
               Ingresá el cambio inicial en efectivo con el que comenzás el turno.
+            </p>
+            <p style={{ color: '#c53030', fontSize: 12, marginBottom: 16, fontWeight: 600 }}>
+              Este paso es obligatorio. Si no tenés efectivo, ingresá 0.
             </p>
             <input
               type="number"
@@ -375,28 +396,17 @@ const AppContent = () => {
                 border: '2px solid #e2e8f0', marginBottom: 16, boxSizing: 'border-box',
                 outline: 'none', textAlign: 'center',
               }}
-              onKeyDown={e => e.key === 'Enter' && handleConfirmarCambioInicial(false)}
+              onKeyDown={e => e.key === 'Enter' && handleConfirmarCambioInicial()}
             />
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => handleConfirmarCambioInicial(true)}
-                disabled={guardandoCambioInicial}
-                style={{
-                  flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #e2e8f0',
-                  background: '#f7f8fa', color: '#718096', cursor: 'pointer', fontWeight: 600, fontSize: 14,
-                }}>
-                Omitir
-              </button>
-              <button
-                onClick={() => handleConfirmarCambioInicial(false)}
-                disabled={guardandoCambioInicial}
-                style={{
-                  flex: 2, padding: '10px', borderRadius: 8, border: 'none',
-                  background: '#3c7ef3', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
-                }}>
-                {guardandoCambioInicial ? 'Guardando...' : 'Confirmar'}
-              </button>
-            </div>
+            <button
+              onClick={handleConfirmarCambioInicial}
+              disabled={guardandoCambioInicial}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 8, border: 'none',
+                background: '#3c7ef3', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
+              }}>
+              {guardandoCambioInicial ? 'Guardando...' : 'Iniciar turno'}
+            </button>
           </div>
         </div>
       )}
