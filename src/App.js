@@ -22,6 +22,7 @@ import VentasPage from './components/VentasPage';
 import HomePage from './components/HomePage';
 import CierresCaja from './components/CierresCaja';
 import { useNotifications } from './hooks/useNotifications';
+import Swal from 'sweetalert2';
 
 import './App.css';
 
@@ -71,7 +72,13 @@ const Navbar = () => {
           params: { tienda: selectedStoreSlug },
         });
         if (res.data) {
-          alert('⚠️ Tenés un turno de caja abierto. Cerrá la caja antes de cerrar sesión.');
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Turno de caja abierto',
+            text: 'Tenés un turno de caja abierto. Cerrá la caja antes de cerrar sesión.',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#3c7ef3',
+          });
           return;
         }
       } catch { /* si falla el check, permitir logout */ }
@@ -234,7 +241,7 @@ const Navbar = () => {
                     <span>Panel de Administración</span>
                   </Link>
                 </li>
-                {user?.tienda_tiene_cierre_caja && (
+                {tiendasAutorizadas.some(t => t.nombre === selectedStoreSlug && t.tiene_cierre_caja) && (
                   <li onClick={() => setIsOpen(false)}>
                     <Link to="/cierres-caja" className={location.pathname === '/cierres-caja' ? 'active' : ''}>
                       <FontAwesomeIcon icon={faCashRegister} className="nav-icon" />
