@@ -343,7 +343,7 @@ export default function CierresCaja() {
                                         {ventasDetalle.map(v => (
                                             <tr key={v.id}>
                                                 <td style={s.td}>{fmtFecha(v.fecha_venta)}</td>
-                                                <td style={s.td}>{v.cliente || 'Consumidor Final'}</td>
+                                                <td style={s.td}>{v.cliente_nombre || 'Consumidor Final'}</td>
                                                 <td style={{ ...s.td, textAlign: 'right' }}>{fmt(v.total)}</td>
                                             </tr>
                                         ))}

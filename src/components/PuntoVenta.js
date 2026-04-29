@@ -1301,7 +1301,7 @@ const PuntoVenta = () => {
                                                             <td style={{ padding: '4px 6px' }}>
                                                                 {new Date(v.fecha_venta).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                                                             </td>
-                                                            <td style={{ padding: '4px 6px' }}>{v.cliente || 'CF'}</td>
+                                                            <td style={{ padding: '4px 6px' }}>{v.cliente_nombre || 'CF'}</td>
                                                             <td style={{ padding: '4px 6px', textAlign: 'right' }}>{formatearMonto(v.total)}</td>
                                                         </tr>
                                                     ))}
