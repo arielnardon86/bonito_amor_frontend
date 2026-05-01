@@ -936,9 +936,17 @@ const PuntoVenta = () => {
             if (result.isConfirmed) {
                 setProcesandoVenta(true);
                 try {
+                    // Calcular monto en efectivo real para el cierre de caja
+                    const montoEfectivoVenta = isModoCombinado
+                        ? formasPago
+                            .filter(f => f.metodo.toLowerCase().includes('efectivo'))
+                            .reduce((s, f) => s + (Number(f.monto) || 0), 0)
+                        : (metodoPagoParaBackend.toLowerCase().includes('efectivo') ? finalTotal : 0);
+
                     const ventaData = {
                         tienda_slug: selectedStoreSlug,
                         metodo_pago: metodoPagoParaBackend,
+                        monto_efectivo: montoEfectivoVenta,
                         ...datosAjusteParaBackend,
                         arancel_aplicado_id: arancelIdParaBackend || null,
                         detalles: activeCart.items.map(item => ({
@@ -1229,7 +1237,9 @@ const PuntoVenta = () => {
                parseFloat(b.monedas || 0);
     })();
 
-    const totalVentasEfectivo = ventasEfectivo.reduce((s, v) => s + Number(v.total || 0), 0);
+    const totalVentasEfectivo = ventasEfectivo.reduce(
+        (s, v) => s + Number(v.monto_efectivo != null ? v.monto_efectivo : v.total || 0), 0
+    );
     const egresos_ = cierreActivo?.egresos || [];
     const totalGastos   = egresos_.filter(e => e.tipo === 'EGRESO').reduce((s, e) => s + Number(e.importe || 0), 0);
     const totalRetiros  = egresos_.filter(e => e.tipo === 'RETIRO').reduce((s, e) => s + Number(e.importe || 0), 0);
@@ -1397,7 +1407,12 @@ const PuntoVenta = () => {
                                                                 {new Date(v.fecha_venta).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                                                             </td>
                                                             <td style={{ padding: '4px 6px' }}>{v.cliente_nombre || 'CF'}</td>
-                                                            <td style={{ padding: '4px 6px', textAlign: 'right' }}>{formatearMonto(v.total)}</td>
+                                                            <td style={{ padding: '4px 6px', textAlign: 'right' }}>
+                                                                {formatearMonto(v.monto_efectivo != null ? v.monto_efectivo : v.total)}
+                                                                {v.monto_efectivo != null && v.monto_efectivo !== v.total && (
+                                                                    <span style={{ fontSize: 11, color: '#718096', marginLeft: 4 }}>({v.metodo_pago})</span>
+                                                                )}
+                                                            </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
