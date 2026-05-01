@@ -550,8 +550,15 @@ const MetricasVentas = () => {
                     <div style={styles.card}>
                         <h3 style={styles.cardTitle}>Aranceles</h3>
                         <p style={styles.cardValue}>{formatearMonto((parseFloat(metrics?.total_arancel_ventas || 0) + parseFloat(metrics?.total_costo_envio_ml || 0)))}</p>
+                        {metrics?.tienda_tiene_ml && (
+                            <p style={{ fontSize: '0.72rem', color: '#718096', marginTop: 6 }}>
+                                {metrics?.ml_aranceles_automaticos !== false
+                                    ? 'Aranceles de métodos de pago (no ML)'
+                                    : 'Incluye aranceles ML configurados manualmente'}
+                            </p>
+                        )}
                     </div>
-                    {metrics?.tienda_tiene_ml && (
+                    {metrics?.tienda_tiene_ml && metrics?.ml_aranceles_automaticos !== false && (
                         <div style={styles.card}>
                             <h3 style={styles.cardTitle}>Descuentos Mercado Libre</h3>
                             <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_descuentos || 0))}</p>
@@ -568,7 +575,7 @@ const MetricasVentas = () => {
                             </div>
                         </div>
                     )}
-                    {metrics?.tienda_tiene_ml && (
+                    {metrics?.tienda_tiene_ml && metrics?.ml_aranceles_automaticos !== false && (
                         <div style={styles.card}>
                             <h3 style={styles.cardTitle}>Impuestos</h3>
                             <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_impuestos || 0))}</p>

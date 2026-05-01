@@ -169,6 +169,8 @@ const PanelAdministracionTienda = () => {
     // Estados para aranceles Mercado Libre (por producto: arancel % + costo envío)
     const [arancelesML, setArancelesML] = useState([]);
     const [productosML, setProductosML] = useState([]);
+    const [mlArancelesAutomaticos, setMlArancelesAutomaticos] = useState(true);
+    const [guardandoModoML, setGuardandoModoML] = useState(false);
     const [showArancelMLForm, setShowArancelMLForm] = useState(false);
     const [showEditArancelMLModal, setShowEditArancelMLModal] = useState(false);
     const [editArancelMLData, setEditArancelMLData] = useState(null);
@@ -219,6 +221,7 @@ const PanelAdministracionTienda = () => {
             const tienda = Array.isArray(tiendas) ? tiendas.find(t => t.nombre === selectedStoreSlug) : tiendas;
             if (tienda) {
                 setTiendaInfo(tienda);
+                setMlArancelesAutomaticos(tienda.ml_aranceles_automaticos !== false);
                 await fetchAfipEstado(tienda.id);
             }
         } catch (err) {
@@ -876,6 +879,24 @@ const PanelAdministracionTienda = () => {
                     text: err.response?.data?.detail || 'Error al eliminar el arancel.'
                 });
             }
+        }
+    };
+
+    const handleGuardarModoArancelesML = async (nuevoValor) => {
+        if (!tiendaInfo?.id) return;
+        setGuardandoModoML(true);
+        try {
+            await axios.patch(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/`,
+                { ml_aranceles_automaticos: nuevoValor },
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            setMlArancelesAutomaticos(nuevoValor);
+            Swal.fire({ icon: 'success', title: 'Modo guardado', timer: 1500, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.detail || 'No se pudo guardar el modo.', 'error');
+        } finally {
+            setGuardandoModoML(false);
         }
     };
 
@@ -1976,6 +1997,46 @@ const PanelAdministracionTienda = () => {
             {/* TAB: ARANCELES MERCADO LIBRE */}
             {activeTab === 'aranceles-ml' && (
                 <div style={styles.tabContent}>
+                    {/* Selector de modo de cálculo */}
+                    <div style={{ background: '#f0f4ff', border: '1px solid #c7d7fb', borderRadius: 10, padding: '18px 22px', marginBottom: 24 }}>
+                        <p style={{ fontWeight: 700, fontSize: 15, color: '#1a202c', marginBottom: 12 }}>
+                            Modo de cálculo de aranceles ML
+                        </p>
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                            <button
+                                onClick={() => !mlArancelesAutomaticos && handleGuardarModoArancelesML(true)}
+                                disabled={guardandoModoML || mlArancelesAutomaticos}
+                                style={{
+                                    padding: '10px 20px', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: mlArancelesAutomaticos ? 'default' : 'pointer',
+                                    border: `2px solid ${mlArancelesAutomaticos ? '#3c7ef3' : '#c7d7fb'}`,
+                                    background: mlArancelesAutomaticos ? '#3c7ef3' : '#fff',
+                                    color: mlArancelesAutomaticos ? '#fff' : '#4a6680',
+                                }}
+                            >
+                                ⚡ Automático (vía notificaciones ML)
+                            </button>
+                            <button
+                                onClick={() => mlArancelesAutomaticos && handleGuardarModoArancelesML(false)}
+                                disabled={guardandoModoML || !mlArancelesAutomaticos}
+                                style={{
+                                    padding: '10px 20px', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: !mlArancelesAutomaticos ? 'default' : 'pointer',
+                                    border: `2px solid ${!mlArancelesAutomaticos ? '#3c7ef3' : '#c7d7fb'}`,
+                                    background: !mlArancelesAutomaticos ? '#3c7ef3' : '#fff',
+                                    color: !mlArancelesAutomaticos ? '#fff' : '#4a6680',
+                                }}
+                            >
+                                ✏️ Manual (aranceles configurados)
+                            </button>
+                        </div>
+                        <p style={{ fontSize: 13, color: '#4a6680', marginTop: 10, marginBottom: 0 }}>
+                            {mlArancelesAutomaticos
+                                ? 'Los cargos de ML (comisión, envío, impuestos) se obtienen automáticamente de las notificaciones. Se muestran en la card "Descuentos Mercado Libre" de Métricas.'
+                                : 'Los aranceles se calculan según la configuración manual por producto. Se muestran en la card "Aranceles" de Métricas.'}
+                        </p>
+                    </div>
+
+                    {/* Formulario manual — solo visible en modo manual */}
+                    {!mlArancelesAutomaticos && (
                     <div style={styles.sectionHeader}>
                         <h2>Aranceles Mercado Libre por Producto</h2>
                         <button onClick={() => {
@@ -1990,8 +2051,9 @@ const PanelAdministracionTienda = () => {
                             + Nuevo Arancel ML
                         </button>
                     </div>
+                    )}
 
-                    {showArancelMLForm && (
+                    {!mlArancelesAutomaticos && showArancelMLForm && (
                         <div style={styles.formContainer} className="panel-admin-form-container">
                             <h3>Nuevo Arancel Mercado Libre</h3>
                             <form onSubmit={handleCreateArancelML}>
@@ -2065,6 +2127,7 @@ const PanelAdministracionTienda = () => {
                         </div>
                     )}
 
+                    {!mlArancelesAutomaticos && <>
                     <div style={styles.infoBox}>
                         <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Información</h3>
                         <p style={{ marginBottom: '10px' }}>
@@ -2119,6 +2182,7 @@ const PanelAdministracionTienda = () => {
                             </tbody>
                         </table>
                     </div>
+                    </>}
                 </div>
             )}
 
