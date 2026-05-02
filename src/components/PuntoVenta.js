@@ -1391,41 +1391,6 @@ const PuntoVenta = () => {
 
                                 {/* ── Columna izquierda: ventas y egresos ── */}
                                 <div>
-                                    <div style={{ background: '#fff', borderRadius: 10, padding: '16px', marginBottom: 14, border: '1px solid #e2e8f0' }}>
-                                        <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 10 }}>
-                                            Ventas en Efectivo del turno
-                                        </p>
-                                        {ventasEfectivo.length === 0 ? (
-                                            <p style={{ color: '#a0aec0', fontSize: 13 }}>Sin ventas en efectivo.</p>
-                                        ) : (
-                                            <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
-                                                <thead>
-                                                    <tr>
-                                                        <th style={{ textAlign: 'left', padding: '4px 6px', color: '#718096' }}>Fecha</th>
-                                                        <th style={{ textAlign: 'left', padding: '4px 6px', color: '#718096' }}>Cliente</th>
-                                                        <th style={{ textAlign: 'right', padding: '4px 6px', color: '#718096' }}>Importe</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {ventasEfectivo.map(v => (
-                                                        <tr key={v.id} style={{ borderTop: '1px solid #f0f4f8' }}>
-                                                            <td style={{ padding: '4px 6px' }}>
-                                                                {new Date(v.fecha_venta).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                                                            </td>
-                                                            <td style={{ padding: '4px 6px' }}>{v.cliente_nombre || 'CF'}</td>
-                                                            <td style={{ padding: '4px 6px', textAlign: 'right' }}>
-                                                                {formatearMonto(v.monto_efectivo != null ? v.monto_efectivo : v.total)}
-                                                                {v.monto_efectivo != null && v.monto_efectivo !== v.total && (
-                                                                    <span style={{ fontSize: 11, color: '#718096', marginLeft: 4 }}>({v.metodo_pago})</span>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        )}
-                                    </div>
-
                                     {/* Resumen financiero */}
                                     <div style={{ background: '#fff', borderRadius: 10, padding: '16px', border: '1px solid #e2e8f0', marginBottom: 14 }}>
                                         <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 10 }}>Resumen</p>
