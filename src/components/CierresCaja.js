@@ -50,7 +50,7 @@ export default function CierresCaja() {
 
     useEffect(() => { fetchCierres(); }, [fetchCierres]);
 
-    const [ventasResumen, setVentasResumen] = useState({ por_metodo: [], ventas: [] });
+    const [ventasResumen, setVentasResumen] = useState({ por_metodo: [], ventas: [], total_ventas_efectivo: null });
 
     const abrirDetalle = async (cierre) => {
         setDetalle(cierre);
@@ -61,19 +61,23 @@ export default function CierresCaja() {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             const data = res.data || {};
-            setVentasResumen({ por_metodo: data.por_metodo || [], ventas: data.ventas || [] });
+            setVentasResumen({
+                por_metodo: data.por_metodo || [],
+                ventas: data.ventas || [],
+                total_ventas_efectivo: data.total_ventas_efectivo ?? null,
+            });
             setVentasDetalle((data.ventas || []).filter(v =>
                 v.metodo_pago && v.metodo_pago.toLowerCase().includes('efectivo')
             ));
         } catch {
-            setVentasResumen({ por_metodo: [], ventas: [] });
+            setVentasResumen({ por_metodo: [], ventas: [], total_ventas_efectivo: null });
             setVentasDetalle([]);
         } finally {
             setLoadingDetalle(false);
         }
     };
 
-    const cerrarDetalle = () => { setDetalle(null); setVentasDetalle([]); setVentasResumen({ por_metodo: [], ventas: [] }); };
+    const cerrarDetalle = () => { setDetalle(null); setVentasDetalle([]); setVentasResumen({ por_metodo: [], ventas: [], total_ventas_efectivo: null }); };
 
     const imprimirRecibo = () => window.print();
 
@@ -210,7 +214,13 @@ export default function CierresCaja() {
             )}
 
             {/* Modal detalle / recibo */}
-            {detalle && (
+            {detalle && (() => {
+                // Para cierres abiertos, total_ventas_efectivo aún no está persistido en la DB.
+                // Usamos el valor calculado en tiempo real por ventas-resumen.
+                const efectivoParaResumen = detalle.estado === 'CERRADO'
+                    ? Number(detalle.total_ventas_efectivo || 0)
+                    : (ventasResumen.total_ventas_efectivo ?? Number(detalle.total_ventas_efectivo || 0));
+                return (
                 <div style={s.overlay} onClick={cerrarDetalle}>
                     <div style={s.modal} onClick={e => e.stopPropagation()} className="no-print-close">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
@@ -235,7 +245,7 @@ export default function CierresCaja() {
                                     </tr>
                                     <tr>
                                         <td style={s.td}>Ventas en efectivo</td>
-                                        <td style={{ ...s.td, textAlign: 'right' }}>{fmt(detalle.total_ventas_efectivo || 0)}</td>
+                                        <td style={{ ...s.td, textAlign: 'right' }}>{fmt(efectivoParaResumen)}</td>
                                     </tr>
                                     {Number(detalle.total_ingresos_extra || 0) > 0 && (
                                         <tr>
@@ -260,7 +270,7 @@ export default function CierresCaja() {
                                         <td style={{ ...s.td, textAlign: 'right' }}>
                                             {fmt(
                                                 Number(detalle.cambio_inicial || 0) +
-                                                Number(detalle.total_ventas_efectivo || 0) +
+                                                efectivoParaResumen +
                                                 Number(detalle.total_ingresos_extra || 0) -
                                                 Number(detalle.total_gastos || 0) -
                                                 Number(detalle.total_retiros || 0)
@@ -452,7 +462,8 @@ export default function CierresCaja() {
                         </div>
                     </div>
                 </div>
-            )}
+                );
+            })()}
         </div>
     );
 }
