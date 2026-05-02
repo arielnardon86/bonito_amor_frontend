@@ -103,7 +103,7 @@ const notificacionesSoportadas = () =>
     typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
 
 const PanelAdministracionTienda = () => {
-    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
+    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas } = useAuth();
     const navigate = useNavigate();
     const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken, error: notificationError } = useNotifications();
     
@@ -148,7 +148,11 @@ const PanelAdministracionTienda = () => {
         new_password2: ''
     });
     const [selectedUserId, setSelectedUserId] = useState(null);
-    
+    const [showTiendasModal, setShowTiendasModal]   = useState(false);
+    const [tiendasModalUser, setTiendasModalUser]   = useState(null);   // usuario target
+    const [tiendasModalSel, setTiendasModalSel]     = useState([]);     // ids seleccionados
+    const [guardandoTiendas, setGuardandoTiendas]   = useState(false);
+
     // Estados para aranceles
     const [aranceles, setAranceles] = useState([]);
     const [showArancelForm, setShowArancelForm] = useState(false);
@@ -603,6 +607,32 @@ const PanelAdministracionTienda = () => {
                     text: err.response?.data?.detail || 'Error al eliminar el usuario.'
                 });
             }
+        }
+    };
+
+    const handleAbrirTiendasModal = (targetUser) => {
+        const actualesIds = (targetUser.tiendas_autorizadas || []).map(t => t.id);
+        setTiendasModalUser(targetUser);
+        setTiendasModalSel(actualesIds);
+        setShowTiendasModal(true);
+    };
+
+    const handleGuardarTiendasAutorizadas = async () => {
+        if (!tiendasModalUser) return;
+        setGuardandoTiendas(true);
+        try {
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/users/${tiendasModalUser.id}/set-tiendas-autorizadas/`,
+                { tiendas: tiendasModalSel },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            Swal.fire({ icon: 'success', title: 'Acceso actualizado', timer: 1500, showConfirmButton: false });
+            setShowTiendasModal(false);
+            fetchUsers();
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo actualizar el acceso.', 'error');
+        } finally {
+            setGuardandoTiendas(false);
         }
     };
 
@@ -1305,6 +1335,12 @@ const PanelAdministracionTienda = () => {
                         </div>
                     )}
 
+                    {/* Calcula si el admin logueado tiene tiendas para delegar */}
+                    {(() => {
+                        const tiendasDelegables = tiendasAutorizadas.filter(t => t.nombre !== selectedStoreSlug);
+                        const mostrarColTiendas = tiendasDelegables.length > 0;
+                        const colSpanTotal = mostrarColTiendas ? 8 : 7;
+                        return (
                     <div style={styles.tableContainer} className="panel-admin-table-container">
                         <table style={styles.table} className="panel-admin-table">
                             <thead>
@@ -1315,13 +1351,14 @@ const PanelAdministracionTienda = () => {
                                     <th style={styles.th}>Apellido</th>
                                     <th style={styles.th}>Staff</th>
                                     <th style={styles.th}>Admin</th>
+                                    {mostrarColTiendas && <th style={styles.th}>Tiendas autorizadas</th>}
                                     <th style={styles.th}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {users.length === 0 ? (
                                     <tr>
-                                        <td colSpan="7" style={styles.td}>No hay usuarios registrados</td>
+                                        <td colSpan={colSpanTotal} style={styles.td}>No hay usuarios registrados</td>
                                     </tr>
                                 ) : (
                                     users.map(user => (
@@ -1332,6 +1369,26 @@ const PanelAdministracionTienda = () => {
                                             <td style={styles.td}>{user.last_name || '-'}</td>
                                             <td style={styles.td}>{user.is_staff ? 'Sí' : 'No'}</td>
                                             <td style={styles.td}>{user.is_superuser ? 'Sí' : 'No'}</td>
+                                            {mostrarColTiendas && (
+                                                <td style={styles.td}>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                                                        {(user.tiendas_autorizadas || [])
+                                                            .filter(t => tiendasDelegables.some(d => d.id === t.id))
+                                                            .map(t => (
+                                                                <span key={t.id} style={{ background: '#ebf8ff', color: '#2b6cb0', borderRadius: 10, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>
+                                                                    {t.nombre}
+                                                                </span>
+                                                            ))
+                                                        }
+                                                        <button
+                                                            onClick={() => handleAbrirTiendasModal(user)}
+                                                            style={{ padding: '2px 8px', borderRadius: 6, border: '1px solid #bee3f8', background: '#fff', color: '#2b6cb0', fontSize: 11, cursor: 'pointer' }}
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            )}
                                             <td style={styles.td}>
                                                 <div style={styles.actionButtons} className="panel-admin-action-buttons">
                                                     <button
@@ -1360,6 +1417,8 @@ const PanelAdministracionTienda = () => {
                             </tbody>
                         </table>
                     </div>
+                        );
+                    })()}
                 </div>
             )}
 
@@ -2243,6 +2302,55 @@ const PanelAdministracionTienda = () => {
             )}
 
             {/* MODAL DE CAMBIO DE CONTRASEÑA */}
+            {showTiendasModal && tiendasModalUser && (() => {
+                const tiendasDisponibles = tiendasAutorizadas.filter(t => t.nombre !== tiendasModalUser.tienda);
+                return (
+                    <div style={styles.modalOverlay}>
+                        <div style={{ ...styles.modalContent, maxWidth: 420 }} className="panel-admin-modal-content">
+                            <h3 style={{ marginTop: 0, marginBottom: 4 }}>Acceso a tiendas</h3>
+                            <p style={{ fontSize: 13, color: '#718096', marginBottom: 16 }}>
+                                Tiendas a las que <strong>{tiendasModalUser.username}</strong> puede acceder (además de la suya):
+                            </p>
+                            {tiendasDisponibles.length === 0 ? (
+                                <p style={{ color: '#a0aec0', fontSize: 13 }}>No tenés tiendas adicionales para delegar.</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                                    {tiendasDisponibles.map(t => (
+                                        <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={tiendasModalSel.includes(t.id)}
+                                                onChange={e => {
+                                                    if (e.target.checked) setTiendasModalSel(prev => [...prev, t.id]);
+                                                    else setTiendasModalSel(prev => prev.filter(id => id !== t.id));
+                                                }}
+                                                style={{ width: 16, height: 16 }}
+                                            />
+                                            {t.nombre}
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                            <div style={styles.formActions}>
+                                <button
+                                    onClick={handleGuardarTiendasAutorizadas}
+                                    disabled={guardandoTiendas}
+                                    style={styles.saveButton}
+                                >
+                                    {guardandoTiendas ? 'Guardando...' : 'Guardar'}
+                                </button>
+                                <button
+                                    onClick={() => setShowTiendasModal(false)}
+                                    style={styles.cancelButton}
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
             {showPasswordModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent} className="panel-admin-modal-content">
