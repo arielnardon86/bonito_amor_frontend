@@ -177,6 +177,35 @@ const PuntoVenta = () => {
         return cierre;
     }, [token, selectedStoreSlug, cierreActivo]);
 
+    const handleEliminarEgreso = useCallback(async (egresoId) => {
+        const confirm = await Swal.fire({
+            title: '¿Anular movimiento?',
+            text: 'Se eliminará este egreso del turno.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#c53030',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Sí, anular',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!confirm.isConfirmed) return;
+        try {
+            await axios.delete(`${BASE_API_ENDPOINT}/api/egresos-caja/${egresoId}/`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const cierre = cierreActivo;
+            if (cierre) {
+                const res = await axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                setCierreActivo(res.data);
+            }
+            Swal.fire({ icon: 'success', title: 'Movimiento anulado', timer: 1400, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo anular el movimiento.', 'error');
+        }
+    }, [token, cierreActivo]);
+
     const handleAgregarEgreso = useCallback(async (cerrarModal = false) => {
         if (!egresoForm.concepto.trim() || !egresoForm.importe) return;
         const cierre = await _getCierreActivo();
@@ -1472,12 +1501,17 @@ const PuntoVenta = () => {
                                             <p style={{ color: '#a0aec0', fontSize: 13 }}>Sin egresos.</p>
                                         ) : (
                                             cierreActivo.egresos.map(eg => (
-                                                <div key={eg.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0', borderTop: '1px solid #f0f4f8' }}>
-                                                    <span style={{ color: '#555' }}>{eg.tipo_display} — {eg.concepto}</span>
+                                                <div key={eg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '4px 0', borderTop: '1px solid #f0f4f8' }}>
+                                                    <span style={{ color: '#555', flex: 1 }}>{eg.tipo_display} — {eg.concepto}</span>
                                                     {eg.tipo === 'INGRESO'
-                                                        ? <span style={{ color: '#276749', fontWeight: 600 }}>+ {formatearMonto(eg.importe)}</span>
-                                                        : <span style={{ color: '#c53030', fontWeight: 600 }}>- {formatearMonto(eg.importe)}</span>
+                                                        ? <span style={{ color: '#276749', fontWeight: 600, marginRight: 8 }}>+ {formatearMonto(eg.importe)}</span>
+                                                        : <span style={{ color: '#c53030', fontWeight: 600, marginRight: 8 }}>- {formatearMonto(eg.importe)}</span>
                                                     }
+                                                    <button
+                                                        onClick={() => handleEliminarEgreso(eg.id)}
+                                                        title="Anular movimiento"
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#a0aec0', fontSize: 15, padding: '0 2px', lineHeight: 1 }}
+                                                    >×</button>
                                                 </div>
                                             ))
                                         )}
