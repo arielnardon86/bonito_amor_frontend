@@ -105,6 +105,7 @@ const PuntoVenta = () => {
     const [cierreActivo, setCierreActivo]             = useState(null);
     const [mostrarModalCierre, setMostrarModalCierre] = useState(false);
     const [ventasEfectivo, setVentasEfectivo]         = useState([]);
+    const [ventasPorMetodo, setVentasPorMetodo]       = useState([]);
     const [billetes, setBilletes] = useState({
         billetes_20000: '', billetes_10000: '', billetes_2000: '',
         billetes_1000: '', billetes_500: '', billetes_200: '',
@@ -149,12 +150,16 @@ const PuntoVenta = () => {
         setMostrarModalCierre(true);
         if (!cierre) return;
         try {
-            const res = await axios.get(
-                `${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/ventas-efectivo/`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            setVentasEfectivo(res.data || []);
-        } catch { setVentasEfectivo([]); }
+            const [resEfectivo, resResumen] = await Promise.all([
+                axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/ventas-efectivo/`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/ventas-resumen/`, { headers: { Authorization: `Bearer ${token}` } }),
+            ]);
+            setVentasEfectivo(resEfectivo.data || []);
+            setVentasPorMetodo(resResumen.data?.por_metodo || []);
+        } catch {
+            setVentasEfectivo([]);
+            setVentasPorMetodo([]);
+        }
     }, [token, selectedStoreSlug, cierreActivo]);
 
     const _getCierreActivo = useCallback(async () => {
@@ -1240,6 +1245,7 @@ const PuntoVenta = () => {
     const totalVentasEfectivo = ventasEfectivo.reduce(
         (s, v) => s + Number(v.monto_efectivo != null ? v.monto_efectivo : v.total || 0), 0
     );
+    const totalTodasVentas = ventasPorMetodo.reduce((s, m) => s + Number(m.total || 0), 0);
     const egresos_ = cierreActivo?.egresos || [];
     const totalGastos   = egresos_.filter(e => e.tipo === 'EGRESO').reduce((s, e) => s + Number(e.importe || 0), 0);
     const totalRetiros  = egresos_.filter(e => e.tipo === 'RETIRO').reduce((s, e) => s + Number(e.importe || 0), 0);
@@ -1423,6 +1429,25 @@ const PuntoVenta = () => {
                                     {/* Resumen financiero */}
                                     <div style={{ background: '#fff', borderRadius: 10, padding: '16px', border: '1px solid #e2e8f0', marginBottom: 14 }}>
                                         <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 10 }}>Resumen</p>
+
+                                        {/* Desglose de ventas por método de pago */}
+                                        {ventasPorMetodo.length > 0 && (
+                                            <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px dashed #e2e8f0' }}>
+                                                <p style={{ fontSize: 11, fontWeight: 600, color: '#718096', textTransform: 'uppercase', marginBottom: 6 }}>Ventas por método</p>
+                                                {ventasPorMetodo.map(m => (
+                                                    <div key={m.metodo_pago} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: '#4a5568' }}>
+                                                        <span>{m.metodo_pago || 'Sin método'} <span style={{ color: '#a0aec0', fontSize: 11 }}>({m.cantidad})</span></span>
+                                                        <span style={{ fontWeight: 500 }}>{formatearMonto(Number(m.total || 0))}</span>
+                                                    </div>
+                                                ))}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginTop: 4, paddingTop: 4, borderTop: '1px solid #e2e8f0', color: '#2d3748' }}>
+                                                    <span>Total ventas del turno</span>
+                                                    <span>{formatearMonto(totalTodasVentas)}</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Cálculo del efectivo teórico */}
                                         {[
                                             { label: 'Cambio inicial', val: cambioInicial, color: '#2d3748' },
                                             { label: 'Ventas en efectivo', val: totalVentasEfectivo, color: '#2d3748' },
