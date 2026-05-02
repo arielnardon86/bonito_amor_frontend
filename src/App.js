@@ -390,7 +390,7 @@ const AppContent = () => {
       setCambioInicialInput('');
     } catch (err) {
       console.error('Error al crear cierre:', err);
-      alert('No se pudo iniciar el turno. Intentá nuevamente.');
+      Swal.fire('Error', err.response?.data?.error || 'No se pudo iniciar el turno. Intentá nuevamente.', 'error');
     } finally {
       setGuardandoCambioInicial(false);
     }
