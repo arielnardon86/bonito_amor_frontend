@@ -111,6 +111,14 @@ const FacturaImpresion = () => {
             facturaRef.current.innerHTML = `
                 <div class="invoice" style="font-family: Arial, sans-serif; max-width: 80mm; margin: 0 auto; padding: 5mm;">
                     <div class="header" style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5mm; margin-bottom: 5mm;">
+                        <div style="display:flex;justify-content:center;margin-bottom:2mm;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 130" width="28mm" style="display:block;">
+                                <circle cx="110" cy="65" r="58" fill="none" stroke="#000" stroke-width="2.5"/>
+                                <circle cx="52" cy="65" r="7" fill="#000"/>
+                                <circle cx="168" cy="65" r="7" fill="#000"/>
+                                <text x="110" y="85" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="52" font-weight="900" fill="#000" letter-spacing="1">ARCA</text>
+                            </svg>
+                        </div>
                         <h1 style="font-size: 5mm; font-weight: bold; color: #000; margin: 0; -webkit-font-smoothing: none;">${factura.tienda_nombre || factura.tienda?.nombre || 'N/A'}</h1>
                         <p style="font-size: 4mm; font-weight: bold; color: #000; margin: 2mm 0; -webkit-font-smoothing: none;">${tipoFacturaText}</p>
                         ${factura.tienda?.cuit ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;">CUIT: ${factura.tienda.cuit}</p>` : ''}
