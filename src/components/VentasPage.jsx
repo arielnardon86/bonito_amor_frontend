@@ -173,7 +173,7 @@ const VentasPage = () => {
     }, [token, selectedStoreSlug]);
 
     useEffect(() => {
-        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
+        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff || user.is_supervisor) && selectedStoreSlug) {
             // OPTIMIZACIÓN: Hacer llamadas en paralelo
             Promise.all([
                 fetchVentas(),
@@ -181,10 +181,10 @@ const VentasPage = () => {
             ]).catch(err => {
                 console.error('Error al cargar datos iniciales:', err);
             });
-        } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) {
-            setError("Acceso denegado. Solo los superusuarios pueden ver/gestionar ventas.");
+        } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_supervisor))) {
+            setError("Acceso denegado. Solo el personal autorizado puede ver ventas.");
             setLoading(false);
-        } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
+        } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_supervisor) && !selectedStoreSlug) {
             setLoading(false);
         }
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchVentas]);
@@ -472,12 +472,11 @@ const VentasPage = () => {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    if (!isAuthenticated || (!user.is_superuser && !user.is_staff)) {
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los usuarios con permisos de staff pueden ver ventas.</div>;
+    if (!isAuthenticated || (!user.is_superuser && !user.is_staff && !user.is_supervisor)) {
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo el personal autorizado puede ver ventas.</div>;
     }
-    
-    // Verificar si es usuario staff (no superuser) para aplicar restricciones
-    const isStaffOnly = user.is_staff && !user.is_superuser;
+
+    const isStaffOnly = user.is_staff && !user.is_superuser && !user.is_supervisor;
 
     if (!selectedStoreSlug) {
         return (
