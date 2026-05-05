@@ -220,14 +220,8 @@ const Navbar = () => {
               </li>
             )}
 
-            {user && user.is_superuser && (
+            {user && (user.is_superuser || user.is_supervisor) && (
               <>
-                <li onClick={() => setIsOpen(false)}>
-                  <Link to="/metricas-ventas" className={location.pathname === '/metricas-ventas' ? 'active' : ''}>
-                    <FontAwesomeIcon icon={faChartLine} className="nav-icon" />
-                    <span>Métricas de Ventas</span>
-                  </Link>
-                </li>
                 <li onClick={() => setIsOpen(false)}>
                   <Link to="/registro-compras" className={location.pathname === '/registro-compras' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faMoneyBillWave} className="nav-icon" />
@@ -238,6 +232,17 @@ const Navbar = () => {
                   <Link to="/compras-stock" className={location.pathname === '/compras-stock' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faTruck} className="nav-icon" />
                     <span>Compras / Stock</span>
+                  </Link>
+                </li>
+              </>
+            )}
+
+            {user && user.is_superuser && (
+              <>
+                <li onClick={() => setIsOpen(false)}>
+                  <Link to="/metricas-ventas" className={location.pathname === '/metricas-ventas' ? 'active' : ''}>
+                    <FontAwesomeIcon icon={faChartLine} className="nav-icon" />
+                    <span>Métricas de Ventas</span>
                   </Link>
                 </li>
                 <li onClick={() => setIsOpen(false)}>
@@ -564,6 +569,16 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />
+              <Route path="/registro-compras" element={
+                <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
+                  <RegistroCompras />
+                </ProtectedRoute>
+              } />
+              <Route path="/compras-stock" element={
+                <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
+                  <ComprasStock />
+                </ProtectedRoute>
+              } />
               <Route path="/cierres-caja" element={
                 <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
                   <CierresCaja />
@@ -577,16 +592,6 @@ const AppContent = () => {
               <Route path="/metricas-ventas" element={
                 <ProtectedRoute adminOnly={true}>
                   <MetricasVentas />
-                </ProtectedRoute>
-              } />
-              <Route path="/registro-compras" element={
-                <ProtectedRoute adminOnly={true}>
-                  <RegistroCompras />
-                </ProtectedRoute>
-              } />
-              <Route path="/compras-stock" element={
-                <ProtectedRoute adminOnly={true}>
-                  <ComprasStock />
                 </ProtectedRoute>
               } />
               <Route path="/panel-administracion-tienda" element={

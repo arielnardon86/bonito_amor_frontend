@@ -233,12 +233,12 @@ const RegistroCompras = () => {
     };
 
     useEffect(() => {
-        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
+        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff || user.is_supervisor) && selectedStoreSlug) {
             fetchCompras();
-        } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_staff))) {
+        } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_staff && !user.is_supervisor))) {
             setError("Acceso denegado. Solo el personal autorizado puede ver esta página.");
             setLoadingCompras(false);
-        } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
+        } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff || user.is_supervisor) && !selectedStoreSlug) {
             setLoadingCompras(false);
         }
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchCompras]);
@@ -292,7 +292,7 @@ const RegistroCompras = () => {
     if (authLoading || (isAuthenticated && !user)) {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
-    if (!isAuthenticated || (!user.is_superuser && !user.is_staff)) {
+    if (!isAuthenticated || (!user.is_superuser && !user.is_staff && !user.is_supervisor)) {
         return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo el personal autorizado puede ver esta página.</div>;
     }
     if (!selectedStoreSlug) {
