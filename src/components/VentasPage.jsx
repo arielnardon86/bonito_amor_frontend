@@ -5,6 +5,11 @@ import * as XLSX from 'xlsx';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+    faEye, faEyeSlash, faCircleXmark, faFileInvoiceDollar,
+    faReceipt, faArrowsRotate, faXmark,
+} from '@fortawesome/free-solid-svg-icons';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -672,52 +677,53 @@ const VentasPage = () => {
                                         <td style={styles.td}>
                                             <div style={styles.actionButtons}>
                                                 <button
+                                                    className="icon-btn"
                                                     onClick={() => setExpandedSaleId(expandedSaleId === venta.id ? null : venta.id)}
-                                                    style={styles.detailButton}
+                                                    style={{ color: 'white', backgroundColor: '#3b9ede' }}
+                                                    data-tooltip={expandedSaleId === venta.id ? 'Ocultar detalle' : 'Ver detalle'}
                                                 >
-                                                    {expandedSaleId === venta.id ? 'Ocultar' : 'Ver'}
+                                                    <FontAwesomeIcon icon={expandedSaleId === venta.id ? faEyeSlash : faEye} />
                                                 </button>
                                                 {!venta.anulada && !isStaffOnly && (
                                                     <button
-                                                        onClick={() => {
-                                                            console.log('Intentando anular venta:', venta.id);
-                                                            handleAnularVenta(venta.id);
-                                                        }}
-                                                        style={styles.anularButton}
+                                                        className="icon-btn"
+                                                        onClick={() => handleAnularVenta(venta.id)}
+                                                        style={{ color: 'white', backgroundColor: '#e25252' }}
+                                                        data-tooltip="Anular venta"
                                                     >
-                                                        Anular
+                                                        <FontAwesomeIcon icon={faCircleXmark} />
                                                     </button>
                                                 )}
                                                 <button
+                                                    className="icon-btn"
                                                     onClick={() => handleVerFactura(venta)}
                                                     style={{
-                                                        ...styles.facturaButton,
-                                                        opacity: (venta.tiene_factura || venta.facturada) ? 1 : 0.5,
-                                                        cursor: (venta.tiene_factura || venta.facturada) ? 'pointer' : 'not-allowed'
+                                                        color: 'white',
+                                                        backgroundColor: '#5dc87a',
+                                                        opacity: (venta.tiene_factura || venta.facturada) ? 1 : 0.4,
+                                                        cursor: (venta.tiene_factura || venta.facturada) ? 'pointer' : 'not-allowed',
                                                     }}
                                                     disabled={!(venta.tiene_factura || venta.facturada)}
-                                                    title={(venta.tiene_factura || venta.facturada) ? "Ver factura" : "Esta venta no tiene factura asociada"}
+                                                    data-tooltip={(venta.tiene_factura || venta.facturada) ? 'Ver Factura' : 'Sin factura asociada'}
                                                 >
-                                                    Factura
+                                                    <FontAwesomeIcon icon={faFileInvoiceDollar} />
                                                 </button>
                                                 <button
+                                                    className="icon-btn"
                                                     onClick={() => handleReimprimirRecibo(venta)}
-                                                    style={styles.reprintButton}
+                                                    style={{ color: 'white', backgroundColor: '#5dc87a' }}
+                                                    data-tooltip="Reimprimir Recibo"
                                                 >
-                                                    Recibo
+                                                    <FontAwesomeIcon icon={faReceipt} />
                                                 </button>
                                                 {!venta.anulada && (
                                                     <button
-                                                        onClick={() => {
-                                                            navigate('/cambio-devolucion', { state: { venta } });
-                                                        }}
-                                                        style={{
-                                                            ...styles.reprintButton,
-                                                            backgroundColor: '#17a2b8',
-                                                            marginLeft: '5px'
-                                                        }}
+                                                        className="icon-btn"
+                                                        onClick={() => navigate('/cambio-devolucion', { state: { venta } })}
+                                                        style={{ color: 'white', backgroundColor: '#17a2b8' }}
+                                                        data-tooltip="Cambio / Devolución"
                                                     >
-                                                        Cambio/Devolución
+                                                        <FontAwesomeIcon icon={faArrowsRotate} />
                                                     </button>
                                                 )}
                                             </div>
@@ -848,10 +854,12 @@ const VentasPage = () => {
                                                                         <td style={styles.detailTd}>
                                                                             {!venta.anulada && !detalle.anulado_individualmente && !isStaffOnly && (
                                                                                 <button
+                                                                                    className="icon-btn"
                                                                                     onClick={() => handleAnularDetalleVenta(venta.id, detalle.id)}
-                                                                                    style={styles.anularDetalleButton}
+                                                                                    style={{ color: 'white', backgroundColor: '#f59e0b' }}
+                                                                                    data-tooltip="Anular ítem"
                                                                                 >
-                                                                                    Anular
+                                                                                    <FontAwesomeIcon icon={faXmark} />
                                                                                 </button>
                                                                             )}
                                                                         </td>

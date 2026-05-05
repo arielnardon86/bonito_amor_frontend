@@ -28,6 +28,65 @@ body {
   min-height: 100vh;
 }
 
+/* ── Icon Buttons with tooltip ──────────────────────────────────────────────── */
+.icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: opacity 0.15s, transform 0.12s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.icon-btn:hover {
+  opacity: 0.82;
+  transform: translateY(-1px);
+}
+.icon-btn:disabled {
+  cursor: not-allowed;
+  transform: none;
+}
+.icon-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(22, 22, 22, 0.92);
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s;
+  z-index: 9999;
+}
+.icon-btn::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(22, 22, 22, 0.92);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s;
+  z-index: 9999;
+}
+.icon-btn:hover::after,
+.icon-btn:hover::before {
+  opacity: 1;
+}
+
 /* ── Sidebar ────────────────────────────────────────────────────────────────── */
 .sidebar {
   position: fixed;

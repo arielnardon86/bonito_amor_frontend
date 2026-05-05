@@ -6,6 +6,8 @@ import { useNotifications } from '../hooks/useNotifications';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPencil, faTrash, faKey } from '@fortawesome/free-solid-svg-icons';
 import NotasCreditoPage from './NotasCreditoPage';
 import IntegracionTiendaNube from './IntegracionTiendaNube';
 import IntegracionMercadoLibrePanel from './IntegracionMercadoLibrePanel';
@@ -1415,22 +1417,28 @@ const PanelAdministracionTienda = () => {
                                             <td style={styles.td}>
                                                 <div style={styles.actionButtons} className="panel-admin-action-buttons">
                                                     <button
+                                                        className="icon-btn"
                                                         onClick={() => handleEditUser(user)}
-                                                        style={styles.editButton}
+                                                        style={{ color: 'white', backgroundColor: '#f59e0b' }}
+                                                        data-tooltip="Editar usuario"
                                                     >
-                                                        Editar
+                                                        <FontAwesomeIcon icon={faPencil} />
                                                     </button>
                                                     <button
+                                                        className="icon-btn"
                                                         onClick={() => handleChangePassword(user.id)}
-                                                        style={styles.passwordButton}
+                                                        style={{ color: 'white', backgroundColor: '#3b9ede' }}
+                                                        data-tooltip="Cambiar contraseña"
                                                     >
-                                                        Cambiar Contraseña
+                                                        <FontAwesomeIcon icon={faKey} />
                                                     </button>
                                                     <button
+                                                        className="icon-btn"
                                                         onClick={() => handleDeleteUser(user.id)}
-                                                        style={styles.deleteButton}
+                                                        style={{ color: 'white', backgroundColor: '#e25252' }}
+                                                        data-tooltip="Eliminar usuario"
                                                     >
-                                                        Eliminar
+                                                        <FontAwesomeIcon icon={faTrash} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -1596,16 +1604,20 @@ const PanelAdministracionTienda = () => {
                                             <td style={styles.td}>
                                                 <div style={styles.actionButtons} className="panel-admin-action-buttons">
                                                     <button
+                                                        className="icon-btn"
                                                         onClick={() => handleEditArancel(arancel)}
-                                                        style={styles.editButton}
+                                                        style={{ color: 'white', backgroundColor: '#f59e0b' }}
+                                                        data-tooltip="Editar arancel"
                                                     >
-                                                        Editar
+                                                        <FontAwesomeIcon icon={faPencil} />
                                                     </button>
                                                     <button
+                                                        className="icon-btn"
                                                         onClick={() => handleDeleteArancel(arancel.id)}
-                                                        style={styles.deleteButton}
+                                                        style={{ color: 'white', backgroundColor: '#e25252' }}
+                                                        data-tooltip="Eliminar arancel"
                                                     >
-                                                        Eliminar
+                                                        <FontAwesomeIcon icon={faTrash} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -2245,16 +2257,20 @@ const PanelAdministracionTienda = () => {
                                             <td style={styles.td}>
                                                 <div style={styles.actionButtons} className="panel-admin-action-buttons">
                                                     <button
+                                                        className="icon-btn"
                                                         onClick={() => handleEditArancelML(arancel)}
-                                                        style={styles.editButton}
+                                                        style={{ color: 'white', backgroundColor: '#f59e0b' }}
+                                                        data-tooltip="Editar arancel ML"
                                                     >
-                                                        Editar
+                                                        <FontAwesomeIcon icon={faPencil} />
                                                     </button>
                                                     <button
+                                                        className="icon-btn"
                                                         onClick={() => handleDeleteArancelML(arancel.id)}
-                                                        style={styles.deleteButton}
+                                                        style={{ color: 'white', backgroundColor: '#e25252' }}
+                                                        data-tooltip="Eliminar arancel ML"
                                                     >
-                                                        Eliminar
+                                                        <FontAwesomeIcon icon={faTrash} />
                                                     </button>
                                                 </div>
                                             </td>

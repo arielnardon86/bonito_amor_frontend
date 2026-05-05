@@ -4,6 +4,8 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPencil, faTrash } from '@fortawesome/free-solid-svg-icons';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -435,14 +437,22 @@ const Productos = () => {
                                             <td style={{ ...styles.td, color: producto.stock <= STOCK_BAJO_THRESHOLD ? '#dc2626' : undefined, fontWeight: producto.stock <= STOCK_BAJO_THRESHOLD ? 700 : undefined }}>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</td>
                                             <td style={styles.td}>
                                                 {user.is_superuser && <>
-                                                    <button onClick={() => {
-                                                        setEditProduct({ ...producto });
-                                                        setShowEditModal(true);
-                                                    }} style={styles.editButton}>Editar</button>
-                                                    <button onClick={() => {
-                                                        setProductToDelete(producto);
-                                                        setShowDeleteModal(true);
-                                                    }} style={styles.deleteButton}>Eliminar</button>
+                                                    <button
+                                                        className="icon-btn"
+                                                        onClick={() => { setEditProduct({ ...producto }); setShowEditModal(true); }}
+                                                        style={{ color: 'white', backgroundColor: '#f59e0b' }}
+                                                        data-tooltip="Editar producto"
+                                                    >
+                                                        <FontAwesomeIcon icon={faPencil} />
+                                                    </button>
+                                                    <button
+                                                        className="icon-btn"
+                                                        onClick={() => { setProductToDelete(producto); setShowDeleteModal(true); }}
+                                                        style={{ color: 'white', backgroundColor: '#e25252' }}
+                                                        data-tooltip="Eliminar producto"
+                                                    >
+                                                        <FontAwesomeIcon icon={faTrash} />
+                                                    </button>
                                                 </>}
                                             </td></tr>
                                         );
