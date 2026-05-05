@@ -455,7 +455,7 @@ const PuntoVenta = () => {
     // **********************************************
     useEffect(() => {
         const loadInitialData = async () => {
-            if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
+            if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff || user.is_supervisor) && selectedStoreSlug) {
                 setLoadingProducts(true);
                 setError(null);
                 try {
@@ -467,17 +467,17 @@ const PuntoVenta = () => {
                         fetchCierreActivo(),
                     ]);
                     // Carga inicial sin filtro (el efecto de filterTerm se encargará de aplicar el filtro si existe)
-                    await fetchProductos(1, filterTerm || ''); 
+                    await fetchProductos(1, filterTerm || '');
                 } catch (err) {
                     console.error("Fallo al inicializar datos:", err);
                     setError(prev => prev || 'Fallo crítico al iniciar el Punto de Venta.');
                 } finally {
                     setLoadingProducts(false);
                 }
-            } else if (!authLoading && (!isAuthenticated || !user || !(user.is_superuser || user.is_staff))) {
+            } else if (!authLoading && (!isAuthenticated || !user || !(user.is_superuser || user.is_staff || user.is_supervisor))) {
                 setError("Acceso denegado. No tienes permisos para usar el punto de venta.");
                 setLoadingProducts(false);
-            } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && !selectedStoreSlug) {
+            } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff || user.is_supervisor) && !selectedStoreSlug) {
                  setLoadingProducts(false);
             }
         };
@@ -1242,7 +1242,7 @@ const PuntoVenta = () => {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    if (!isAuthenticated || !(user.is_superuser || user.is_staff)) {
+    if (!isAuthenticated || !(user.is_superuser || user.is_staff || user.is_supervisor)) {
         return <div style={styles.accessDeniedMessage}>Acceso denegado. No tienes permisos para usar el punto de venta.</div>;
     }
 

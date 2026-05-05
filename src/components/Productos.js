@@ -126,12 +126,12 @@ const Productos = () => {
     }, [token, selectedStoreSlug, searchTerm]);
 
     useEffect(() => {
-        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff) && selectedStoreSlug) {
+        if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_supervisor || user.is_staff) && selectedStoreSlug) {
             fetchProductos();
-        } else if (!authLoading && (!isAuthenticated || !user || !user.is_superuser)) { 
-            setError("Acceso denegado. Solo los administradores pueden ver/gestionar productos.");
+        } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_supervisor))) {
+            setError("Acceso denegado. No tenés permisos para gestionar productos.");
             setLoadingProducts(false);
-        } else if (!authLoading && isAuthenticated && user && user.is_superuser && !selectedStoreSlug) {
+        } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_supervisor) && !selectedStoreSlug) {
             setLoadingProducts(false);
         }
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos]);
@@ -240,8 +240,8 @@ const Productos = () => {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
     }
 
-    if (!isAuthenticated || !user.is_superuser) {
-        return <div style={styles.accessDeniedMessage}>Acceso denegado. Solo los superusuarios pueden ver/gestionar productos.</div>;
+    if (!isAuthenticated || (!user.is_superuser && !user.is_supervisor)) {
+        return <div style={styles.accessDeniedMessage}>Acceso denegado. No tenés permisos para gestionar productos.</div>;
     }
     if (!selectedStoreSlug) {
         return (
@@ -434,14 +434,16 @@ const Productos = () => {
                                             </td>
                                             <td style={{ ...styles.td, color: producto.stock <= STOCK_BAJO_THRESHOLD ? '#dc2626' : undefined, fontWeight: producto.stock <= STOCK_BAJO_THRESHOLD ? 700 : undefined }}>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</td>
                                             <td style={styles.td}>
-                                                <button onClick={() => {
-                                                    setEditProduct({ ...producto });
-                                                    setShowEditModal(true);
-                                                }} style={styles.editButton}>Editar</button>
-                                                <button onClick={() => {
-                                                    setProductToDelete(producto);
-                                                    setShowDeleteModal(true);
-                                                }} style={styles.deleteButton}>Eliminar</button>
+                                                {user.is_superuser && <>
+                                                    <button onClick={() => {
+                                                        setEditProduct({ ...producto });
+                                                        setShowEditModal(true);
+                                                    }} style={styles.editButton}>Editar</button>
+                                                    <button onClick={() => {
+                                                        setProductToDelete(producto);
+                                                        setShowDeleteModal(true);
+                                                    }} style={styles.deleteButton}>Eliminar</button>
+                                                </>}
                                             </td></tr>
                                         );
                                     })}

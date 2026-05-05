@@ -3,11 +3,10 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
-const ProtectedRoute = ({ children, adminOnly = false, staffOnly = false }) => {
+const ProtectedRoute = ({ children, adminOnly = false, staffOnly = false, supervisorAllowed = false }) => {
     const { isAuthenticated, user, loading } = useAuth();
 
     if (loading) {
-        // Muestra un mensaje de carga mientras se verifica el estado de autenticación
         return <div style={{ textAlign: 'center', marginTop: '50px' }}>Cargando...</div>;
     }
 
@@ -19,29 +18,22 @@ const ProtectedRoute = ({ children, adminOnly = false, staffOnly = false }) => {
         return <Navigate to="/login" replace />;
     }
 
-
-    // Lógica de permisos
-    // 1. Si se requiere que sea admin (superuser)
     if (adminOnly) {
-        if (!user.is_superuser) {
-            console.log("ProtectedRoute: No es superusuario, redirigiendo a la página principal.");
-            return <Navigate to="/" replace />; // Redirige a la raíz si no tiene permisos de admin
+        const ok = user.is_superuser || (supervisorAllowed && user.is_supervisor);
+        if (!ok) {
+            return <Navigate to="/" replace />;
         }
         return children;
     }
 
-    // 2. Si se requiere que sea staff (pero no adminOnly, ya que eso se manejó arriba)
     if (staffOnly) {
-        if (!user.is_staff) {
-            console.log("ProtectedRoute: No es staff, redirigiendo a la página principal.");
-            return <Navigate to="/" replace />; // Redirige a la raíz si no tiene permisos de staff
+        const ok = user.is_staff || user.is_superuser || (supervisorAllowed && user.is_supervisor);
+        if (!ok) {
+            return <Navigate to="/" replace />;
         }
         return children;
     }
 
-    // 3. Si no se especificaron adminOnly ni staffOnly (ruta por defecto),
-    // cualquier usuario autenticado puede acceder.
-    console.log("ProtectedRoute: No se requieren roles específicos, usuario autenticado. Concediendo acceso.");
     return children;
 };
 

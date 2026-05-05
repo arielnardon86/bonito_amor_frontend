@@ -99,6 +99,7 @@ export const AuthProvider = ({ children }) => {
                 email: decodedUser.email,
                 is_staff: decodedUser.is_staff,
                 is_superuser: decodedUser.is_superuser,
+                is_supervisor: decodedUser.is_supervisor || false,
                 cierre_caja_habilitado: decodedUser.cierre_caja_habilitado || false,
                 tienda_tiene_cierre_caja: decodedUser.tienda_tiene_cierre_caja || false,
             };
@@ -140,8 +141,9 @@ export const AuthProvider = ({ children }) => {
                     email: decodedToken.email,
                     is_staff: decodedToken.is_staff,
                     is_superuser: decodedToken.is_superuser,
+                    is_supervisor: decodedToken.is_supervisor || false,
                     cierre_caja_habilitado: decodedToken.cierre_caja_habilitado || false,
-                tienda_tiene_cierre_caja: decodedToken.tienda_tiene_cierre_caja || false,
+                    tienda_tiene_cierre_caja: decodedToken.tienda_tiene_cierre_caja || false,
                 };
                 setUser(userData);
                 setIsAuthenticated(true);

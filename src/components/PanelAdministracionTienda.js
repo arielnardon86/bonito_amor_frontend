@@ -139,6 +139,7 @@ const PanelAdministracionTienda = () => {
         last_name: '',
         is_staff: false,
         is_superuser: false,
+        is_supervisor: false,
         cierre_caja_habilitado: false,
         tienda: selectedStoreSlug || ''
     });
@@ -497,6 +498,8 @@ const PanelAdministracionTienda = () => {
                 last_name: '',
                 is_staff: false,
                 is_superuser: false,
+                is_supervisor: false,
+                cierre_caja_habilitado: false,
                 tienda: selectedStoreSlug
             });
             fetchUsers();
@@ -521,6 +524,7 @@ const PanelAdministracionTienda = () => {
             last_name: user.last_name || '',
             is_staff: user.is_staff || false,
             is_superuser: user.is_superuser || false,
+            is_supervisor: user.is_supervisor || false,
             cierre_caja_habilitado: user.cierre_caja_habilitado || false,
             tienda: selectedStoreSlug
         });
@@ -538,6 +542,7 @@ const PanelAdministracionTienda = () => {
                 last_name: userForm.last_name,
                 is_staff: userForm.is_staff,
                 is_superuser: userForm.is_superuser,
+                is_supervisor: userForm.is_supervisor,
                 cierre_caja_habilitado: userForm.cierre_caja_habilitado,
                 tienda: selectedStoreSlug
             }, {
@@ -561,6 +566,8 @@ const PanelAdministracionTienda = () => {
                 last_name: '',
                 is_staff: false,
                 is_superuser: false,
+                is_supervisor: false,
+                cierre_caja_habilitado: false,
                 tienda: selectedStoreSlug
             });
             fetchUsers();
@@ -1199,6 +1206,8 @@ const PanelAdministracionTienda = () => {
                                 last_name: '',
                                 is_staff: false,
                                 is_superuser: false,
+                                is_supervisor: false,
+                                cierre_caja_habilitado: false,
                                 tienda: selectedStoreSlug
                             });
                             setShowUserForm(true);
@@ -1295,6 +1304,18 @@ const PanelAdministracionTienda = () => {
                                         <label>
                                             <input
                                                 type="checkbox"
+                                                name="is_supervisor"
+                                                checked={userForm.is_supervisor}
+                                                onChange={handleUserFormChange}
+                                                style={styles.checkbox}
+                                            />
+                                            Es Supervisor
+                                        </label>
+                                    </div>
+                                    <div style={styles.formGroup}>
+                                        <label>
+                                            <input
+                                                type="checkbox"
                                                 name="is_superuser"
                                                 checked={userForm.is_superuser}
                                                 onChange={handleUserFormChange}
@@ -1339,7 +1360,7 @@ const PanelAdministracionTienda = () => {
                     {(() => {
                         const tiendasDelegables = tiendasAutorizadas.filter(t => t.nombre !== selectedStoreSlug);
                         const mostrarColTiendas = tiendasDelegables.length > 0;
-                        const colSpanTotal = mostrarColTiendas ? 8 : 7;
+                        const colSpanTotal = mostrarColTiendas ? 9 : 8;
                         return (
                     <div style={styles.tableContainer} className="panel-admin-table-container">
                         <table style={styles.table} className="panel-admin-table">
@@ -1350,6 +1371,7 @@ const PanelAdministracionTienda = () => {
                                     <th style={styles.th}>Nombre</th>
                                     <th style={styles.th}>Apellido</th>
                                     <th style={styles.th}>Staff</th>
+                                    <th style={styles.th}>Supervisor</th>
                                     <th style={styles.th}>Admin</th>
                                     {mostrarColTiendas && <th style={styles.th}>Tiendas autorizadas</th>}
                                     <th style={styles.th}>Acciones</th>
@@ -1368,6 +1390,7 @@ const PanelAdministracionTienda = () => {
                                             <td style={styles.td}>{user.first_name || '-'}</td>
                                             <td style={styles.td}>{user.last_name || '-'}</td>
                                             <td style={styles.td}>{user.is_staff ? 'Sí' : 'No'}</td>
+                                            <td style={styles.td}>{user.is_supervisor ? 'Sí' : 'No'}</td>
                                             <td style={styles.td}>{user.is_superuser ? 'Sí' : 'No'}</td>
                                             {mostrarColTiendas && (
                                                 <td style={styles.td}>

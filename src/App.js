@@ -193,7 +193,7 @@ const Navbar = () => {
 
         {isAuthenticated && (
           <ul className="sidebar-links">
-            {user && (user.is_staff || user.is_superuser) && ( 
+            {user && (user.is_staff || user.is_superuser || user.is_supervisor) && (
               <li onClick={() => setIsOpen(false)}>
                 <Link to="/punto-venta" className={location.pathname === '/punto-venta' || location.pathname === '/' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faShoppingCart} className="nav-icon" />
@@ -201,8 +201,8 @@ const Navbar = () => {
                 </Link>
               </li>
             )}
-            
-            {user && (user.is_staff || user.is_superuser) && ( 
+
+            {user && (user.is_staff || user.is_superuser || user.is_supervisor) && (
               <li onClick={() => setIsOpen(false)}>
                 <Link to="/ventas" className={location.pathname === '/ventas' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faListAlt} className="nav-icon" />
@@ -210,15 +210,18 @@ const Navbar = () => {
                 </Link>
               </li>
             )}
-            
-            {user && user.is_superuser && ( 
+
+            {user && (user.is_superuser || user.is_supervisor) && (
+              <li onClick={() => setIsOpen(false)}>
+                <Link to="/productos" className={location.pathname === '/productos' ? 'active' : ''}>
+                  <FontAwesomeIcon icon={faBox} className="nav-icon" />
+                  <span>Gestión de Productos</span>
+                </Link>
+              </li>
+            )}
+
+            {user && user.is_superuser && (
               <>
-                <li onClick={() => setIsOpen(false)}>
-                  <Link to="/productos" className={location.pathname === '/productos' ? 'active' : ''}>
-                    <FontAwesomeIcon icon={faBox} className="nav-icon" />
-                    <span>Gestión de Productos</span>
-                  </Link>
-                </li>
                 <li onClick={() => setIsOpen(false)}>
                   <Link to="/metricas-ventas" className={location.pathname === '/metricas-ventas' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faChartLine} className="nav-icon" />
@@ -243,15 +246,16 @@ const Navbar = () => {
                     <span>Panel de Administración</span>
                   </Link>
                 </li>
-                {tiendasAutorizadas.some(t => t.nombre === selectedStoreSlug && t.tiene_cierre_caja) && (
-                  <li onClick={() => setIsOpen(false)}>
-                    <Link to="/cierres-caja" className={location.pathname === '/cierres-caja' ? 'active' : ''}>
-                      <FontAwesomeIcon icon={faCashRegister} className="nav-icon" />
-                      <span>Cierres de Caja</span>
-                    </Link>
-                  </li>
-                )}
               </>
+            )}
+
+            {user && (user.is_superuser || user.is_supervisor) && tiendasAutorizadas.some(t => t.nombre === selectedStoreSlug && t.tiene_cierre_caja) && (
+              <li onClick={() => setIsOpen(false)}>
+                <Link to="/cierres-caja" className={location.pathname === '/cierres-caja' ? 'active' : ''}>
+                  <FontAwesomeIcon icon={faCashRegister} className="nav-icon" />
+                  <span>Cierres de Caja</span>
+                </Link>
+              </li>
             )}
             
             {user && notificacionesSoportadas() && notificationPermission === 'default' && (
@@ -520,7 +524,7 @@ const AppContent = () => {
 
           <Route path="/" element={
             isAuthenticated && selectedStoreSlug ? (
-              <ProtectedRoute staffOnly={true}>
+              <ProtectedRoute staffOnly={true} supervisorAllowed={true}>
                 <PuntoVenta />
               </ProtectedRoute>
             ) : (
@@ -528,16 +532,16 @@ const AppContent = () => {
             )
           } />
 
-          {isAuthenticated && selectedStoreSlug && (user?.is_staff || user?.is_superuser) && (
+          {isAuthenticated && selectedStoreSlug && (user?.is_staff || user?.is_superuser || user?.is_supervisor) && (
             <>
               <Route path="/punto-venta" element={<PuntoVenta />} />
             </>
           )}
 
-          {isAuthenticated && selectedStoreSlug && (user?.is_staff || user?.is_superuser) && (
+          {isAuthenticated && selectedStoreSlug && (user?.is_staff || user?.is_superuser || user?.is_supervisor) && (
             <>
               <Route path="/ventas" element={
-                <ProtectedRoute staffOnly={true}>
+                <ProtectedRoute staffOnly={true} supervisorAllowed={true}>
                   <VentasPage />
                 </ProtectedRoute>
               } />
@@ -552,13 +556,24 @@ const AppContent = () => {
             </>
           )}
 
-          {isAuthenticated && selectedStoreSlug && user?.is_superuser && (
+          {isAuthenticated && selectedStoreSlug && (user?.is_superuser || user?.is_supervisor) && (
             <>
               <Route path="/productos" element={
-                <ProtectedRoute adminOnly={true}>
+                <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
                   <Productos />
                 </ProtectedRoute>
               } />
+              <Route path="/etiquetas" element={<EtiquetasImpresion />} />
+              <Route path="/cierres-caja" element={
+                <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
+                  <CierresCaja />
+                </ProtectedRoute>
+              } />
+            </>
+          )}
+
+          {isAuthenticated && selectedStoreSlug && user?.is_superuser && (
+            <>
               <Route path="/metricas-ventas" element={
                 <ProtectedRoute adminOnly={true}>
                   <MetricasVentas />
@@ -574,15 +589,9 @@ const AppContent = () => {
                   <ComprasStock />
                 </ProtectedRoute>
               } />
-              <Route path="/etiquetas" element={<EtiquetasImpresion />} />
               <Route path="/panel-administracion-tienda" element={
                 <ProtectedRoute adminOnly={true}>
                   <PanelAdministracionTienda />
-                </ProtectedRoute>
-              } />
-              <Route path="/cierres-caja" element={
-                <ProtectedRoute adminOnly={true}>
-                  <CierresCaja />
                 </ProtectedRoute>
               } />
             </>
