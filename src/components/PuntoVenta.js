@@ -7,6 +7,7 @@ import { useAuth } from '../AuthContext';
 import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
+import HelpButton from './HelpButton';
 
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -1286,7 +1287,19 @@ const PuntoVenta = () => {
     return (
         <div style={styles.container}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                <h1 style={{ ...styles.header, marginBottom: 0 }}>Punto de Venta</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <h1 style={{ ...styles.header, marginBottom: 0 }}>Punto de Venta</h1>
+                    <HelpButton
+                        titulo="Punto de Venta"
+                        bullets={[
+                            'Buscá productos por nombre, código de barras o escaneá con lector',
+                            'Manejá múltiples ventas en simultáneo con las pestañas de carrito',
+                            'Elegí el método de pago: efectivo, transferencia, QR, tarjeta o pago combinado',
+                            'Aplicá descuentos o recargos al total antes de confirmar la venta',
+                            'Si tenés el turno habilitado, abrí tu caja antes de vender y cerrala al finalizar',
+                        ]}
+                    />
+                </div>
                 {user?.cierre_caja_habilitado && (
                     <div style={{ display: 'flex', gap: 8 }}>
                         {/* Abrir caja: solo si no hay turno activo */}

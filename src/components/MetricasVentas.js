@@ -3,6 +3,7 @@ import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../AuthContext';
 import { formatearMonto } from '../utils/formatearMonto';
+import HelpButton from './HelpButton';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -393,7 +394,19 @@ const MetricasVentas = () => {
 
                 {/* ── Header ─────────────────────────────────────────────────────── */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                    <h1 style={styles.pageTitle}>Métricas</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <h1 style={{ ...styles.pageTitle, marginBottom: 0 }}>Métricas</h1>
+                        <HelpButton
+                            titulo="Métricas de Ventas"
+                            bullets={[
+                                'Visualizá el volumen de ventas por día, semana o mes',
+                                'Filtrá por período, método de pago o vendedor para análisis detallados',
+                                'Analizá qué productos se venden más y la evolución de ingresos',
+                                'Descargá el reporte en Excel para análisis externos',
+                                'Navegá entre meses con las flechas del encabezado',
+                            ]}
+                        />
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         {usingNavMonth && (
                             <button

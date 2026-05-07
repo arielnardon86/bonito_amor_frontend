@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPencil, faTrash } from '@fortawesome/free-solid-svg-icons';
+import HelpButton from './HelpButton';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -255,7 +256,19 @@ const Productos = () => {
     
     return (
         <div style={styles.container}>
-            <h1 style={styles.title}>Productos</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <h1 style={{ ...styles.title, marginBottom: 0 }}>Productos</h1>
+                <HelpButton
+                    titulo="Gestión de Productos"
+                    bullets={[
+                        'Buscá productos por nombre o código de barras',
+                        'Creá nuevos productos: el código de barras se genera automáticamente si no lo tenés',
+                        'Seleccioná uno o varios productos y hacé clic en "Imprimir Etiquetas" para generar etiquetas con código de barras',
+                        'Los Supervisores pueden agregar productos pero no editarlos ni eliminarlos',
+                        'Solo los Administradores pueden editar precio, stock o eliminar productos',
+                    ]}
+                />
+            </div>
             
             <div style={styles.section}>
                 <h2 style={styles.sectionTitle}>Nuevo producto</h2>

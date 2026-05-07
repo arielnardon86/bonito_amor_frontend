@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { useAuth } from '../AuthContext';
+import HelpButton from './HelpButton';
 
 const normalizeApiUrl = (url) => {
     if (!url) return 'http://localhost:8000';
@@ -277,6 +278,16 @@ export default function ComprasStock() {
                 <div style={cs.header}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                         <h1 style={cs.h1}>Compras / Stock</h1>
+                        <HelpButton
+                            titulo="Compras / Stock"
+                            bullets={[
+                                'Registrá las compras de mercadería con costo, proveedor y método de pago.',
+                                'Al agregar una compra, el stock del producto se actualiza automáticamente.',
+                                'Navegá por mes para ver el historial de compras y el total invertido.',
+                                'Las tarjetas resumen muestran el gasto total y cantidad de compras del mes.',
+                                'Podés exportar el historial o ver el detalle de cada operación.',
+                            ]}
+                        />
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <button type="button" onClick={handlePrevMonth} style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontSize: 15, color: 'var(--ts-text-2)', lineHeight: 1 }}>‹</button>
                             <span style={cs.badge}>● {mesActual}</span>

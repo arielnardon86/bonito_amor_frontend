@@ -8,6 +8,7 @@ import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPencil, faTrash, faKey } from '@fortawesome/free-solid-svg-icons';
+import HelpButton from './HelpButton';
 import NotasCreditoPage from './NotasCreditoPage';
 import IntegracionTiendaNube from './IntegracionTiendaNube';
 import IntegracionMercadoLibrePanel from './IntegracionMercadoLibrePanel';
@@ -1121,7 +1122,61 @@ const PanelAdministracionTienda = () => {
             <style>{mobileStyles}</style>
             <div style={styles.container} className="panel-admin-container">
             <div style={styles.header}>
-                <h1 style={styles.title}>Administración</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <h1 style={styles.title}>Administración</h1>
+                    <HelpButton
+                        titulo={{
+                            'usuarios': 'Gestión de Usuarios',
+                            'medios-pago-aranceles': 'Medios de Pago y Aranceles',
+                            'habilitar-facturador': 'Facturación AFIP (ARCA)',
+                            'notas-credito': 'Notas de Crédito',
+                            'aranceles-ml': 'Aranceles MercadoLibre',
+                            'tiendanube': 'Integración TiendaNube',
+                            'mercadolibre-panel': 'Integración MercadoLibre',
+                        }[activeTab] || 'Panel de Administración'}
+                        bullets={{
+                            'usuarios': [
+                                'Creá y administrá los usuarios de la tienda (staff, supervisores y administradores).',
+                                'Asigná roles: Staff solo ve el Punto de Venta, Supervisor puede ver ventas y compras, Admin tiene acceso total.',
+                                'Podés resetear la contraseña de cualquier usuario desde aquí.',
+                                'Activá o desactivá el permiso de "Abrir Caja" por usuario.',
+                            ],
+                            'medios-pago-aranceles': [
+                                'Configurá los medios de pago disponibles en el Punto de Venta.',
+                                'Definí el arancel (%) de cada medio de pago para el cálculo de costos.',
+                                'Los aranceles afectan el análisis de rentabilidad por venta.',
+                            ],
+                            'habilitar-facturador': [
+                                'Configurá los datos de tu empresa para emitir facturas electrónicas ante AFIP/ARCA.',
+                                'El proceso requiere configurar CUIT, punto de venta, CSR y certificado.',
+                                'Una vez operativo, podrás emitir Facturas A y B desde el Punto de Venta.',
+                            ],
+                            'notas-credito': [
+                                'Emitir notas de crédito para anular o ajustar facturas electrónicas ya emitidas.',
+                                'Buscá la factura original por número y generá la nota de crédito correspondiente.',
+                                'Requiere que el facturador AFIP/ARCA esté operativo.',
+                            ],
+                            'aranceles-ml': [
+                                'Configurá los aranceles de MercadoLibre según categoría de producto.',
+                                'Los aranceles se usan para calcular la rentabilidad de ventas por ML.',
+                                'Podés definir aranceles manuales o usar los automáticos por categoría.',
+                            ],
+                            'tiendanube': [
+                                'Conectá tu tienda TiendaNube para sincronizar productos y stock.',
+                                'Configurá las credenciales de la API de TiendaNube.',
+                                'El stock se actualiza automáticamente al registrar ventas.',
+                            ],
+                            'mercadolibre-panel': [
+                                'Conectá tu cuenta de MercadoLibre para gestionar publicaciones y ventas.',
+                                'Sincronizá el stock entre Total Stock y tus publicaciones de ML.',
+                                'Visualizá las ventas de ML y su impacto en el inventario.',
+                            ],
+                        }[activeTab] || [
+                            'Panel de administración de la tienda.',
+                            'Seleccioná una pestaña para ver las opciones disponibles.',
+                        ]}
+                    />
+                </div>
             </div>
 
             <div style={styles.tabs} className="panel-admin-tabs">

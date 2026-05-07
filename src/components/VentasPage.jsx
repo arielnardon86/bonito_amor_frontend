@@ -10,6 +10,7 @@ import {
     faEye, faEyeSlash, faCircleXmark, faFileInvoiceDollar,
     faReceipt, faArrowsRotate, faXmark,
 } from '@fortawesome/free-solid-svg-icons';
+import HelpButton from './HelpButton';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -501,7 +502,20 @@ const VentasPage = () => {
 
     return (
         <div style={styles.container}>
-            <h1 style={styles.header}>Ventas</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <h1 style={{ ...styles.header, marginBottom: 0 }}>Ventas</h1>
+                <HelpButton
+                    titulo="Listado de Ventas"
+                    bullets={[
+                        'Filtrá ventas por fecha, método de pago, monto o vendedor',
+                        'Expandí cada venta para ver el detalle de sus ítems',
+                        'Anulá ventas completas (ícono rojo) o ítems individuales (ícono naranja)',
+                        'Reimprimí el recibo o accedé a la factura electrónica de cada venta',
+                        'Iniciá un cambio o devolución directamente desde la venta',
+                        'Exportá el listado filtrado a Excel con el botón de descarga',
+                    ]}
+                />
+            </div>
 
             <div style={styles.filtersContainer}>
                 {!isStaffOnly && (

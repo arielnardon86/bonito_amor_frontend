@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
+import HelpButton from './HelpButton';
 
 const BASE_API_ENDPOINT = (() => {
     const url = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
@@ -135,7 +136,19 @@ export default function CierresCaja() {
 
     return (
         <div style={s.page}>
-            <h2 style={s.titulo}>Cierres de Caja</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: s.titulo.marginBottom }}>
+                <h2 style={{ ...s.titulo, marginBottom: 0 }}>Cierres de Caja</h2>
+                <HelpButton
+                    titulo="Cierres de Caja"
+                    bullets={[
+                        'Registrá el cierre de turno con el efectivo contado en caja.',
+                        'Cada cierre muestra ventas del turno, egresos y el saldo esperado vs. contado.',
+                        'El sistema calcula automáticamente las diferencias de caja.',
+                        'Filtrá por rango de fechas para ver cierres históricos.',
+                        'Los supervisores ven los cierres de su tienda; los administradores ven todos.',
+                    ]}
+                />
+            </div>
 
             {/* Filtros */}
             <div style={s.filtros}>

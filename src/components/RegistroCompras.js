@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
+import HelpButton from './HelpButton';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -312,7 +313,19 @@ const RegistroCompras = () => {
 
                 {/* ── Header ──────────────────────────────────────────────────── */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: 12 }}>
-                    <h1 style={styles.pageTitle}>Egresos</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <h1 style={styles.pageTitle}>Egresos</h1>
+                        <HelpButton
+                            titulo="Registro de Egresos"
+                            bullets={[
+                                'Registrá los gastos del negocio: servicios, sueldos, insumos, alquiler y más.',
+                                'Cada egreso tiene categoría, monto, descripción y método de pago.',
+                                'Filtrá por período para ver los egresos del mes o rango que necesités.',
+                                'Los egresos se descuentan del resumen de flujo de caja en los Cierres.',
+                                'Solo los administradores pueden eliminar egresos registrados.',
+                            ]}
+                        />
+                    </div>
                     <button
                         onClick={() => setFormExpanded(v => !v)}
                         style={{ ...styles.newButton, ...(formExpanded ? styles.newButtonCancel : {}) }}
