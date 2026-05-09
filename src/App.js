@@ -333,7 +333,7 @@ const Navbar = () => {
 };
 
 const AppContent = () => {
-  const { isAuthenticated, loading, selectedStoreSlug, user, token, sessionLocked, unlockSession } = useAuth();
+  const { isAuthenticated, loading, selectedStoreSlug, user, token, sessionLocked, unlockSession, logout } = useAuth();
   const [mostrarModalCambioInicial, setMostrarModalCambioInicial] = useState(false);
   const [cambioInicialInput, setCambioInicialInput] = useState('');
   const [guardandoCambioInicial, setGuardandoCambioInicial] = useState(false);
@@ -497,7 +497,7 @@ const AppContent = () => {
               onKeyDown={e => e.key === 'Enter' && handleConfirmarCambioInicial()}
             />
             <div style={{ display: 'flex', gap: 10 }}>
-              {user?.is_superuser && (
+              {(user?.is_superuser || user?.is_supervisor) && (
                 <button
                   onClick={() => { setMostrarModalCambioInicial(false); setCambioInicialInput(''); }}
                   disabled={guardandoCambioInicial}
@@ -518,6 +518,14 @@ const AppContent = () => {
                 {guardandoCambioInicial ? 'Guardando...' : 'Iniciar turno'}
               </button>
             </div>
+            <button
+              onClick={() => logout()}
+              style={{
+                marginTop: 14, background: 'none', border: 'none', color: '#a0aec0',
+                cursor: 'pointer', fontSize: 13, textDecoration: 'underline', padding: 0,
+              }}>
+              Cerrar sesión
+            </button>
           </div>
         </div>
       )}
