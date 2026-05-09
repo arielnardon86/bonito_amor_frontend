@@ -125,7 +125,8 @@ const PuntoVenta = () => {
 
     // ── Cierre de Caja: helpers ───────────────────────────────────────────────
     const fetchCierreActivo = useCallback(async () => {
-        if (!token || !selectedStoreSlug || !user?.cierre_caja_habilitado) return;
+        const cajaVisible = user?.cierre_caja_habilitado || user?.is_supervisor || user?.is_superuser;
+        if (!token || !selectedStoreSlug || !cajaVisible) return;
         try {
             const res = await axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/activo/`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -1300,7 +1301,7 @@ const PuntoVenta = () => {
                         ]}
                     />
                 </div>
-                {user?.cierre_caja_habilitado && (
+                {(user?.cierre_caja_habilitado || user?.is_supervisor || user?.is_superuser) && (
                     <div style={{ display: 'flex', gap: 8 }}>
                         {/* Abrir caja: solo si no hay turno activo */}
                         {!cierreActivo && (
