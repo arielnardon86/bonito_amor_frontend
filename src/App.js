@@ -67,7 +67,7 @@ const Navbar = () => {
   const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken } = useNotifications();
 
   const handleLogout = async () => {
-    if (user?.cierre_caja_habilitado && token && selectedStoreSlug) {
+    if (user?.cierre_caja_habilitado && !user?.is_supervisor && !user?.is_superuser && token && selectedStoreSlug) {
       try {
         const res = await axios.get(`${BASE_API_URL}/api/cierre-caja/activo/`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -362,6 +362,7 @@ const AppContent = () => {
 
   const verificarCierreActivo = useCallback(async () => {
     if (!token || !selectedStoreSlug || !user?.cierre_caja_habilitado) return;
+    if (user?.is_supervisor || user?.is_superuser) return;
     try {
       const res = await axios.get(`${BASE_API_URL}/api/cierre-caja/activo/`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -377,7 +378,8 @@ const AppContent = () => {
   }, [token, selectedStoreSlug, user]);
 
   useEffect(() => {
-    if (!loading && isAuthenticated && selectedStoreSlug && user?.cierre_caja_habilitado) {
+    if (!loading && isAuthenticated && selectedStoreSlug && user?.cierre_caja_habilitado
+        && !user?.is_supervisor && !user?.is_superuser) {
       verificarCierreActivo();
     }
   }, [loading, isAuthenticated, selectedStoreSlug, user, verificarCierreActivo]);
