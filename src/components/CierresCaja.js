@@ -19,8 +19,20 @@ const fmtFecha = (iso) => {
     });
 };
 
+const BILLETES_DEFS = [
+    { label: '$20.000', key: 'billetes_20000', val: 20000 },
+    { label: '$10.000', key: 'billetes_10000', val: 10000 },
+    { label: '$2.000',  key: 'billetes_2000',  val: 2000  },
+    { label: '$1.000',  key: 'billetes_1000',  val: 1000  },
+    { label: '$500',    key: 'billetes_500',   val: 500   },
+    { label: '$200',    key: 'billetes_200',   val: 200   },
+    { label: '$100',    key: 'billetes_100',   val: 100   },
+    { label: 'Monedas', key: 'monedas',        val: 1     },
+];
+const BILLETES_INIT = { billetes_20000:'', billetes_10000:'', billetes_2000:'', billetes_1000:'', billetes_500:'', billetes_200:'', billetes_100:'', monedas:'' };
+
 export default function CierresCaja() {
-    const { token, selectedStoreSlug } = useAuth();
+    const { token, selectedStoreSlug, user } = useAuth();
     const [cierres, setCierres] = useState([]);
     const [loading, setLoading] = useState(false);
     const [fechaDesde, setFechaDesde] = useState('');
@@ -28,6 +40,12 @@ export default function CierresCaja() {
     const [detalle, setDetalle] = useState(null);
     const [ventasDetalle, setVentasDetalle] = useState([]);
     const [loadingDetalle, setLoadingDetalle] = useState(false);
+
+    // ── Estado cierre forzado ───────────────────────────────────────────────────
+    const [mostrarModalCerrar, setMostrarModalCerrar] = useState(false);
+    const [billetes, setBilletes] = useState(BILLETES_INIT);
+    const [notasCierre, setNotasCierre] = useState('');
+    const [guardandoCierre, setGuardandoCierre] = useState(false);
 
     const fetchCierres = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
@@ -78,7 +96,42 @@ export default function CierresCaja() {
         }
     };
 
-    const cerrarDetalle = () => { setDetalle(null); setVentasDetalle([]); setVentasResumen({ por_metodo: [], ventas: [], total_ventas_efectivo: null }); };
+    const cerrarDetalle = () => {
+        setDetalle(null);
+        setVentasDetalle([]);
+        setVentasResumen({ por_metodo: [], ventas: [], total_ventas_efectivo: null });
+        setMostrarModalCerrar(false);
+        setBilletes(BILLETES_INIT);
+        setNotasCierre('');
+    };
+
+    const handleCerrarCaja = async () => {
+        if (!detalle) return;
+        setGuardandoCierre(true);
+        try {
+            const payload = {};
+            BILLETES_DEFS.forEach(({ key }) => {
+                payload[key] = key === 'monedas'
+                    ? parseFloat(billetes[key] || 0)
+                    : parseInt(billetes[key] || 0, 10);
+            });
+            payload.notas = notasCierre;
+            const res = await axios.post(
+                `${BASE_API_ENDPOINT}/api/cierre-caja/${detalle.id}/cerrar/`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setDetalle(res.data);
+            setMostrarModalCerrar(false);
+            setBilletes(BILLETES_INIT);
+            setNotasCierre('');
+            fetchCierres();
+        } catch (err) {
+            alert('Error al cerrar la caja: ' + (err.response?.data?.error || err.message));
+        } finally {
+            setGuardandoCierre(false);
+        }
+    };
 
     const imprimirRecibo = () => window.print();
 
@@ -469,9 +522,157 @@ export default function CierresCaja() {
                             <button style={{ ...s.btn, background: '#e2e8f0', color: '#2d3748' }} onClick={cerrarDetalle}>
                                 Cerrar
                             </button>
+                            {detalle.estado !== 'CERRADO' && (user?.is_superuser || user?.is_supervisor) && (
+                                <button
+                                    style={{ ...s.btn, background: '#e53e3e', color: '#fff' }}
+                                    onClick={() => setMostrarModalCerrar(true)}
+                                >
+                                    🔒 Cerrar Caja
+                                </button>
+                            )}
                             <button style={{ ...s.btn, ...s.btnPrimary }} onClick={imprimirRecibo}>
                                 Imprimir recibo
                             </button>
+                        </div>
+                    </div>
+                </div>
+                );
+            })()}
+
+            {/* ── Modal de cierre forzado ───────────────────────────────────────── */}
+            {mostrarModalCerrar && detalle && (() => {
+                const efectivo = ventasResumen.total_ventas_efectivo ?? Number(detalle.total_ventas_efectivo || 0);
+                const ingresos = Number(detalle.total_ingresos_extra || 0);
+                const gastos   = Number(detalle.total_gastos || 0);
+                const retiros  = Number(detalle.total_retiros || 0);
+                const teorico  = Number(detalle.cambio_inicial || 0) + efectivo + ingresos - gastos - retiros;
+                const fisico   = BILLETES_DEFS.reduce((acc, { key, val }) =>
+                    acc + (parseFloat(billetes[key] || 0) * val), 0);
+                const diferencia = fisico - teorico;
+                return (
+                <div style={{ ...s.overlay, zIndex: 1100 }} onClick={() => setMostrarModalCerrar(false)}>
+                    <div style={{ ...s.modal, maxWidth: 820 }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1a202c' }}>
+                                Cerrar Caja — {detalle.usuario_nombre}
+                            </h2>
+                            <button onClick={() => setMostrarModalCerrar(false)}
+                                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#718096' }}>✕</button>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                            {/* Columna izquierda: resumen financiero */}
+                            <div>
+                                <div style={{ background: '#f7fafc', borderRadius: 10, padding: 16, border: '1px solid #e2e8f0', marginBottom: 14 }}>
+                                    <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 10 }}>Resumen del turno</p>
+                                    {[
+                                        { label: 'Cambio inicial',      val: detalle.cambio_inicial, color: '#2d3748' },
+                                        { label: 'Ventas en efectivo',  val: efectivo,               color: '#2d3748' },
+                                        ...(ingresos > 0 ? [{ label: '+ Ingresos extra', val: ingresos, color: '#276749' }] : []),
+                                        ...(gastos   > 0 ? [{ label: '- Gastos',         val: gastos,   color: '#c53030', neg: true }] : []),
+                                        ...(retiros  > 0 ? [{ label: '- Retiros',        val: retiros,  color: '#c53030', neg: true }] : []),
+                                    ].map(({ label, val, color, neg }) => (
+                                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '3px 0', color }}>
+                                            <span>{label}</span>
+                                            <span style={{ fontWeight: 600 }}>{neg ? '- ' : ''}{fmt(Math.abs(val))}</span>
+                                        </div>
+                                    ))}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: '1px solid #e2e8f0', marginTop: 8, paddingTop: 8 }}>
+                                        <span>Total teórico en caja</span>
+                                        <span>{fmt(teorico)}</span>
+                                    </div>
+                                </div>
+
+                                {ventasResumen.por_metodo.length > 0 && (
+                                    <div style={{ background: '#f7fafc', borderRadius: 10, padding: 16, border: '1px solid #e2e8f0' }}>
+                                        <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 8 }}>Ventas por método</p>
+                                        {ventasResumen.por_metodo.map((m, i) => (
+                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: '#4a5568' }}>
+                                                <span>{m.metodo_pago || 'Sin especificar'} <span style={{ color: '#a0aec0', fontSize: 11 }}>({m.cantidad})</span></span>
+                                                <span style={{ fontWeight: 500 }}>{fmt(m.total)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div style={{ marginTop: 14 }}>
+                                    <label style={{ fontSize: 13, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>Notas</label>
+                                    <textarea
+                                        value={notasCierre}
+                                        onChange={e => setNotasCierre(e.target.value)}
+                                        rows={3}
+                                        placeholder="Observaciones del cierre..."
+                                        style={{ width: '100%', padding: '8px 10px', borderRadius: 7, border: '1px solid #cbd5e0', fontSize: 13, boxSizing: 'border-box', resize: 'vertical' }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Columna derecha: recuento físico */}
+                            <div>
+                                <div style={{ background: '#276749', borderRadius: 10, padding: 18, color: '#fff' }}>
+                                    <p style={{ fontWeight: 800, fontSize: 15, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 16 }}>
+                                        Recuento Físico
+                                    </p>
+                                    <table style={{ width: '100%', fontSize: 14, borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ textAlign: 'left', paddingBottom: 8, opacity: .8 }}>Billete</th>
+                                                <th style={{ textAlign: 'center', paddingBottom: 8, opacity: .8 }}>Cantidad</th>
+                                                <th style={{ textAlign: 'right', paddingBottom: 8, opacity: .8 }}>Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {BILLETES_DEFS.map(({ label, key, val }) => (
+                                                <tr key={key} style={{ borderTop: '1px solid rgba(255,255,255,.15)' }}>
+                                                    <td style={{ padding: '7px 4px' }}>{label}</td>
+                                                    <td style={{ padding: '7px 4px', textAlign: 'center' }}>
+                                                        <input
+                                                            type="number" min="0"
+                                                            value={billetes[key]}
+                                                            onChange={e => setBilletes(b => ({ ...b, [key]: e.target.value }))}
+                                                            style={{
+                                                                width: 70, padding: '4px 6px', borderRadius: 5,
+                                                                border: 'none', textAlign: 'center', fontSize: 14,
+                                                                background: 'rgba(255,255,255,.2)', color: '#fff',
+                                                            }}
+                                                            placeholder="0"
+                                                        />
+                                                    </td>
+                                                    <td style={{ padding: '7px 4px', textAlign: 'right', fontWeight: 600 }}>
+                                                        {fmt(parseFloat(billetes[key] || 0) * val)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <div style={{ borderTop: '2px solid rgba(255,255,255,.3)', marginTop: 10, paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 15 }}>
+                                        <span>Total físico:</span>
+                                        <span>{fmt(fisico)}</span>
+                                    </div>
+                                </div>
+
+                                <div style={{
+                                    marginTop: 14, borderRadius: 10, padding: 16, textAlign: 'center',
+                                    fontWeight: 800, fontSize: 20,
+                                    background: diferencia >= 0 ? '#c6f6d5' : '#fed7d7',
+                                    color: diferencia >= 0 ? '#276749' : '#c53030',
+                                }}>
+                                    DIFERENCIA: {fmt(diferencia)}
+                                </div>
+
+                                <button
+                                    onClick={handleCerrarCaja}
+                                    disabled={guardandoCierre}
+                                    style={{
+                                        marginTop: 16, width: '100%', padding: 14, borderRadius: 10,
+                                        border: 'none', cursor: guardandoCierre ? 'not-allowed' : 'pointer',
+                                        background: guardandoCierre ? '#a0aec0' : '#e53e3e',
+                                        color: '#fff', fontWeight: 700, fontSize: 16,
+                                    }}
+                                >
+                                    {guardandoCierre ? 'Cerrando...' : '🔒 Confirmar Cierre de Caja'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
