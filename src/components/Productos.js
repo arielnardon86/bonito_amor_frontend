@@ -633,16 +633,14 @@ const Productos = () => {
                                                     >
                                                         <FontAwesomeIcon icon={faPencil} />
                                                     </button>
-                                                    {tieneVars && (
-                                                        <button
-                                                            className="icon-btn"
-                                                            onClick={() => { setEditProduct({ ...producto }); setShowAddVarianteModal(true); }}
-                                                            style={{ color: 'white', backgroundColor: '#5dc87a' }}
-                                                            data-tooltip="Agregar variante"
-                                                        >
-                                                            <FontAwesomeIcon icon={faPlus} />
-                                                        </button>
-                                                    )}
+                                                    <button
+                                                        className="icon-btn"
+                                                        onClick={() => { setEditProduct({ ...producto }); setShowAddVarianteModal(true); }}
+                                                        style={{ color: 'white', backgroundColor: '#5dc87a' }}
+                                                        data-tooltip={tieneVars ? 'Agregar variante' : 'Convertir en producto con variantes'}
+                                                    >
+                                                        <FontAwesomeIcon icon={faPlus} />
+                                                    </button>
                                                     <button
                                                         className="icon-btn"
                                                         onClick={() => { setProductToDelete(producto); setShowDeleteModal(true); }}
@@ -798,15 +796,13 @@ const Productos = () => {
                         </div>
                         <div style={styles.modalActions}>
                             <button onClick={handleEditProduct} style={styles.modalConfirmButton}>Guardar</button>
-                            {editProduct.variantes && editProduct.variantes.length > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowEditModal(false); setShowAddVarianteModal(true); }}
-                                    style={{ padding: '10px 15px', backgroundColor: '#1a7a3f', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                                >
-                                    + Variante
-                                </button>
-                            )}
+                            <button
+                                type="button"
+                                onClick={() => { setShowEditModal(false); setShowAddVarianteModal(true); }}
+                                style={{ padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                                + Variante
+                            </button>
                             <button onClick={() => setShowEditModal(false)} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
