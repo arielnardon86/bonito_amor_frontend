@@ -5,7 +5,7 @@ import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPencil, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faPencil, faTrash, faPlus } from '@fortawesome/free-solid-svg-icons';
 import HelpButton from './HelpButton';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -622,7 +622,8 @@ const Productos = () => {
                                                     : <>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</>
                                                 }
                                             </td>
-                                            <td style={styles.td}>
+                                            <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+                                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                                 {user.is_superuser && <>
                                                     <button
                                                         className="icon-btn"
@@ -636,10 +637,10 @@ const Productos = () => {
                                                         <button
                                                             className="icon-btn"
                                                             onClick={() => { setEditProduct({ ...producto }); setShowAddVarianteModal(true); }}
-                                                            style={{ color: 'white', backgroundColor: '#1a7a3f', fontSize: 11, padding: '4px 7px', fontWeight: 700 }}
+                                                            style={{ color: 'white', backgroundColor: '#5dc87a' }}
                                                             data-tooltip="Agregar variante"
                                                         >
-                                                            +Var
+                                                            <FontAwesomeIcon icon={faPlus} />
                                                         </button>
                                                     )}
                                                     <button
@@ -651,6 +652,7 @@ const Productos = () => {
                                                         <FontAwesomeIcon icon={faTrash} />
                                                     </button>
                                                 </>}
+                                                </div>
                                             </td>
                                         </tr>
                                         {/* Filas de variantes expandidas */}
@@ -681,7 +683,7 @@ const Productos = () => {
                                                     <td style={{ ...styles.td, color: v.stock <= STOCK_BAJO_THRESHOLD ? '#dc2626' : undefined, fontWeight: v.stock <= STOCK_BAJO_THRESHOLD ? 700 : undefined }}>
                                                         {v.stock}{v.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}
                                                     </td>
-                                                    <td style={styles.td}>
+                                                    <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
                                                         {user.is_superuser && (
                                                             <button
                                                                 className="icon-btn"
