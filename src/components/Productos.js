@@ -51,7 +51,7 @@ const Productos = () => {
     });
     const [tieneVariantes, setTieneVariantes] = useState(false);
     const [variantesNuevas, setVariantesNuevas] = useState([
-        { talle: '', precio: '', stock: '', codigo_barras: '' }
+        { talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }
     ]);
 
     const [editProduct, setEditProduct] = useState(null);
@@ -157,7 +157,7 @@ const Productos = () => {
                 const padreData = {
                     nombre: newProduct.nombre,
                     precio: variantesNuevas[0]?.precio || 0,
-                    costo: newProduct.costo || null,
+                    costo: null,
                     stock: 0,
                     codigo_barras: null,
                     talle: null,
@@ -172,7 +172,7 @@ const Productos = () => {
                     const varianteData = {
                         nombre: newProduct.nombre,
                         precio: v.precio,
-                        costo: newProduct.costo || null,
+                        costo: v.costo || null,
                         stock: v.stock || 0,
                         codigo_barras: v.codigo_barras || generarCodigoDeBarrasEAN13(),
                         talle: v.talle || null,
@@ -197,7 +197,7 @@ const Productos = () => {
 
             setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', talle: '' });
             setTieneVariantes(false);
-            setVariantesNuevas([{ talle: '', precio: '', stock: '', codigo_barras: '' }]);
+            setVariantesNuevas([{ talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }]);
             setBarcodeNombreSugerido('');
             fetchProductos();
         } catch (err) {
@@ -373,33 +373,35 @@ const Productos = () => {
                         />
                     </div>
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Precio</label>
+                        <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Precio</label>
                         <input
                             type="number"
                             value={newProduct.precio}
                             onChange={(e) => setNewProduct({ ...newProduct, precio: e.target.value })}
-                            style={styles.input}
-                            required
+                            style={{ ...styles.input, background: tieneVariantes ? '#f3f4f6' : undefined, color: tieneVariantes ? '#aaa' : undefined, cursor: tieneVariantes ? 'not-allowed' : undefined }}
+                            required={!tieneVariantes}
+                            disabled={tieneVariantes}
                         />
                     </div>
-                    {/* NUEVO CAMPO DE COSTO */}
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Costo (Opcional)</label>
+                        <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Costo (Opcional)</label>
                         <input
                             type="number"
                             value={newProduct.costo}
                             onChange={(e) => setNewProduct({ ...newProduct, costo: e.target.value })}
-                            style={styles.input}
+                            style={{ ...styles.input, background: tieneVariantes ? '#f3f4f6' : undefined, color: tieneVariantes ? '#aaa' : undefined, cursor: tieneVariantes ? 'not-allowed' : undefined }}
+                            disabled={tieneVariantes}
                         />
                     </div>
                     <div style={styles.inputGroup}>
-                        <label style={styles.label}>Stock</label>
+                        <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Stock</label>
                         <input
                             type="number"
                             value={newProduct.stock}
                             onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                            style={styles.input}
-                            required
+                            style={{ ...styles.input, background: tieneVariantes ? '#f3f4f6' : undefined, color: tieneVariantes ? '#aaa' : undefined, cursor: tieneVariantes ? 'not-allowed' : undefined }}
+                            required={!tieneVariantes}
+                            disabled={tieneVariantes}
                         />
                     </div>
                     {!tieneVariantes && (
@@ -422,7 +424,7 @@ const Productos = () => {
                                 onChange={e => {
                                     setTieneVariantes(e.target.checked);
                                     if (!e.target.checked) {
-                                        setVariantesNuevas([{ talle: '', precio: '', stock: '', codigo_barras: '' }]);
+                                        setVariantesNuevas([{ talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }]);
                                     }
                                 }}
                             />
@@ -438,7 +440,7 @@ const Productos = () => {
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                     <thead>
                                         <tr>
-                                            {['Talle / Valor', 'Precio', 'Stock', 'Código de barras', ''].map(h => (
+                                            {['Talle / Valor', 'Precio', 'Costo', 'Stock', 'Código de barras', ''].map(h => (
                                                 <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #d8eae4', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                                             ))}
                                         </tr>
@@ -453,6 +455,10 @@ const Productos = () => {
                                                 <td style={{ padding: '4px 8px' }}>
                                                     <input type="number" value={v.precio} placeholder="0" style={{ ...styles.input, width: 90 }}
                                                         onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, precio: e.target.value } : x))} required />
+                                                </td>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    <input type="number" value={v.costo} placeholder="Opcional" style={{ ...styles.input, width: 90 }}
+                                                        onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, costo: e.target.value } : x))} />
                                                 </td>
                                                 <td style={{ padding: '4px 8px' }}>
                                                     <input type="number" value={v.stock} placeholder="0" style={{ ...styles.input, width: 70 }}
@@ -473,7 +479,7 @@ const Productos = () => {
                                     </tbody>
                                 </table>
                             </div>
-                            <button type="button" onClick={() => setVariantesNuevas(prev => [...prev, { talle: '', precio: '', stock: '', codigo_barras: '' }])}
+                            <button type="button" onClick={() => setVariantesNuevas(prev => [...prev, { talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }])}
                                 style={{ marginTop: 8, padding: '5px 12px', background: '#e8f5ec', color: '#1a7a3f', border: '1px solid #b7dfc7', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
                                 + Agregar variante
                             </button>
