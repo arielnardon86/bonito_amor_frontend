@@ -2161,7 +2161,7 @@ const PuntoVenta = () => {
                                 </thead>
                                 <tbody>
                                     {productos.length > 0 ? (
-                                        productos.map(product => (
+                                        productos.filter(p => !(p.variantes && p.variantes.length > 0)).map(product => (
                                             <tr key={product.id} style={{ ...styles.tableRow, ...(product.stock === 0 ? { opacity: 0.5, background: '#f7faf9' } : {}) }}>
                                                 <td style={styles.td}>
                                                     {product.nombre}
