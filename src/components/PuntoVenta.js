@@ -2138,7 +2138,7 @@ const PuntoVenta = () => {
                             checked={mostrarTalle}
                             onChange={(e) => setMostrarTalle(e.target.checked)}
                         />
-                        <span>Mostrar talle</span>
+                        <span>Mostrar variante</span>
                     </label>
                 </div>
 
