@@ -44,16 +44,23 @@ const Productos = () => {
     const [newProduct, setNewProduct] = useState({
         nombre: '',
         precio: '',
-        costo: '', // NUEVO CAMPO
+        costo: '',
         stock: '',
         codigo_barras: '',
-        talle: '', // Campo talle (opcional pero requerido por el serializer)
+        talle: '',
     });
-    
+    const [tieneVariantes, setTieneVariantes] = useState(false);
+    const [variantesNuevas, setVariantesNuevas] = useState([
+        { talle: '', precio: '', stock: '', codigo_barras: '' }
+    ]);
+
     const [editProduct, setEditProduct] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [productToDelete, setProductToDelete] = useState(null);
+    const [expandedVariants, setExpandedVariants] = useState({});
+    const [showAddVarianteModal, setShowAddVarianteModal] = useState(false);
+    const [nuevaVariante, setNuevaVariante] = useState({ talle: '', precio: '', stock: '', codigo_barras: '' });
 
     const [barcodeNombreSugerido, setBarcodeNombreSugerido] = useState('');
     const [barcodeLoading, setBarcodeLoading] = useState(false);
@@ -144,22 +151,84 @@ const Productos = () => {
         setLoadingProducts(true);
         setError(null);
 
-        const productToCreate = {
-            ...newProduct,
-            codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
-            tienda_slug: selectedStoreSlug,
-            talle: newProduct.talle || null, // Normalizar talle vacío a null
-        };
-        
         try {
-            await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productToCreate, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            if (tieneVariantes) {
+                // Crear producto padre (contenedor) luego variantes
+                const padreData = {
+                    nombre: newProduct.nombre,
+                    precio: variantesNuevas[0]?.precio || 0,
+                    costo: newProduct.costo || null,
+                    stock: 0,
+                    codigo_barras: null,
+                    talle: null,
+                    tienda_slug: selectedStoreSlug,
+                };
+                const { data: padre } = await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, padreData, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                for (const v of variantesNuevas) {
+                    if (!v.talle && !v.precio) continue;
+                    const varianteData = {
+                        nombre: newProduct.nombre,
+                        precio: v.precio,
+                        costo: newProduct.costo || null,
+                        stock: v.stock || 0,
+                        codigo_barras: v.codigo_barras || generarCodigoDeBarrasEAN13(),
+                        talle: v.talle || null,
+                        producto_padre: padre.id,
+                        tienda_slug: selectedStoreSlug,
+                    };
+                    await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, varianteData, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                }
+            } else {
+                const productToCreate = {
+                    ...newProduct,
+                    codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
+                    tienda_slug: selectedStoreSlug,
+                    talle: newProduct.talle || null,
+                };
+                await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productToCreate, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            }
+
             setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', talle: '' });
+            setTieneVariantes(false);
+            setVariantesNuevas([{ talle: '', precio: '', stock: '', codigo_barras: '' }]);
             setBarcodeNombreSugerido('');
             fetchProductos();
         } catch (err) {
             setError('Error al crear producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setLoadingProducts(false);
+        }
+    };
+
+    const handleAddVarianteAPadre = async () => {
+        if (!editProduct) return;
+        setLoadingProducts(true);
+        setError(null);
+        try {
+            const varianteData = {
+                nombre: editProduct.nombre,
+                precio: nuevaVariante.precio,
+                costo: editProduct.costo || null,
+                stock: nuevaVariante.stock || 0,
+                codigo_barras: nuevaVariante.codigo_barras || generarCodigoDeBarrasEAN13(),
+                talle: nuevaVariante.talle || null,
+                producto_padre: editProduct.id,
+                tienda_slug: selectedStoreSlug,
+            };
+            await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, varianteData, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setShowAddVarianteModal(false);
+            setNuevaVariante({ talle: '', precio: '', stock: '', codigo_barras: '' });
+            fetchProductos(currentPageUrl);
+        } catch (err) {
+            setError('Error al agregar variante: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
         }
     };
@@ -273,6 +342,7 @@ const Productos = () => {
             <div style={styles.section}>
                 <h2 style={styles.sectionTitle}>Nuevo producto</h2>
                 <form onSubmit={handleCreateProduct} style={styles.form}>
+                    {!tieneVariantes && (
                     <div style={styles.inputGroup}>
                         <label style={styles.label}>
                             Código de barras {barcodeLoading && <span style={{ fontWeight: 400, fontSize: '0.85em', color: '#888' }}>buscando...</span>}
@@ -290,6 +360,7 @@ const Productos = () => {
                             </span>
                         )}
                     </div>
+                    )}
                     <div style={styles.inputGroup}>
                         <label style={styles.label}>Nombre</label>
                         <input
@@ -331,6 +402,7 @@ const Productos = () => {
                             required
                         />
                     </div>
+                    {!tieneVariantes && (
                     <div style={styles.inputGroup}>
                         <label style={styles.label}>Talle (Opcional)</label>
                         <input
@@ -341,6 +413,72 @@ const Productos = () => {
                             placeholder="Ej: M, L, XL, 42, etc."
                         />
                     </div>
+                    )}
+                    <div style={{ width: '100%', marginTop: 4 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none', fontSize: 14 }}>
+                            <input
+                                type="checkbox"
+                                checked={tieneVariantes}
+                                onChange={e => {
+                                    setTieneVariantes(e.target.checked);
+                                    if (!e.target.checked) {
+                                        setVariantesNuevas([{ talle: '', precio: '', stock: '', codigo_barras: '' }]);
+                                    }
+                                }}
+                            />
+                            <span style={{ fontWeight: 600 }}>¿Tiene variantes? (talle, color, etc.)</span>
+                        </label>
+                    </div>
+                    {tieneVariantes && (
+                        <div style={{ width: '100%', marginTop: 8 }}>
+                            <p style={{ fontSize: 13, color: '#4a6660', marginBottom: 8 }}>
+                                Ingresá cada variante. El código de barras se genera automáticamente si lo dejás vacío.
+                            </p>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                    <thead>
+                                        <tr>
+                                            {['Talle / Valor', 'Precio', 'Stock', 'Código de barras', ''].map(h => (
+                                                <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #d8eae4', textAlign: 'left', fontWeight: 600 }}>{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {variantesNuevas.map((v, i) => (
+                                            <tr key={i}>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    <input type="text" value={v.talle} placeholder="M, L, 42…" style={{ ...styles.input, width: 80 }}
+                                                        onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, talle: e.target.value } : x))} />
+                                                </td>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    <input type="number" value={v.precio} placeholder="0" style={{ ...styles.input, width: 90 }}
+                                                        onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, precio: e.target.value } : x))} required />
+                                                </td>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    <input type="number" value={v.stock} placeholder="0" style={{ ...styles.input, width: 70 }}
+                                                        onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, stock: e.target.value } : x))} />
+                                                </td>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    <input type="text" value={v.codigo_barras} placeholder="Auto" style={{ ...styles.input, width: 120 }}
+                                                        onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, codigo_barras: e.target.value } : x))} />
+                                                </td>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    {variantesNuevas.length > 1 && (
+                                                        <button type="button" onClick={() => setVariantesNuevas(prev => prev.filter((_, j) => j !== i))}
+                                                            style={{ background: 'none', border: 'none', color: '#e25252', cursor: 'pointer', fontSize: 16 }}>✕</button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" onClick={() => setVariantesNuevas(prev => [...prev, { talle: '', precio: '', stock: '', codigo_barras: '' }])}
+                                style={{ marginTop: 8, padding: '5px 12px', background: '#e8f5ec', color: '#1a7a3f', border: '1px solid #b7dfc7', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
+                                + Agregar variante
+                            </button>
+                        </div>
+                    )}
                     <button type="submit" style={styles.submitButton} disabled={loadingProducts}>
                         {loadingProducts ? 'Creando...' : 'Crear Producto'}
                     </button>
@@ -425,29 +563,59 @@ const Productos = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {(stockBajoFilter ? productos.filter(p => p.stock <= STOCK_BAJO_THRESHOLD) : productos).map(producto => {
+                                    {(stockBajoFilter
+                                        ? productos.filter(p => !p.producto_padre && p.stock <= STOCK_BAJO_THRESHOLD)
+                                        : productos.filter(p => !p.producto_padre)
+                                    ).map(producto => {
                                         const precio = parseFloat(producto.precio) || 0;
                                         const costo = parseFloat(producto.costo) || 0;
                                         const margen = precio > 0 && costo > 0 ? ((precio - costo) / precio * 100) : null;
                                         const margenColor = margen === null ? '#8aa8a0' : margen >= 30 ? '#16a34a' : margen >= 15 ? '#d97706' : '#dc2626';
+                                        const tieneVars = producto.variantes && producto.variantes.length > 0;
+                                        const expandido = !!expandedVariants[producto.id];
                                         return (
-                                        <tr key={producto.id} style={producto.stock <= STOCK_BAJO_THRESHOLD ? { background: '#fef9ec' } : {}}>
+                                        <React.Fragment key={producto.id}>
+                                        <tr style={producto.stock <= STOCK_BAJO_THRESHOLD && !tieneVars ? { background: '#fef9ec' } : tieneVars ? { background: '#f0faf5' } : {}}>
                                             <td style={{ ...styles.td, textAlign: 'center' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={!!etiquetasSeleccionadas[producto.id]}
-                                                    onChange={(e) => handleToggleEtiqueta(producto.id, e.target.checked)}
-                                                    style={{ width: 16, height: 16, cursor: 'pointer' }}
-                                                />
+                                                {!tieneVars && (
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!etiquetasSeleccionadas[producto.id]}
+                                                        onChange={(e) => handleToggleEtiqueta(producto.id, e.target.checked)}
+                                                        style={{ width: 16, height: 16, cursor: 'pointer' }}
+                                                    />
+                                                )}
                                             </td>
-                                            <td style={styles.td}>{producto.nombre}</td>
-                                            {mostrarTalle && <td style={styles.td}>{producto.talle || '-'}</td>}
-                                            <td style={styles.td}>{formatearMonto(producto.precio)}</td>
-                                            <td style={styles.td}>{formatearMonto(producto.costo || 0)}</td>
+                                            <td style={styles.td}>
+                                                {tieneVars && (
+                                                    <button
+                                                        onClick={() => setExpandedVariants(prev => ({ ...prev, [producto.id]: !prev[producto.id] }))}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: 6, fontSize: 13, color: '#1a7a3f', fontWeight: 700 }}
+                                                    >
+                                                        {expandido ? '▼' : '▶'}
+                                                    </button>
+                                                )}
+                                                {producto.nombre}
+                                                {tieneVars && (
+                                                    <span style={{ marginLeft: 8, fontSize: 11, color: '#4a6660', background: '#d8eae4', borderRadius: 8, padding: '1px 7px' }}>
+                                                        {producto.variantes.length} variante{producto.variantes.length !== 1 ? 's' : ''}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            {mostrarTalle && <td style={styles.td}>{producto.talle || (tieneVars ? '—' : '-')}</td>}
+                                            <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.precio)}</td>
+                                            <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.costo || 0)}</td>
                                             <td style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
-                                                {margen !== null ? `${margen.toFixed(1)}%` : <span style={{ color: '#8aa8a0', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
+                                                {tieneVars ? '—' : margen !== null ? `${margen.toFixed(1)}%` : <span style={{ color: '#8aa8a0', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                             </td>
-                                            <td style={{ ...styles.td, color: producto.stock <= STOCK_BAJO_THRESHOLD ? '#dc2626' : undefined, fontWeight: producto.stock <= STOCK_BAJO_THRESHOLD ? 700 : undefined }}>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</td>
+                                            <td style={{ ...styles.td, color: (!tieneVars && producto.stock <= STOCK_BAJO_THRESHOLD) ? '#dc2626' : undefined, fontWeight: (!tieneVars && producto.stock <= STOCK_BAJO_THRESHOLD) ? 700 : undefined }}>
+                                                {tieneVars
+                                                    ? <span style={{ color: '#4a6660', fontSize: 12 }}>
+                                                        {producto.variantes.reduce((s, v) => s + (v.stock || 0), 0)} total
+                                                      </span>
+                                                    : <>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</>
+                                                }
+                                            </td>
                                             <td style={styles.td}>
                                                 {user.is_superuser && <>
                                                     <button
@@ -458,6 +626,16 @@ const Productos = () => {
                                                     >
                                                         <FontAwesomeIcon icon={faPencil} />
                                                     </button>
+                                                    {tieneVars && (
+                                                        <button
+                                                            className="icon-btn"
+                                                            onClick={() => { setEditProduct({ ...producto }); setShowAddVarianteModal(true); }}
+                                                            style={{ color: 'white', backgroundColor: '#1a7a3f', fontSize: 11, padding: '4px 7px', fontWeight: 700 }}
+                                                            data-tooltip="Agregar variante"
+                                                        >
+                                                            +Var
+                                                        </button>
+                                                    )}
                                                     <button
                                                         className="icon-btn"
                                                         onClick={() => { setProductToDelete(producto); setShowDeleteModal(true); }}
@@ -467,7 +645,56 @@ const Productos = () => {
                                                         <FontAwesomeIcon icon={faTrash} />
                                                     </button>
                                                 </>}
-                                            </td></tr>
+                                            </td>
+                                        </tr>
+                                        {/* Filas de variantes expandidas */}
+                                        {tieneVars && expandido && producto.variantes.map(v => {
+                                            const vPrecio = parseFloat(v.precio) || 0;
+                                            const vCosto = parseFloat(producto.costo) || 0;
+                                            const vMargen = vPrecio > 0 && vCosto > 0 ? ((vPrecio - vCosto) / vPrecio * 100) : null;
+                                            const vMargenColor = vMargen === null ? '#8aa8a0' : vMargen >= 30 ? '#16a34a' : vMargen >= 15 ? '#d97706' : '#dc2626';
+                                            return (
+                                                <tr key={v.id} style={{ background: '#f7faf9', borderLeft: '3px solid #5dc87a' }}>
+                                                    <td style={{ ...styles.td, textAlign: 'center' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!!etiquetasSeleccionadas[v.id]}
+                                                            onChange={(e) => handleToggleEtiqueta(v.id, e.target.checked)}
+                                                            style={{ width: 16, height: 16, cursor: 'pointer' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ ...styles.td, paddingLeft: 28, color: '#4a6660', fontSize: 13 }}>
+                                                        ↳ {v.talle || '(sin talle)'}
+                                                    </td>
+                                                    {mostrarTalle && <td style={styles.td}>{v.talle || '-'}</td>}
+                                                    <td style={styles.td}>{formatearMonto(v.precio)}</td>
+                                                    <td style={styles.td}>—</td>
+                                                    <td style={{ ...styles.td, fontWeight: 700, color: vMargenColor }}>
+                                                        {vMargen !== null ? `${vMargen.toFixed(1)}%` : <span style={{ color: '#8aa8a0', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
+                                                    </td>
+                                                    <td style={{ ...styles.td, color: v.stock <= STOCK_BAJO_THRESHOLD ? '#dc2626' : undefined, fontWeight: v.stock <= STOCK_BAJO_THRESHOLD ? 700 : undefined }}>
+                                                        {v.stock}{v.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}
+                                                    </td>
+                                                    <td style={styles.td}>
+                                                        {user.is_superuser && (
+                                                            <button
+                                                                className="icon-btn"
+                                                                onClick={() => {
+                                                                    const varianteFull = productos.find(p => p.id === v.id) || v;
+                                                                    setEditProduct({ ...varianteFull, nombre: varianteFull.nombre || producto.nombre });
+                                                                    setShowEditModal(true);
+                                                                }}
+                                                                style={{ color: 'white', backgroundColor: '#f59e0b' }}
+                                                                data-tooltip="Editar variante"
+                                                            >
+                                                                <FontAwesomeIcon icon={faPencil} />
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        </React.Fragment>
                                         );
                                     })}
                                 </tbody>
@@ -563,6 +790,15 @@ const Productos = () => {
                         </div>
                         <div style={styles.modalActions}>
                             <button onClick={handleEditProduct} style={styles.modalConfirmButton}>Guardar</button>
+                            {editProduct.variantes && editProduct.variantes.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowEditModal(false); setShowAddVarianteModal(true); }}
+                                    style={{ padding: '10px 15px', backgroundColor: '#1a7a3f', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                    + Variante
+                                </button>
+                            )}
                             <button onClick={() => setShowEditModal(false)} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
@@ -612,6 +848,39 @@ const Productos = () => {
                         <div style={styles.modalActions}>
                             <button onClick={() => handleDeleteProduct(productToDelete.id)} style={styles.modalConfirmButton}>Eliminar</button>
                             <button onClick={() => setShowDeleteModal(false)} style={styles.modalCancelButton}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal agregar variante a un padre existente */}
+            {showAddVarianteModal && editProduct && (
+                <div style={styles.modalOverlay} onClick={() => setShowAddVarianteModal(false)}>
+                    <div style={{ ...styles.modalContent, maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ marginTop: 0 }}>Agregar variante a "{editProduct.nombre}"</h3>
+                        {[
+                            { key: 'talle', label: 'Talle / Valor', placeholder: 'M, L, XL, 42…', type: 'text' },
+                            { key: 'precio', label: 'Precio', placeholder: '0', type: 'number' },
+                            { key: 'stock', label: 'Stock inicial', placeholder: '0', type: 'number' },
+                            { key: 'codigo_barras', label: 'Código de barras (opcional)', placeholder: 'Auto-generado', type: 'text' },
+                        ].map(({ key, label, placeholder, type }) => (
+                            <div key={key} style={styles.inputGroupModal}>
+                                <label style={{ ...styles.label, textAlign: 'left', display: 'block' }}>{label}:</label>
+                                <input
+                                    type={type}
+                                    value={nuevaVariante[key]}
+                                    onChange={e => setNuevaVariante(prev => ({ ...prev, [key]: e.target.value }))}
+                                    placeholder={placeholder}
+                                    style={styles.modalInput}
+                                />
+                            </div>
+                        ))}
+                        <div style={styles.modalActions}>
+                            <button onClick={handleAddVarianteAPadre} style={styles.modalConfirmButton} disabled={loadingProducts}>
+                                {loadingProducts ? 'Guardando…' : 'Agregar variante'}
+                            </button>
+                            <button onClick={() => { setShowAddVarianteModal(false); setNuevaVariante({ talle: '', precio: '', stock: '', codigo_barras: '' }); }}
+                                style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
                 </div>
