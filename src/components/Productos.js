@@ -264,8 +264,14 @@ const Productos = () => {
             setProductToDelete(null);
             fetchProductos(currentPageUrl);
         } catch (err) {
-            setError('Error al eliminar producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
-            setLoadingProducts(false);
+            if (err.response && err.response.status === 404) {
+                setShowDeleteModal(false);
+                setProductToDelete(null);
+                fetchProductos(currentPageUrl);
+            } else {
+                setError('Error al eliminar producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+                setLoadingProducts(false);
+            }
         }
     };
 
