@@ -343,6 +343,7 @@ const AppContent = () => {
   const [unlockPassword, setUnlockPassword] = useState('');
   const [unlockError, setUnlockError] = useState('');
   const [unlocking, setUnlocking] = useState(false);
+  const [suscripcionPendiente, setSuscripcionPendiente] = useState(false);
 
   const handleUnlock = async () => {
     if (!unlockPassword) { setUnlockError('Ingresá tu contraseña.'); return; }
@@ -385,6 +386,17 @@ const AppContent = () => {
       verificarCierreActivo();
     }
   }, [loading, isAuthenticated, selectedStoreSlug, user, verificarCierreActivo]);
+
+  // Verificar si la suscripción está pendiente de pago en MP
+  useEffect(() => {
+    if (!loading && isAuthenticated && selectedStoreSlug && token) {
+      axios.get(`${BASE_API_URL}/api/suscripcion/mi-plan/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(r => {
+        setSuscripcionPendiente(r.data.estado === 'pending');
+      }).catch(() => {});
+    }
+  }, [loading, isAuthenticated, selectedStoreSlug, token]);
 
   const handleConfirmarCambioInicial = async () => {
     if (!token || !selectedStoreSlug) return;
@@ -533,6 +545,38 @@ const AppContent = () => {
           </div>
         </div>
       )}
+      {/* Pantalla de bloqueo por suscripción pendiente */}
+      {suscripcionPendiente && isAuthenticated && selectedStoreSlug && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'linear-gradient(135deg,#f0fdf4,#ecfdf5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000,
+          fontFamily: "'Segoe UI', sans-serif",
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: '48px 40px', maxWidth: 480,
+            width: '90%', textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+          }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>🔒</div>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a3a2a', marginBottom: 12 }}>
+              Completá tu suscripción
+            </h2>
+            <p style={{ fontSize: 15, color: '#6b7280', lineHeight: 1.6, marginBottom: 24 }}>
+              Tu cuenta está creada, pero necesitamos que confirmes tu suscripción
+              en Mercado Pago para activar el acceso.
+            </p>
+            <button
+              onClick={() => logout()}
+              style={{
+                background: 'none', border: '1px solid #d1d5db', borderRadius: 8,
+                padding: '10px 20px', fontSize: 14, color: '#6b7280', cursor: 'pointer',
+              }}
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className={`main-content ${isAuthenticated && selectedStoreSlug ? 'with-sidebar' : 'no-sidebar'}`}>
         <div className="container">
         <Routes>

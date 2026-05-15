@@ -64,17 +64,14 @@ export default function SuscripcionResultado() {
     if (esPendiente) return (
       <>
         <FontAwesomeIcon icon={faClock} style={{ fontSize: 64, color: COLORES.amarillo, marginBottom: 20 }} />
-        <h1 style={s.titulo}>Pago pendiente</h1>
+        <h1 style={s.titulo}>Suscripción en proceso</h1>
         <p style={s.subtitulo}>
-          Tu pago está siendo procesado por Mercado Pago.<br />
+          Mercado Pago está procesando tu suscripción.<br />
           Cuando se confirme, tu cuenta quedará activada automáticamente.
         </p>
-        <p style={{ color: COLORES.gris, fontSize: 14 }}>
-          Podés ingresar al sistema mientras esperás — tu período de prueba ya está activo.
+        <p style={{ color: COLORES.gris, fontSize: 14, marginTop: 8 }}>
+          Recibirás un email de confirmación. No hace falta que hagas nada más.
         </p>
-        <button style={s.btnPrimario} onClick={() => navigate('/')}>
-          Ir al sistema
-        </button>
       </>
     );
 
