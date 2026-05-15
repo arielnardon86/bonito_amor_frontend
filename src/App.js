@@ -21,6 +21,8 @@ import ComprasStock from './components/ComprasStock';
 import VentasPage from './components/VentasPage';
 import HomePage from './components/HomePage';
 import CierresCaja from './components/CierresCaja';
+import Registro from './components/Registro';
+import SuscripcionResultado from './components/SuscripcionResultado';
 import { useNotifications } from './hooks/useNotifications';
 import Swal from 'sweetalert2';
 
@@ -616,7 +618,11 @@ const AppContent = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           )}
 
-          {(!isAuthenticated || (isAuthenticated && !selectedStoreSlug)) && 
+          {/* Rutas públicas (sin autenticación) */}
+          <Route path="/registro" element={<Registro />} />
+          <Route path="/suscripcion/resultado" element={<SuscripcionResultado />} />
+
+          {(!isAuthenticated || (isAuthenticated && !selectedStoreSlug)) &&
             <Route path="*" element={<Navigate to="/" replace />} />
           }
 

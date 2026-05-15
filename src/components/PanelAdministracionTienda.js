@@ -12,6 +12,7 @@ import HelpButton from './HelpButton';
 import NotasCreditoPage from './NotasCreditoPage';
 import IntegracionTiendaNube from './IntegracionTiendaNube';
 import IntegracionMercadoLibrePanel from './IntegracionMercadoLibrePanel';
+import ModalUpgrade from './ModalUpgrade';
 
 const normalizeApiUrl = (url) => {
     if (!url) {
@@ -188,6 +189,11 @@ const PanelAdministracionTienda = () => {
         costo_envio: '0.00',
         tienda: selectedStoreSlug || ''
     });
+
+    // Estados para Mi Plan
+    const [planInfo, setPlanInfo] = useState(null);
+    const [loadingPlan, setLoadingPlan] = useState(false);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
     // Cargar información de la tienda (ML, facturación, etc.)
     // Cargar estado AFIP desde el backend (debe ir ANTES de fetchTiendaInfo)
@@ -1245,6 +1251,19 @@ const PanelAdministracionTienda = () => {
                     className="panel-admin-tab"
                 >
                     Mercado Libre
+                </button>
+                <button
+                    onClick={() => {
+                        setActiveTab('mi-plan');
+                        setLoadingPlan(true);
+                        axios.get(`${BASE_API_ENDPOINT}/api/suscripcion/mi-plan/`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        }).then(r => setPlanInfo(r.data)).catch(() => setPlanInfo(null)).finally(() => setLoadingPlan(false));
+                    }}
+                    style={activeTab === 'mi-plan' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
+                    className="panel-admin-tab"
+                >
+                    Mi Plan
                 </button>
             </div>
 
@@ -2337,6 +2356,167 @@ const PanelAdministracionTienda = () => {
                     </div>
                     </>}
                 </div>
+            )}
+
+            {/* TAB: MI PLAN */}
+            {activeTab === 'mi-plan' && (
+                <div style={styles.tabContent}>
+                    {loadingPlan ? (
+                        <p style={{ color: '#6b7280', textAlign: 'center', padding: 40 }}>Cargando información del plan...</p>
+                    ) : !planInfo ? (
+                        <p style={{ color: '#6b7280', textAlign: 'center', padding: 40 }}>No se pudo cargar la información del plan.</p>
+                    ) : planInfo.legacy ? (
+                        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '24px 28px', maxWidth: 480 }}>
+                            <p style={{ fontWeight: 700, fontSize: 16, color: '#1a3a2a', marginBottom: 8 }}>Cuenta legacy</p>
+                            <p style={{ fontSize: 14, color: '#6b7280' }}>Tu cuenta tiene acceso completo sin restricciones de plan.</p>
+                        </div>
+                    ) : (() => {
+                        const enTrial = planInfo.estado === 'trial';
+                        const enGracia = planInfo.estado === 'gracia';
+                        const diasTrialRestantes = planInfo.fecha_fin_trial
+                            ? Math.max(0, Math.ceil((new Date(planInfo.fecha_fin_trial) - new Date()) / 86400000))
+                            : 0;
+                        return (
+                        <>
+                            {/* Plan header */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+                                <div style={{
+                                    background: planInfo.plan === 'pro' ? '#3b82f6' : planInfo.plan === 'advanced' ? '#10b981' : '#5dc87a',
+                                    color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 18, fontWeight: 700
+                                }}>
+                                    {planInfo.plan_display}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: 13, color: '#6b7280' }}>Estado</div>
+                                    <div style={{
+                                        fontWeight: 600, fontSize: 14,
+                                        color: planInfo.estado === 'activa' || enTrial ? '#16a34a' : enGracia ? '#f59e0b' : '#dc2626'
+                                    }}>
+                                        {enTrial ? 'Período de prueba' : planInfo.estado === 'activa' ? 'Activa' : enGracia ? 'Período de gracia' : 'Pausada'}
+                                    </div>
+                                </div>
+                                {enTrial && (
+                                    <div style={{ marginLeft: 'auto', background: '#fef9c3', border: '1px solid #fde047', borderRadius: 8, padding: '8px 14px', fontSize: 13, color: '#713f12', fontWeight: 600 }}>
+                                        {diasTrialRestantes > 0 ? `${diasTrialRestantes} días de prueba restantes` : 'Último día de prueba'}
+                                    </div>
+                                )}
+                                {enGracia && (
+                                    <div style={{ marginLeft: 'auto', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 14px', fontSize: 13, color: '#991b1b', fontWeight: 600 }}>
+                                        {planInfo.dias_gracia_restantes} días para regularizar el pago
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Uso de recursos */}
+                            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
+                                <p style={{ fontWeight: 700, fontSize: 14, color: '#1a3a2a', marginBottom: 16 }}>Uso actual</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    {/* Productos */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#374151', marginBottom: 5 }}>
+                                            <span>Productos</span>
+                                            <span style={{ fontWeight: 600 }}>
+                                                {planInfo.cantidad_productos ?? '—'}{planInfo.max_productos ? ` / ${planInfo.max_productos}` : ' (ilimitados)'}
+                                            </span>
+                                        </div>
+                                        {planInfo.max_productos > 0 && (
+                                            <div style={{ background: '#e5e7eb', borderRadius: 999, height: 8 }}>
+                                                <div style={{
+                                                    background: (planInfo.cantidad_productos / planInfo.max_productos) > 0.9 ? '#ef4444' : '#5dc87a',
+                                                    width: `${Math.min(100, (planInfo.cantidad_productos / planInfo.max_productos) * 100)}%`,
+                                                    height: 8, borderRadius: 999, transition: 'width 0.3s'
+                                                }} />
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Usuarios */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#374151', marginBottom: 5 }}>
+                                            <span>Usuarios</span>
+                                            <span style={{ fontWeight: 600 }}>
+                                                {planInfo.cantidad_usuarios ?? '—'}{planInfo.max_usuarios ? ` / ${planInfo.max_usuarios}` : ' (ilimitados)'}
+                                            </span>
+                                        </div>
+                                        {planInfo.max_usuarios > 0 && (
+                                            <div style={{ background: '#e5e7eb', borderRadius: 999, height: 8 }}>
+                                                <div style={{
+                                                    background: (planInfo.cantidad_usuarios / planInfo.max_usuarios) > 0.9 ? '#ef4444' : '#3b82f6',
+                                                    width: `${Math.min(100, (planInfo.cantidad_usuarios / planInfo.max_usuarios) * 100)}%`,
+                                                    height: 8, borderRadius: 999, transition: 'width 0.3s'
+                                                }} />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Features */}
+                            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
+                                <p style={{ fontWeight: 700, fontSize: 14, color: '#1a3a2a', marginBottom: 14 }}>Funcionalidades</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    {[
+                                        { key: 'permite_factura_electronica', label: 'Factura electrónica (AFIP)' },
+                                        { key: 'permite_integracion_ecommerce', label: 'Integraciones (Tienda Nube / Mercado Libre)' },
+                                    ].map(({ key, label }) => {
+                                        const enabled = planInfo[key];
+                                        return (
+                                            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
+                                                <span style={{
+                                                    width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                    background: enabled ? '#5dc87a' : '#e5e7eb', color: enabled ? '#fff' : '#9ca3af', fontWeight: 700, fontSize: 13
+                                                }}>
+                                                    {enabled ? '✓' : '✕'}
+                                                </span>
+                                                <span style={{ color: enabled ? '#1a3a2a' : '#9ca3af' }}>{label}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Próximo cobro */}
+                            {planInfo.fecha_proximo_cobro && (
+                                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
+                                    Próximo cobro: <strong>{new Date(planInfo.fecha_proximo_cobro).toLocaleDateString('es-AR')}</strong>
+                                    {planInfo.precio_mensual && ` — $${Number(planInfo.precio_mensual).toLocaleString('es-AR')}/mes`}
+                                </p>
+                            )}
+
+                            {/* Botón upgrade */}
+                            {planInfo.plan !== 'advanced' && (
+                                <button
+                                    onClick={() => setShowUpgradeModal(true)}
+                                    style={{
+                                        background: '#5dc87a', color: '#fff', border: 'none', borderRadius: 8,
+                                        padding: '12px 28px', fontSize: 15, fontWeight: 600, cursor: 'pointer'
+                                    }}
+                                >
+                                    Mejorar plan
+                                </button>
+                            )}
+                        </>
+                        );
+                    })()}
+                </div>
+            )}
+
+            {/* Modal upgrade desde Mi Plan */}
+            {showUpgradeModal && planInfo && (
+                <ModalUpgrade
+                    visible={showUpgradeModal}
+                    onClose={() => setShowUpgradeModal(false)}
+                    planActual={planInfo.plan}
+                    planesSugeridos={['starter', 'pro', 'advanced']}
+                    mensaje=""
+                    token={token}
+                    onUpgradeOk={(nuevoPlan) => {
+                        setPlanInfo(prev => prev ? { ...prev, plan: nuevoPlan } : prev);
+                        setLoadingPlan(true);
+                        axios.get(`${BASE_API_ENDPOINT}/api/suscripcion/mi-plan/`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        }).then(r => setPlanInfo(r.data)).catch(() => {}).finally(() => setLoadingPlan(false));
+                    }}
+                />
             )}
 
             {/* MODAL DE EDICIÓN DE ARANCEL ML */}

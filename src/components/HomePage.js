@@ -399,6 +399,12 @@ const HomePage = () => {
                                     <span>Emisión de Recibos de compra</span>
                                 </div>
                             </div>
+                            <button
+                                onClick={() => navigate('/registro?plan=starter')}
+                                style={styles.pricingCta}
+                            >
+                                Comenzar gratis
+                            </button>
                         </div>
 
                         {/* Pro Plan */}
@@ -441,6 +447,12 @@ const HomePage = () => {
                                     <span>Emisión de Factura electrónica (Integración con ARCA)</span>
                                 </div>
                             </div>
+                            <button
+                                onClick={() => navigate('/registro?plan=pro')}
+                                style={{ ...styles.pricingCta, background: '#3b82f6' }}
+                            >
+                                Comenzar gratis
+                            </button>
                         </div>
 
                         {/* Advanced Plan */}
@@ -486,6 +498,12 @@ const HomePage = () => {
                                     <span><strong>Integración E-Commerce</strong> (Mercado Libre y Tienda Nube)</span>
                                 </div>
                             </div>
+                            <button
+                                onClick={() => navigate('/registro?plan=advanced')}
+                                style={{ ...styles.pricingCta, background: '#10b981' }}
+                            >
+                                Comenzar gratis
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -921,6 +939,23 @@ const styles = {
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'default',
         position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+    },
+    pricingCta: {
+        marginTop: 'auto',
+        paddingTop: 20,
+        display: 'block',
+        width: '100%',
+        padding: '13px',
+        background: '#5dc87a',
+        color: '#fff',
+        border: 'none',
+        borderRadius: 8,
+        fontSize: 15,
+        fontWeight: 600,
+        cursor: 'pointer',
+        transition: 'opacity 0.2s',
     },
     pricingCardPro: {
         backgroundColor: '#ffffff',
@@ -932,6 +967,8 @@ const styles = {
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'default',
         position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
     },
     pricingBadge: {
         position: 'absolute',
@@ -1013,6 +1050,8 @@ const styles = {
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'default',
         position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
     },
     pricingBadgeAdvanced: {
         position: 'absolute',
