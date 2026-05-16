@@ -5,7 +5,7 @@ import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPencil, faTrash, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faPencil, faTrash, faPlus, faArrowUp } from '@fortawesome/free-solid-svg-icons';
 import HelpButton from './HelpButton';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -71,6 +71,11 @@ const Productos = () => {
     const STOCK_BAJO_THRESHOLD = 5;
     const [showEtiquetasModal, setShowEtiquetasModal] = useState(false);
     const [cantidadesModal, setCantidadesModal] = useState({});
+
+    const [showAgregarStockModal, setShowAgregarStockModal] = useState(false);
+    const [productoParaStock, setProductoParaStock] = useState(null);
+    const [cantidadAGregar, setCantidadAGregar] = useState('');
+    const [loadingAddStock, setLoadingAddStock] = useState(false);
 
     const generarCodigoDeBarrasEAN13 = () => {
         let code = '779' + Math.floor(100000000 + Math.random() * 900000000).toString();
@@ -272,6 +277,34 @@ const Productos = () => {
                 setError('Error al eliminar producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
                 setLoadingProducts(false);
             }
+        }
+    };
+
+    const handleAgregarStock = async () => {
+        const cantidad = parseInt(cantidadAGregar, 10);
+        if (!cantidad || cantidad <= 0) return;
+        setLoadingAddStock(true);
+        try {
+            const nuevoStock = (productoParaStock.stock || 0) + cantidad;
+            await axios.patch(
+                `${BASE_API_ENDPOINT}/api/productos/${productoParaStock.id}/`,
+                { stock: nuevoStock },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setProductos(prev => prev.map(p => {
+                if (p.id === productoParaStock.id) return { ...p, stock: nuevoStock };
+                if (p.variantes) {
+                    return { ...p, variantes: p.variantes.map(v => v.id === productoParaStock.id ? { ...v, stock: nuevoStock } : v) };
+                }
+                return p;
+            }));
+            setShowAgregarStockModal(false);
+            setProductoParaStock(null);
+            setCantidadAGregar('');
+        } catch (err) {
+            setError('Error al agregar stock: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setLoadingAddStock(false);
         }
     };
 
@@ -656,6 +689,16 @@ const Productos = () => {
                                                         <FontAwesomeIcon icon={faTrash} />
                                                     </button>
                                                 </>}
+                                                {user.is_supervisor && !user.is_superuser && !tieneVars && (
+                                                    <button
+                                                        className="icon-btn"
+                                                        onClick={() => { setProductoParaStock(producto); setCantidadAGregar(''); setShowAgregarStockModal(true); }}
+                                                        style={{ color: 'white', backgroundColor: '#3b82f6' }}
+                                                        data-tooltip="Agregar stock"
+                                                    >
+                                                        <FontAwesomeIcon icon={faArrowUp} />
+                                                    </button>
+                                                )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -688,6 +731,7 @@ const Productos = () => {
                                                         {v.stock}{v.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}
                                                     </td>
                                                     <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+                                                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                                         {user.is_superuser && (
                                                             <button
                                                                 className="icon-btn"
@@ -702,6 +746,17 @@ const Productos = () => {
                                                                 <FontAwesomeIcon icon={faPencil} />
                                                             </button>
                                                         )}
+                                                        {user.is_supervisor && !user.is_superuser && (
+                                                            <button
+                                                                className="icon-btn"
+                                                                onClick={() => { setProductoParaStock({ ...v, nombre: `${producto.nombre} · T: ${v.talle || ''}` }); setCantidadAGregar(''); setShowAgregarStockModal(true); }}
+                                                                style={{ color: 'white', backgroundColor: '#3b82f6' }}
+                                                                data-tooltip="Agregar stock"
+                                                            >
+                                                                <FontAwesomeIcon icon={faArrowUp} />
+                                                            </button>
+                                                        )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -895,6 +950,53 @@ const Productos = () => {
                     </div>
                 </div>
             )}
+            {/* Modal agregar stock (supervisor) */}
+            {showAgregarStockModal && productoParaStock && (
+                <div style={styles.modalOverlay}>
+                    <div style={{ ...styles.modalContent, maxWidth: 380, textAlign: 'left' }}>
+                        <h3 style={{ margin: '0 0 16px', color: '#1a2926' }}>Agregar Stock</h3>
+                        <p style={{ margin: '0 0 4px', fontSize: 14, color: '#1a2926', fontWeight: 600 }}>
+                            {productoParaStock.nombre}
+                        </p>
+                        <p style={{ margin: '0 0 20px', fontSize: 13, color: '#8aa8a0' }}>
+                            Stock actual: <strong style={{ color: '#1a2926' }}>{productoParaStock.stock}</strong>
+                        </p>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Cantidad a agregar:</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={cantidadAGregar}
+                                onChange={e => setCantidadAGregar(e.target.value)}
+                                style={styles.modalInput}
+                                autoFocus
+                                onKeyDown={e => e.key === 'Enter' && handleAgregarStock()}
+                            />
+                        </div>
+                        {cantidadAGregar && parseInt(cantidadAGregar, 10) > 0 && (
+                            <p style={{ fontSize: 13, color: '#16a34a', margin: '0 0 16px', fontWeight: 600 }}>
+                                Nuevo stock: {(productoParaStock.stock || 0) + parseInt(cantidadAGregar, 10)}
+                            </p>
+                        )}
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                            <button
+                                onClick={() => { setShowAgregarStockModal(false); setProductoParaStock(null); setCantidadAGregar(''); }}
+                                style={styles.modalCancelButton}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleAgregarStock}
+                                disabled={!cantidadAGregar || parseInt(cantidadAGregar, 10) <= 0 || loadingAddStock}
+                                style={{ ...styles.modalConfirmButton, backgroundColor: '#3b82f6', opacity: (!cantidadAGregar || parseInt(cantidadAGregar, 10) <= 0) ? 0.5 : 1 }}
+                            >
+                                {loadingAddStock ? 'Guardando...' : 'Confirmar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>
                 {`
                 @media (max-width: 768px) {
