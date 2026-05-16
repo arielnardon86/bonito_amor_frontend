@@ -50,18 +50,23 @@ export default function ModalUpgrade({
     setCargando(true);
     setError('');
     try {
-      await axios.post(
+      const { data } = await axios.post(
         `${API_BASE_URL}/api/suscripcion/cambiar-plan/`,
         { plan: planElegido },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (onUpgradeOk) onUpgradeOk(planElegido);
-      onClose();
+      if (data.checkout_url) {
+        // Redirigir a MP para completar la nueva suscripción
+        window.location.href = data.checkout_url;
+      } else {
+        if (onUpgradeOk) onUpgradeOk(planElegido);
+        onClose();
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Error al cambiar el plan. Intentá de nuevo.');
-    } finally {
       setCargando(false);
     }
+    // No hacemos setCargando(false) si hay redirect: la página se va a reemplazar
   };
 
   const info = PLAN_INFO[planElegido] || {};
