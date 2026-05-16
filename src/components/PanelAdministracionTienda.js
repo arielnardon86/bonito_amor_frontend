@@ -194,6 +194,7 @@ const PanelAdministracionTienda = () => {
     const [planInfo, setPlanInfo] = useState(null);
     const [loadingPlan, setLoadingPlan] = useState(false);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [upgradeMotivo, setUpgradeMotivo] = useState('');   // 'factura' | 'ecommerce'
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelando, setCancelando] = useState(false);
 
@@ -433,6 +434,12 @@ const PanelAdministracionTienda = () => {
             } else {
                 setLoading(false);
                 fetchTiendaInfo();
+                // Cargar info del plan al montar para poder bloquear tabs restringidas
+                if (!planInfo) {
+                    axios.get(`${BASE_API_ENDPOINT}/api/suscripcion/mi-plan/`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }).then(r => setPlanInfo(r.data)).catch(() => {});
+                }
                 if (activeTab === 'usuarios') {
                     fetchUsers();
                 } else if (activeTab === 'medios-pago-aranceles') {
@@ -1203,7 +1210,14 @@ const PanelAdministracionTienda = () => {
                     Medios de Pago y Aranceles
                 </button>
                 <button
-                    onClick={() => setActiveTab('habilitar-facturador')}
+                    onClick={() => {
+                        if (planInfo && !planInfo.legacy && !planInfo.permite_factura_electronica) {
+                            setUpgradeMotivo('factura');
+                            setShowUpgradeModal(true);
+                        } else {
+                            setActiveTab('habilitar-facturador');
+                        }
+                    }}
                     style={activeTab === 'habilitar-facturador' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
                     className="panel-admin-tab"
                 >
@@ -1241,14 +1255,28 @@ const PanelAdministracionTienda = () => {
                     </button>
                 )}
                 <button
-                    onClick={() => setActiveTab('tiendanube')}
+                    onClick={() => {
+                        if (planInfo && !planInfo.legacy && !planInfo.permite_integracion_ecommerce) {
+                            setUpgradeMotivo('ecommerce');
+                            setShowUpgradeModal(true);
+                        } else {
+                            setActiveTab('tiendanube');
+                        }
+                    }}
                     style={activeTab === 'tiendanube' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
                     className="panel-admin-tab"
                 >
                     Tienda Nube
                 </button>
                 <button
-                    onClick={() => setActiveTab('mercadolibre-panel')}
+                    onClick={() => {
+                        if (planInfo && !planInfo.legacy && !planInfo.permite_integracion_ecommerce) {
+                            setUpgradeMotivo('ecommerce');
+                            setShowUpgradeModal(true);
+                        } else {
+                            setActiveTab('mercadolibre-panel');
+                        }
+                    }}
                     style={activeTab === 'mercadolibre-panel' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
                     className="panel-admin-tab"
                 >
@@ -2516,14 +2544,26 @@ const PanelAdministracionTienda = () => {
                 </div>
             )}
 
-            {/* Modal upgrade desde Mi Plan */}
+            {/* Modal upgrade (Mi Plan o feature bloqueada) */}
             {showUpgradeModal && planInfo && (
                 <ModalUpgrade
                     visible={showUpgradeModal}
-                    onClose={() => setShowUpgradeModal(false)}
+                    onClose={() => { setShowUpgradeModal(false); setUpgradeMotivo(''); }}
                     planActual={planInfo.plan}
-                    planesSugeridos={['starter', 'pro', 'advanced']}
-                    mensaje=""
+                    planesSugeridos={
+                        upgradeMotivo === 'ecommerce'
+                            ? ['advanced']
+                            : upgradeMotivo === 'factura'
+                                ? ['pro', 'advanced']
+                                : ['starter', 'pro', 'advanced']
+                    }
+                    mensaje={
+                        upgradeMotivo === 'ecommerce'
+                            ? 'Las integraciones con Mercado Libre y Tienda Nube requieren el plan Advanced.'
+                            : upgradeMotivo === 'factura'
+                                ? 'La facturación electrónica (AFIP/ARCA) requiere el plan Pro o Advanced.'
+                                : ''
+                    }
                     token={token}
                     onUpgradeOk={(nuevoPlan) => {
                         setPlanInfo(prev => prev ? { ...prev, plan: nuevoPlan } : prev);
