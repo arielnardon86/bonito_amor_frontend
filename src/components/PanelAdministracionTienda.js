@@ -107,7 +107,7 @@ const notificacionesSoportadas = () =>
     typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
 
 const PanelAdministracionTienda = () => {
-    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas } = useAuth();
+    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas, logout } = useAuth();
     const navigate = useNavigate();
     const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken, error: notificationError } = useNotifications();
     
@@ -194,6 +194,8 @@ const PanelAdministracionTienda = () => {
     const [planInfo, setPlanInfo] = useState(null);
     const [loadingPlan, setLoadingPlan] = useState(false);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelando, setCancelando] = useState(false);
 
     // Cargar información de la tienda (ML, facturación, etc.)
     // Cargar estado AFIP desde el backend (debe ir ANTES de fetchTiendaInfo)
@@ -2494,6 +2496,20 @@ const PanelAdministracionTienda = () => {
                                     Mejorar plan
                                 </button>
                             )}
+
+                            {/* Botón de baja */}
+                            {planInfo.estado !== 'cancelada' && (
+                                <button
+                                    onClick={() => setShowCancelModal(true)}
+                                    style={{
+                                        marginTop: 16, background: 'none', color: '#9ca3af',
+                                        border: '1px solid #e5e7eb', borderRadius: 8,
+                                        padding: '10px 20px', fontSize: 13, cursor: 'pointer'
+                                    }}
+                                >
+                                    Dar de baja mi suscripción
+                                </button>
+                            )}
                         </>
                         );
                     })()}
@@ -2517,6 +2533,70 @@ const PanelAdministracionTienda = () => {
                         }).then(r => setPlanInfo(r.data)).catch(() => {}).finally(() => setLoadingPlan(false));
                     }}
                 />
+            )}
+
+            {/* Modal confirmación de baja */}
+            {showCancelModal && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9500
+                }}>
+                    <div style={{
+                        background: '#fff', borderRadius: 12, padding: '36px 32px',
+                        maxWidth: 440, width: '90%', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
+                    }}>
+                        <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+                        <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a3a2a', margin: '0 0 12px' }}>
+                            ¿Dar de baja la suscripción?
+                        </h3>
+                        <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.6, margin: '0 0 8px' }}>
+                            Tu cuenta y todos tus datos (productos, ventas, clientes)
+                            se conservarán por <strong>30 días</strong>.
+                        </p>
+                        <p style={{ fontSize: 14, color: '#dc2626', margin: '0 0 24px' }}>
+                            Después del período de retención, todos los datos serán eliminados permanentemente.
+                        </p>
+                        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                            <button
+                                onClick={() => setShowCancelModal(false)}
+                                disabled={cancelando}
+                                style={{
+                                    padding: '11px 24px', borderRadius: 8, border: '1px solid #e5e7eb',
+                                    background: '#fff', color: '#374151', fontSize: 14, cursor: 'pointer', fontWeight: 600
+                                }}
+                            >
+                                Volver
+                            </button>
+                            <button
+                                disabled={cancelando}
+                                onClick={async () => {
+                                    setCancelando(true);
+                                    try {
+                                        await axios.post(
+                                            `${BASE_API_ENDPOINT}/api/suscripcion/cancelar/`,
+                                            {},
+                                            { headers: { Authorization: `Bearer ${token}` } }
+                                        );
+                                        setShowCancelModal(false);
+                                        alert('Tu suscripción fue cancelada. Tus datos se conservarán por 30 días.');
+                                        logout();
+                                    } catch (err) {
+                                        alert(err?.response?.data?.error || 'Error al cancelar. Intentá nuevamente.');
+                                    } finally {
+                                        setCancelando(false);
+                                    }
+                                }}
+                                style={{
+                                    padding: '11px 24px', borderRadius: 8, border: 'none',
+                                    background: '#dc2626', color: '#fff', fontSize: 14,
+                                    cursor: cancelando ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: cancelando ? 0.7 : 1
+                                }}
+                            >
+                                {cancelando ? 'Cancelando...' : 'Sí, dar de baja'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* MODAL DE EDICIÓN DE ARANCEL ML */}
