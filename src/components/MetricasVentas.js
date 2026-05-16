@@ -619,10 +619,11 @@ const MetricasVentas = () => {
                     <div style={styles.tableCard} className="metricas-table-container">
                         <h3 style={styles.tableTitle}>Productos más vendidos</h3>
                         {metrics?.productos_mas_vendidos?.length > 0 ? (() => {
-                            const maxQty = Math.max(...metrics.productos_mas_vendidos.map(p => p.cantidad_total));
+                            const top10 = metrics.productos_mas_vendidos.slice(0, 10);
+                            const maxQty = Math.max(...top10.map(p => p.cantidad_total));
                             return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                    {metrics.productos_mas_vendidos.map((p, i) => (
+                                    {top10.map((p, i) => (
                                         <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid #edf5f2' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                                 <span style={{ fontSize: 16, flexShrink: 0, width: 24, textAlign: 'center' }}>
