@@ -335,7 +335,7 @@ const Navbar = () => {
 };
 
 const AppContent = () => {
-  const { isAuthenticated, loading, selectedStoreSlug, user, token, sessionLocked, unlockSession, logout } = useAuth();
+  const { isAuthenticated, loading, selectedStoreSlug, user, token, sessionLocked, unlockSession, logout, tiendasAutorizadas, selectStore } = useAuth();
   const [mostrarModalCambioInicial, setMostrarModalCambioInicial] = useState(false);
   const [cambioInicialInput, setCambioInicialInput] = useState('');
   const [guardandoCambioInicial, setGuardandoCambioInicial] = useState(false);
@@ -497,6 +497,25 @@ const AppContent = () => {
               <p style={{ color: '#c53030', fontSize: 12, marginBottom: 16, fontWeight: 600 }}>
                 Este paso es obligatorio. Si no tenés efectivo, ingresá 0.
               </p>
+            )}
+            {tiendasAutorizadas?.length > 1 && (
+              <div style={{ marginBottom: 16, textAlign: 'left' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#718096', display: 'block', marginBottom: 4 }}>
+                  Tienda activa
+                </label>
+                <select
+                  value={selectedStoreSlug}
+                  onChange={e => { selectStore(e.target.value); setCambioInicialInput(''); }}
+                  style={{
+                    width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 14,
+                    border: '2px solid #e2e8f0', outline: 'none', background: '#f7f8fa',
+                  }}
+                >
+                  {tiendasAutorizadas.map(t => (
+                    <option key={t.id} value={t.nombre}>{t.nombre}</option>
+                  ))}
+                </select>
+              </div>
             )}
             <input
               type="number"
