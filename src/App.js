@@ -344,6 +344,27 @@ const AppContent = () => {
   const [unlockError, setUnlockError] = useState('');
   const [unlocking, setUnlocking] = useState(false);
   const [suscripcionPendiente, setSuscripcionPendiente] = useState(false);
+  const [verificandoPago, setVerificandoPago] = useState(false);
+  const [mensajeVerificacion, setMensajeVerificacion] = useState('');
+
+  const handleVerificarPago = async () => {
+    setVerificandoPago(true);
+    setMensajeVerificacion('');
+    try {
+      const resp = await axios.post(`${BASE_API_URL}/api/suscripcion/verificar-pago/`);
+      if (resp.data.activa) {
+        setSuscripcionPendiente(false);
+        setMensajeVerificacion('');
+        window.location.reload();
+      } else {
+        setMensajeVerificacion(resp.data.mensaje || 'El pago aún no fue confirmado. Intentá en unos minutos.');
+      }
+    } catch {
+      setMensajeVerificacion('Error al verificar. Intentá de nuevo.');
+    } finally {
+      setVerificandoPago(false);
+    }
+  };
 
   const handleUnlock = async () => {
     if (!unlockPassword) { setUnlockError('Ingresá tu contraseña.'); return; }
@@ -583,11 +604,33 @@ const AppContent = () => {
               Tu cuenta está creada, pero necesitamos que confirmes tu suscripción
               en Mercado Pago para activar el acceso.
             </p>
+            {mensajeVerificacion && (
+              <p style={{
+                fontSize: 13, color: mensajeVerificacion.includes('activada') ? '#16a34a' : '#dc2626',
+                background: mensajeVerificacion.includes('activada') ? '#f0fdf4' : '#fef2f2',
+                borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+              }}>
+                {mensajeVerificacion}
+              </p>
+            )}
+            <button
+              onClick={handleVerificarPago}
+              disabled={verificandoPago}
+              style={{
+                background: '#16a34a', border: 'none', borderRadius: 8,
+                padding: '12px 24px', fontSize: 15, color: '#fff', cursor: 'pointer',
+                fontWeight: 600, marginBottom: 12, width: '100%',
+                opacity: verificandoPago ? 0.7 : 1,
+              }}
+            >
+              {verificandoPago ? 'Verificando...' : 'Ya pagué — Verificar'}
+            </button>
             <button
               onClick={() => logout()}
               style={{
                 background: 'none', border: '1px solid #d1d5db', borderRadius: 8,
                 padding: '10px 20px', fontSize: 14, color: '#6b7280', cursor: 'pointer',
+                width: '100%',
               }}
             >
               Cerrar sesión
