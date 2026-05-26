@@ -606,7 +606,7 @@ const Productos = () => {
                                         <th style={styles.th}>Costo</th>
                                         <th style={styles.th}>Margen</th>
                                         <th style={styles.th}>Stock actual</th>
-                                        <th style={styles.th}>Últ. ingreso</th>
+                                        <th style={styles.th}>Últ. cambio stock</th>
                                         <th style={styles.th}>Acciones</th>
                                     </tr>
                                 </thead>
