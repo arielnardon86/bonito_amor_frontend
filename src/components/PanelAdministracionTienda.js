@@ -198,6 +198,14 @@ const PanelAdministracionTienda = () => {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelando, setCancelando] = useState(false);
 
+    // Estados para Historial de Acciones
+    const [historial, setHistorial] = useState([]);
+    const [loadingHistorial, setLoadingHistorial] = useState(false);
+    const [historialFechaDesde, setHistorialFechaDesde] = useState('');
+    const [historialFechaHasta, setHistorialFechaHasta] = useState('');
+    const [historialUsuarioId, setHistorialUsuarioId] = useState('');
+    const [usuarios, setUsuarios] = useState([]);
+
     // Cargar información de la tienda (ML, facturación, etc.)
     // Cargar estado AFIP desde el backend (debe ir ANTES de fetchTiendaInfo)
     const fetchAfipEstado = useCallback(async (tiendaId) => {
@@ -453,6 +461,47 @@ const PanelAdministracionTienda = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [authLoading, isAuthenticated, user, navigate, activeTab, selectedStoreSlug, fetchTiendaInfo]);
+
+    // ========== HISTORIAL DE ACCIONES ==========
+    const fetchHistorial = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        setLoadingHistorial(true);
+        try {
+            const params = new URLSearchParams();
+            if (historialFechaDesde) params.append('fecha_desde', historialFechaDesde);
+            if (historialFechaHasta) params.append('fecha_hasta', historialFechaHasta);
+            if (historialUsuarioId)  params.append('usuario_id', historialUsuarioId);
+            const res = await axios.get(
+                `${BASE_API_ENDPOINT}/api/historial-acciones/?${params.toString()}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setHistorial(res.data.results || res.data);
+        } catch (err) {
+            console.error('Error cargando historial:', err);
+        } finally {
+            setLoadingHistorial(false);
+        }
+    }, [token, selectedStoreSlug, historialFechaDesde, historialFechaHasta, historialUsuarioId]);
+
+    const fetchUsuariosHistorial = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const res = await axios.get(
+                `${BASE_API_ENDPOINT}/api/users/?tienda_slug=${selectedStoreSlug}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setUsuarios(res.data.results || res.data);
+        } catch (err) {
+            console.error('Error cargando usuarios para filtro:', err);
+        }
+    }, [token, selectedStoreSlug]);
+
+    useEffect(() => {
+        if (activeTab === 'historial') {
+            fetchHistorial();
+            if (usuarios.length === 0) fetchUsuariosHistorial();
+        }
+    }, [activeTab, fetchHistorial, fetchUsuariosHistorial, usuarios.length]);
 
     // ========== FUNCIONES PARA USUARIOS ==========
     const fetchUsers = useCallback(async () => {
@@ -1294,6 +1343,13 @@ const PanelAdministracionTienda = () => {
                     className="panel-admin-tab"
                 >
                     Mi Plan
+                </button>
+                <button
+                    onClick={() => setActiveTab('historial')}
+                    style={activeTab === 'historial' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
+                    className="panel-admin-tab"
+                >
+                    Historial
                 </button>
             </div>
 
@@ -2792,6 +2848,83 @@ const PanelAdministracionTienda = () => {
                     </div>
                 </div>
             )}
+            {/* TAB: HISTORIAL DE ACCIONES */}
+            {activeTab === 'historial' && (
+                <div style={styles.tabContent}>
+                    {/* Filtros */}
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, alignItems: 'flex-end' }}>
+                        <div>
+                            <label style={{ fontSize: 12, color: '#718096', display: 'block', marginBottom: 4 }}>Desde</label>
+                            <input type="date" value={historialFechaDesde}
+                                onChange={e => setHistorialFechaDesde(e.target.value)}
+                                style={{ padding: '7px 10px', borderRadius: 7, border: '1px solid #d8eae4', fontSize: 13 }} />
+                        </div>
+                        <div>
+                            <label style={{ fontSize: 12, color: '#718096', display: 'block', marginBottom: 4 }}>Hasta</label>
+                            <input type="date" value={historialFechaHasta}
+                                onChange={e => setHistorialFechaHasta(e.target.value)}
+                                style={{ padding: '7px 10px', borderRadius: 7, border: '1px solid #d8eae4', fontSize: 13 }} />
+                        </div>
+                        <div>
+                            <label style={{ fontSize: 12, color: '#718096', display: 'block', marginBottom: 4 }}>Usuario</label>
+                            <select value={historialUsuarioId} onChange={e => setHistorialUsuarioId(e.target.value)}
+                                style={{ padding: '7px 10px', borderRadius: 7, border: '1px solid #d8eae4', fontSize: 13, minWidth: 150 }}>
+                                <option value="">Todos</option>
+                                {usuarios.map(u => (
+                                    <option key={u.id} value={u.id}>{u.username}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <button onClick={fetchHistorial}
+                            style={{ padding: '8px 18px', background: '#5dc87a', color: '#fff', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                            Filtrar
+                        </button>
+                    </div>
+
+                    {loadingHistorial ? (
+                        <p style={{ color: '#6b7280', padding: 20 }}>Cargando...</p>
+                    ) : historial.length === 0 ? (
+                        <p style={{ color: '#9ca3af', padding: 20 }}>Sin registros para los filtros seleccionados.</p>
+                    ) : (
+                        <div style={styles.tableContainer}>
+                            <table style={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th style={styles.th}>Fecha</th>
+                                        <th style={styles.th}>Acción</th>
+                                        <th style={styles.th}>Detalle</th>
+                                        <th style={styles.th}>Usuario</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {historial.map(h => (
+                                        <tr key={h.id} style={{ borderBottom: '1px solid #f0f4f3' }}>
+                                            <td style={{ ...styles.td, whiteSpace: 'nowrap', color: '#6b7280', fontSize: 13 }}>
+                                                {new Date(h.fecha).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                            </td>
+                                            <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+                                                <span style={{
+                                                    display: 'inline-block', fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 10,
+                                                    ...(h.accion === 'ingreso_stock'     ? { background: '#e0f2fe', color: '#0369a1' } :
+                                                        h.accion === 'anulacion_venta'   ? { background: '#fef2f2', color: '#dc2626' } :
+                                                        h.accion === 'anulacion_item'    ? { background: '#fff7ed', color: '#c2410c' } :
+                                                        h.accion === 'cambio_devolucion' ? { background: '#f0fdf4', color: '#15803d' } :
+                                                        { background: '#f3f4f6', color: '#374151' })
+                                                }}>
+                                                    {h.accion_display}
+                                                </span>
+                                            </td>
+                                            <td style={{ ...styles.td, fontSize: 13, color: '#374151' }}>{h.detalle}</td>
+                                            <td style={{ ...styles.td, fontSize: 13, fontWeight: 600, color: '#4a6660' }}>{h.usuario_username}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
         </div>
         </>
     );
