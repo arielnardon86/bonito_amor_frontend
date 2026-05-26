@@ -286,15 +286,17 @@ const Productos = () => {
         setLoadingAddStock(true);
         try {
             const nuevoStock = (productoParaStock.stock || 0) + cantidad;
+            const fechaIngreso = new Date().toISOString();
             await axios.patch(
                 `${BASE_API_ENDPOINT}/api/productos/${productoParaStock.id}/`,
                 { stock: nuevoStock },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            const camposIngreso = { stock: nuevoStock, stock_ultimo_ingreso: nuevoStock, fecha_ultimo_ingreso: fechaIngreso };
             setProductos(prev => prev.map(p => {
-                if (p.id === productoParaStock.id) return { ...p, stock: nuevoStock };
+                if (p.id === productoParaStock.id) return { ...p, ...camposIngreso };
                 if (p.variantes) {
-                    return { ...p, variantes: p.variantes.map(v => v.id === productoParaStock.id ? { ...v, stock: nuevoStock } : v) };
+                    return { ...p, variantes: p.variantes.map(v => v.id === productoParaStock.id ? { ...v, ...camposIngreso } : v) };
                 }
                 return p;
             }));
@@ -603,7 +605,8 @@ const Productos = () => {
                                         <th style={styles.th}>Precio</th>
                                         <th style={styles.th}>Costo</th>
                                         <th style={styles.th}>Margen</th>
-                                        <th style={styles.th}>Stock</th>
+                                        <th style={styles.th}>Stock actual</th>
+                                        <th style={styles.th}>Últ. ingreso</th>
                                         <th style={styles.th}>Acciones</th>
                                     </tr>
                                 </thead>
@@ -660,6 +663,18 @@ const Productos = () => {
                                                       </span>
                                                     : <>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</>
                                                 }
+                                            </td>
+                                            <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+                                                {!tieneVars && producto.stock_ultimo_ingreso != null ? (
+                                                    <span>
+                                                        <span style={{ fontWeight: 600 }}>{producto.stock_ultimo_ingreso}</span>
+                                                        {producto.fecha_ultimo_ingreso && (
+                                                            <span style={{ marginLeft: 5, fontSize: 11, color: '#8aa8a0' }}>
+                                                                {new Date(producto.fecha_ultimo_ingreso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                ) : <span style={{ color: '#c0ccc9' }}>—</span>}
                                             </td>
                                             <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
                                                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -729,6 +744,18 @@ const Productos = () => {
                                                     </td>
                                                     <td style={{ ...styles.td, color: v.stock <= STOCK_BAJO_THRESHOLD ? '#dc2626' : undefined, fontWeight: v.stock <= STOCK_BAJO_THRESHOLD ? 700 : undefined }}>
                                                         {v.stock}{v.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}
+                                                    </td>
+                                                    <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+                                                        {v.stock_ultimo_ingreso != null ? (
+                                                            <span>
+                                                                <span style={{ fontWeight: 600 }}>{v.stock_ultimo_ingreso}</span>
+                                                                {v.fecha_ultimo_ingreso && (
+                                                                    <span style={{ marginLeft: 5, fontSize: 11, color: '#8aa8a0' }}>
+                                                                        {new Date(v.fecha_ultimo_ingreso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                        ) : <span style={{ color: '#c0ccc9' }}>—</span>}
                                                     </td>
                                                     <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
                                                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
