@@ -467,9 +467,8 @@ const PuntoVenta = () => {
                         fetchArancelesML(),
                         fetchTiendaInfo(),
                         fetchCierreActivo(),
+                        fetchProductos(1, filterTerm || ''),
                     ]);
-                    // Carga inicial sin filtro (el efecto de filterTerm se encargará de aplicar el filtro si existe)
-                    await fetchProductos(1, filterTerm || '');
                 } catch (err) {
                     console.error("Fallo al inicializar datos:", err);
                     setError(prev => prev || 'Fallo crítico al iniciar el Punto de Venta.');
