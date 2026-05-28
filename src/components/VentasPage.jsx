@@ -77,6 +77,7 @@ const VentasPage = () => {
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
     const [currentPageNumber, setCurrentPageNumber] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
 
     const [expandedSaleId, setExpandedSaleId] = useState(null);
     const [cambioDevolucionDetalle, setCambioDevolucionDetalle] = useState(null);
@@ -144,6 +145,7 @@ const VentasPage = () => {
             setVentas(ventasData);
             setNextPageUrl(response.data.next);
             setPrevPageUrl(response.data.previous);
+            setTotalPages(Math.ceil((response.data.count || 0) / 10) || 1);
             if (response.data.totales_global) {
                 setTotalesGlobal(response.data.totales_global);
             } else {
@@ -937,7 +939,7 @@ const VentasPage = () => {
                         <button onClick={() => fetchVentas(prevPageUrl)} disabled={!prevPageUrl} style={styles.paginationButton}>
                             Anterior
                         </button>
-                        <span style={styles.pageNumber}>Página {currentPageNumber}</span>
+                        <span style={styles.pageNumber}>Página {currentPageNumber} de {totalPages}</span>
                         <button onClick={() => fetchVentas(nextPageUrl)} disabled={!nextPageUrl} style={styles.paginationButton}>
                             Siguiente
                         </button>
