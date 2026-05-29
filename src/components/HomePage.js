@@ -131,17 +131,29 @@ export default function HomePage() {
         <div style={s.page}>
 
             {/* ── NAVBAR ── */}
-            <nav style={{ ...s.nav, ...(scrolled ? s.navScrolled : {}) }}>
+            <nav style={{ ...s.nav, ...(scrolled ? s.navScrolled : {}) }} className={scrolled ? 'nav-scrolled' : ''}>
                 <div style={s.navInner}>
                     <img src="/logo-completo.png" alt="Total Stock" style={s.navLogo} />
                     <ul style={s.navLinks}>
                         {[['Soluciones','soluciones'],['Características','caracteristicas'],['Precios','precios']].map(([label, id]) => (
                             <li key={id} className="nav-link-item">
-                                <a href={`#${id}`} onClick={e => { e.preventDefault(); scrollTo(id); }} style={s.navLink} className="nav-link">{label}</a>
+                                <a
+                                    href={`#${id}`}
+                                    onClick={e => { e.preventDefault(); scrollTo(id); }}
+                                    style={{ ...s.navLink, color: scrolled ? C.azul : '#fff' }}
+                                    className="nav-link"
+                                >{label}</a>
                             </li>
                         ))}
                         <li>
-                            <button onClick={() => setShowAccessModal(true)} style={s.navBtnSecondary} className="nav-btn-secondary">
+                            <button
+                                onClick={() => setShowAccessModal(true)}
+                                style={{
+                                    ...s.navBtnSecondary,
+                                    ...(scrolled ? { background: 'transparent', color: C.azul, border: `1.5px solid ${C.azul}` } : {}),
+                                }}
+                                className="nav-btn-secondary"
+                            >
                                 Iniciar sesión
                             </button>
                         </li>
@@ -171,7 +183,7 @@ export default function HomePage() {
                         Pensado para comercios argentinos que quieren ahorrar tiempo y vender más.
                     </p>
                     <div style={s.heroCtas}>
-                        <button onClick={() => navigate('/registro?plan=starter')} style={s.ctaPrimary} className="cta-primary">
+                        <button onClick={() => scrollTo('precios')} style={s.ctaPrimary} className="cta-primary">
                             Empezar gratis 7 días →
                         </button>
                         <button onClick={() => setShowAccessModal(true)} style={s.ctaSecondary} className="cta-secondary">
@@ -179,7 +191,7 @@ export default function HomePage() {
                         </button>
                     </div>
                     <p style={s.heroNote}>
-                        Más de 100 comercios en Argentina ya usan Total Stock
+                        Decenas de comercios en Argentina ya nos eligieron
                     </p>
                 </div>
             </section>
@@ -548,8 +560,10 @@ if (typeof document !== 'undefined') {
     st.id = 'hp-styles';
     st.innerText = `
         @keyframes spin { to { transform: rotate(360deg); } }
-        .nav-link:hover { background: rgba(255,255,255,0.12) !important; }
+        .nav-link:hover { background: rgba(128,128,128,0.12) !important; }
+        .nav-scrolled .nav-link:hover { background: rgba(37,99,235,0.08) !important; }
         .nav-btn-secondary:hover { background: rgba(255,255,255,0.25) !important; }
+        .nav-scrolled .nav-btn-secondary:hover { background: rgba(37,99,235,0.06) !important; }
         .nav-btn-primary:hover { background: #3da85f !important; transform: translateY(-1px); }
         .cta-primary:hover { background: #3da85f !important; transform: translateY(-2px); box-shadow: 0 6px 24px rgba(93,200,122,0.5) !important; }
         .cta-secondary:hover { background: rgba(255,255,255,0.08) !important; }
