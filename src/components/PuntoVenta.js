@@ -2160,7 +2160,16 @@ const PuntoVenta = () => {
                                 </thead>
                                 <tbody>
                                     {productos.length > 0 ? (
-                                        productos.filter(p => !(p.variantes && p.variantes.length > 0)).map(product => (
+                                        productos.flatMap(product => {
+                                            if (product.variantes && product.variantes.length > 0) {
+                                                return product.variantes.map(variante => ({
+                                                    ...variante,
+                                                    nombre: variante.nombre || product.nombre,
+                                                    _nombrePadre: product.nombre,
+                                                }));
+                                            }
+                                            return [product];
+                                        }).map(product => (
                                             <tr key={product.id} style={{ ...styles.tableRow, ...(product.stock === 0 ? { opacity: 0.5, background: '#f7faf9' } : {}) }}>
                                                 <td style={styles.td}>
                                                     {product.nombre}
