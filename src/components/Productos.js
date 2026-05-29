@@ -339,7 +339,18 @@ const Productos = () => {
         const productosParaImprimir = Object.entries(cantidadesModal)
             .filter(([, cantidad]) => cantidad > 0)
             .map(([id, cantidad]) => {
-                const producto = productos.find(p => String(p.id) === String(id));
+                // Buscar primero en productos raíz, luego en variantes anidadas
+                let producto = productos.find(p => String(p.id) === String(id));
+                if (!producto) {
+                    for (const padre of productos) {
+                        const variante = (padre.variantes || []).find(v => String(v.id) === String(id));
+                        if (variante) {
+                            // Las variantes heredan el nombre del padre si no tienen el propio
+                            producto = { ...variante, nombre: variante.nombre || padre.nombre };
+                            break;
+                        }
+                    }
+                }
                 return producto ? { ...producto, labelQuantity: parseInt(cantidad, 10) } : null;
             })
             .filter(Boolean);
