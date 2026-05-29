@@ -570,7 +570,12 @@ const Productos = () => {
                     </div>
                     <button onClick={() => fetchProductos()} style={styles.searchButton}>Buscar</button>
                     {(() => {
-                        const stockBajoCount = productos.filter(p => p.stock <= STOCK_BAJO_THRESHOLD).length;
+                        const stockBajoCount = productos.reduce((acc, p) => {
+                            if (p.variantes && p.variantes.length > 0) {
+                                return acc + p.variantes.filter(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD).length;
+                            }
+                            return acc + ((p.stock || 0) <= STOCK_BAJO_THRESHOLD ? 1 : 0);
+                        }, 0);
                         return stockBajoCount > 0 ? (
                             <button
                                 type="button"
@@ -623,8 +628,10 @@ const Productos = () => {
                                 </thead>
                                 <tbody>
                                     {(stockBajoFilter
-                                        ? productos.filter(p => !p.producto_padre && p.stock <= STOCK_BAJO_THRESHOLD)
-                                        : productos.filter(p => !p.producto_padre)
+                                        ? productos.filter(p => p.variantes && p.variantes.length > 0
+                                            ? p.variantes.some(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD)
+                                            : (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
+                                        : productos
                                     ).map(producto => {
                                         const precio = parseFloat(producto.precio) || 0;
                                         const costo = parseFloat(producto.costo) || 0;
@@ -915,12 +922,19 @@ const Productos = () => {
                         <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: '1rem', fontWeight: 700 }}>¿Cuántas etiquetas imprimir?</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 340, overflowY: 'auto', paddingRight: 4 }}>
                             {Object.keys(cantidadesModal).map(id => {
-                                const producto = productos.find(p => String(p.id) === String(id));
+                                let producto = productos.find(p => String(p.id) === String(id));
+                                let nombreDisplay = producto?.nombre;
+                                if (!producto) {
+                                    for (const padre of productos) {
+                                        const v = (padre.variantes || []).find(v => String(v.id) === String(id));
+                                        if (v) { producto = v; nombreDisplay = v.nombre || padre.nombre; break; }
+                                    }
+                                }
                                 if (!producto) return null;
                                 return (
                                     <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                                         <span style={{ fontSize: 14, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {producto.nombre}
+                                            {nombreDisplay}
                                         </span>
                                         <input
                                             type="number"
