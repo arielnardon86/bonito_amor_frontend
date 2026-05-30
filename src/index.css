@@ -9,22 +9,22 @@
   --ts-teal-dark:       #1e8068;
   --ts-gradient:        linear-gradient(135deg, #5dc87a 0%, #38a080 100%);
 
-  --ts-sidebar-bg:      #1a2926;
-  --ts-sidebar-hover:   #243832;
-  --ts-sidebar-active:  rgba(93, 200, 122, 0.13);
-  --ts-sidebar-text:    #c8ddd9;
-  --ts-sidebar-muted:   #7aa49c;
+  --ts-sidebar-bg:      #0f1e3a;
+  --ts-sidebar-hover:   #1a2d52;
+  --ts-sidebar-active:  rgba(93, 200, 122, 0.14);
+  --ts-sidebar-text:    #e2e8f0;
+  --ts-sidebar-muted:   #7a90b0;
 
-  --ts-bg:              #f2f7f5;
+  --ts-bg:              #f8fafc;
   --ts-surface:         #ffffff;
-  --ts-surface-alt:     #f7faf9;
+  --ts-surface-alt:     #f1f5f9;
 
   --ts-text:            #1a2926;
-  --ts-text-2:          #4a6660;
-  --ts-text-muted:      #8aa8a0;
+  --ts-text-2:          #475569;
+  --ts-text-muted:      #94a3b8;
 
-  --ts-border:          #d8eae4;
-  --ts-border-light:    #edf5f2;
+  --ts-border:          #e2e8f0;
+  --ts-border-light:    #f1f5f9;
 
   --ts-success:         #5dc87a;
   --ts-success-bg:      #edfaf3;
@@ -55,8 +55,13 @@
   --ts-shadow:          0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.05);
   --ts-shadow-lg:       0 10px 30px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
   --ts-shadow-green:    0 4px 14px rgba(93,200,122,.30);
+  --ts-shadow-blue:     0 4px 14px rgba(37,99,235,.18);
 
   --ts-font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* Heading accent — navy (home-consistent) */
+  --ts-heading:         #1e3a8a;
+  --ts-heading-light:   #2563eb;
 }
 
 /* ── Reset & base ───────────────────────────────────────────────────────────── */

@@ -94,14 +94,15 @@ body {
   top: 0;
   height: 100vh;
   width: 260px;
-  background-color: var(--ts-sidebar-bg);
+  background: linear-gradient(180deg, #0f1e3a 0%, #0d1830 100%);
   color: var(--ts-sidebar-text);
-  box-shadow: 4px 0 20px rgba(0,0,0,0.18);
+  box-shadow: 4px 0 24px rgba(0,0,0,0.28);
   z-index: 1000;
   transition: transform 0.3s ease;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  border-right: 1px solid rgba(255,255,255,0.05);
 }
 
 .sidebar-header {
@@ -179,7 +180,7 @@ body {
 }
 
 .store-select option {
-  background: var(--ts-sidebar-bg, #1a2a1f);
+  background: #0f1e3a;
   color: var(--ts-sidebar-text);
 }
 
@@ -200,32 +201,34 @@ body {
   color: var(--ts-sidebar-muted);
   text-decoration: none;
   padding: 11px 20px;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
   border-left: 3px solid transparent;
-  font-size: 0.9em;
+  font-size: 0.88em;
   font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .sidebar-links li a:hover {
-  background-color: var(--ts-sidebar-hover);
+  background-color: rgba(255,255,255,0.05);
   border-left-color: var(--ts-green);
-  color: var(--ts-sidebar-text);
+  color: #fff;
   text-decoration: none;
 }
 
 .sidebar-links li a.active {
-  background-color: var(--ts-sidebar-active);
+  background: linear-gradient(90deg, rgba(93,200,122,0.16) 0%, rgba(93,200,122,0.04) 100%);
   border-left-color: var(--ts-green);
-  color: #fff;
+  color: #5dc87a;
   font-weight: 700;
 }
 
 .nav-icon {
-  font-size: 1em;
+  font-size: 0.95em;
   width: 18px;
   text-align: center;
   color: inherit;
-  opacity: 0.85;
+  opacity: 0.9;
+  flex-shrink: 0;
 }
 
 /* ── Sidebar footer ─────────────────────────────────────────────────────────── */
@@ -363,6 +366,129 @@ body {
   background-color: transparent;
   flex-grow: 1;
   box-sizing: border-box;
+}
+
+/* ── Section & page typography ──────────────────────────────────────────────── */
+
+/* Page-level header: título grande + subtítulo opcional */
+.ts-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.ts-page-title {
+  font-size: 1.6em;
+  font-weight: 800;
+  color: var(--ts-heading, #1e3a8a);
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.ts-page-subtitle {
+  font-size: 0.9em;
+  color: var(--ts-text-muted);
+  margin: 4px 0 0;
+  font-weight: 400;
+}
+
+/* Section card: bloque visual dentro de una sección */
+.ts-section-card {
+  background: var(--ts-surface);
+  border-radius: var(--ts-radius-lg);
+  border: 1px solid var(--ts-border);
+  box-shadow: var(--ts-shadow-sm);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+/* Section heading dentro de una card */
+.ts-section-title {
+  font-size: 1.05em;
+  font-weight: 700;
+  color: var(--ts-heading, #1e3a8a);
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ts-border);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.ts-section-title .ts-section-icon {
+  color: var(--ts-green);
+  font-size: 0.95em;
+}
+
+/* Pill / badge estilo home */
+.ts-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.ts-pill-green {
+  background: rgba(93,200,122,0.1);
+  color: #1a6a40;
+  border: 1px solid rgba(93,200,122,0.35);
+}
+
+.ts-pill-blue {
+  background: #eff6ff;
+  color: #1e4a8a;
+  border: 1px solid #bfdbfe;
+}
+
+.ts-pill-orange {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.ts-pill-red {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+/* Stat card: número grande + label */
+.ts-stat-card {
+  background: var(--ts-surface);
+  border-radius: var(--ts-radius-lg);
+  border: 1px solid var(--ts-border);
+  box-shadow: var(--ts-shadow-sm);
+  padding: 20px 22px;
+  transition: box-shadow 0.18s, transform 0.18s;
+}
+
+.ts-stat-card:hover {
+  box-shadow: var(--ts-shadow);
+  transform: translateY(-2px);
+}
+
+.ts-stat-number {
+  font-size: 2em;
+  font-weight: 800;
+  color: var(--ts-heading, #1e3a8a);
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.ts-stat-label {
+  font-size: 0.82em;
+  color: var(--ts-text-muted);
+  margin-top: 5px;
+  font-weight: 500;
 }
 
 /* ── Tables ─────────────────────────────────────────────────────────────────── */

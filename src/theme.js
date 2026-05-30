@@ -13,25 +13,29 @@ export const colors = {
   gradient:       'linear-gradient(135deg, #5dc87a 0%, #38a080 100%)',
 
   // Sidebar
-  sidebarBg:      '#1a2926',
-  sidebarHover:   '#243832',
-  sidebarActive:  'rgba(93, 200, 122, 0.13)',
-  sidebarText:    '#c8ddd9',
-  sidebarTextMuted: '#7aa49c',
+  sidebarBg:      '#0f1e3a',
+  sidebarHover:   '#1a2d52',
+  sidebarActive:  'rgba(93, 200, 122, 0.14)',
+  sidebarText:    '#e2e8f0',
+  sidebarTextMuted: '#7a90b0',
 
   // Backgrounds
-  bg:             '#f2f7f5',
+  bg:             '#f8fafc',
   surface:        '#ffffff',
-  surfaceAlt:     '#f7faf9',
+  surfaceAlt:     '#f1f5f9',
 
   // Text
   text:           '#1a2926',
-  textSecondary:  '#4a6660',
-  textMuted:      '#8aa8a0',
+  textSecondary:  '#475569',
+  textMuted:      '#94a3b8',
 
   // Borders
-  border:         '#d8eae4',
-  borderLight:    '#edf5f2',
+  border:         '#e2e8f0',
+  borderLight:    '#f1f5f9',
+
+  // Headings (home-consistent navy)
+  heading:        '#1e3a8a',
+  headingLight:   '#2563eb',
 
   // Status
   success:        '#5dc87a',
@@ -57,16 +61,16 @@ export const colors = {
 
   // Neutrals
   white:          '#ffffff',
-  gray50:         '#f8faf9',
-  gray100:        '#edf5f2',
-  gray200:        '#d8eae4',
-  gray300:        '#c0d6ce',
-  gray400:        '#8aa8a0',
-  gray500:        '#6b8e86',
-  gray600:        '#4a6660',
-  gray700:        '#2e4540',
-  gray800:        '#1e2e2a',
-  gray900:        '#111e1b',
+  gray50:         '#f8fafc',
+  gray100:        '#f1f5f9',
+  gray200:        '#e2e8f0',
+  gray300:        '#cbd5e1',
+  gray400:        '#94a3b8',
+  gray500:        '#64748b',
+  gray600:        '#475569',
+  gray700:        '#334155',
+  gray800:        '#1e293b',
+  gray900:        '#0f172a',
 };
 
 export const radius = {
