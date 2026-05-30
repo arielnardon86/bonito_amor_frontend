@@ -68,6 +68,17 @@ const FEATURES = [
     { icon: faStore,        titulo: 'Multi-Tienda', desc: 'Administrá varias sucursales desde una sola cuenta.' },
 ];
 
+const CLIENTES = [
+    { src: '/clientes/bonito-amor.jpeg',       nombre: 'Bonito Amor' },
+    { src: '/clientes/acces.jpg',              nombre: 'Acces' },
+    { src: '/clientes/eria.jpg',               nombre: 'Eria' },
+    { src: '/clientes/euforicas.png',          nombre: 'Eufóricas' },
+    { src: '/clientes/fanaticos-sport.jpg',    nombre: 'Fanáticos Sport' },
+    { src: '/clientes/high-duo.png',           nombre: 'High Duo' },
+    { src: '/clientes/la-pasion-del-hincha.jpeg', nombre: 'La Pasión del Hincha' },
+    { src: '/clientes/total-dark.jpg',         nombre: 'Total Dark' },
+];
+
 const INTEGRACIONES = [
     { nombre: 'ARCA / AFIP', color: '#003087', letra: 'A', desc: 'Factura electrónica oficial' },
     { nombre: 'Mercado Libre', color: '#ffe600', textColor: '#333', letra: 'ML', desc: 'Publicaciones y órdenes' },
@@ -288,6 +299,27 @@ export default function HomePage() {
                 </div>
             </section>
 
+            {/* ── CLIENTES ── */}
+            <section style={s.clientesSection}>
+                <div style={{ ...s.sectionWrap, textAlign: 'center' }}>
+                    <span style={s.sectionPill}>Confianza real</span>
+                    <h2 style={s.sectionH2}>Orgullosos de nuestros clientes</h2>
+                    <p style={s.sectionSub}>Estos son algunos de ellos</p>
+                </div>
+                <div style={s.marqueeWrap}>
+                    <div style={s.marqueeTrack} className="marquee-track">
+                        {[...CLIENTES, ...CLIENTES].map((cl, i) => (
+                            <div key={i} style={s.clienteItem}>
+                                <div style={s.clienteCircle}>
+                                    <img src={cl.src} alt={cl.nombre} style={s.clienteImg} />
+                                </div>
+                                <span style={s.clienteNombre}>{cl.nombre}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
             {/* ── PRICING ── */}
             <section id="precios" style={s.pricingSection}>
                 <div style={s.sectionWrap}>
@@ -500,6 +532,15 @@ const s = {
     featTitle: { fontSize: '1em', fontWeight: 700, color: C.texto, marginBottom: 8 },
     featDesc: { fontSize: '0.88em', color: C.gris, lineHeight: 1.65 },
 
+    // Clientes
+    clientesSection: { padding: '80px 0 70px', background: C.grisClaro, overflow: 'hidden' },
+    marqueeWrap: { overflow: 'hidden', marginTop: 40, position: 'relative' },
+    marqueeTrack: { display: 'flex', gap: 36, width: 'max-content', animation: 'marquee 30s linear infinite' },
+    clienteItem: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flexShrink: 0 },
+    clienteCircle: { width: 90, height: 90, borderRadius: '50%', overflow: 'hidden', border: '3px solid #e5e7eb', background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', flexShrink: 0 },
+    clienteImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+    clienteNombre: { fontSize: 12, color: C.gris, fontWeight: 600, textAlign: 'center', maxWidth: 90, lineHeight: 1.3 },
+
     // Integraciones
     integSection: { padding: '80px 0', background: `linear-gradient(135deg, #0d1f3c 0%, ${C.azul} 100%)`, textAlign: 'center' },
     integGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginTop: 0 },
@@ -560,6 +601,8 @@ if (typeof document !== 'undefined') {
     st.id = 'hp-styles';
     st.innerText = `
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .marquee-track:hover { animation-play-state: paused; }
         .nav-link:hover { background: rgba(128,128,128,0.12) !important; }
         .nav-scrolled .nav-link:hover { background: rgba(37,99,235,0.08) !important; }
         .nav-btn-secondary:hover { background: rgba(255,255,255,0.25) !important; }
