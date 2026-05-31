@@ -345,8 +345,11 @@ const Productos = () => {
                     for (const padre of productos) {
                         const variante = (padre.variantes || []).find(v => String(v.id) === String(id));
                         if (variante) {
-                            // Las variantes heredan el nombre del padre si no tienen el propio
-                            producto = { ...variante, nombre: variante.nombre || padre.nombre };
+                            producto = {
+                                ...variante,
+                                nombre: padre.nombre,
+                                variante_detalle: variante.talle || '',
+                            };
                             break;
                         }
                     }

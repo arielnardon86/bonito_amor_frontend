@@ -15,12 +15,20 @@ const EtiquetasImpresion = () => {
         if (productosParaImprimir.length > 0 && labelsRef.current) {
             labelsRef.current.innerHTML = '';
 
+            const truncate = (str, max) =>
+                str && str.length > max ? str.slice(0, max) + '…' : (str || '');
+
             productosParaImprimir.forEach((producto) => {
                 if (!producto || (!producto.id && !producto.nombre)) return;
                 const codigoBarras = producto.codigo_barras && String(producto.codigo_barras).trim()
                     ? String(producto.codigo_barras).trim()
                     : `PROD-${producto.id || 'N/A'}`;
                 const isEAN13 = /^\d{12,13}$/.test(codigoBarras);
+
+                const nombreMostrado = truncate(producto.nombre, 24);
+                const detalleMostrado = producto.variante_detalle
+                    ? truncate(producto.variante_detalle, 20)
+                    : '';
 
                 for (let i = 0; i < producto.labelQuantity; i++) {
                     const tempDiv = document.createElement('div');
@@ -38,13 +46,14 @@ const EtiquetasImpresion = () => {
                         });
                     } catch (e) {
                         console.error('Error generando código de barras:', e);
-                        tempDiv.innerHTML = `<p>Sin código de barras</p><p class="product-name">${producto.nombre || ''}</p><p class="price">Precio: ${formatearMonto(producto.precio)}</p>`;
+                        tempDiv.innerHTML = `<p>Sin código de barras</p><p class="product-name">${nombreMostrado}</p><p class="price">Precio: ${formatearMonto(producto.precio)}</p>`;
                         labelsRef.current.appendChild(tempDiv);
                         continue;
                     }
 
                     tempDiv.innerHTML = `
-                        <p class="product-name">${producto.nombre}</p>
+                        <p class="product-name">${nombreMostrado}</p>
+                        ${detalleMostrado ? `<p class="variant-detail">${detalleMostrado}</p>` : ''}
                         <div class="barcode-wrapper"></div>
                         <p class="price">Precio: ${formatearMonto(producto.precio)}</p>
                     `;
@@ -133,7 +142,12 @@ const EtiquetasImpresion = () => {
                     }
                     .label .product-name {
                         font-weight: bold;
-                        font-size: 2.2mm; /* <- CAMBIO: Ligeramente más pequeña para ganar espacio */
+                        font-size: 2.2mm;
+                    }
+                    .label .variant-detail {
+                        font-weight: 600;
+                        font-size: 2mm;
+                        margin-top: 1px;
                     }
                     .label .barcode-wrapper {
                         margin-top: 2px;
