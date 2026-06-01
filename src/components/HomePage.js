@@ -463,6 +463,12 @@ export default function HomePage() {
                     <img src="/logo-completo.png" alt="Total Stock" style={s.footerLogo} />
                     <p style={s.footerText}>© {new Date().getFullYear()} Total Stock · Todos los derechos reservados.</p>
                     <p style={s.footerSub}>Software de gestión para comercios argentinos.</p>
+                    <p style={{ margin: '14px 0 0', fontSize: '0.85em', color: '#64748b' }}>
+                        ¿Tenés dudas o consultas?{' '}
+                        <a href="mailto:info@totalstock.com.ar" style={{ color: '#5dc87a', textDecoration: 'none', fontWeight: 600 }}>
+                            info@totalstock.com.ar
+                        </a>
+                    </p>
                 </div>
             </footer>
 

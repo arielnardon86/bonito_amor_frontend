@@ -48,6 +48,7 @@ import {
   faCashRegister,
   faLock,
   faLockOpen,
+  faEnvelope,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Soporte de notificaciones push (gesto de usuario requerido en móvil)
@@ -322,6 +323,20 @@ const Navbar = () => {
                     <span>Bloquear sesión</span>
                   </button>
                 )}
+                <a
+                  href="mailto:info@totalstock.com.ar"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '7px 10px', marginBottom: 6, borderRadius: 7,
+                    fontSize: 12, color: '#7a90b0', textDecoration: 'none',
+                    background: 'rgba(255,255,255,0.04)',
+                    transition: 'color 0.15s',
+                  }}
+                  title="Contactar soporte"
+                >
+                  <FontAwesomeIcon icon={faEnvelope} style={{ fontSize: 11, opacity: 0.7 }} />
+                  <span>info@totalstock.com.ar</span>
+                </a>
                 <button onClick={handleLogout} className="logout-button">
                   <FontAwesomeIcon icon={faSignOutAlt} />
                   <span>Cerrar Sesión</span>
