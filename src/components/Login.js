@@ -141,13 +141,15 @@ function Login() {
             style={styles.input}
           />
           <button type="submit" style={styles.button}>Iniciar Sesión</button>
-          <button
-            type="button"
-            style={styles.linkBtn}
-            onClick={() => { setVista('recuperar'); clearError(); }}
-          >
-            ¿Olvidaste tu contraseña?
-          </button>
+          <div style={{ textAlign: 'center', marginTop: 4 }}>
+            <button
+              type="button"
+              style={styles.linkBtn}
+              onClick={() => { setVista('recuperar'); clearError(); }}
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          </div>
         </form>
       </div>
     </>
@@ -184,8 +186,8 @@ const styles = {
     fontWeight: 600, boxShadow: '0 4px 14px rgba(93,200,122,.30)',
   },
   linkBtn: {
-    background: 'none', border: 'none', color: '#38a080',
-    fontSize: 13, cursor: 'pointer', fontWeight: 600,
+    background: 'none', border: 'none', color: '#2563eb',
+    fontSize: 13, cursor: 'pointer', fontWeight: 500,
     padding: '4px 0', textDecoration: 'underline',
     fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
   },
