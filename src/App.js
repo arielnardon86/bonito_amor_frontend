@@ -374,7 +374,7 @@ const AppContent = () => {
       if (resp.data.activa) {
         setSuscripcionPendiente(false);
         setMensajeVerificacion('');
-        window.location.reload();
+        window.location.href = '/';
       } else {
         setMensajeVerificacion(resp.data.mensaje || 'El pago aún no fue confirmado. Intentá en unos minutos.');
       }

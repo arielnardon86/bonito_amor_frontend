@@ -56,7 +56,7 @@ export default function SuscripcionResultado() {
     if (!esOk) return;
     const interval = setInterval(() => {
       setContador(c => {
-        if (c <= 1) { clearInterval(interval); navigate('/'); return 0; }
+        if (c <= 1) { clearInterval(interval); window.location.href = '/'; return 0; }
         return c - 1;
       });
     }, 1000);
@@ -90,7 +90,7 @@ export default function SuscripcionResultado() {
         <p style={{ color: COLORES.gris, fontSize: 14, marginTop: 16 }}>
           Redirigiendo en <strong>{contador}</strong> segundos...
         </p>
-        <button style={s.btnPrimario} onClick={() => navigate('/')}>
+        <button style={s.btnPrimario} onClick={() => { window.location.href = '/'; }}>
           Ir al sistema ahora
         </button>
       </>
