@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import axios from 'axios';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -93,6 +94,38 @@ export default function HomePage() {
     const [accessUsername, setAccessUsername] = useState('');
     const [accessPassword, setAccessPassword] = useState('');
     const [scrolled, setScrolled] = useState(false);
+
+    // Recupero de contraseña dentro del modal
+    // 'login' | 'recuperar' | 'enviado'
+    const [vistaModal, setVistaModal] = useState('login');
+    const [emailRecupero, setEmailRecupero] = useState('');
+    const [enviandoRecupero, setEnviandoRecupero] = useState(false);
+    const [errorRecupero, setErrorRecupero] = useState('');
+
+    const handleRecupero = async (e) => {
+        e.preventDefault();
+        setErrorRecupero('');
+        setEnviandoRecupero(true);
+        try {
+            await axios.post(
+                `${(process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/api\/?$/, '').replace(/\/$/, '')}/api/auth/password-reset/`,
+                { email: emailRecupero.trim().toLowerCase() }
+            );
+            setVistaModal('enviado');
+        } catch (err) {
+            setErrorRecupero(err.response?.data?.error || 'Error al enviar el correo. Intentá de nuevo.');
+        } finally {
+            setEnviandoRecupero(false);
+        }
+    };
+
+    const cerrarModal = () => {
+        setShowAccessModal(false);
+        setVistaModal('login');
+        setEmailRecupero('');
+        setErrorRecupero('');
+        clearError();
+    };
 
     useEffect(() => {
         if (!loading && isAuthenticated && selectedStoreSlug) {
@@ -433,28 +466,97 @@ export default function HomePage() {
                 </div>
             </footer>
 
-            {/* ── MODAL LOGIN ── */}
+            {/* ── MODAL LOGIN / RECUPERO ── */}
             {showAccessModal && (
-                <div style={s.modalOverlay} onClick={() => setShowAccessModal(false)}>
+                <div style={s.modalOverlay} onClick={cerrarModal}>
                     <div style={s.modalBox} onClick={e => e.stopPropagation()}>
                         <div style={s.modalTop}>
-                            <h2 style={s.modalTitle}>Iniciar sesión</h2>
-                            <button onClick={() => { setShowAccessModal(false); clearError(); }} style={s.modalClose} className="modal-close">×</button>
+                            <h2 style={s.modalTitle}>
+                                {vistaModal === 'recuperar' ? 'Recuperar contraseña' : vistaModal === 'enviado' ? 'Revisá tu correo' : 'Iniciar sesión'}
+                            </h2>
+                            <button onClick={cerrarModal} style={s.modalClose} className="modal-close">×</button>
                         </div>
-                        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                            <div>
-                                <label style={s.inputLabel}>Usuario</label>
-                                <input type="text" value={accessUsername} onChange={e => setAccessUsername(e.target.value)} placeholder="tu_usuario" style={s.modalInput} className="modal-input" required />
+
+                        {/* Vista: enviado */}
+                        {vistaModal === 'enviado' && (
+                            <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
+                                <div style={{ fontSize: 48, marginBottom: 12 }}>📧</div>
+                                <p style={{ color: '#475569', fontSize: 14, lineHeight: 1.65, margin: '0 0 8px' }}>
+                                    Enviamos las instrucciones a <strong>{emailRecupero}</strong>.
+                                </p>
+                                <p style={{ color: '#94a3b8', fontSize: 12, margin: '0 0 24px' }}>
+                                    ¿No llegó? Revisá la carpeta de spam.
+                                </p>
+                                <button
+                                    onClick={() => { setVistaModal('login'); setEmailRecupero(''); }}
+                                    style={s.modalBtnOk}
+                                >
+                                    Volver al inicio de sesión
+                                </button>
                             </div>
-                            <div>
-                                <label style={s.inputLabel}>Contraseña</label>
-                                <input type="password" value={accessPassword} onChange={e => setAccessPassword(e.target.value)} placeholder="••••••••" style={s.modalInput} className="modal-input" required />
-                            </div>
-                            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
-                                <button type="button" onClick={() => setShowAccessModal(false)} style={s.modalBtnCancel} className="modal-btn-cancel">Cancelar</button>
-                                <button type="submit" style={s.modalBtnOk} className="modal-btn-ok">Ingresar →</button>
-                            </div>
-                        </form>
+                        )}
+
+                        {/* Vista: recuperar */}
+                        {vistaModal === 'recuperar' && (
+                            <form onSubmit={handleRecupero} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                <p style={{ color: '#475569', fontSize: 14, margin: 0, lineHeight: 1.6 }}>
+                                    Ingresá el email con el que te registraste y te enviaremos un enlace para crear una nueva contraseña.
+                                </p>
+                                <div>
+                                    <label style={s.inputLabel}>Email</label>
+                                    <input
+                                        type="email"
+                                        value={emailRecupero}
+                                        onChange={e => { setEmailRecupero(e.target.value); setErrorRecupero(''); }}
+                                        placeholder="tu@email.com"
+                                        style={s.modalInput}
+                                        className="modal-input"
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+                                {errorRecupero && (
+                                    <div style={{ fontSize: 13, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '8px 12px' }}>
+                                        {errorRecupero}
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 4 }}>
+                                    <button type="button" onClick={() => { setVistaModal('login'); setErrorRecupero(''); }} style={s.modalBtnCancel} className="modal-btn-cancel">
+                                        ← Volver
+                                    </button>
+                                    <button type="submit" disabled={enviandoRecupero} style={{ ...s.modalBtnOk, opacity: enviandoRecupero ? .7 : 1 }} className="modal-btn-ok">
+                                        {enviandoRecupero ? 'Enviando…' : 'Enviar instrucciones'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Vista: login */}
+                        {vistaModal === 'login' && (
+                            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                <div>
+                                    <label style={s.inputLabel}>Usuario</label>
+                                    <input type="text" value={accessUsername} onChange={e => setAccessUsername(e.target.value)} placeholder="tu_usuario" style={s.modalInput} className="modal-input" required />
+                                </div>
+                                <div>
+                                    <label style={s.inputLabel}>Contraseña</label>
+                                    <input type="password" value={accessPassword} onChange={e => setAccessPassword(e.target.value)} placeholder="••••••••" style={s.modalInput} className="modal-input" required />
+                                </div>
+                                <div style={{ textAlign: 'center', marginTop: -8 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setVistaModal('recuperar'); setErrorRecupero(''); }}
+                                        style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                                    >
+                                        ¿Olvidaste tu contraseña?
+                                    </button>
+                                </div>
+                                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                                    <button type="button" onClick={cerrarModal} style={s.modalBtnCancel} className="modal-btn-cancel">Cancelar</button>
+                                    <button type="submit" style={s.modalBtnOk} className="modal-btn-ok">Ingresar →</button>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}
