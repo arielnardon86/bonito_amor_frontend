@@ -23,6 +23,7 @@ import HomePage from './components/HomePage';
 import CierresCaja from './components/CierresCaja';
 import Registro from './components/Registro';
 import SuscripcionResultado from './components/SuscripcionResultado';
+import NuevaContrasena from './components/NuevaContrasena';
 import { useNotifications } from './hooks/useNotifications';
 import Swal from 'sweetalert2';
 
@@ -921,6 +922,7 @@ const AppContent = () => {
 
           {/* Rutas públicas (sin autenticación) */}
           <Route path="/registro" element={<Registro />} />
+          <Route path="/nueva-contrasena" element={<NuevaContrasena />} />
           <Route path="/suscripcion/resultado" element={<SuscripcionResultado />} />
 
           {(!isAuthenticated || (isAuthenticated && !selectedStoreSlug)) &&
