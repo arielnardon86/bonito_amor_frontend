@@ -336,7 +336,7 @@ const Navbar = () => {
 };
 
 const AppContent = () => {
-  const { isAuthenticated, loading, selectedStoreSlug, user, token, sessionLocked, unlockSession, logout, tiendasAutorizadas, selectStore } = useAuth();
+  const { isAuthenticated, loading, selectedStoreSlug, user, token, sessionLocked, unlockSession, logout, tiendasAutorizadas, selectStore, updateUser } = useAuth();
   const navigate = useNavigate();
   const [mostrarModalCambioInicial, setMostrarModalCambioInicial] = useState(false);
   const [cambioInicialInput, setCambioInicialInput] = useState('');
@@ -347,6 +347,10 @@ const AppContent = () => {
   const [unlocking, setUnlocking] = useState(false);
   const [suscripcionPendiente, setSuscripcionPendiente] = useState(false);
   const [estadoSuscripcion, setEstadoSuscripcion] = useState('');
+  const [emailPendiente, setEmailPendiente] = useState('');
+  const [guardandoEmail, setGuardandoEmail] = useState(false);
+  const [errorEmail, setErrorEmail] = useState('');
+  const [emailModalOmitido, setEmailModalOmitido] = useState(false);
   const [verificandoPago, setVerificandoPago] = useState(false);
   const [mensajeVerificacion, setMensajeVerificacion] = useState('');
   const [preapprovalIdUrl, setPreapprovalIdUrl] = useState('');
@@ -365,6 +369,27 @@ const AppContent = () => {
       navigate(`/suscripcion/resultado?preapproval_id=${preapprovalId}`, { replace: true });
     }
   }, [navigate]);
+
+  const handleGuardarEmail = async (e) => {
+    e.preventDefault();
+    setErrorEmail('');
+    if (!emailPendiente.trim() || !/\S+@\S+\.\S+/.test(emailPendiente)) {
+      setErrorEmail('Ingresá un email válido.');
+      return;
+    }
+    setGuardandoEmail(true);
+    try {
+      await axios.patch(`${BASE_API_URL}/api/auth/update-email/`, { email: emailPendiente.trim().toLowerCase() }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      updateUser({ email: emailPendiente.trim().toLowerCase() });
+      setEmailPendiente('');
+    } catch (err) {
+      setErrorEmail(err.response?.data?.error || 'No se pudo guardar el email. Intentá de nuevo.');
+    } finally {
+      setGuardandoEmail(false);
+    }
+  };
 
   const handleVerPlanes = async () => {
     setMostrarPlanes(true);
@@ -505,6 +530,76 @@ const AppContent = () => {
   return (
     <>
       <Navbar />
+
+      {/* Modal: admin sin email registrado */}
+      {isAuthenticated && !loading && user?.is_superuser && !user?.email && !emailModalOmitido && !suscripcionPendiente && !sessionLocked && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(15,30,58,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 8500, fontFamily: "'Inter','Segoe UI',sans-serif",
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 20, padding: '40px 36px',
+            maxWidth: 420, width: '90%', textAlign: 'center',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📧</div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1e3a8a', margin: '0 0 10px' }}>
+              Registrá tu email
+            </h2>
+            <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, margin: '0 0 24px' }}>
+              Para recuperar tu contraseña necesitamos tu email de contacto.
+              Solo te lo pedimos una vez.
+            </p>
+            <form onSubmit={handleGuardarEmail} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <input
+                type="email"
+                placeholder="tu@email.com"
+                value={emailPendiente}
+                onChange={e => { setEmailPendiente(e.target.value); setErrorEmail(''); }}
+                required
+                autoFocus
+                style={{
+                  padding: '11px 14px', fontSize: 15, border: '1.5px solid #e2e8f0',
+                  borderRadius: 10, outline: 'none', boxSizing: 'border-box', width: '100%',
+                  fontFamily: "'Inter','Segoe UI',sans-serif",
+                }}
+              />
+              {errorEmail && (
+                <div style={{
+                  fontSize: 13, color: '#b91c1c', background: '#fef2f2',
+                  border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', textAlign: 'left',
+                }}>
+                  {errorEmail}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={guardandoEmail}
+                style={{
+                  background: guardandoEmail ? '#94a3b8' : '#5dc87a',
+                  color: '#fff', border: 'none', borderRadius: 10,
+                  padding: '13px 0', fontSize: 15, fontWeight: 700,
+                  cursor: guardandoEmail ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 14px rgba(93,200,122,.30)',
+                }}
+              >
+                {guardandoEmail ? 'Guardando…' : 'Guardar email'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmailModalOmitido(true)}
+                style={{
+                  background: 'none', border: 'none', color: '#94a3b8',
+                  fontSize: 12, cursor: 'pointer', padding: '4px 0',
+                }}
+              >
+                Ahora no, recordármelo más tarde
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Pantalla de bloqueo de sesión */}
       {sessionLocked && (

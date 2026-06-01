@@ -183,7 +183,11 @@ export const AuthProvider = ({ children }) => {
     const clearError = useCallback(() => {
         setAuthError(null);
     }, []);
-    
+
+    const updateUser = useCallback((updates) => {
+        setUser(prev => prev ? { ...prev, ...updates } : prev);
+    }, []);
+
     const contextValue = {
         user,
         token,
@@ -198,6 +202,7 @@ export const AuthProvider = ({ children }) => {
         tiendasAutorizadas,
         error: authError,
         clearError,
+        updateUser,
         sessionLocked,
         lockSession,
         unlockSession,
