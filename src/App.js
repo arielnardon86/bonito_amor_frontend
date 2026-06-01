@@ -349,6 +349,9 @@ const AppContent = () => {
   const [verificandoPago, setVerificandoPago] = useState(false);
   const [mensajeVerificacion, setMensajeVerificacion] = useState('');
   const [preapprovalIdUrl, setPreapprovalIdUrl] = useState('');
+  const [mostrarPlanes, setMostrarPlanes] = useState(false);
+  const [planesData, setPlanesData] = useState([]);
+  const [cargandoPlan, setCargandoPlan] = useState('');
 
   // Cuando MP redirige a la raíz con ?preapproval_id=XXX:
   // - Guardar el ID para pasarlo al verificar si el gate aparece
@@ -361,6 +364,35 @@ const AppContent = () => {
       navigate(`/suscripcion/resultado?preapproval_id=${preapprovalId}`, { replace: true });
     }
   }, [navigate]);
+
+  const handleVerPlanes = async () => {
+    setMostrarPlanes(true);
+    if (planesData.length === 0) {
+      try {
+        const r = await axios.get(`${BASE_API_URL}/api/planes/`);
+        setPlanesData(r.data);
+      } catch { /* no op */ }
+    }
+  };
+
+  const handleElegirPlan = async (planNombre) => {
+    setCargandoPlan(planNombre);
+    try {
+      const resp = await axios.post(
+        `${BASE_API_URL}/api/suscripcion/cambiar-plan/`,
+        { plan: planNombre },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (resp.data.checkout_url) {
+        window.location.href = resp.data.checkout_url;
+      }
+    } catch (err) {
+      setMensajeVerificacion(err.response?.data?.error || 'Error al generar el checkout. Intentá de nuevo.');
+      setMostrarPlanes(false);
+    } finally {
+      setCargandoPlan('');
+    }
+  };
 
   const handleVerificarPago = async () => {
     setVerificandoPago(true);
@@ -621,52 +653,107 @@ const AppContent = () => {
             width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
           }}>
             {estadoSuscripcion === 'cancelada' ? (
-              <>
-                <div style={{ fontSize: 52, marginBottom: 16 }}>❌</div>
-                <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e3a8a', marginBottom: 10 }}>
-                  Suscripción cancelada
-                </h2>
-                <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 8 }}>
-                  ¿Ya te re-suscribiste en Mercado Pago? Verificá el pago para reactivar tu cuenta.
-                </p>
-                {mensajeVerificacion && (
-                  <div style={{
-                    fontSize: 13,
-                    color: mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#15803d' : '#b91c1c',
-                    background: mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#f0fdf4' : '#fef2f2',
-                    border: `1px solid ${mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#bbf7d0' : '#fecaca'}`,
-                    borderRadius: 10, padding: '11px 16px', marginBottom: 12, lineHeight: 1.5,
-                  }}>
-                    {mensajeVerificacion}
-                  </div>
-                )}
-                <button
-                  onClick={handleVerificarPago}
-                  disabled={verificandoPago}
-                  style={{
-                    background: verificandoPago ? '#94a3b8' : '#5dc87a',
-                    border: 'none', borderRadius: 10,
-                    padding: '14px 24px', fontSize: 15, color: '#fff', cursor: verificandoPago ? 'not-allowed' : 'pointer',
-                    fontWeight: 700, marginBottom: 12, width: '100%',
-                    transition: 'background 0.2s',
-                  }}
-                >
-                  {verificandoPago ? '🔍 Buscando tu pago...' : '✓ Verificar pago'}
-                </button>
-                <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
-                  ¿Todavía no te re-suscribiste?
-                </p>
-                <button
-                  onClick={() => { logout(); window.location.href = '/#precios'; }}
-                  style={{
-                    background: 'none', border: '1.5px solid #5dc87a', color: '#5dc87a',
-                    borderRadius: 10, padding: '11px 20px', fontSize: 14, cursor: 'pointer',
-                    fontWeight: 600, width: '100%', marginBottom: 12,
-                  }}
-                >
-                  Ver planes de suscripción →
-                </button>
-              </>
+              mostrarPlanes ? (
+                <>
+                  <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
+                  <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1e3a8a', marginBottom: 4 }}>
+                    Elegí tu plan
+                  </h2>
+                  <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
+                    7 días de prueba gratis · Cancelá cuando quieras
+                  </p>
+                  {planesData.length === 0 ? (
+                    <p style={{ color: '#94a3b8', fontSize: 14 }}>Cargando planes...</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                      {planesData.map(plan => (
+                        <div key={plan.nombre} style={{
+                          border: '1.5px solid #e2e8f0', borderRadius: 12, padding: '14px 18px',
+                          textAlign: 'left', background: '#f8fafc',
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <span style={{ fontWeight: 700, fontSize: 15, color: '#1e3a8a' }}>{plan.display}</span>
+                            <span style={{ fontWeight: 700, fontSize: 15, color: '#5dc87a' }}>
+                              ${Number(plan.precio_mensual).toLocaleString('es-AR')}/mes
+                            </span>
+                          </div>
+                          <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 12, color: '#475569', lineHeight: 1.8 }}>
+                            {plan.max_productos > 0 && <li>Hasta {plan.max_productos.toLocaleString('es-AR')} productos</li>}
+                            {plan.max_usuarios > 0 && <li>Hasta {plan.max_usuarios} usuarios</li>}
+                            {plan.permite_factura_electronica && <li>Factura electrónica AFIP</li>}
+                            {plan.permite_integracion_ecommerce && <li>Integración Tienda Nube / Mercado Libre</li>}
+                          </ul>
+                          <button
+                            onClick={() => handleElegirPlan(plan.nombre)}
+                            disabled={!!cargandoPlan}
+                            style={{
+                              width: '100%', background: cargandoPlan === plan.nombre ? '#94a3b8' : '#5dc87a',
+                              color: '#fff', border: 'none', borderRadius: 8,
+                              padding: '9px 0', fontSize: 13, fontWeight: 700,
+                              cursor: cargandoPlan ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {cargandoPlan === plan.nombre ? 'Redirigiendo a MP...' : 'Suscribirme a este plan'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setMostrarPlanes(false)}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer' }}
+                  >
+                    ← Volver
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 52, marginBottom: 16 }}>❌</div>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e3a8a', marginBottom: 10 }}>
+                    Suscripción cancelada
+                  </h2>
+                  <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 8 }}>
+                    ¿Ya te re-suscribiste en Mercado Pago? Verificá el pago para reactivar tu cuenta.
+                  </p>
+                  {mensajeVerificacion && (
+                    <div style={{
+                      fontSize: 13,
+                      color: mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#15803d' : '#b91c1c',
+                      background: mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#f0fdf4' : '#fef2f2',
+                      border: `1px solid ${mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#bbf7d0' : '#fecaca'}`,
+                      borderRadius: 10, padding: '11px 16px', marginBottom: 12, lineHeight: 1.5,
+                    }}>
+                      {mensajeVerificacion}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleVerificarPago}
+                    disabled={verificandoPago}
+                    style={{
+                      background: verificandoPago ? '#94a3b8' : '#5dc87a',
+                      border: 'none', borderRadius: 10,
+                      padding: '14px 24px', fontSize: 15, color: '#fff', cursor: verificandoPago ? 'not-allowed' : 'pointer',
+                      fontWeight: 700, marginBottom: 12, width: '100%',
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    {verificandoPago ? '🔍 Buscando tu pago...' : '✓ Verificar pago'}
+                  </button>
+                  <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
+                    ¿Todavía no te re-suscribiste?
+                  </p>
+                  <button
+                    onClick={handleVerPlanes}
+                    style={{
+                      background: 'none', border: '1.5px solid #5dc87a', color: '#5dc87a',
+                      borderRadius: 10, padding: '11px 20px', fontSize: 14, cursor: 'pointer',
+                      fontWeight: 600, width: '100%', marginBottom: 12,
+                    }}
+                  >
+                    Ver planes de suscripción →
+                  </button>
+                </>
+              )
             ) : estadoSuscripcion === 'pausada' ? (
               <>
                 <div style={{ fontSize: 52, marginBottom: 16 }}>⏸️</div>
