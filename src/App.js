@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 import Productos from './components/Productos';
@@ -336,6 +336,7 @@ const Navbar = () => {
 
 const AppContent = () => {
   const { isAuthenticated, loading, selectedStoreSlug, user, token, sessionLocked, unlockSession, logout, tiendasAutorizadas, selectStore } = useAuth();
+  const navigate = useNavigate();
   const [mostrarModalCambioInicial, setMostrarModalCambioInicial] = useState(false);
   const [cambioInicialInput, setCambioInicialInput] = useState('');
   const [guardandoCambioInicial, setGuardandoCambioInicial] = useState(false);
@@ -346,6 +347,15 @@ const AppContent = () => {
   const [suscripcionPendiente, setSuscripcionPendiente] = useState(false);
   const [verificandoPago, setVerificandoPago] = useState(false);
   const [mensajeVerificacion, setMensajeVerificacion] = useState('');
+
+  // Cuando MP redirige a la raíz con ?preapproval_id=XXX, reenviar al componente de resultado
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const preapprovalId = params.get('preapproval_id');
+    if (preapprovalId && window.location.pathname === '/') {
+      navigate(`/suscripcion/resultado?preapproval_id=${preapprovalId}`, { replace: true });
+    }
+  }, [navigate]);
 
   const handleVerificarPago = async () => {
     setVerificandoPago(true);
