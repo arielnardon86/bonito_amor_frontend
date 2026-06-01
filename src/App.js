@@ -364,9 +364,17 @@ const AppContent = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const preapprovalId = params.get('preapproval_id');
-    if (preapprovalId && window.location.pathname === '/') {
-      setPreapprovalIdUrl(preapprovalId);
-      navigate(`/suscripcion/resultado?preapproval_id=${preapprovalId}`, { replace: true });
+    if (window.location.pathname === '/') {
+      if (preapprovalId) {
+        setPreapprovalIdUrl(preapprovalId);
+        navigate(`/suscripcion/resultado?preapproval_id=${preapprovalId}`, { replace: true });
+      } else {
+        const uid   = params.get('uid');
+        const token = params.get('token');
+        if (uid && token) {
+          navigate(`/nueva-contrasena?uid=${uid}&token=${token}`, { replace: true });
+        }
+      }
     }
   }, [navigate]);
 
