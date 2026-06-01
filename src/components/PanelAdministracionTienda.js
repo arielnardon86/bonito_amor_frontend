@@ -2478,7 +2478,7 @@ const PanelAdministracionTienda = () => {
                                         fontWeight: 600, fontSize: 14,
                                         color: planInfo.estado === 'activa' || enTrial ? '#16a34a' : enGracia ? '#f59e0b' : '#dc2626'
                                     }}>
-                                        {enTrial ? 'Período de prueba' : planInfo.estado === 'activa' ? 'Activa' : enGracia ? 'Período de gracia' : 'Pausada'}
+                                        {enTrial ? 'Período de prueba' : planInfo.estado === 'activa' ? 'Activa' : enGracia ? 'Período de gracia' : planInfo.estado === 'cancelada' ? 'Cancelada' : planInfo.estado === 'pausada' ? 'Pausada' : 'Inactiva'}
                                     </div>
                                 </div>
                                 {enTrial && (
@@ -2581,8 +2581,24 @@ const PanelAdministracionTienda = () => {
                                 </button>
                             )}
 
-                            {/* Botón de baja */}
-                            {planInfo.estado !== 'cancelada' && (
+                            {/* Botón de baja / re-suscripción */}
+                            {planInfo.estado === 'cancelada' ? (
+                                <div style={{ marginTop: 20, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '16px 20px', textAlign: 'center' }}>
+                                    <p style={{ fontSize: 13, color: '#991b1b', margin: '0 0 12px', fontWeight: 600 }}>
+                                        Tu suscripción fue cancelada. Tus datos se conservan por 30 días.
+                                    </p>
+                                    <a
+                                        href="/#precios"
+                                        style={{
+                                            display: 'inline-block', background: '#5dc87a', color: '#fff',
+                                            borderRadius: 8, padding: '10px 20px', fontSize: 13,
+                                            fontWeight: 700, textDecoration: 'none',
+                                        }}
+                                    >
+                                        Ver planes y volver a suscribirme →
+                                    </a>
+                                </div>
+                            ) : (
                                 <button
                                     onClick={() => setShowCancelModal(true)}
                                     style={{

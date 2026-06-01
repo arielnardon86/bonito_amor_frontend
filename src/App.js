@@ -345,6 +345,7 @@ const AppContent = () => {
   const [unlockError, setUnlockError] = useState('');
   const [unlocking, setUnlocking] = useState(false);
   const [suscripcionPendiente, setSuscripcionPendiente] = useState(false);
+  const [estadoSuscripcion, setEstadoSuscripcion] = useState('');
   const [verificandoPago, setVerificandoPago] = useState(false);
   const [mensajeVerificacion, setMensajeVerificacion] = useState('');
   const [preapprovalIdUrl, setPreapprovalIdUrl] = useState('');
@@ -433,7 +434,10 @@ const AppContent = () => {
       axios.get(`${BASE_API_URL}/api/suscripcion/mi-plan/`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then(r => {
-        setSuscripcionPendiente(r.data.estado === 'pending');
+        // legacy stores: esta_activa no viene en la respuesta → siempre activas
+        const bloqueada = r.data.legacy ? false : r.data.esta_activa === false;
+        setSuscripcionPendiente(bloqueada);
+        setEstadoSuscripcion(r.data.estado || '');
       }).catch(() => {});
     }
   }, [loading, isAuthenticated, selectedStoreSlug, token]);
@@ -604,7 +608,7 @@ const AppContent = () => {
           </div>
         </div>
       )}
-      {/* Pantalla de bloqueo por suscripción pendiente */}
+      {/* Pantalla de bloqueo por suscripción inactiva */}
       {suscripcionPendiente && isAuthenticated && selectedStoreSlug && (
         <div style={{
           position: 'fixed', inset: 0,
@@ -616,44 +620,93 @@ const AppContent = () => {
             background: '#fff', borderRadius: 20, padding: '48px 40px', maxWidth: 480,
             width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
           }}>
-            <div style={{ fontSize: 52, marginBottom: 16 }}>⏳</div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e3a8a', marginBottom: 10 }}>
-              Activando tu cuenta
-            </h2>
-            <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 8 }}>
-              Si ya completaste el pago en Mercado Pago, hacé click en <strong>"Verificar pago"</strong>.
-              Lo buscamos y activamos tu acceso al instante.
-            </p>
-            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 24 }}>
-              ¿Todavía no pagaste?{' '}
-              <a href="/" style={{ color: '#5dc87a', fontWeight: 600, textDecoration: 'none' }}>
-                Volvé al inicio →
-              </a>
-            </p>
-            {mensajeVerificacion && (
-              <div style={{
-                fontSize: 13,
-                color: mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#15803d' : '#b91c1c',
-                background: mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#f0fdf4' : '#fef2f2',
-                border: `1px solid ${mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#bbf7d0' : '#fecaca'}`,
-                borderRadius: 10, padding: '11px 16px', marginBottom: 18, lineHeight: 1.5,
-              }}>
-                {mensajeVerificacion}
-              </div>
+            {estadoSuscripcion === 'cancelada' ? (
+              <>
+                <div style={{ fontSize: 52, marginBottom: 16 }}>❌</div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e3a8a', marginBottom: 10 }}>
+                  Suscripción cancelada
+                </h2>
+                <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 24 }}>
+                  Diste de baja tu suscripción. Tus datos se conservarán por 30 días.<br />
+                  Para seguir usando Total Stock, elegí un nuevo plan.
+                </p>
+                <a
+                  href="/#precios"
+                  style={{
+                    display: 'block', background: '#5dc87a', color: '#fff',
+                    borderRadius: 10, padding: '14px 24px', fontSize: 15,
+                    fontWeight: 700, marginBottom: 12, textDecoration: 'none',
+                  }}
+                >
+                  Ver planes y volver a suscribirme →
+                </a>
+              </>
+            ) : estadoSuscripcion === 'pausada' ? (
+              <>
+                <div style={{ fontSize: 52, marginBottom: 16 }}>⏸️</div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e3a8a', marginBottom: 10 }}>
+                  Suscripción pausada
+                </h2>
+                <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 24 }}>
+                  Tu suscripción está pausada por un problema de pago.<br />
+                  Regularizá el pago en Mercado Pago para restablecer el acceso.
+                </p>
+                <button
+                  onClick={handleVerificarPago}
+                  disabled={verificandoPago}
+                  style={{
+                    background: verificandoPago ? '#94a3b8' : '#5dc87a',
+                    border: 'none', borderRadius: 10,
+                    padding: '14px 24px', fontSize: 15, color: '#fff', cursor: verificandoPago ? 'not-allowed' : 'pointer',
+                    fontWeight: 700, marginBottom: 12, width: '100%',
+                    transition: 'background 0.2s',
+                  }}
+                >
+                  {verificandoPago ? '🔍 Verificando...' : '✓ Verificar pago'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 52, marginBottom: 16 }}>⏳</div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e3a8a', marginBottom: 10 }}>
+                  Activando tu cuenta
+                </h2>
+                <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 8 }}>
+                  Si ya completaste el pago en Mercado Pago, hacé click en <strong>"Verificar pago"</strong>.
+                  Lo buscamos y activamos tu acceso al instante.
+                </p>
+                <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 24 }}>
+                  ¿Todavía no pagaste?{' '}
+                  <a href="/" style={{ color: '#5dc87a', fontWeight: 600, textDecoration: 'none' }}>
+                    Volvé al inicio →
+                  </a>
+                </p>
+                {mensajeVerificacion && (
+                  <div style={{
+                    fontSize: 13,
+                    color: mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#15803d' : '#b91c1c',
+                    background: mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#f0fdf4' : '#fef2f2',
+                    border: `1px solid ${mensajeVerificacion.includes('activada') || mensajeVerificacion.includes('Ingresando') ? '#bbf7d0' : '#fecaca'}`,
+                    borderRadius: 10, padding: '11px 16px', marginBottom: 18, lineHeight: 1.5,
+                  }}>
+                    {mensajeVerificacion}
+                  </div>
+                )}
+                <button
+                  onClick={handleVerificarPago}
+                  disabled={verificandoPago}
+                  style={{
+                    background: verificandoPago ? '#94a3b8' : '#5dc87a',
+                    border: 'none', borderRadius: 10,
+                    padding: '14px 24px', fontSize: 15, color: '#fff', cursor: verificandoPago ? 'not-allowed' : 'pointer',
+                    fontWeight: 700, marginBottom: 12, width: '100%',
+                    transition: 'background 0.2s',
+                  }}
+                >
+                  {verificandoPago ? '🔍 Buscando tu pago...' : '✓ Verificar pago'}
+                </button>
+              </>
             )}
-            <button
-              onClick={handleVerificarPago}
-              disabled={verificandoPago}
-              style={{
-                background: verificandoPago ? '#94a3b8' : '#5dc87a',
-                border: 'none', borderRadius: 10,
-                padding: '14px 24px', fontSize: 15, color: '#fff', cursor: verificandoPago ? 'not-allowed' : 'pointer',
-                fontWeight: 700, marginBottom: 12, width: '100%',
-                transition: 'background 0.2s',
-              }}
-            >
-              {verificandoPago ? '🔍 Buscando tu pago...' : '✓ Verificar pago'}
-            </button>
             <button
               onClick={() => logout()}
               style={{
