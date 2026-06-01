@@ -66,8 +66,8 @@ function Login() {
           <div style={{ fontSize: 52, textAlign: 'center', marginBottom: 12 }}>📧</div>
           <h2 style={{ ...styles.cardTitle, textAlign: 'center' }}>Revisá tu correo</h2>
           <p style={styles.helpText}>
-            Si el email <strong>{emailRecupero}</strong> tiene una cuenta registrada,
-            recibirás las instrucciones para crear una nueva contraseña.
+            Enviamos las instrucciones a <strong>{emailRecupero}</strong>.
+            Revisá tu bandeja de entrada.
           </p>
           <p style={{ ...styles.helpText, color: '#94a3b8', fontSize: 12 }}>
             ¿No llegó? Revisá la carpeta de spam o esperá unos minutos.
