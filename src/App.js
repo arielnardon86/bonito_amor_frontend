@@ -347,12 +347,16 @@ const AppContent = () => {
   const [suscripcionPendiente, setSuscripcionPendiente] = useState(false);
   const [verificandoPago, setVerificandoPago] = useState(false);
   const [mensajeVerificacion, setMensajeVerificacion] = useState('');
+  const [preapprovalIdUrl, setPreapprovalIdUrl] = useState('');
 
-  // Cuando MP redirige a la raíz con ?preapproval_id=XXX, reenviar al componente de resultado
+  // Cuando MP redirige a la raíz con ?preapproval_id=XXX:
+  // - Guardar el ID para pasarlo al verificar si el gate aparece
+  // - Redirigir al componente de resultado
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const preapprovalId = params.get('preapproval_id');
     if (preapprovalId && window.location.pathname === '/') {
+      setPreapprovalIdUrl(preapprovalId);
       navigate(`/suscripcion/resultado?preapproval_id=${preapprovalId}`, { replace: true });
     }
   }, [navigate]);
@@ -361,7 +365,12 @@ const AppContent = () => {
     setVerificandoPago(true);
     setMensajeVerificacion('');
     try {
-      const resp = await axios.post(`${BASE_API_URL}/api/suscripcion/verificar-pago/`);
+      // Also read preapproval_id from current URL in case state was lost on navigate
+      const urlParams = new URLSearchParams(window.location.search);
+      const preapprovalIdParam = preapprovalIdUrl || urlParams.get('preapproval_id') || '';
+      const resp = await axios.post(`${BASE_API_URL}/api/suscripcion/verificar-pago/`, {
+        preapproval_id: preapprovalIdParam,
+      });
       if (resp.data.activa) {
         setSuscripcionPendiente(false);
         setMensajeVerificacion('');
