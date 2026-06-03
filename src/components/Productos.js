@@ -47,7 +47,6 @@ const Productos = () => {
         costo: '',
         stock: '',
         codigo_barras: '',
-        talle: '',
     });
     const [tieneVariantes, setTieneVariantes] = useState(false);
     const [variantesNuevas, setVariantesNuevas] = useState([
@@ -207,14 +206,14 @@ const Productos = () => {
                     ...newProduct,
                     codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
                     tienda_slug: selectedStoreSlug,
-                    talle: newProduct.talle || null,
+                    talle: null,
                 };
                 await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productToCreate, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
             }
 
-            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', talle: '' });
+            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '' });
             setTieneVariantes(false);
             setVariantesNuevas([{ talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }]);
             setBarcodeNombreSugerido('');
@@ -473,18 +472,6 @@ const Productos = () => {
                             disabled={tieneVariantes}
                         />
                     </div>
-                    {!tieneVariantes && (
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Talle (Opcional)</label>
-                        <input
-                            type="text"
-                            value={newProduct.talle}
-                            onChange={(e) => setNewProduct({ ...newProduct, talle: e.target.value })}
-                            style={styles.input}
-                            placeholder="Ej: M, L, XL, 42, etc."
-                        />
-                    </div>
-                    )}
                     <div style={{ width: '100%', marginTop: 4 }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none', fontSize: 14 }}>
                             <input
