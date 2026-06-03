@@ -158,6 +158,20 @@ const Productos = () => {
 
         try {
             if (tieneVariantes) {
+                // Validar que todas las variantes con datos tengan talle
+                const variantesConDatos = variantesNuevas.filter(v => v.talle || v.precio || v.stock);
+                const sinTalle = variantesConDatos.filter(v => !v.talle);
+                if (sinTalle.length > 0) {
+                    setError('Todas las variantes deben tener un valor de talle/color/tamaño.');
+                    setLoadingProducts(false);
+                    return;
+                }
+                if (variantesConDatos.length === 0) {
+                    setError('Agregá al menos una variante con talle y precio.');
+                    setLoadingProducts(false);
+                    return;
+                }
+
                 // Crear producto padre (contenedor) luego variantes
                 const padreData = {
                     nombre: newProduct.nombre,
@@ -173,7 +187,7 @@ const Productos = () => {
                 });
 
                 for (const v of variantesNuevas) {
-                    if (!v.talle && !v.precio) continue;
+                    if (!v.talle) continue; // variantes sin talle se saltean siempre
                     const varianteData = {
                         nombre: newProduct.nombre,
                         precio: v.precio,
