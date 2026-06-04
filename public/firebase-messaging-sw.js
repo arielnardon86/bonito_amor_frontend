@@ -20,20 +20,9 @@ const messaging = firebase.messaging();
 // Con WebpushConfig.notification en el backend, FCM ya tiene título y cuerpo.
 // Este handler se llama de todas formas y mostramos la notificación explícitamente
 // para tener control total (tag único por venta, icono, etc.).
-messaging.onBackgroundMessage(async (payload) => {
-  console.log('[SW] Mensaje en background:', payload);
+messaging.onBackgroundMessage((payload) => {
+  console.log('[SW] Mensaje recibido:', payload);
 
-  // Evitar duplicados: si la app está visible, el listener onMessage del frontend
-  // ya mostrará la notificación. En mobile (PWA), focused puede ser false aunque
-  // la app esté en pantalla, por eso se chequea visibilityState.
-  const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-  if (clientList.some(c => c.visibilityState === 'visible')) {
-    console.log('[SW] Ventana visible, el frontend maneja la notificación');
-    return;
-  }
-
-  // Leer título y cuerpo: primero desde notification (WebpushConfig.notification),
-  // luego desde data como fallback.
   const titulo = payload.notification?.title
     || payload.data?.notif_title
     || payload.data?.title
@@ -46,6 +35,10 @@ messaging.onBackgroundMessage(async (payload) => {
 
   const ventaId = payload.data?.venta_id || Date.now().toString();
 
+  // El SW es el único responsable de mostrar la notificación del sistema.
+  // El listener onMessage del frontend ya no crea notificaciones del OS,
+  // eliminando la duplicación que ocurría por la race condition en la
+  // comprobación async de clientes visibles.
   return self.registration.showNotification(titulo, {
     body: cuerpo,
     icon: '/logo192.png',

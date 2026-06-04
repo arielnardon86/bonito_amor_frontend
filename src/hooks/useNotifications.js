@@ -283,30 +283,10 @@ export const useNotifications = () => {
 
                 globalMessageUnsubscribe = onMessageListener((payload) => {
                     console.log('Notificación recibida en primer plano:', payload);
-
-                    // Leer título y cuerpo desde notification (WebpushConfig.notification del backend)
-                    // con fallback a data para compatibilidad
-                    const titulo = payload.notification?.title || payload.data?.notif_title || payload.data?.title || 'Nueva Venta';
-                    const cuerpo  = payload.notification?.body  || payload.data?.notif_body  || payload.data?.body  || 'Nueva venta registrada';
-                    const tieneContenido = titulo || cuerpo;
-
-                    if (tieneContenido && typeof Notification !== 'undefined' && document.visibilityState === 'visible') {
-                        try {
-                            const ventaId = payload.data?.venta_id || Date.now().toString();
-                            const notificationTag = `venta-${ventaId}`;
-
-                            new Notification(titulo, {
-                                body: cuerpo,
-                                icon: payload.notification?.icon || '/logo192.png',
-                                badge: '/logo192.png',
-                                tag: notificationTag,
-                                requireInteraction: false,
-                                data: payload.data || {}
-                            });
-                        } catch (notifError) {
-                            console.warn('Error al mostrar notificación en primer plano (no crítico):', notifError);
-                        }
-                    }
+                    // No crear new Notification() aquí: el service worker ya maneja la
+                    // notificación del sistema vía onBackgroundMessage. Si ambos crean
+                    // una notificación (incluso con el mismo tag), algunos browsers las
+                    // muestran dos veces. Con la app visible el usuario ya la está viendo.
                 });
             }
 
