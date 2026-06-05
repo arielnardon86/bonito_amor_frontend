@@ -4,6 +4,10 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
+// Activar inmediatamente sin esperar a que se cierren los tabs con la versión anterior.
+self.addEventListener('install', (event) => { self.skipWaiting(); });
+self.addEventListener('activate', (event) => { event.waitUntil(self.clients.claim()); });
+
 const firebaseConfig = {
   apiKey: "AIzaSyCg2Y9i8szsfi6Y1D8E05qC9j63zWrjuyU",
   authDomain: "total-stock.firebaseapp.com",
