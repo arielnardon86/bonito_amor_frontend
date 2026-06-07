@@ -986,7 +986,7 @@ const AppContent = () => {
               <Route path="/factura" element={<FacturaImpresion />} />
               <Route path="/ticket-cambio" element={<TicketCambioImpresion />} />
               <Route path="/cambio-devolucion" element={
-                <ProtectedRoute staffOnly={true}>
+                <ProtectedRoute staffOnly={true} supervisorAllowed={true}>
                   <CambioDevolucion />
                 </ProtectedRoute>
               } />
