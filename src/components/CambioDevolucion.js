@@ -493,9 +493,14 @@ const CambioDevolucion = () => {
             );
 
             const cambioDevolucion = response.data;
-            
+
+            // Usar los valores calculados por el backend (Decimal exacto) para decidir el flujo.
+            // El frontend usa float y puede producir diferencias mínimas (ej. -0.000001) que
+            // causan que saldoAFavor > 0 aunque el backend calcule saldo_a_favor = 0.
+            const backendMontoDiferencia = parseFloat(cambioDevolucion.monto_diferencia || 0);
+
             // Si hay diferencia a pagar, crear venta normal
-            if (montoDiferencia > 0 && activeCart && activeCart.items.length > 0) {
+            if (backendMontoDiferencia > 0 && activeCart && activeCart.items.length > 0) {
                 const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
                 const isMetodoFinanciero = metodoPagoObj?.es_financiero;
                 const finalArancelId = isMetodoFinanciero ? arancelSeleccionadoId : null;
@@ -663,38 +668,21 @@ const CambioDevolucion = () => {
                         icon: 'error'
                     });
                 }
-            } else if (saldoAFavor > 0) {
-                // Si hay saldo a favor, obtener la venta de la nota de crédito y navegar automáticamente al recibo
-                const cambioDevolucion = response.data;
-                console.log('Cambio/Devolución creado:', cambioDevolucion);
-                console.log('venta_nota_credito_id:', cambioDevolucion.venta_nota_credito_id);
-                console.log('nota_credito_generada:', cambioDevolucion.nota_credito_generada);
-                
-                // Verificar si se generó la nota de crédito y tenemos el ID
-                if (cambioDevolucion.nota_credito_generada && cambioDevolucion.venta_nota_credito_id) {
+            } else if (cambioDevolucion.nota_credito_generada) {
+                // El backend generó la nota de crédito (saldo a favor del cliente)
+                if (cambioDevolucion.venta_nota_credito_id) {
                     try {
-                        const ventaId = cambioDevolucion.venta_nota_credito_id;
-                        console.log('Intentando obtener venta de nota de crédito con ID:', ventaId);
-                        console.log('URL completa:', `${BASE_API_ENDPOINT}/api/ventas/${ventaId}/`);
-                        
-                        // Obtener los detalles completos de la venta de nota de crédito
                         const ventaNotaCreditoResponse = await axios.get(
-                            `${BASE_API_ENDPOINT}/api/ventas/${ventaId}/`,
+                            `${BASE_API_ENDPOINT}/api/ventas/${cambioDevolucion.venta_nota_credito_id}/`,
                             { headers: { 'Authorization': `Bearer ${token}` } }
                         );
-                        
-                        console.log('Venta de nota de crédito obtenida exitosamente:', ventaNotaCreditoResponse.data);
-                        
                         const ventaNotaCredito = {
                             ...ventaNotaCreditoResponse.data,
                             tienda_nombre: selectedStoreSlug,
                             usuario_nombre: user?.first_name || user?.username || 'Usuario Desconocido'
                         };
-                        
-                        // Navegar automáticamente al recibo, igual que en PuntoVenta
                         navigate('/recibo', { state: { venta: ventaNotaCredito, fromCambioDevolucion: true } });
                     } catch (ventaError) {
-                        console.error('Error al obtener venta de nota de crédito:', ventaError);
                         const errorMsg = ventaError.response?.data?.detail || ventaError.response?.data?.error || ventaError.message;
                         Swal.fire({
                             title: 'Error',
@@ -703,20 +691,11 @@ const CambioDevolucion = () => {
                             confirmButtonText: 'Ok'
                         });
                     }
-                } else if (cambioDevolucion.nota_credito_generada && !cambioDevolucion.venta_nota_credito_id) {
-                    // Si se generó pero no tenemos el ID, intentar buscar la venta relacionada
-                    console.warn('Nota de crédito generada pero no hay ID. Buscando venta relacionada...');
-                    Swal.fire({
-                        title: 'Atención',
-                        html: 'La nota de crédito se generó, pero no se pudo obtener el recibo automáticamente.<br>Por favor, busca la venta en el listado de ventas.',
-                        icon: 'warning',
-                        confirmButtonText: 'Ok'
-                    });
                 } else {
                     Swal.fire({
-                        title: 'Error',
-                        html: 'No se pudo generar el recibo de nota de crédito.',
-                        icon: 'error',
+                        title: 'Atención',
+                        html: 'La nota de crédito se generó, pero no se pudo obtener el recibo automáticamente.<br>Por favor, búscala en el listado de ventas.',
+                        icon: 'warning',
                         confirmButtonText: 'Ok'
                     });
                 }
