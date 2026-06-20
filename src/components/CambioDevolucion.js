@@ -369,8 +369,9 @@ const CambioDevolucion = () => {
             return;
         }
 
-        // Si hay productos nuevos, validar método de pago si hay diferencia a pagar
-        if (activeCart && activeCart.items.length > 0 && montoDiferencia > 0) {
+        // Si hay productos nuevos, validar método de pago solo si el cliente tiene algo que pagar
+        // (montoDiferencia redondeado excluye ruidos de float y descuentos totales)
+        if (activeCart && activeCart.items.length > 0 && Math.round(montoDiferencia * 100) / 100 > 0) {
             if (!metodoPagoSeleccionado) {
                 setError('Debe seleccionar un método de pago para la diferencia a pagar');
                 return;
@@ -494,13 +495,14 @@ const CambioDevolucion = () => {
 
             const cambioDevolucion = response.data;
 
-            // Redondear a 2 decimales para evitar errores de precisión float (ej. -0.000001 → 0).
-            // Usar el montoDiferencia del FRONTEND (que incluye descuentos/recargos aplicados),
-            // no el del backend (que es el precio bruto de productos sin descuentos de la venta).
+            // backendMontoDiferencia: diferencia bruta de precios de productos (sin descuentos de la venta).
+            // montoAPagar: lo que el cliente realmente paga tras los descuentos del frontend.
+            const backendMontoDiferencia = parseFloat(cambioDevolucion.monto_diferencia || 0);
             const montoAPagar = Math.round(montoDiferencia * 100) / 100;
 
-            // Si hay diferencia a pagar, crear venta normal
-            if (montoAPagar > 0 && activeCart && activeCart.items.length > 0) {
+            // Crear venta siempre que haya diferencia de precios (aunque el descuento la cubra a $0),
+            // para registrar el movimiento en ventas y ajustar el stock correctamente.
+            if (backendMontoDiferencia > 0 && activeCart && activeCart.items.length > 0) {
                 const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
                 const isMetodoFinanciero = metodoPagoObj?.es_financiero;
                 const finalArancelId = isMetodoFinanciero ? arancelSeleccionadoId : null;
@@ -531,9 +533,11 @@ const CambioDevolucion = () => {
                 }
 
                 // Crear venta para la diferencia
+                // Si el descuento cubre todo (montoAPagar=0), registrar con método 'Descuento'
+                const metodoPagoVenta = montoAPagar > 0 ? metodoPagoSeleccionado : 'Descuento';
                 const ventaData = {
                     tienda_slug: selectedStoreSlug,
-                    metodo_pago: metodoPagoSeleccionado,
+                    metodo_pago: metodoPagoVenta,
                     ...datosAjusteParaBackend,
                     arancel_aplicado_id: finalArancelId,
                     cambio_devolucion_id: cambioDevolucion.id, // Relacionar con el cambio/devolución
