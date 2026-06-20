@@ -494,13 +494,13 @@ const CambioDevolucion = () => {
 
             const cambioDevolucion = response.data;
 
-            // Usar los valores calculados por el backend (Decimal exacto) para decidir el flujo.
-            // El frontend usa float y puede producir diferencias mínimas (ej. -0.000001) que
-            // causan que saldoAFavor > 0 aunque el backend calcule saldo_a_favor = 0.
-            const backendMontoDiferencia = parseFloat(cambioDevolucion.monto_diferencia || 0);
+            // Redondear a 2 decimales para evitar errores de precisión float (ej. -0.000001 → 0).
+            // Usar el montoDiferencia del FRONTEND (que incluye descuentos/recargos aplicados),
+            // no el del backend (que es el precio bruto de productos sin descuentos de la venta).
+            const montoAPagar = Math.round(montoDiferencia * 100) / 100;
 
             // Si hay diferencia a pagar, crear venta normal
-            if (backendMontoDiferencia > 0 && activeCart && activeCart.items.length > 0) {
+            if (montoAPagar > 0 && activeCart && activeCart.items.length > 0) {
                 const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
                 const isMetodoFinanciero = metodoPagoObj?.es_financiero;
                 const finalArancelId = isMetodoFinanciero ? arancelSeleccionadoId : null;
