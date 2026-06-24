@@ -791,7 +791,7 @@ const CambioDevolucion = () => {
         }
     };
 
-    const detallesOriginales = ventaOriginal?.detalles?.filter(d => !d.anulado_individualmente) || [];
+    const detallesOriginales = ventaOriginal?.detalles || [];
 
     return (
         <div style={styles.container}>
@@ -876,9 +876,25 @@ const CambioDevolucion = () => {
                                 </thead>
                                 <tbody>
                                     {detallesOriginales.map((detalle) => {
+                                        const yaDevuelto = !!detalle.anulado_individualmente;
                                         const seleccionado = productosADevolver.find(p => p.detalle_venta_id === detalle.id);
                                         const cantidadADevolver = seleccionado?.cantidad || 0;
-                                        
+
+                                        if (yaDevuelto) {
+                                            return (
+                                                <tr key={detalle.id} style={{ ...styles.tableRow, opacity: 0.45, backgroundColor: '#f8f8f8' }}>
+                                                    <td style={styles.td}>
+                                                        <span style={{ fontSize: '11px', color: '#888', fontStyle: 'italic' }}>Ya devuelto</span>
+                                                    </td>
+                                                    <td style={styles.td}>{detalle.producto_nombre || 'N/A'}</td>
+                                                    <td style={styles.td}>{detalle.cantidad}</td>
+                                                    <td style={styles.td}>—</td>
+                                                    <td style={styles.td}>—</td>
+                                                    <td style={styles.td}>—</td>
+                                                </tr>
+                                            );
+                                        }
+
                                         // Calcular precio ajustado
                                         const precioUnitarioOriginal = parseFloat(detalle.precio_unitario || 0);
                                         let adjustmentFactor = 1.0;
