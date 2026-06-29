@@ -438,7 +438,8 @@ const PanelAdministracionTienda = () => {
     useEffect(() => {
         if (!authLoading) {
             if (!isAuthenticated || !user?.is_superuser) {
-                navigate('/');
+                setLoading(false);
+                return;
             } else {
                 setLoading(false);
                 fetchTiendaInfo();
@@ -1181,6 +1182,18 @@ const PanelAdministracionTienda = () => {
         return <div style={styles.loadingMessage}>Cargando...</div>;
     }
 
+    if (!isAuthenticated || !user?.is_superuser) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, padding: 24, textAlign: 'center' }}>
+                <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '28px 32px', maxWidth: 380 }}>
+                    <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
+                    <p style={{ fontSize: 16, fontWeight: 700, color: '#1a2926', margin: '0 0 8px' }}>Acceso restringido</p>
+                    <p style={{ fontSize: 14, color: '#475569', margin: 0 }}>Esta sección es solo para administradores. Si creés que es un error, contactá al soporte.</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <>
             <style>{mobileStyles}</style>
@@ -1803,31 +1816,31 @@ const PanelAdministracionTienda = () => {
 
                 const stepStyle = (num) => ({
                     display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
-                    borderRadius: 8, cursor: 'pointer', marginBottom: 6,
-                    background: afipPasoActivo === num ? '#e8f0fe' : 'transparent',
-                    border: afipPasoActivo === num ? '1.5px solid #3c7ef3' : '1.5px solid transparent',
+                    borderRadius: 10, cursor: 'pointer', marginBottom: 6,
+                    background: afipPasoActivo === num ? '#edfaf3' : 'transparent',
+                    border: afipPasoActivo === num ? '1.5px solid #5dc87a' : '1.5px solid transparent',
                     fontWeight: afipPasoActivo === num ? 600 : 400,
-                    color: '#2c3e50',
+                    color: '#1a2926',
                     transition: 'all 0.15s',
                 });
                 const badgeStyle = (ok) => ({
                     width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0,
-                    background: ok ? '#28a745' : '#dee2e6',
-                    color: ok ? '#fff' : '#888',
+                    background: ok ? '#5dc87a' : '#e2e8f0',
+                    color: ok ? '#fff' : '#94a3b8',
                 });
                 const inputStyle = {
                     width: '100%', padding: '9px 12px', borderRadius: 6,
-                    border: '1px solid #ced4da', fontSize: 14, boxSizing: 'border-box',
+                    border: '1px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
                     marginTop: 4, marginBottom: 12,
                 };
                 const btnPrimary = (disabled) => ({
-                    padding: '10px 22px', backgroundColor: disabled ? '#adb5bd' : '#3c7ef3',
+                    padding: '10px 22px', backgroundColor: disabled ? '#94a3b8' : '#3b9ede',
                     color: '#fff', border: 'none', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer',
                     fontSize: 14, fontWeight: 600,
                 });
                 const btnSuccess = (disabled) => ({
-                    padding: '10px 22px', backgroundColor: disabled ? '#adb5bd' : '#28a745',
+                    padding: '10px 22px', backgroundColor: disabled ? '#94a3b8' : '#5dc87a',
                     color: '#fff', border: 'none', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer',
                     fontSize: 14, fontWeight: 600,
                 });
@@ -1835,18 +1848,18 @@ const PanelAdministracionTienda = () => {
                 return (
                 <div style={styles.tabContent}>
                     <div style={{ maxWidth: 820 }}>
-                        <h2 style={{ marginTop: 0, marginBottom: 4, fontSize: '1.35rem', color: '#2c3e50' }}>
+                        <h2 style={{ marginTop: 0, marginBottom: 4, fontSize: '1.35rem', color: '#1a2926' }}>
                             Facturación electrónica AFIP
                         </h2>
-                        <p style={{ marginBottom: 24, color: '#666', fontSize: 14 }}>
+                        <p style={{ marginBottom: 24, color: '#475569', fontSize: 14 }}>
                             Seguí los pasos para conectar tu tienda con AFIP y emitir facturas electrónicas.
                         </p>
 
                         {/* Estado general */}
                         {todoListo && (
-                            <div style={{ background: '#d4edda', border: '1px solid #c3e6cb', borderRadius: 8, padding: '12px 18px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 10, padding: '12px 18px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <span style={{ fontSize: 20 }}>✅</span>
-                                <span style={{ color: '#155724', fontWeight: 600 }}>
+                                <span style={{ color: '#1a6a40', fontWeight: 600 }}>
                                     Facturador configurado. Podés probar la conexión en el paso 5.
                                 </span>
                             </div>
@@ -1865,17 +1878,17 @@ const PanelAdministracionTienda = () => {
                             </div>
 
                             {/* Contenido del paso activo */}
-                            <div style={{ flex: 1, background: '#fff', border: '1px solid #dee2e6', borderRadius: 10, padding: '24px 28px', minHeight: 300 }}>
+                            <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '24px 28px', minHeight: 300 }}>
 
                                 {/* PASO 1: Configurar datos */}
                                 {afipPasoActivo === 1 && (
                                     <div>
-                                        <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Paso 1 — Configurar datos AFIP</h3>
-                                        <p style={{ color: '#666', fontSize: 14, marginBottom: 20 }}>
+                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 1 — Configurar datos AFIP</h3>
+                                        <p style={{ color: '#475569', fontSize: 14, marginBottom: 20 }}>
                                             Ingresá los datos fiscales de la tienda. Necesitás tener un <strong>punto de venta habilitado para factura electrónica</strong> en AFIP (Comprobantes en línea → Punto de venta).
                                         </p>
 
-                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>CUIT <span style={{ color: '#dc3545' }}>*</span></label>
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>CUIT <span style={{ color: '#e25252' }}>*</span></label>
                                         <input
                                             style={inputStyle}
                                             type="text"
@@ -1884,7 +1897,7 @@ const PanelAdministracionTienda = () => {
                                             onChange={e => setAfipForm(p => ({ ...p, cuit: e.target.value }))}
                                         />
 
-                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>Número de punto de venta AFIP <span style={{ color: '#dc3545' }}>*</span></label>
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Número de punto de venta AFIP <span style={{ color: '#e25252' }}>*</span></label>
                                         <input
                                             style={inputStyle}
                                             type="number"
@@ -1894,7 +1907,7 @@ const PanelAdministracionTienda = () => {
                                             onChange={e => setAfipForm(p => ({ ...p, punto_venta: parseInt(e.target.value) || 1 }))}
                                         />
 
-                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>Condición IVA del emisor <span style={{ color: '#dc3545' }}>*</span></label>
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Condición IVA del emisor <span style={{ color: '#e25252' }}>*</span></label>
                                         <select
                                             style={{ ...inputStyle, background: '#fff' }}
                                             value={afipForm.condicion_iva_emisor}
@@ -1907,7 +1920,7 @@ const PanelAdministracionTienda = () => {
                                             <option value="NR">No Responsable</option>
                                         </select>
 
-                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>Sistema de facturación</label>
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Sistema de facturación</label>
                                         <select
                                             style={{ ...inputStyle, background: '#fff' }}
                                             value={afipForm.tipo_facturacion}
@@ -1926,17 +1939,17 @@ const PanelAdministracionTienda = () => {
                                 {/* PASO 2: Generar clave y CSR */}
                                 {afipPasoActivo === 2 && (
                                     <div>
-                                        <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Paso 2 — Generar clave privada y CSR</h3>
+                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 2 — Generar clave privada y CSR</h3>
                                         {!afipEstado?.paso1_config && (
-                                            <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14 }}>
+                                            <div style={{ background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14 }}>
                                                 ⚠️ Completá el paso 1 (CUIT y punto de venta) antes de continuar.
                                             </div>
                                         )}
-                                        <p style={{ color: '#666', fontSize: 14, marginBottom: 16 }}>
+                                        <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
                                             Total Stock genera una <strong>clave privada RSA</strong> y un <strong>CSR</strong> (Certificate Signing Request) con los datos de tu tienda. La clave privada queda guardada de forma segura; vos solo te llevás el archivo <code>.csr</code> para subirlo a AFIP en el siguiente paso.
                                         </p>
                                         {afipEstado?.paso2_csr && (
-                                            <div style={{ background: '#d4edda', border: '1px solid #c3e6cb', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14, color: '#155724' }}>
+                                            <div style={{ background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14, color: '#1a6a40' }}>
                                                 ✅ Ya generaste la clave y el CSR. Podés regenerarlos si es necesario.
                                             </div>
                                         )}
@@ -1961,22 +1974,22 @@ const PanelAdministracionTienda = () => {
                                 {/* PASO 3: Subir CSR a AFIP */}
                                 {afipPasoActivo === 3 && (
                                     <div>
-                                        <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Paso 3 — Subir el CSR a AFIP</h3>
-                                        <p style={{ color: '#666', fontSize: 14, marginBottom: 16 }}>
+                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 3 — Subir el CSR a AFIP</h3>
+                                        <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
                                             Con el archivo <code>.csr</code> que descargaste, hacé lo siguiente en AFIP:
                                         </p>
-                                        <ol style={{ paddingLeft: 20, color: '#444', lineHeight: 1.9, fontSize: 14 }}>
-                                            <li>Ingresá a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" rel="noopener noreferrer" style={{ color: '#3c7ef3' }}>AFIP con tu CUIT y clave fiscal</a>.</li>
+                                        <ol style={{ paddingLeft: 20, color: '#475569', lineHeight: 1.9, fontSize: 14 }}>
+                                            <li>Ingresá a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" rel="noopener noreferrer" style={{ color: '#3b9ede' }}>AFIP con tu CUIT y clave fiscal</a>.</li>
                                             <li>Buscá el servicio <strong>"Administración de Certificados Digitales"</strong>.</li>
                                             <li>Hacé clic en <strong>"Agregar alias"</strong> y completá un nombre (ej. <em>TotalStock</em>).</li>
                                             <li>En el alias creado, elegí <strong>"Nueva solicitud de certificado"</strong> y subí el archivo <code>.csr</code>.</li>
                                             <li>AFIP te devuelve un archivo <strong>.crt</strong> — descargalo.</li>
                                         </ol>
-                                        <div style={{ background: '#e7f3ff', border: '1px solid #b3d9ff', borderRadius: 8, padding: '12px 16px', marginTop: 16, marginBottom: 20 }}>
-                                            <strong style={{ color: '#004085' }}>🔗 Enlace directo:</strong>{' '}
-                                            <a href="https://wsaahomo.afip.gov.ar/ws/services/LoginCms" target="_blank" rel="noopener noreferrer" style={{ color: '#3c7ef3' }}>AFIP – Administración de Certificados</a>
+                                        <div style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10, padding: '12px 16px', marginTop: 16, marginBottom: 20 }}>
+                                            <strong style={{ color: '#1a2926' }}>🔗 Enlace directo:</strong>{' '}
+                                            <a href="https://wsaahomo.afip.gov.ar/ws/services/LoginCms" target="_blank" rel="noopener noreferrer" style={{ color: '#3b9ede' }}>AFIP – Administración de Certificados</a>
                                             <br />
-                                            <span style={{ fontSize: 13, color: '#555' }}>Si tu modo está en "prueba", usá el ambiente de <strong>homologación</strong>; si es producción, usá el ambiente real.</span>
+                                            <span style={{ fontSize: 13, color: '#475569' }}>Si tu modo está en "prueba", usá el ambiente de <strong>homologación</strong>; si es producción, usá el ambiente real.</span>
                                         </div>
                                         <button style={btnPrimary(false)} onClick={() => setAfipPasoActivo(4)}>
                                             Ya tengo el .crt — continuar →
@@ -1987,8 +2000,8 @@ const PanelAdministracionTienda = () => {
                                 {/* PASO 4: Cargar certificado */}
                                 {afipPasoActivo === 4 && (
                                     <div>
-                                        <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Paso 4 — Cargar el certificado AFIP</h3>
-                                        <p style={{ color: '#666', fontSize: 14, marginBottom: 16 }}>
+                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 4 — Cargar el certificado AFIP</h3>
+                                        <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
                                             Cargá el certificado que obtuviste de AFIP. Podés subir el archivo <code>.crt</code> directamente o pegar el contenido en base64.
                                         </p>
 
@@ -2011,14 +2024,14 @@ const PanelAdministracionTienda = () => {
                                                     onChange={e => setAfipCertFile(e.target.files[0] || null)}
                                                 />
                                                 {afipCertFile && (
-                                                    <p style={{ fontSize: 13, color: '#28a745', marginBottom: 16 }}>
+                                                    <p style={{ fontSize: 13, color: '#1a6a40', marginBottom: 16 }}>
                                                         ✅ Archivo seleccionado: <strong>{afipCertFile.name}</strong>
                                                     </p>
                                                 )}
                                             </div>
                                         ) : (
                                             <div>
-                                                <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>
+                                                <p style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
                                                     Podés pegar el bloque PEM completo (con <code>-----BEGIN CERTIFICATE-----</code>) o solo el base64 sin encabezados.
                                                 </p>
                                                 <textarea
@@ -2031,7 +2044,7 @@ const PanelAdministracionTienda = () => {
                                         )}
 
                                         {afipEstado?.paso4_cert && (
-                                            <div style={{ background: '#d4edda', border: '1px solid #c3e6cb', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14, color: '#155724' }}>
+                                            <div style={{ background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14, color: '#1a6a40' }}>
                                                 ✅ Ya hay un certificado cargado. Podés reemplazarlo si es necesario.
                                             </div>
                                         )}
@@ -2045,16 +2058,16 @@ const PanelAdministracionTienda = () => {
                                 {/* PASO 5: Probar conexión */}
                                 {afipPasoActivo === 5 && (
                                     <div>
-                                        <h3 style={{ marginTop: 0, color: '#2c3e50' }}>Paso 5 — Probar la conexión</h3>
+                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 5 — Probar la conexión</h3>
                                         {!todoListo && (
-                                            <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14 }}>
+                                            <div style={{ background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14 }}>
                                                 ⚠️ Completá los pasos anteriores antes de probar.
                                                 {!afipEstado?.paso1_config && <div>— Falta: configurar CUIT y punto de venta (paso 1)</div>}
                                                 {!afipEstado?.paso2_csr && <div>— Falta: generar clave y CSR (paso 2)</div>}
                                                 {!afipEstado?.paso4_cert && <div>— Falta: cargar el certificado (paso 4)</div>}
                                             </div>
                                         )}
-                                        <div style={{ background: '#e8f4fd', border: '1px solid #bee3f8', borderRadius: 8, padding: '14px 18px', marginBottom: 20, fontSize: 14, color: '#2c3e50' }}>
+                                        <div style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 18px', marginBottom: 20, fontSize: 14, color: '#1a2926' }}>
                                             <strong>⚠️ Antes de continuar, autorizá el certificado en AFIP:</strong>
                                             <ol style={{ margin: '10px 0 0 0', paddingLeft: 20, lineHeight: 2 }}>
                                                 <li>Ingresá a <strong>afip.gob.ar</strong> con tu CUIT y clave fiscal.</li>
@@ -2066,15 +2079,15 @@ const PanelAdministracionTienda = () => {
                                                 <li>Confirmá la relación.</li>
                                             </ol>
                                         </div>
-                                        <p style={{ color: '#666', fontSize: 14, marginBottom: 20 }}>
+                                        <p style={{ color: '#475569', fontSize: 14, marginBottom: 20 }}>
                                             Una vez autorizado el certificado en AFIP, Total Stock va a emitir una <strong>factura de prueba por $1</strong> para verificar que la conexión funciona correctamente. El comprobante quedará registrado en AFIP.
                                         </p>
                                         <button style={btnSuccess(!todoListo)} onClick={handleProbarFacturacion} disabled={!todoListo}>
                                             Probar facturación (emitir $1 de prueba)
                                         </button>
-                                        <div style={{ marginTop: 24, padding: '12px 16px', background: '#f8f9fa', borderRadius: 8, fontSize: 13, color: '#555' }}>
+                                        <div style={{ marginTop: 24, padding: '12px 16px', background: '#f8fafc', borderRadius: 10, fontSize: 13, color: '#475569' }}>
                                             ¿Algo no funciona?{' '}
-                                            <a href="https://www.afip.gob.ar/fe/comprobantes/" target="_blank" rel="noopener noreferrer" style={{ color: '#3c7ef3' }}>
+                                            <a href="https://www.afip.gob.ar/fe/comprobantes/" target="_blank" rel="noopener noreferrer" style={{ color: '#3b9ede' }}>
                                                 Documentación AFIP — Facturación electrónica
                                             </a>
                                         </div>
@@ -2085,11 +2098,11 @@ const PanelAdministracionTienda = () => {
                         </div>
 
                         {/* Requisitos previos colapsados */}
-                        <details style={{ marginTop: 24, border: '1px solid #dee2e6', borderRadius: 8, padding: '12px 16px' }}>
-                            <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#495057', fontSize: 14 }}>
+                        <details style={{ marginTop: 24, border: '1px solid #e2e8f0', borderRadius: 10, padding: '12px 16px' }}>
+                            <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#475569', fontSize: 14 }}>
                                 Ver requisitos previos
                             </summary>
-                            <ul style={{ margin: '12px 0 0 0', paddingLeft: 20, color: '#495057', lineHeight: 1.8, fontSize: 14 }}>
+                            <ul style={{ margin: '12px 0 0 0', paddingLeft: 20, color: '#475569', lineHeight: 1.8, fontSize: 14 }}>
                                 <li><strong>CUIT</strong> al día (persona física o jurídica).</li>
                                 <li><strong>Clave fiscal nivel 3</strong> en AFIP.</li>
                                 <li>Inscripción en el <strong>régimen correspondiente</strong> (Monotributo, Responsable Inscripto, IVA Exento, etc.).</li>
@@ -2127,20 +2140,20 @@ const PanelAdministracionTienda = () => {
                 <div style={styles.tabContent}>
                     <div style={{ ...styles.infoBox, maxWidth: '520px', marginBottom: 24 }}>
                         <h3 style={{ marginTop: 0, marginBottom: 12 }}>Notificaciones de ventas</h3>
-                        <p style={{ marginBottom: 16, color: '#555' }}>
+                        <p style={{ marginBottom: 16, color: '#475569' }}>
                             Recibí notificaciones push en este dispositivo cuando se registre una venta en la tienda. Funciona en navegador y en la PWA (app instalada).
                         </p>
                         {!notificacionesSoportadas() ? (
-                            <p style={{ margin: 0, color: '#856404', background: '#fff3cd', padding: 12, borderRadius: 6 }}>
+                            <p style={{ margin: 0, color: '#92400e', background: '#fffbeb', padding: 12, borderRadius: 6 }}>
                                 Las notificaciones no están disponibles en este navegador. Probá en Chrome, Edge o Safari (iOS 16.4+).
                             </p>
                         ) : notificationPermission === 'denied' ? (
-                            <p style={{ margin: 0, color: '#856404', background: '#fff3cd', padding: 12, borderRadius: 6 }}>
+                            <p style={{ margin: 0, color: '#92400e', background: '#fffbeb', padding: 12, borderRadius: 6 }}>
                                 Las notificaciones están bloqueadas. Habilitálas en la configuración del navegador o del sistema para poder activarlas acá.
                             </p>
                         ) : notificationPermission === 'granted' && fcmToken ? (
                             <div>
-                                <p style={{ margin: '0 0 16px', color: '#155724', background: '#d4edda', padding: 12, borderRadius: 6 }}>
+                                <p style={{ margin: '0 0 16px', color: '#1a6a40', background: '#edfaf3', padding: 12, borderRadius: 6 }}>
                                     Notificaciones activas. Vas a recibir un aviso en este dispositivo por cada venta.
                                 </p>
                                 <button
@@ -2154,7 +2167,7 @@ const PanelAdministracionTienda = () => {
                         ) : (
                             <div>
                                 {notificationError && (
-                                    <p style={{ margin: '0 0 12px', color: '#721c24', background: '#f8d7da', padding: 10, borderRadius: 6, fontSize: 14 }}>
+                                    <p style={{ margin: '0 0 12px', color: '#c53030', background: '#fef2f2', padding: 10, borderRadius: 6, fontSize: 14 }}>
                                         {notificationError}
                                     </p>
                                 )}
@@ -2252,8 +2265,8 @@ const PanelAdministracionTienda = () => {
             {activeTab === 'aranceles-ml' && (
                 <div style={styles.tabContent}>
                     {/* Selector de modo de cálculo */}
-                    <div style={{ background: '#f0f4ff', border: '1px solid #c7d7fb', borderRadius: 10, padding: '18px 22px', marginBottom: 24 }}>
-                        <p style={{ fontWeight: 700, fontSize: 15, color: '#1a202c', marginBottom: 12 }}>
+                    <div style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10, padding: '18px 22px', marginBottom: 24 }}>
+                        <p style={{ fontWeight: 700, fontSize: 15, color: '#1a2926', marginBottom: 12 }}>
                             Modo de cálculo de aranceles ML
                         </p>
                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -2261,10 +2274,10 @@ const PanelAdministracionTienda = () => {
                                 onClick={() => !mlArancelesAutomaticos && handleGuardarModoArancelesML(true)}
                                 disabled={guardandoModoML || mlArancelesAutomaticos}
                                 style={{
-                                    padding: '10px 20px', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: mlArancelesAutomaticos ? 'default' : 'pointer',
-                                    border: `2px solid ${mlArancelesAutomaticos ? '#3c7ef3' : '#c7d7fb'}`,
-                                    background: mlArancelesAutomaticos ? '#3c7ef3' : '#fff',
-                                    color: mlArancelesAutomaticos ? '#fff' : '#4a6680',
+                                    padding: '10px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: mlArancelesAutomaticos ? 'default' : 'pointer',
+                                    border: `2px solid ${mlArancelesAutomaticos ? '#3b9ede' : '#e2e8f0'}`,
+                                    background: mlArancelesAutomaticos ? '#3b9ede' : '#fff',
+                                    color: mlArancelesAutomaticos ? '#fff' : '#475569',
                                 }}
                             >
                                 ⚡ Automático (vía notificaciones ML)
@@ -2273,16 +2286,16 @@ const PanelAdministracionTienda = () => {
                                 onClick={() => mlArancelesAutomaticos && handleGuardarModoArancelesML(false)}
                                 disabled={guardandoModoML || !mlArancelesAutomaticos}
                                 style={{
-                                    padding: '10px 20px', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: !mlArancelesAutomaticos ? 'default' : 'pointer',
-                                    border: `2px solid ${!mlArancelesAutomaticos ? '#3c7ef3' : '#c7d7fb'}`,
-                                    background: !mlArancelesAutomaticos ? '#3c7ef3' : '#fff',
-                                    color: !mlArancelesAutomaticos ? '#fff' : '#4a6680',
+                                    padding: '10px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: !mlArancelesAutomaticos ? 'default' : 'pointer',
+                                    border: `2px solid ${!mlArancelesAutomaticos ? '#3b9ede' : '#e2e8f0'}`,
+                                    background: !mlArancelesAutomaticos ? '#3b9ede' : '#fff',
+                                    color: !mlArancelesAutomaticos ? '#fff' : '#475569',
                                 }}
                             >
                                 ✏️ Manual (aranceles configurados)
                             </button>
                         </div>
-                        <p style={{ fontSize: 13, color: '#4a6680', marginTop: 10, marginBottom: 0 }}>
+                        <p style={{ fontSize: 13, color: '#475569', marginTop: 10, marginBottom: 0 }}>
                             {mlArancelesAutomaticos
                                 ? 'Los cargos de ML (comisión, envío, impuestos) se obtienen automáticamente de las notificaciones. Se muestran en la card "Descuentos Mercado Libre" de Métricas.'
                                 : 'Los aranceles se calculan según la configuración manual por producto. Se muestran en la card "Aranceles" de Métricas.'}
@@ -2331,7 +2344,7 @@ const PanelAdministracionTienda = () => {
                                             ))}
                                         </select>
                                         {productosML.length === 0 && (
-                                            <p style={{ fontSize: '0.9em', color: '#666', marginTop: '5px' }}>
+                                            <p style={{ fontSize: '0.9em', color: '#94a3b8', marginTop: '5px' }}>
                                                 No hay productos disponibles. Primero añade productos a la tienda.
                                             </p>
                                         )}
@@ -2387,7 +2400,7 @@ const PanelAdministracionTienda = () => {
                         <p style={{ marginBottom: '10px' }}>
                             Configura arancel (%) y costo de envío por unidad para cada producto. Las ventas con medio de pago "Mercado Libre" descontarán estos valores en las métricas.
                         </p>
-                        <p style={{ marginBottom: '10px', fontSize: '0.9em', color: '#666' }}>
+                        <p style={{ marginBottom: '10px', fontSize: '0.9em', color: '#94a3b8' }}>
                             Cada producto puede tener un arancel distinto según su categoría en ML. El costo de envío se aplica por unidad vendida.
                         </p>
                     </div>
@@ -2448,13 +2461,13 @@ const PanelAdministracionTienda = () => {
             {activeTab === 'mi-plan' && (
                 <div style={styles.tabContent}>
                     {loadingPlan ? (
-                        <p style={{ color: '#6b7280', textAlign: 'center', padding: 40 }}>Cargando información del plan...</p>
+                        <p style={{ color: '#94a3b8', textAlign: 'center', padding: 40 }}>Cargando información del plan...</p>
                     ) : !planInfo ? (
-                        <p style={{ color: '#6b7280', textAlign: 'center', padding: 40 }}>No se pudo cargar la información del plan.</p>
+                        <p style={{ color: '#94a3b8', textAlign: 'center', padding: 40 }}>No se pudo cargar la información del plan.</p>
                     ) : planInfo.legacy ? (
-                        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '24px 28px', maxWidth: 480 }}>
-                            <p style={{ fontWeight: 700, fontSize: 16, color: '#1a3a2a', marginBottom: 8 }}>Cuenta legacy</p>
-                            <p style={{ fontSize: 14, color: '#6b7280' }}>Tu cuenta tiene acceso completo sin restricciones de plan.</p>
+                        <div style={{ background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 16, padding: '24px 28px', maxWidth: 480 }}>
+                            <p style={{ fontWeight: 700, fontSize: 16, color: '#1a2926', marginBottom: 8 }}>Cuenta legacy</p>
+                            <p style={{ fontSize: 14, color: '#475569' }}>Tu cuenta tiene acceso completo sin restricciones de plan.</p>
                         </div>
                     ) : (() => {
                         const enTrial = planInfo.estado === 'trial';
@@ -2473,10 +2486,10 @@ const PanelAdministracionTienda = () => {
                                     {planInfo.plan_display}
                                 </div>
                                 <div>
-                                    <div style={{ fontSize: 13, color: '#6b7280' }}>Estado</div>
+                                    <div style={{ fontSize: 13, color: '#94a3b8' }}>Estado</div>
                                     <div style={{
                                         fontWeight: 600, fontSize: 14,
-                                        color: planInfo.estado === 'activa' || enTrial ? '#16a34a' : enGracia ? '#f59e0b' : '#dc2626'
+                                        color: planInfo.estado === 'activa' || enTrial ? '#1a6a40' : enGracia ? '#f59e0b' : '#e25252'
                                     }}>
                                         {enTrial ? 'Período de prueba' : planInfo.estado === 'activa' ? 'Activa' : enGracia ? 'Período de gracia' : planInfo.estado === 'cancelada' ? 'Cancelada' : planInfo.estado === 'pausada' ? 'Pausada' : 'Inactiva'}
                                     </div>
@@ -2494,21 +2507,21 @@ const PanelAdministracionTienda = () => {
                             </div>
 
                             {/* Uso de recursos */}
-                            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
-                                <p style={{ fontWeight: 700, fontSize: 14, color: '#1a3a2a', marginBottom: 16 }}>Uso actual</p>
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '20px 24px', marginBottom: 20 }}>
+                                <p style={{ fontWeight: 700, fontSize: 14, color: '#1a2926', marginBottom: 16 }}>Uso actual</p>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                     {/* Productos */}
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#374151', marginBottom: 5 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#475569', marginBottom: 5 }}>
                                             <span>Productos</span>
                                             <span style={{ fontWeight: 600 }}>
                                                 {planInfo.cantidad_productos ?? '—'}{planInfo.max_productos ? ` / ${planInfo.max_productos}` : ' (ilimitados)'}
                                             </span>
                                         </div>
                                         {planInfo.max_productos > 0 && (
-                                            <div style={{ background: '#e5e7eb', borderRadius: 999, height: 8 }}>
+                                            <div style={{ background: '#e2e8f0', borderRadius: 999, height: 8 }}>
                                                 <div style={{
-                                                    background: (planInfo.cantidad_productos / planInfo.max_productos) > 0.9 ? '#ef4444' : '#5dc87a',
+                                                    background: (planInfo.cantidad_productos / planInfo.max_productos) > 0.9 ? '#e25252' : '#5dc87a',
                                                     width: `${Math.min(100, (planInfo.cantidad_productos / planInfo.max_productos) * 100)}%`,
                                                     height: 8, borderRadius: 999, transition: 'width 0.3s'
                                                 }} />
@@ -2517,16 +2530,16 @@ const PanelAdministracionTienda = () => {
                                     </div>
                                     {/* Usuarios */}
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#374151', marginBottom: 5 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#475569', marginBottom: 5 }}>
                                             <span>Usuarios</span>
                                             <span style={{ fontWeight: 600 }}>
                                                 {planInfo.cantidad_usuarios ?? '—'}{planInfo.max_usuarios ? ` / ${planInfo.max_usuarios}` : ' (ilimitados)'}
                                             </span>
                                         </div>
                                         {planInfo.max_usuarios > 0 && (
-                                            <div style={{ background: '#e5e7eb', borderRadius: 999, height: 8 }}>
+                                            <div style={{ background: '#e2e8f0', borderRadius: 999, height: 8 }}>
                                                 <div style={{
-                                                    background: (planInfo.cantidad_usuarios / planInfo.max_usuarios) > 0.9 ? '#ef4444' : '#3b82f6',
+                                                    background: (planInfo.cantidad_usuarios / planInfo.max_usuarios) > 0.9 ? '#e25252' : '#3b82f6',
                                                     width: `${Math.min(100, (planInfo.cantidad_usuarios / planInfo.max_usuarios) * 100)}%`,
                                                     height: 8, borderRadius: 999, transition: 'width 0.3s'
                                                 }} />
@@ -2537,8 +2550,8 @@ const PanelAdministracionTienda = () => {
                             </div>
 
                             {/* Features */}
-                            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
-                                <p style={{ fontWeight: 700, fontSize: 14, color: '#1a3a2a', marginBottom: 14 }}>Funcionalidades</p>
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '20px 24px', marginBottom: 20 }}>
+                                <p style={{ fontWeight: 700, fontSize: 14, color: '#1a2926', marginBottom: 14 }}>Funcionalidades</p>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                     {[
                                         { key: 'permite_factura_electronica', label: 'Factura electrónica (AFIP)' },
@@ -2549,11 +2562,11 @@ const PanelAdministracionTienda = () => {
                                             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
                                                 <span style={{
                                                     width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                                    background: enabled ? '#5dc87a' : '#e5e7eb', color: enabled ? '#fff' : '#9ca3af', fontWeight: 700, fontSize: 13
+                                                    background: enabled ? '#5dc87a' : '#e2e8f0', color: enabled ? '#fff' : '#94a3b8', fontWeight: 700, fontSize: 13
                                                 }}>
                                                     {enabled ? '✓' : '✕'}
                                                 </span>
-                                                <span style={{ color: enabled ? '#1a3a2a' : '#9ca3af' }}>{label}</span>
+                                                <span style={{ color: enabled ? '#1a2926' : '#94a3b8' }}>{label}</span>
                                             </div>
                                         );
                                     })}
@@ -2562,7 +2575,7 @@ const PanelAdministracionTienda = () => {
 
                             {/* Próximo cobro */}
                             {planInfo.fecha_proximo_cobro && (
-                                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
+                                <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20 }}>
                                     Próximo cobro: <strong>{new Date(planInfo.fecha_proximo_cobro).toLocaleDateString('es-AR')}</strong>
                                     {planInfo.precio_mensual && ` — $${Number(planInfo.precio_mensual).toLocaleString('es-AR')}/mes`}
                                 </p>
@@ -2602,8 +2615,8 @@ const PanelAdministracionTienda = () => {
                                 <button
                                     onClick={() => setShowCancelModal(true)}
                                     style={{
-                                        marginTop: 16, background: 'none', color: '#9ca3af',
-                                        border: '1px solid #e5e7eb', borderRadius: 8,
+                                        marginTop: 16, background: 'none', color: '#94a3b8',
+                                        border: '1px solid #e2e8f0', borderRadius: 8,
                                         padding: '10px 20px', fontSize: 13, cursor: 'pointer'
                                     }}
                                 >
@@ -2658,14 +2671,14 @@ const PanelAdministracionTienda = () => {
                         maxWidth: 440, width: '90%', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
                     }}>
                         <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-                        <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a3a2a', margin: '0 0 12px' }}>
+                        <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a2926', margin: '0 0 12px' }}>
                             ¿Dar de baja la suscripción?
                         </h3>
-                        <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.6, margin: '0 0 8px' }}>
+                        <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.6, margin: '0 0 8px' }}>
                             Tu cuenta y todos tus datos (productos, ventas, clientes)
                             se conservarán por <strong>30 días</strong>.
                         </p>
-                        <p style={{ fontSize: 14, color: '#dc2626', margin: '0 0 24px' }}>
+                        <p style={{ fontSize: 14, color: '#e25252', margin: '0 0 24px' }}>
                             Después del período de retención, todos los datos serán eliminados permanentemente.
                         </p>
                         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
@@ -2673,8 +2686,8 @@ const PanelAdministracionTienda = () => {
                                 onClick={() => setShowCancelModal(false)}
                                 disabled={cancelando}
                                 style={{
-                                    padding: '11px 24px', borderRadius: 8, border: '1px solid #e5e7eb',
-                                    background: '#fff', color: '#374151', fontSize: 14, cursor: 'pointer', fontWeight: 600
+                                    padding: '11px 24px', borderRadius: 8, border: '1px solid #e2e8f0',
+                                    background: '#fff', color: '#475569', fontSize: 14, cursor: 'pointer', fontWeight: 600
                                 }}
                             >
                                 Volver
@@ -2700,7 +2713,7 @@ const PanelAdministracionTienda = () => {
                                 }}
                                 style={{
                                     padding: '11px 24px', borderRadius: 8, border: 'none',
-                                    background: '#dc2626', color: '#fff', fontSize: 14,
+                                    background: '#e25252', color: '#fff', fontSize: 14,
                                     cursor: cancelando ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: cancelando ? 0.7 : 1
                                 }}
                             >
@@ -2774,11 +2787,11 @@ const PanelAdministracionTienda = () => {
                     <div style={styles.modalOverlay}>
                         <div style={{ ...styles.modalContent, maxWidth: 420 }} className="panel-admin-modal-content">
                             <h3 style={{ marginTop: 0, marginBottom: 4 }}>Acceso a tiendas</h3>
-                            <p style={{ fontSize: 13, color: '#718096', marginBottom: 16 }}>
+                            <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
                                 Tiendas a las que <strong>{tiendasModalUser.username}</strong> puede acceder (además de la suya):
                             </p>
                             {tiendasDisponibles.length === 0 ? (
-                                <p style={{ color: '#a0aec0', fontSize: 13 }}>No tenés tiendas adicionales para delegar.</p>
+                                <p style={{ color: '#94a3b8', fontSize: 13 }}>No tenés tiendas adicionales para delegar.</p>
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
                                     {tiendasDisponibles.map(t => (
@@ -2870,21 +2883,21 @@ const PanelAdministracionTienda = () => {
                     {/* Filtros */}
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, alignItems: 'flex-end' }}>
                         <div>
-                            <label style={{ fontSize: 12, color: '#718096', display: 'block', marginBottom: 4 }}>Desde</label>
+                            <label style={{ fontSize: 12, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Desde</label>
                             <input type="date" value={historialFechaDesde}
                                 onChange={e => setHistorialFechaDesde(e.target.value)}
-                                style={{ padding: '7px 10px', borderRadius: 7, border: '1px solid #d8eae4', fontSize: 13 }} />
+                                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13 }} />
                         </div>
                         <div>
-                            <label style={{ fontSize: 12, color: '#718096', display: 'block', marginBottom: 4 }}>Hasta</label>
+                            <label style={{ fontSize: 12, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Hasta</label>
                             <input type="date" value={historialFechaHasta}
                                 onChange={e => setHistorialFechaHasta(e.target.value)}
-                                style={{ padding: '7px 10px', borderRadius: 7, border: '1px solid #d8eae4', fontSize: 13 }} />
+                                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13 }} />
                         </div>
                         <div>
-                            <label style={{ fontSize: 12, color: '#718096', display: 'block', marginBottom: 4 }}>Usuario</label>
+                            <label style={{ fontSize: 12, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Usuario</label>
                             <select value={historialUsuarioId} onChange={e => setHistorialUsuarioId(e.target.value)}
-                                style={{ padding: '7px 10px', borderRadius: 7, border: '1px solid #d8eae4', fontSize: 13, minWidth: 150 }}>
+                                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13, minWidth: 150 }}>
                                 <option value="">Todos</option>
                                 {usuarios.map(u => (
                                     <option key={u.id} value={u.id}>{u.username}</option>
@@ -2898,9 +2911,9 @@ const PanelAdministracionTienda = () => {
                     </div>
 
                     {loadingHistorial ? (
-                        <p style={{ color: '#6b7280', padding: 20 }}>Cargando...</p>
+                        <p style={{ color: '#94a3b8', padding: 20 }}>Cargando...</p>
                     ) : historial.length === 0 ? (
-                        <p style={{ color: '#9ca3af', padding: 20 }}>Sin registros para los filtros seleccionados.</p>
+                        <p style={{ color: '#94a3b8', padding: 20 }}>Sin registros para los filtros seleccionados.</p>
                     ) : (
                         <div style={styles.tableContainer}>
                             <table style={styles.table}>
@@ -2915,23 +2928,23 @@ const PanelAdministracionTienda = () => {
                                 <tbody>
                                     {historial.map(h => (
                                         <tr key={h.id} style={{ borderBottom: '1px solid #f0f4f3' }}>
-                                            <td style={{ ...styles.td, whiteSpace: 'nowrap', color: '#6b7280', fontSize: 13 }}>
+                                            <td style={{ ...styles.td, whiteSpace: 'nowrap', color: '#94a3b8', fontSize: 13 }}>
                                                 {new Date(h.fecha).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                             </td>
                                             <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
                                                 <span style={{
                                                     display: 'inline-block', fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 10,
                                                     ...(h.accion === 'ingreso_stock'     ? { background: '#e0f2fe', color: '#0369a1' } :
-                                                        h.accion === 'anulacion_venta'   ? { background: '#fef2f2', color: '#dc2626' } :
+                                                        h.accion === 'anulacion_venta'   ? { background: '#fef2f2', color: '#e25252' } :
                                                         h.accion === 'anulacion_item'    ? { background: '#fff7ed', color: '#c2410c' } :
                                                         h.accion === 'cambio_devolucion' ? { background: '#f0fdf4', color: '#15803d' } :
-                                                        { background: '#f3f4f6', color: '#374151' })
+                                                        { background: '#f1f5f9', color: '#475569' })
                                                 }}>
                                                     {h.accion_display}
                                                 </span>
                                             </td>
-                                            <td style={{ ...styles.td, fontSize: 13, color: '#374151' }}>{h.detalle}</td>
-                                            <td style={{ ...styles.td, fontSize: 13, fontWeight: 600, color: '#4a6660' }}>{h.usuario_username}</td>
+                                            <td style={{ ...styles.td, fontSize: 13, color: '#475569' }}>{h.detalle}</td>
+                                            <td style={{ ...styles.td, fontSize: 13, fontWeight: 600, color: '#475569' }}>{h.usuario_username}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -2957,13 +2970,13 @@ const styles = {
     loadingMessage: {
         padding: '20px',
         textAlign: 'center',
-        color: '#4a6660',
+        color: '#475569',
         fontSize: '1.1em',
     },
     header: {
         marginBottom: '30px',
         paddingBottom: '20px',
-        borderBottom: '2px solid #d8eae4',
+        borderBottom: '2px solid #e2e8f0',
     },
     title: {
         fontSize: '1.5rem',
@@ -2973,12 +2986,12 @@ const styles = {
     },
     subtitle: {
         fontSize: '1.1em',
-        color: '#4a6660',
+        color: '#475569',
         marginBottom: '15px',
     },
     backButton: {
         padding: '10px 20px',
-        backgroundColor: '#6c757d',
+        backgroundColor: '#94a3b8',
         color: 'white',
         border: 'none',
         borderRadius: '6px',
@@ -2989,7 +3002,7 @@ const styles = {
         display: 'flex',
         gap: '10px',
         marginBottom: '30px',
-        borderBottom: '2px solid #d8eae4',
+        borderBottom: '2px solid #e2e8f0',
     },
     tab: {
         padding: '12px 24px',
@@ -3000,8 +3013,8 @@ const styles = {
         borderBottomColor: 'transparent',
         cursor: 'pointer',
         fontSize: '1em',
-        color: '#4a6660',
-        transition: 'all 0.3s',
+        color: '#475569',
+        transition: 'all 0.2s',
     },
     tabActive: {
         color: '#5dc87a',
@@ -3032,13 +3045,15 @@ const styles = {
         padding: '20px',
         borderRadius: '10px',
         marginBottom: '20px',
-        boxShadow: '0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.05)',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 12px rgba(0,0,0,.06), 0 2px 4px rgba(0,0,0,.04)',
     },
     formGrid: {
         display: 'grid',
         gridTemplateColumns: 'repeat(2, 1fr)',
         gap: '15px',
         marginBottom: '20px',
+        flexWrap: 'wrap',
     },
     formGroup: {
         display: 'flex',
@@ -3047,11 +3062,11 @@ const styles = {
     formLabel: {
         marginBottom: '5px',
         fontWeight: 'bold',
-        color: '#4a6660',
+        color: '#475569',
     },
     input: {
         padding: '10px',
-        border: '1px solid #d8eae4',
+        border: '1px solid #e2e8f0',
         borderRadius: '6px',
         fontSize: '1em',
     },
@@ -3063,6 +3078,7 @@ const styles = {
         display: 'flex',
         gap: '10px',
         justifyContent: 'flex-end',
+        flexWrap: 'wrap',
     },
     saveButton: {
         padding: '10px 20px',
@@ -3075,7 +3091,7 @@ const styles = {
     },
     cancelButton: {
         padding: '10px 20px',
-        backgroundColor: '#6c757d',
+        backgroundColor: '#94a3b8',
         color: 'white',
         border: 'none',
         borderRadius: '6px',
@@ -3088,7 +3104,8 @@ const styles = {
         overflowX: 'auto',
         overflowY: 'visible',
         WebkitOverflowScrolling: 'touch',
-        boxShadow: '0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.05)',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 12px rgba(0,0,0,.06), 0 2px 4px rgba(0,0,0,.04)',
     },
     table: {
         width: '100%',
@@ -3096,16 +3113,16 @@ const styles = {
         borderCollapse: 'collapse',
     },
     th: {
-        backgroundColor: '#f7faf9',
+        backgroundColor: '#f1f5f9',
         padding: '12px',
         textAlign: 'left',
-        borderBottom: '2px solid #d8eae4',
+        borderBottom: '2px solid #e2e8f0',
         fontWeight: 'bold',
-        color: '#4a6660',
+        color: '#475569',
     },
     td: {
         padding: '12px',
-        borderBottom: '1px solid #d8eae4',
+        borderBottom: '1px solid #e2e8f0',
     },
     actionButtons: {
         display: 'flex',
@@ -3115,9 +3132,9 @@ const styles = {
     editButton: {
         padding: '5px 10px',
         backgroundColor: '#f59e0b',
-        color: 'black',
+        color: 'white',
         border: 'none',
-        borderRadius: '3px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '0.9em',
     },
@@ -3126,7 +3143,7 @@ const styles = {
         backgroundColor: '#3b9ede',
         color: 'white',
         border: 'none',
-        borderRadius: '3px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '0.9em',
     },
@@ -3135,17 +3152,17 @@ const styles = {
         backgroundColor: '#e25252',
         color: 'white',
         border: 'none',
-        borderRadius: '3px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '0.9em',
     },
     infoBox: {
-        backgroundColor: '#eff6ff',
-        border: '1px solid #93c5fd',
-        borderRadius: '6px',
+        backgroundColor: '#f1f5f9',
+        border: '1px solid #e2e8f0',
+        borderRadius: '10px',
         padding: '15px',
         marginBottom: '20px',
-        color: '#1e4a8a',
+        color: '#1a2926',
     },
     modalOverlay: {
         position: 'fixed',
@@ -3162,10 +3179,12 @@ const styles = {
     modalContent: {
         backgroundColor: 'white',
         padding: '30px',
-        borderRadius: '10px',
+        borderRadius: '16px',
         maxWidth: '500px',
         width: '90%',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
         textAlign: 'center',
     },
     inputGroupModal: {
@@ -3175,14 +3194,14 @@ const styles = {
     label: {
         marginBottom: '5px',
         fontWeight: 'bold',
-        color: '#4a6660',
+        color: '#475569',
         display: 'block',
     },
     modalInput: {
         width: '100%',
         padding: '8px',
         boxSizing: 'border-box',
-        border: '1px solid #d8eae4',
+        border: '1px solid #e2e8f0',
         borderRadius: '6px',
         fontSize: '1em',
     },
@@ -3197,15 +3216,15 @@ const styles = {
         backgroundColor: '#5dc87a',
         color: 'white',
         border: 'none',
-        borderRadius: '4px',
+        borderRadius: '6px',
         cursor: 'pointer',
     },
     modalCancelButton: {
         padding: '10px 15px',
-        backgroundColor: '#e25252',
+        backgroundColor: '#94a3b8',
         color: 'white',
         border: 'none',
-        borderRadius: '4px',
+        borderRadius: '6px',
         cursor: 'pointer',
     },
 };

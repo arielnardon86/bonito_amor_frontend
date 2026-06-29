@@ -7,7 +7,7 @@ const HelpButton = ({ titulo, bullets }) => {
     const handleClick = () => {
         Swal.fire({
             title: titulo,
-            html: `<ul style="text-align:left;padding-left:1.2em;margin:0;line-height:2;color:#374151">
+            html: `<ul style="text-align:left;padding-left:1.2em;margin:0;line-height:2;color:#475569">
                 ${bullets.map(b => `<li>${b}</li>`).join('')}
             </ul>`,
             confirmButtonText: 'Entendido',

@@ -186,7 +186,7 @@ const PuntoVenta = () => {
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#c53030',
-            cancelButtonColor: '#718096',
+            cancelButtonColor: '#94a3b8',
             confirmButtonText: 'Sí, anular',
             cancelButtonText: 'Cancelar',
         });
@@ -841,7 +841,7 @@ const PuntoVenta = () => {
                 showCancelButton: true,
                 confirmButtonText: 'Sí, aplicar',
                 cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#d97706',
+                confirmButtonColor: '#f59e0b',
             });
             if (!confirmHighDiscount.isConfirmed) return;
         }
@@ -1193,7 +1193,11 @@ const PuntoVenta = () => {
                     console.error('Error al procesar la venta:', err.response ? JSON.stringify(err.response.data) : err.message);
                     Swal.fire({
                         title: 'Error!',
-                        html: 'Error al procesar la venta: <br>' + (err.response && err.response.data ? Object.values(err.response.data).flat().join('<br>') : err.message),
+                        html: 'Error al procesar la venta:<br>' + (err.response?.data
+                            ? (typeof err.response.data === 'string'
+                                ? err.response.data
+                                : Object.values(err.response.data).flat().map(v => typeof v === 'object' ? JSON.stringify(v) : v).join('<br>'))
+                            : err.message),
                         icon: 'error',
                         confirmButtonText: 'Ok'
                     });
@@ -1249,14 +1253,30 @@ const PuntoVenta = () => {
 
     if (!selectedStoreSlug) {
         return (
-            <div style={styles.noStoreSelectedMessage}>
-                <p>Selecciona una tienda en el menú para usar el punto de venta.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, padding: 24, textAlign: 'center' }}>
+                <div style={{ fontSize: 40 }}>🏪</div>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#1a2926', margin: 0 }}>Seleccioná una tienda para comenzar</p>
+                <p style={{ fontSize: 14, color: '#475569', margin: 0 }}>Usá el selector de tienda en la parte superior del menú lateral para activar el punto de venta.</p>
             </div>
         );
     }
 
     if (error) {
-        return <div style={styles.errorMessage}>{error}</div>;
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 16, padding: 24 }}>
+                <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '24px 28px', maxWidth: 420, textAlign: 'center' }}>
+                    <div style={{ fontSize: 32, marginBottom: 12 }}>⚠</div>
+                    <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 16, color: '#1a2926' }}>Error al cargar el Punto de Venta</p>
+                    <p style={{ margin: '0 0 20px', fontSize: 13, color: '#475569' }}>{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{ padding: '10px 28px', background: '#5dc87a', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}
+                    >
+                        Reintentar
+                    </button>
+                </div>
+            </div>
+        );
     }
 
     // ── Cierre de Caja: derived values ───────────────────────────────────────
@@ -1307,11 +1327,11 @@ const PuntoVenta = () => {
                             <button
                                 onClick={() => { setCambioAbrirInput(''); setMostrarModalAbrirCaja(true); }}
                                 style={{
-                                    padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                    fontWeight: 700, fontSize: 14, background: '#38a169', color: '#fff',
+                                    padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                                    fontWeight: 700, fontSize: 14, background: '#5dc87a', color: '#fff',
                                 }}
                             >
-                                🟢 Abrir Caja
+                                Abrir Caja
                             </button>
                         )}
                         {cierreActivo && cierreActivo.estado !== 'CERRADO' && (
@@ -1322,20 +1342,20 @@ const PuntoVenta = () => {
                                         setMostrarModalEgresos(true);
                                     }}
                                     style={{
-                                        padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                        fontWeight: 700, fontSize: 14, background: '#ed8936', color: '#fff',
+                                        padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                                        fontWeight: 700, fontSize: 14, background: '#f59e0b', color: '#fff',
                                     }}
                                 >
-                                    💸 Egresos
+                                    Egresos
                                 </button>
                                 <button
                                     onClick={abrirModalCierre}
                                     style={{
-                                        padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                        fontWeight: 700, fontSize: 14, background: '#e53e3e', color: '#fff',
+                                        padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                                        fontWeight: 700, fontSize: 14, background: '#e25252', color: '#fff',
                                     }}
                                 >
-                                    🔒 Cerrar Caja
+                                    Cerrar Caja
                                 </button>
                             </>
                         )}
@@ -1350,14 +1370,13 @@ const PuntoVenta = () => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
                 }}>
                     <div style={{
-                        background: '#fff', borderRadius: 14, padding: '32px 28px', width: 360,
-                        boxShadow: '0 20px 60px rgba(0,0,0,.3)', textAlign: 'center',
+                        background: '#fff', borderRadius: 16, padding: '32px 28px', width: 360,
+                        boxShadow: '0 20px 60px rgba(0,0,0,.15)', textAlign: 'center',
                     }}>
-                        <div style={{ fontSize: 40, marginBottom: 12 }}>🟢</div>
-                        <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1a202c' }}>
+                        <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1a2926' }}>
                             Abrir Caja
                         </h2>
-                        <p style={{ color: '#718096', fontSize: 14, marginBottom: 16 }}>
+                        <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
                             Ingresá el cambio inicial. Si no tenés efectivo, ingresá 0.
                         </p>
                         <input
@@ -1368,9 +1387,9 @@ const PuntoVenta = () => {
                             onChange={e => setCambioAbrirInput(e.target.value)}
                             autoFocus
                             style={{
-                                width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 16,
-                                border: '2px solid #e2e8f0', marginBottom: 16, boxSizing: 'border-box',
-                                outline: 'none', textAlign: 'center',
+                                width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 16,
+                                border: '1.5px solid #e2e8f0', marginBottom: 16, boxSizing: 'border-box',
+                                outline: 'none', textAlign: 'center', color: '#1a2926',
                             }}
                             onKeyDown={e => e.key === 'Enter' && handleAbrirCaja()}
                         />
@@ -1378,8 +1397,8 @@ const PuntoVenta = () => {
                             <button
                                 onClick={() => setMostrarModalAbrirCaja(false)}
                                 style={{
-                                    flex: 1, padding: '11px', borderRadius: 8, border: '1px solid #e2e8f0',
-                                    background: '#f7f8fa', color: '#718096', cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                                    flex: 1, padding: '11px', borderRadius: 10, border: '1px solid #e2e8f0',
+                                    background: '#f1f5f9', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: 14,
                                 }}>
                                 Cancelar
                             </button>
@@ -1387,8 +1406,8 @@ const PuntoVenta = () => {
                                 onClick={handleAbrirCaja}
                                 disabled={guardandoAbrirCaja}
                                 style={{
-                                    flex: 2, padding: '11px', borderRadius: 8, border: 'none',
-                                    background: '#38a169', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
+                                    flex: 2, padding: '11px', borderRadius: 10, border: 'none',
+                                    background: '#5dc87a', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
                                 }}>
                                 {guardandoAbrirCaja ? 'Abriendo...' : 'Confirmar'}
                             </button>
@@ -1405,29 +1424,30 @@ const PuntoVenta = () => {
                     zIndex: 2000, overflowY: 'auto', padding: '16px 10px',
                 }}>
                     <div style={{
-                        background: '#f7f8fa', borderRadius: 14, padding: '24px',
-                        width: '100%', maxWidth: 900, boxShadow: '0 20px 60px rgba(0,0,0,.3)',
+                        background: '#f8fafc', borderRadius: 16, padding: '24px',
+                        width: '100%', maxWidth: 900, boxShadow: '0 20px 60px rgba(0,0,0,.15)',
                     }}>
                         {/* Cabecera */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
                             <div>
-                                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1a202c' }}>Cierre de Caja</h2>
-                                <span style={{ fontSize: 13, color: '#718096' }}>
+                                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1a2926' }}>Cierre de Caja</h2>
+                                <span style={{ fontSize: 13, color: '#475569' }}>
                                     {cierreActivo
                                         ? `Turno iniciado: ${new Date(cierreActivo.fecha_apertura).toLocaleString('es-AR')}`
                                         : 'Sin turno activo'}
                                 </span>
                             </div>
                             <button onClick={() => setMostrarModalCierre(false)}
-                                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#718096' }}>
+                                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#475569' }}
+                                aria-label="Cerrar">
                                 ✕
                             </button>
                         </div>
 
                         {!cierreActivo ? (
-                            <p style={{ color: '#718096' }}>No hay un turno abierto. Usá el botón "Abrir Caja" para iniciar uno.</p>
+                            <p style={{ color: '#475569' }}>No hay un turno abierto. Usá el botón "Abrir Caja" para iniciar uno.</p>
                         ) : cierreActivo.estado === 'CERRADO' ? (
-                            <p style={{ color: '#718096' }}>La caja ya fue cerrada. Para un nuevo turno, cerrá sesión e iniciá nuevamente.</p>
+                            <p style={{ color: '#475569' }}>La caja ya fue cerrada. Para un nuevo turno, cerrá sesión e iniciá nuevamente.</p>
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
@@ -1435,19 +1455,19 @@ const PuntoVenta = () => {
                                 <div>
                                     {/* Resumen financiero */}
                                     <div style={{ background: '#fff', borderRadius: 10, padding: '16px', border: '1px solid #e2e8f0', marginBottom: 14 }}>
-                                        <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 10 }}>Resumen</p>
+                                        <p style={{ fontWeight: 700, fontSize: 13, color: '#475569', textTransform: 'uppercase', marginBottom: 10 }}>Resumen</p>
 
                                         {/* Desglose de ventas por método de pago */}
                                         {ventasPorMetodo.length > 0 && (
                                             <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px dashed #e2e8f0' }}>
-                                                <p style={{ fontSize: 11, fontWeight: 600, color: '#718096', textTransform: 'uppercase', marginBottom: 6 }}>Ventas por método</p>
+                                                <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 6 }}>Ventas por método</p>
                                                 {ventasPorMetodo.map(m => (
-                                                    <div key={m.metodo_pago} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: '#4a5568' }}>
-                                                        <span>{m.metodo_pago || 'Sin método'} <span style={{ color: '#a0aec0', fontSize: 11 }}>({m.cantidad})</span></span>
+                                                    <div key={m.metodo_pago} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: '#475569' }}>
+                                                        <span>{m.metodo_pago || 'Sin método'} <span style={{ color: '#94a3b8', fontSize: 11 }}>({m.cantidad})</span></span>
                                                         <span style={{ fontWeight: 500 }}>{formatearMonto(Number(m.total || 0))}</span>
                                                     </div>
                                                 ))}
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginTop: 4, paddingTop: 4, borderTop: '1px solid #e2e8f0', color: '#2d3748' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginTop: 4, paddingTop: 4, borderTop: '1px solid #e2e8f0', color: '#334155' }}>
                                                     <span>Total ventas del turno</span>
                                                     <span>{formatearMonto(totalTodasVentas)}</span>
                                                 </div>
@@ -1456,9 +1476,9 @@ const PuntoVenta = () => {
 
                                         {/* Cálculo del efectivo teórico */}
                                         {[
-                                            { label: 'Cambio inicial', val: cambioInicial, color: '#2d3748' },
-                                            { label: 'Ventas en efectivo', val: totalVentasEfectivo, color: '#2d3748' },
-                                            ...(totalIngresos > 0 ? [{ label: '+ Ingresos de efectivo', val: totalIngresos, color: '#276749' }] : []),
+                                            { label: 'Cambio inicial', val: cambioInicial, color: '#334155' },
+                                            { label: 'Ventas en efectivo', val: totalVentasEfectivo, color: '#334155' },
+                                            ...(totalIngresos > 0 ? [{ label: '+ Ingresos de efectivo', val: totalIngresos, color: '#1a6a40' }] : []),
                                             ...(totalGastos > 0  ? [{ label: '- Gastos', val: totalGastos, color: '#c53030', neg: true }] : []),
                                             ...(totalRetiros > 0 ? [{ label: '- Retiros de caja', val: totalRetiros, color: '#c53030', neg: true }] : []),
                                         ].map(({ label, val, color, neg }) => (
@@ -1467,7 +1487,7 @@ const PuntoVenta = () => {
                                                 <span style={{ fontWeight: 600 }}>{neg ? '- ' : ''}{formatearMonto(Math.abs(val))}</span>
                                             </div>
                                         ))}
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: '1px solid #e2e8f0', marginTop: 8, paddingTop: 8 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: '1px solid #e2e8f0', marginTop: 8, paddingTop: 8, color: '#1a2926' }}>
                                             <span>Total teórico en caja</span>
                                             <span>{formatearMonto(totalTeoricoCierre)}</span>
                                         </div>
@@ -1476,19 +1496,19 @@ const PuntoVenta = () => {
                                     {/* Egresos */}
                                     <div style={{ background: '#fff', borderRadius: 10, padding: '16px', border: '1px solid #e2e8f0' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                                            <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', margin: 0 }}>Egresos</p>
+                                            <p style={{ fontWeight: 700, fontSize: 13, color: '#475569', textTransform: 'uppercase', margin: 0 }}>Egresos</p>
                                             <button
                                                 onClick={() => setMostrarFormEgreso(v => !v)}
-                                                style={{ padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: '#3c7ef3', color: '#fff', fontSize: 13, fontWeight: 600 }}>
+                                                style={{ padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: '#3b9ede', color: '#fff', fontSize: 13, fontWeight: 600 }}>
                                                 + Nuevo Egreso
                                             </button>
                                         </div>
                                         {mostrarFormEgreso && (
-                                            <div style={{ background: '#f7fafc', borderRadius: 8, padding: 12, marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 12, marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                                                 <select
                                                     value={egresoForm.tipo}
                                                     onChange={e => setEgresoForm(p => ({ ...p, tipo: e.target.value }))}
-                                                    style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 13 }}>
+                                                    style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13 }}>
                                                     <option value="EGRESO">Egreso / Gasto</option>
                                                     <option value="RETIRO">Retiro de caja</option>
                                                     <option value="PAGO_PROVEEDOR">Pago a proveedor</option>
@@ -1497,33 +1517,34 @@ const PuntoVenta = () => {
                                                     placeholder="Concepto"
                                                     value={egresoForm.concepto}
                                                     onChange={e => setEgresoForm(p => ({ ...p, concepto: e.target.value }))}
-                                                    style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 13 }} />
+                                                    style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13 }} />
                                                 <input
                                                     type="number" placeholder="Importe $"
                                                     value={egresoForm.importe}
                                                     onChange={e => setEgresoForm(p => ({ ...p, importe: e.target.value }))}
-                                                    style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 13 }} />
+                                                    style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13 }} />
                                                 <button
                                                     onClick={handleAgregarEgreso}
-                                                    style={{ padding: '7px', borderRadius: 6, border: 'none', cursor: 'pointer', background: '#48bb78', color: '#fff', fontWeight: 600, fontSize: 13 }}>
+                                                    style={{ padding: '7px', borderRadius: 6, border: 'none', cursor: 'pointer', background: '#5dc87a', color: '#fff', fontWeight: 600, fontSize: 13 }}>
                                                     Confirmar egreso
                                                 </button>
                                             </div>
                                         )}
                                         {cierreActivo.egresos.length === 0 ? (
-                                            <p style={{ color: '#a0aec0', fontSize: 13 }}>Sin egresos.</p>
+                                            <p style={{ color: '#94a3b8', fontSize: 13 }}>Sin egresos.</p>
                                         ) : (
                                             cierreActivo.egresos.map(eg => (
-                                                <div key={eg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '4px 0', borderTop: '1px solid #f0f4f8' }}>
-                                                    <span style={{ color: '#555', flex: 1 }}>{eg.tipo_display} — {eg.concepto}</span>
+                                                <div key={eg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '4px 0', borderTop: '1px solid #f1f5f9' }}>
+                                                    <span style={{ color: '#475569', flex: 1 }}>{eg.tipo_display} — {eg.concepto}</span>
                                                     {eg.tipo === 'INGRESO'
-                                                        ? <span style={{ color: '#276749', fontWeight: 600, marginRight: 8 }}>+ {formatearMonto(eg.importe)}</span>
+                                                        ? <span style={{ color: '#1a6a40', fontWeight: 600, marginRight: 8 }}>+ {formatearMonto(eg.importe)}</span>
                                                         : <span style={{ color: '#c53030', fontWeight: 600, marginRight: 8 }}>- {formatearMonto(eg.importe)}</span>
                                                     }
                                                     <button
                                                         onClick={() => handleEliminarEgreso(eg.id)}
                                                         title="Anular movimiento"
-                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#a0aec0', fontSize: 15, padding: '0 2px', lineHeight: 1 }}
+                                                        aria-label="Anular movimiento"
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 15, padding: '0 2px', lineHeight: 1 }}
                                                     >×</button>
                                                 </div>
                                             ))
@@ -1587,10 +1608,11 @@ const PuntoVenta = () => {
                                     {/* Diferencia */}
                                     <div style={{
                                         marginTop: 14, borderRadius: 10, padding: '16px', textAlign: 'center', fontWeight: 800, fontSize: 20,
-                                        background: diferenciaCierre >= 0 ? '#c6f6d5' : '#fed7d7',
-                                        color: diferenciaCierre >= 0 ? '#276749' : '#c53030',
+                                        background: diferenciaCierre >= 0 ? '#edfaf3' : '#fef2f2',
+                                        color: diferenciaCierre >= 0 ? '#1a6a40' : '#c53030',
+                                        border: `1px solid ${diferenciaCierre >= 0 ? '#a8e6c5' : '#fca5a5'}`,
                                     }}>
-                                        DIFERENCIA DE CAJA: {formatearMonto(diferenciaCierre)}
+                                        {diferenciaCierre >= 0 ? '+' : ''}{formatearMonto(diferenciaCierre)} diferencia de caja
                                     </div>
 
                                     <button
@@ -1599,10 +1621,10 @@ const PuntoVenta = () => {
                                         style={{
                                             marginTop: 16, width: '100%', padding: '14px', borderRadius: 10,
                                             border: 'none', cursor: guardandoCierre ? 'not-allowed' : 'pointer',
-                                            background: guardandoCierre ? '#a0aec0' : '#e53e3e',
+                                            background: guardandoCierre ? '#94a3b8' : '#e25252',
                                             color: '#fff', fontWeight: 700, fontSize: 16,
                                         }}>
-                                        {guardandoCierre ? 'Cerrando...' : '🔒 Confirmar Cierre de Caja'}
+                                        {guardandoCierre ? 'Cerrando...' : 'Confirmar Cierre de Caja'}
                                     </button>
                                 </div>
                             </div>
@@ -1618,31 +1640,32 @@ const PuntoVenta = () => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100,
                 }}>
                     <div style={{
-                        background: '#fff', borderRadius: 14, padding: '28px 28px 24px',
-                        width: 420, boxShadow: '0 20px 60px rgba(0,0,0,.3)',
+                        background: '#fff', borderRadius: 16, padding: '28px 28px 24px',
+                        width: 420, boxShadow: '0 10px 30px rgba(0,0,0,.10)',
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1a202c' }}>Registrar movimiento de caja</h2>
+                            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1a2926' }}>Registrar movimiento de caja</h2>
                             <button onClick={() => setMostrarModalEgresos(false)}
-                                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#718096' }}>✕</button>
+                                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#475569' }}
+                                aria-label="Cerrar">✕</button>
                         </div>
 
                         {/* Tipo */}
                         <div style={{ marginBottom: 16 }}>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Tipo</label>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Tipo</label>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 {[
-                                    { val: 'EGRESO',  label: 'Gasto',            color: '#e53e3e', desc: 'Impacta en métricas' },
-                                    { val: 'RETIRO',  label: 'Retiro de caja',   color: '#dd6b20', desc: 'Solo en cierre' },
-                                    { val: 'INGRESO', label: 'Ingreso efectivo',  color: '#38a169', desc: 'Solo en cierre' },
+                                    { val: 'EGRESO',  label: 'Gasto',            color: '#e25252', desc: 'Impacta en métricas' },
+                                    { val: 'RETIRO',  label: 'Retiro de caja',   color: '#f59e0b', desc: 'Solo en cierre' },
+                                    { val: 'INGRESO', label: 'Ingreso efectivo',  color: '#5dc87a', desc: 'Solo en cierre' },
                                 ].map(({ val, label, color, desc }) => (
                                     <button key={val}
                                         onClick={() => setEgresoForm(p => ({ ...p, tipo: val }))}
                                         style={{
-                                            flex: 1, padding: '10px 6px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                                            flex: 1, padding: '10px 6px', borderRadius: 10, cursor: 'pointer', fontSize: 12, fontWeight: 700,
                                             border: egresoForm.tipo === val ? `2px solid ${color}` : '2px solid #e2e8f0',
-                                            background: egresoForm.tipo === val ? `${color}18` : '#f7f8fa',
-                                            color: egresoForm.tipo === val ? color : '#718096',
+                                            background: egresoForm.tipo === val ? `${color}18` : '#f8fafc',
+                                            color: egresoForm.tipo === val ? color : '#475569',
                                             textAlign: 'center',
                                         }}>
                                         {label}
@@ -1654,42 +1677,42 @@ const PuntoVenta = () => {
 
                         {/* Concepto */}
                         <div style={{ marginBottom: 14 }}>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Concepto</label>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Concepto</label>
                             <input
                                 type="text"
                                 placeholder={egresoForm.tipo === 'INGRESO' ? 'Ej: Cambio adicional' : 'Ej: Compra de bolsas'}
                                 value={egresoForm.concepto}
                                 onChange={e => setEgresoForm(p => ({ ...p, concepto: e.target.value }))}
-                                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}
+                                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box', color: '#1a2926' }}
                             />
                         </div>
 
                         {/* Importe */}
                         <div style={{ marginBottom: 20 }}>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Importe $</label>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Importe $</label>
                             <input
                                 type="number" min="0" step="0.01"
                                 placeholder="0.00"
                                 value={egresoForm.importe}
                                 onChange={e => setEgresoForm(p => ({ ...p, importe: e.target.value }))}
                                 onKeyDown={e => e.key === 'Enter' && handleAgregarEgreso(true)}
-                                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 16, boxSizing: 'border-box', textAlign: 'right' }}
+                                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 16, boxSizing: 'border-box', textAlign: 'right', color: '#1a2926' }}
                             />
                         </div>
 
                         <div style={{ display: 'flex', gap: 10 }}>
                             <button onClick={() => setMostrarModalEgresos(false)}
-                                style={{ flex: 1, padding: '11px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f7f8fa', color: '#718096', cursor: 'pointer', fontWeight: 600 }}>
+                                style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', cursor: 'pointer', fontWeight: 600 }}>
                                 Cancelar
                             </button>
                             <button
                                 onClick={() => handleAgregarEgreso(true)}
                                 disabled={guardandoEgreso || !egresoForm.concepto.trim() || !egresoForm.importe}
                                 style={{
-                                    flex: 2, padding: '11px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 15,
-                                    background: guardandoEgreso ? '#a0aec0' :
-                                        egresoForm.tipo === 'INGRESO' ? '#38a169' :
-                                        egresoForm.tipo === 'RETIRO'  ? '#dd6b20' : '#e53e3e',
+                                    flex: 2, padding: '11px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 15,
+                                    background: guardandoEgreso ? '#94a3b8' :
+                                        egresoForm.tipo === 'INGRESO' ? '#5dc87a' :
+                                        egresoForm.tipo === 'RETIRO'  ? '#f59e0b' : '#e25252',
                                     color: '#fff',
                                     opacity: (!egresoForm.concepto.trim() || !egresoForm.importe) ? 0.5 : 1,
                                 }}>
@@ -1791,9 +1814,14 @@ const PuntoVenta = () => {
                                                 <td style={styles.td}>{item.product.nombre}</td>
                                                 <td style={styles.td}>
                                                     <div style={styles.quantityControl} className="quantity-control">
-                                                        <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton}>−</button>
+                                                        <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton} aria-label={`Reducir cantidad de ${item.product.nombre}`}>−</button>
                                                         <span style={styles.quantityText}>{item.quantity}</span>
-                                                        <button onClick={() => handleAddProductoEnVenta(item.product, 1)} style={styles.quantityButton}>+</button>
+                                                        <button
+                                                            onClick={() => handleAddProductoEnVenta(item.product, 1)}
+                                                            disabled={item.quantity >= item.product.stock}
+                                                            style={{ ...styles.quantityButton, opacity: item.quantity >= item.product.stock ? 0.4 : 1, cursor: item.quantity >= item.product.stock ? 'not-allowed' : 'pointer' }}
+                                                            aria-label={`Aumentar cantidad de ${item.product.nombre}`}
+                                                        >+</button>
                                                     </div>
                                                 </td>
                                                 <td style={styles.td}>{formatearMonto(item.product.precio)}</td>
@@ -1834,18 +1862,18 @@ const PuntoVenta = () => {
                                     </button>
                                 </div>
                             ) : (
-                                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
+                                <div style={{ background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 10, padding: '8px 12px', fontSize: 13 }}>
                                     {formasPago.map(f => (
-                                        <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                                        <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, color: '#1a2926' }}>
                                             <span>{f.metodo}</span>
                                             <strong>{formatearMonto(f.monto)}</strong>
                                         </div>
                                     ))}
-                                    <div style={{ borderTop: '1px solid #bbf7d0', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
-                                        <button type="button" onClick={abrirModalPago} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+                                    <div style={{ borderTop: '1px solid #a8e6c5', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+                                        <button type="button" onClick={abrirModalPago} style={{ background: 'none', border: 'none', color: '#3b9ede', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
                                             Editar
                                         </button>
-                                        <button type="button" onClick={cancelarPagoCombinado} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+                                        <button type="button" onClick={cancelarPagoCombinado} style={{ background: 'none', border: 'none', color: '#e25252', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
                                             Cancelar combinado
                                         </button>
                                     </div>
@@ -1980,7 +2008,7 @@ const PuntoVenta = () => {
                         </button>
                     </>
                 ) : (
-                    <p style={styles.noDataMessage}>Carrito vacío. Busca productos por código de barras o en la lista de abajo.</p>
+                    <p style={styles.noDataMessage}>Carrito vacío. Escaneá un código de barras en el campo superior, o buscá el producto por nombre en el panel de abajo y presioná "Añadir".</p>
                 )}
             </div>
 
@@ -2025,7 +2053,7 @@ const PuntoVenta = () => {
                                 <button
                                     onClick={handleAgregarForma}
                                     disabled={saldo <= 0 || !modalMetodo}
-                                    style={{ padding: '9px 18px', background: saldo <= 0 ? '#9ca3af' : '#374151', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: saldo <= 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+                                    style={{ padding: '9px 18px', background: saldo <= 0 ? '#94a3b8' : '#5dc87a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: saldo <= 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
                                 >
                                     Agregar
                                 </button>
@@ -2049,7 +2077,7 @@ const PuntoVenta = () => {
                                             ))}
                                         </select>
                                     ) : (
-                                        <p style={{ fontSize: 12, color: '#dc2626' }}>No hay planes configurados para {modalMetodo}.</p>
+                                        <p style={{ fontSize: 12, color: '#e25252' }}>No hay planes configurados para {modalMetodo}.</p>
                                     )}
                                 </div>
                             )}
@@ -2058,23 +2086,23 @@ const PuntoVenta = () => {
                             {formasPago.length > 0 && (
                                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 14, fontSize: 13 }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 700 }}>Forma</th>
-                                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 700 }}>Plan</th>
-                                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 700 }}>Fec. Acred.</th>
-                                            <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 700 }}>Total</th>
+                                        <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 700, color: '#475569' }}>Forma</th>
+                                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 700, color: '#475569' }}>Plan</th>
+                                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 700, color: '#475569' }}>Fec. Acred.</th>
+                                            <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 700, color: '#475569' }}>Total</th>
                                             <th style={{ width: 32 }}></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {formasPago.map(f => (
-                                            <tr key={f.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                                <td style={{ padding: '6px 4px' }}>{f.metodo}</td>
-                                                <td style={{ padding: '6px 4px', color: '#6b7280', fontSize: 12 }}>{f.arancelNombre || '—'}</td>
-                                                <td style={{ padding: '6px 4px', color: '#6b7280' }}>{new Date().toLocaleDateString('es-AR')}</td>
-                                                <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 600 }}>{formatearMonto(f.monto)}</td>
+                                            <tr key={f.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                <td style={{ padding: '6px 4px', color: '#1a2926' }}>{f.metodo}</td>
+                                                <td style={{ padding: '6px 4px', color: '#94a3b8', fontSize: 12 }}>{f.arancelNombre || '—'}</td>
+                                                <td style={{ padding: '6px 4px', color: '#475569' }}>{new Date().toLocaleDateString('es-AR')}</td>
+                                                <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 600, color: '#1a2926' }}>{formatearMonto(f.monto)}</td>
                                                 <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-                                                    <button onClick={() => handleEliminarForma(f.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 16 }}>🗑</button>
+                                                    <button onClick={() => handleEliminarForma(f.id)} aria-label="Eliminar forma de pago" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e25252', fontSize: 16, lineHeight: 1 }}>×</button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -2087,7 +2115,7 @@ const PuntoVenta = () => {
                                 <button
                                     onClick={handleGuardarFormasPago}
                                     disabled={saldo > 0 || formasPago.length === 0}
-                                    style={{ ...styles.modalConfirmButton, background: saldo > 0 ? '#9ca3af' : '#be185d', cursor: saldo > 0 ? 'not-allowed' : 'pointer' }}
+                                    style={{ ...styles.modalConfirmButton, background: saldo > 0 ? '#94a3b8' : '#5dc87a', cursor: saldo > 0 ? 'not-allowed' : 'pointer' }}
                                 >
                                     Guardar
                                 </button>
@@ -2131,7 +2159,7 @@ const PuntoVenta = () => {
                         className="input-field"
                     />
                     {/* El botón de Buscar ya no es necesario aquí */}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                         <input
                             type="checkbox"
                             checked={mostrarTalle}
@@ -2170,10 +2198,10 @@ const PuntoVenta = () => {
                                             }
                                             return [product];
                                         }).map(product => (
-                                            <tr key={product.id} style={{ ...styles.tableRow, ...(product.stock === 0 ? { opacity: 0.5, background: '#f7faf9' } : {}) }}>
+                                            <tr key={product.id} style={{ ...styles.tableRow, ...(product.stock === 0 ? { opacity: 0.5, background: '#f8fafc' } : {}) }}>
                                                 <td style={styles.td}>
                                                     {product.nombre}
-                                                    {product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 4, padding: '1px 5px' }}>SIN STOCK</span>}
+                                                    {product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#e25252', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '1px 5px' }}>SIN STOCK</span>}
                                                 </td>
                                                 {mostrarTalle && <td style={styles.td}>{product.talle || '-'}</td>}
                                                 <td style={styles.td}>{formatearMonto(product.precio)}</td>
@@ -2195,7 +2223,7 @@ const PuntoVenta = () => {
                                                 {filterTerm ? (
                                                     <span>
                                                         No se encontraron productos para <strong>"{filterTerm}"</strong>.{' '}
-                                                        <a href="/productos" style={{ color: '#16a34a', fontWeight: 700, textDecoration: 'none' }}>¿Querés crearlo?</a>
+                                                        <a href="/productos" style={{ color: '#1a6a40', fontWeight: 700, textDecoration: 'none' }}>¿Querés crearlo?</a>
                                                     </span>
                                                 ) : 'No hay productos cargados para esta tienda.'}
                                             </td>
@@ -2235,8 +2263,9 @@ const PuntoVenta = () => {
 
             {/* --- ALERTA CUSTOM --- */}
             {showAlertMessage && (
-                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
-                    <p>{alertMessage}</p>
+                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#e25252' : (alertType === 'info' ? '#3b9ede' : '#5dc87a'), display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <p style={{ margin: 0, flex: 1 }}>{alertMessage}</p>
+                    <button onClick={() => setShowAlertMessage(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0 }} aria-label="Cerrar">×</button>
                 </div>
             )}
             
@@ -2404,82 +2433,82 @@ const PuntoVenta = () => {
     );
 };
 
-// --- OBJETO DE ESTILOS (Se mantiene) ---
+// --- OBJETO DE ESTILOS ---
 const styles = {
     container: { padding: 0, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", width: '100%' },
     header: { color: '#1a2926', marginBottom: '1.25rem', fontSize: '1.5rem', fontWeight: '600' },
-    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f7faf9', border: '1px solid #d8eae4', borderRadius: '10px' },
-    sectionHeader: { color: '#4a6660', borderBottom: '1px solid #edf5f2', paddingBottom: '10px' },
-    loadingMessage: { textAlign: 'center', color: '#777' },
+    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' },
+    sectionHeader: { color: '#475569', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 },
+    loadingMessage: { textAlign: 'center', color: '#94a3b8' },
     accessDeniedMessage: { color: '#e25252', textAlign: 'center' },
     noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },
-    errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },
+    errorMessage: { color: '#991b1b', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },
     cartSelectionContainer: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' },
-    activeCartButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
-    inactiveCartButton: { padding: '10px 15px', backgroundColor: '#edf5f2', color: '#333', border: '1px solid #d8eae4', borderRadius: '6px', cursor: 'pointer' },
-    newCartButton: { padding: '10px 15px', backgroundColor: '#3ab87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
+    activeCartButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
+    inactiveCartButton: { padding: '10px 15px', backgroundColor: '#f1f5f9', color: '#334155', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer' },
+    newCartButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
     activeCartInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap', gap: '10px' },
-    activeCartTitle: { margin: 0, color: '#5dc87a', fontSize: '1rem' },
+    activeCartTitle: { margin: 0, color: '#5dc87a', fontSize: '1rem', fontWeight: 600 },
     activeCartActions: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
     searchRow: { marginTop: '12px', marginBottom: '12px' },
     cartTableWrap: { marginTop: '16px', marginBottom: '8px', overflow: 'hidden' },
-    arancelWarning: { padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '4px', color: '#92400e', fontSize: '0.9em', margin: 0 },
+    arancelWarning: { padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', color: '#92400e', fontSize: '0.9em', margin: 0 },
     redondearRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' },
-    redondearLabel: { margin: 0, fontSize: '0.9em', cursor: 'pointer' },
-    inputField: { padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px', boxSizing: 'border-box' }, // Añadido boxSizing
-    deleteCartButton: { backgroundColor: '#e25252', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    redondearLabel: { margin: 0, fontSize: '0.9em', cursor: 'pointer', color: '#475569' },
+    inputField: { padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', boxSizing: 'border-box', color: '#1a2926', fontSize: '14px' },
+    deleteCartButton: { backgroundColor: '#fef2f2', color: '#991b1b', padding: '8px 12px', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9em' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-    modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', textAlign: 'center', width: '90%', maxWidth: '400px' },
-    modalHeader: { margin: '0 0 15px 0' },
+    modalContent: { backgroundColor: 'white', padding: '24px', borderRadius: '10px', textAlign: 'center', width: '90%', maxWidth: '400px', boxShadow: '0 10px 30px rgba(0,0,0,0.10)' },
+    modalHeader: { margin: '0 0 15px 0', color: '#1a2926', fontSize: '1.1rem' },
+    modalMessage: { color: '#475569', margin: '0 0 4px' },
     modalActions: { display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' },
-    modalConfirmButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
-    modalCancelButton: { padding: '8px 15px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
+    modalConfirmButton: { padding: '9px 20px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
+    modalCancelButton: { padding: '9px 20px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
     inputGroup: { display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' },
-    primaryButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
-    foundProductCard: { border: '1px solid #d8eae4', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' },
-    foundProductText: { margin: 0 },
+    primaryButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
+    foundProductCard: { border: '1px solid #e2e8f0', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', backgroundColor: '#ffffff' },
+    foundProductText: { margin: 0, color: '#1a2926' },
     productActions: { display: 'flex', gap: '10px' },
-    addProductButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    disabledButton: { padding: '8px 15px', backgroundColor: '#d8eae4', color: '#8aa8a0', border: 'none', borderRadius: '4px', cursor: 'not-allowed' },
+    addProductButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
+    disabledButton: { padding: '8px 15px', backgroundColor: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'not-allowed' },
     tableResponsive: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse', marginTop: '15px' },
-    tableHeaderRow: { backgroundColor: '#f7faf9' },
-    th: { padding: '10px', borderBottom: '2px solid #d8eae4', textAlign: 'left', color: '#4a6660' },
-    tableRow: { '&:nth-child(even)': { backgroundColor: '#f7faf9' } },
-    td: { padding: '10px', borderBottom: '1px solid #edf5f2', verticalAlign: 'middle' },
+    tableHeaderRow: { backgroundColor: '#f1f5f9' },
+    th: { padding: '10px', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569', fontWeight: 600 },
+    tableRow: { backgroundColor: '#ffffff' },
+    td: { padding: '10px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'middle', color: '#1a2926' },
     quantityControl: { display: 'flex', alignItems: 'center', gap: '5px' },
-    quantityButton: { padding: '4px 8px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' },
-    quantityText: { padding: '0 5px' },
-    removeButton: { padding: '8px 12px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    totalVenta: { textAlign: 'right', fontSize: '1.2em', color: '#1a2926' },
+    quantityButton: { padding: '4px 8px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 },
+    quantityText: { padding: '0 5px', fontWeight: 600, minWidth: 24, textAlign: 'center' },
+    removeButton: { padding: '6px 12px', backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9em' },
+    totalVenta: { textAlign: 'right', fontSize: '1.1em', color: '#475569', fontWeight: 600, margin: '12px 0 4px' },
     paymentMethodSelectContainer: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' },
-    paymentMethodLabel: { fontWeight: 'bold' },
+    paymentMethodLabel: { fontWeight: '600', color: '#475569', whiteSpace: 'nowrap' },
 
-    // --- NUEVOS ESTILOS PARA AJUSTES ---
     ajustesContainer: { display: 'flex', justifyContent: 'space-between', gap: '15px', marginTop: '15px' },
-    ajusteGrupo: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1, padding: '10px', border: '1px solid #d8eae4', borderRadius: '6px', backgroundColor: '#fff' },
-    ajusteLabel: { fontWeight: 'bold', fontSize: '0.9em' },
-    ajusteInput: { width: '70px', padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px' },
-    ajusteSeparador: { fontWeight: 'bold', color: '#8aa8a0' },
-    // --- FIN NUEVOS ESTILOS ---
+    ajusteGrupo: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1, padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#fff' },
+    ajusteLabel: { fontWeight: '600', fontSize: '0.9em', color: '#475569' },
+    ajusteInput: { width: '70px', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', color: '#1a2926', fontSize: '0.9em' },
+    ajusteSeparador: { fontWeight: 'bold', color: '#94a3b8' },
 
-    finalTotalVenta: { textAlign: 'right', fontSize: '1.5em', color: '#5dc87a' },
-    processSaleButton: { display: 'block', width: '100%', padding: '15px', background: 'linear-gradient(135deg, #5dc87a, #38a080)', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', marginTop: '20px', fontSize: '1.1em', fontWeight: 700, boxShadow: '0 4px 14px rgba(93,200,122,.30)' },
-    addButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#8aa8a0' },
+    finalTotalVenta: { textAlign: 'right', fontSize: '1.5em', color: '#5dc87a', fontWeight: 700, margin: '8px 0' },
+    processSaleButton: { display: 'block', width: '100%', padding: '15px', background: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', marginTop: '20px', fontSize: '1.1em', fontWeight: 700, transition: 'background 0.15s ease' },
+    addButton: { padding: '7px 14px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9em' },
+    noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#94a3b8' },
     paginationContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', gap: '10px' },
-    paginationButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
-    pageNumber: { fontSize: '1em', fontWeight: 'bold', color: '#4a6660' },
-    arancelDisplay: { textAlign: 'right', fontSize: '1em', color: '#e25252', marginTop: '5px' },
+    paginationButton: { padding: '8px 15px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
+    pageNumber: { fontSize: '1em', fontWeight: '600', color: '#475569' },
+    arancelDisplay: { textAlign: 'right', fontSize: '1em', color: '#475569', marginTop: '5px' },
     alertBox: {
         position: 'fixed',
         bottom: '20px',
         right: '20px',
         padding: '15px 20px',
         color: 'white',
-        borderRadius: '6px',
+        borderRadius: '10px',
         zIndex: 1001,
         boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        fontWeight: 600,
     },
 };
 

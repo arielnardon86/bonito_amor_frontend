@@ -621,9 +621,9 @@ const VentasPage = () => {
                                 title="Descargar Excel con los filtros aplicados"
                                 style={{
                                     ...styles.filterButton,
-                                    background: loading ? '#d8eae4' : 'linear-gradient(135deg, #1d6f42 0%, #2a9668 100%)',
-                                    boxShadow: loading ? 'none' : '0 2px 8px rgba(29,111,66,0.25)',
-                                    color: loading ? '#4a6660' : 'white',
+                                    background: loading ? '#e2e8f0' : 'linear-gradient(135deg, #3ab87a 0%, #5dc87a 100%)',
+                                    boxShadow: loading ? 'none' : '0 2px 8px rgba(58,184,122,0.25)',
+                                    color: loading ? '#94a3b8' : 'white',
                                     cursor: loading ? 'not-allowed' : 'pointer',
                                 }}
                             >
@@ -653,20 +653,20 @@ const VentasPage = () => {
                         <tbody>
                             {ventas.map(venta => (
                                 <React.Fragment key={venta.id}>
-                                    <tr style={venta.es_nota_credito || venta.es_diferencia_pendiente ? { backgroundColor: '#e8f4f8' } : {}}>
+                                    <tr style={venta.es_nota_credito || venta.es_diferencia_pendiente ? { backgroundColor: '#f1f5f9' } : {}}>
                                         <td style={styles.td}>
                                             {new Date(venta.fecha_venta).toLocaleString()}
                                             {venta.es_nota_credito && (
-                                                <span style={{ marginLeft: '10px', padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: '3px', fontSize: '0.75em' }}>
+                                                <span style={{ marginLeft: '10px', padding: '2px 6px', backgroundColor: '#5dc87a', color: 'white', borderRadius: '6px', fontSize: '0.75em' }}>
                                                     Nota de Crédito
                                                 </span>
                                             )}
                                             {venta.es_diferencia_pendiente && (
                                                 <>
-                                                    <span style={{ marginLeft: '10px', padding: '2px 6px', backgroundColor: '#ffc107', color: 'black', borderRadius: '3px', fontSize: '0.75em' }}>
+                                                    <span style={{ marginLeft: '10px', padding: '2px 6px', backgroundColor: '#f59e0b', color: '#1a2926', borderRadius: '6px', fontSize: '0.75em' }}>
                                                         Cambio/Devolución
                                                     </span>
-                                                    <span style={{ marginLeft: '6px', padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: '3px', fontSize: '0.75em' }}>
+                                                    <span style={{ marginLeft: '6px', padding: '2px 6px', backgroundColor: '#5dc87a', color: 'white', borderRadius: '6px', fontSize: '0.75em' }}>
                                                         Diferencia abonada
                                                     </span>
                                                 </>
@@ -679,12 +679,12 @@ const VentasPage = () => {
                                             {venta.origen_mercadolibre && (() => {
                                                 const entregado = !!venta.ml_fecha_entrega;
                                                 return entregado
-                                                    ? <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>
+                                                    ? <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#5dc87a', color: 'white', borderRadius: '6px', fontSize: '0.72em', fontWeight: 600 }}>
                                                         {venta.ml_fecha_entrega
                                                             ? `Entregado ${new Date(venta.ml_fecha_entrega).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}`
                                                             : 'Entregado'}
                                                       </span>
-                                                    : <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#ffc107', color: '#333', borderRadius: 3, fontSize: '0.72em', fontWeight: 600 }}>No entregado</span>;
+                                                    : <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#f59e0b', color: '#1a2926', borderRadius: '6px', fontSize: '0.72em', fontWeight: 600 }}>No entregado</span>;
                                             })()}
                                         </td>
                                         <td style={styles.td}>
@@ -736,7 +736,7 @@ const VentasPage = () => {
                                                     <button
                                                         className="icon-btn"
                                                         onClick={() => navigate('/cambio-devolucion', { state: { venta } })}
-                                                        style={{ color: 'white', backgroundColor: '#17a2b8' }}
+                                                        style={{ color: 'white', backgroundColor: '#3b9ede' }}
                                                         data-tooltip="Cambio / Devolución"
                                                     >
                                                         <FontAwesomeIcon icon={faArrowsRotate} />
@@ -752,8 +752,8 @@ const VentasPage = () => {
                                                 
                                                 {/* Información de Cambio/Devolución si aplica */}
                                                 {venta.cambio_devolucion_nota_credito && (
-                                                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#d4edda', border: '1px solid #c3e6cb', borderRadius: '4px' }}>
-                                                        <h5 style={{ margin: '0 0 10px 0', color: '#155724' }}>Información de Nota de Crédito</h5>
+                                                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#edfaf3', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                                                        <h5 style={{ margin: '0 0 10px 0', color: '#1a6a40' }}>Información de Nota de Crédito</h5>
                                                         <p style={{ margin: '5px 0' }}>
                                                             <strong>Origen:</strong> Cambio/Devolución #{venta.cambio_devolucion_nota_credito.id}
                                                         </p>
@@ -768,10 +768,10 @@ const VentasPage = () => {
                                                             style={{
                                                                 marginTop: '10px',
                                                                 padding: '5px 10px',
-                                                                backgroundColor: '#17a2b8',
+                                                                backgroundColor: '#3b9ede',
                                                                 color: 'white',
                                                                 border: 'none',
-                                                                borderRadius: '4px',
+                                                                borderRadius: '6px',
                                                                 cursor: 'pointer'
                                                             }}
                                                         >
@@ -779,10 +779,10 @@ const VentasPage = () => {
                                                         </button>
                                                     </div>
                                                 )}
-                                                
+
                                                 {venta.cambio_devolucion_diferencia && (
-                                                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffeaa7', borderRadius: '4px' }}>
-                                                        <h5 style={{ margin: '0 0 10px 0', color: '#856404' }}>Información de Diferencia Pendiente</h5>
+                                                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                                                        <h5 style={{ margin: '0 0 10px 0', color: '#92400e' }}>Información de Diferencia Pendiente</h5>
                                                         <p style={{ margin: '5px 0' }}>
                                                             <strong>Origen:</strong> Cambio/Devolución #{venta.cambio_devolucion_diferencia.id}
                                                         </p>
@@ -797,10 +797,10 @@ const VentasPage = () => {
                                                             style={{
                                                                 marginTop: '10px',
                                                                 padding: '5px 10px',
-                                                                backgroundColor: '#17a2b8',
+                                                                backgroundColor: '#3b9ede',
                                                                 color: 'white',
                                                                 border: 'none',
-                                                                borderRadius: '4px',
+                                                                borderRadius: '6px',
                                                                 cursor: 'pointer'
                                                             }}
                                                         >
@@ -918,12 +918,12 @@ const VentasPage = () => {
                                     const montoActivas  = totalesGlobal ? parseFloat(totalesGlobal.monto_activas  || 0) : ventas.filter(v => !v.anulada).reduce((s, v) => s + parseFloat(v.total || 0), 0);
                                     const montoAnuladas = totalesGlobal ? parseFloat(totalesGlobal.monto_anuladas || 0) : ventas.filter(v => v.anulada).reduce((s, v) => s + parseFloat(v.total || 0), 0);
                                     return (
-                                        <td colSpan={6} style={{ padding: '10px 12px', background: '#f7faf9', borderTop: '2px solid #d8eae4', fontSize: 13 }}>
+                                        <td colSpan={6} style={{ padding: '10px 12px', background: '#f8fafc', borderTop: '2px solid #e2e8f0', fontSize: 13 }}>
                                             <span style={{ fontWeight: 700, color: '#1a2926' }}>
                                                 {activas} venta{activas !== 1 ? 's' : ''}: {formatearMonto(montoActivas)}
                                             </span>
                                             {anuladas > 0 && (
-                                                <span style={{ marginLeft: 16, color: '#dc2626', fontWeight: 600 }}>
+                                                <span style={{ marginLeft: 16, color: '#e25252', fontWeight: 600 }}>
                                                     · {anuladas} anulada{anuladas !== 1 ? 's' : ''}: {formatearMonto(montoAnuladas)}
                                                 </span>
                                             )}
@@ -1003,38 +1003,38 @@ const VentasPage = () => {
                                 <h3>Detalles:</h3>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
                                     <thead>
-                                        <tr style={{ backgroundColor: '#f2f2f2' }}>
-                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Acción</th>
-                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Producto Devuelto</th>
-                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Producto Nuevo</th>
-                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Cantidad</th>
-                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Precio Devuelto</th>
-                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Precio Nuevo</th>
-                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Subtotal Devuelto</th>
-                                            <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Subtotal Nuevo</th>
+                                        <tr style={{ backgroundColor: '#f1f5f9' }}>
+                                            <th style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>Acción</th>
+                                            <th style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>Producto Devuelto</th>
+                                            <th style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>Producto Nuevo</th>
+                                            <th style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>Cantidad</th>
+                                            <th style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>Precio Devuelto</th>
+                                            <th style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>Precio Nuevo</th>
+                                            <th style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>Subtotal Devuelto</th>
+                                            <th style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>Subtotal Nuevo</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {cambioDevolucionDetalle.detalles.map((detalle, index) => (
                                             <tr key={index}>
-                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{detalle.accion}</td>
-                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>{detalle.accion}</td>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
                                                     {detalle.producto_devuelto_nombre || detalle.producto_original_nombre || '-'}
                                                 </td>
-                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
                                                     {detalle.producto_nuevo_nombre || '-'}
                                                 </td>
-                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{detalle.cantidad}</td>
-                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>{detalle.cantidad}</td>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
                                                     {detalle.precio_unitario_devuelto ? formatearMonto(detalle.precio_unitario_devuelto) : '-'}
                                                 </td>
-                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
                                                     {detalle.precio_unitario_nuevo ? formatearMonto(detalle.precio_unitario_nuevo) : '-'}
                                                 </td>
-                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
                                                     {formatearMonto(detalle.subtotal_devuelto || 0)}
                                                 </td>
-                                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>
                                                     {formatearMonto(detalle.subtotal_nuevo || 0)}
                                                 </td>
                                             </tr>
@@ -1045,13 +1045,13 @@ const VentasPage = () => {
                         )}
                         
                         {cambioDevolucionDetalle.nota_credito_generada && cambioDevolucionDetalle.venta_nota_credito_id && (
-                            <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#d4edda', borderRadius: '4px' }}>
+                            <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#edfaf3', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
                                 <p><strong>Nota de Crédito Generada:</strong> {cambioDevolucionDetalle.venta_nota_credito_id}</p>
                             </div>
                         )}
-                        
+
                         {cambioDevolucionDetalle.diferencia_pendiente && cambioDevolucionDetalle.venta_diferencia_pendiente_id && (
-                            <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#fff3cd', borderRadius: '4px' }}>
+                            <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
                                 <p><strong>Venta Diferencia Pendiente:</strong> {cambioDevolucionDetalle.venta_diferencia_pendiente_id}</p>
                             </div>
                         )}
@@ -1062,10 +1062,10 @@ const VentasPage = () => {
                                     onClick={() => handleAnularCambioDevolucion(cambioDevolucionDetalle.id)}
                                     style={{
                                         padding: '10px 15px',
-                                        backgroundColor: '#dc3545',
+                                        backgroundColor: '#e25252',
                                         color: 'white',
                                         border: 'none',
-                                        borderRadius: '4px',
+                                        borderRadius: '6px',
                                         cursor: 'pointer'
                                     }}
                                 >
@@ -1076,10 +1076,10 @@ const VentasPage = () => {
                                 onClick={() => setCambioDevolucionDetalle(null)}
                                 style={{
                                     padding: '10px 15px',
-                                    backgroundColor: '#6c757d',
+                                    backgroundColor: '#94a3b8',
                                     color: 'white',
                                     border: 'none',
-                                    borderRadius: '4px',
+                                    borderRadius: '6px',
                                     cursor: 'pointer'
                                 }}
                             >
@@ -1091,7 +1091,7 @@ const VentasPage = () => {
             )}
 
             {showAlertMessage && (
-                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#dc3545' : (alertType === 'info' ? '#17a2b8' : '#28a745') }}>
+                <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#e25252' : (alertType === 'info' ? '#3b9ede' : '#5dc87a') }}>
                     <p>{alertMessage}</p>
                 </div>
             )}
@@ -1160,7 +1160,7 @@ const styles = {
     loadingMessage: {
         padding: '20px',
         textAlign: 'center',
-        color: '#4a6660',
+        color: '#475569',
         fontSize: '1.1em',
     },
     accessDeniedMessage: {
@@ -1176,7 +1176,7 @@ const styles = {
     noStoreSelectedMessage: {
         padding: '50px',
         textAlign: 'center',
-        color: '#8aa8a0',
+        color: '#94a3b8',
         fontSize: '1.2em',
     },
     errorMessage: {
@@ -1195,9 +1195,9 @@ const styles = {
         gap: '15px',
         marginBottom: '20px',
         padding: '15px',
-        border: '1px solid #d8eae4',
+        border: '1px solid #e2e8f0',
         borderRadius: '10px',
-        backgroundColor: '#f7faf9',
+        backgroundColor: '#f8fafc',
         alignItems: 'flex-end',
     },
     filterGroup: {
@@ -1207,12 +1207,12 @@ const styles = {
     filterLabel: {
         marginBottom: '5px',
         fontWeight: 'bold',
-        color: '#4a6660',
+        color: '#475569',
     },
     filterInput: {
         padding: '8px',
-        border: '1px solid #d8eae4',
-        borderRadius: '4px',
+        border: '1px solid #e2e8f0',
+        borderRadius: '6px',
         minWidth: '150px',
     },
     filterButton: {
@@ -1243,7 +1243,7 @@ const styles = {
     detailButton: {
         padding: '6px 10px',
         border: 'none',
-        borderRadius: '4px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '0.9em',
         color: 'white',
@@ -1255,7 +1255,7 @@ const styles = {
         backgroundColor: '#5dc87a',
         color: 'white',
         border: 'none',
-        borderRadius: '4px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '14px',
         marginLeft: '5px',
@@ -1263,7 +1263,7 @@ const styles = {
     anularButton: {
         padding: '6px 10px',
         border: 'none',
-        borderRadius: '4px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '0.9em',
         color: 'white',
@@ -1273,7 +1273,7 @@ const styles = {
     reprintButton: {
         padding: '6px 10px',
         border: 'none',
-        borderRadius: '4px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '0.9em',
         color: 'white',
@@ -1292,26 +1292,26 @@ const styles = {
         boxShadow: '0 1px 3px rgba(0,0,0,.07)',
     },
     tableHeaderRow: {
-        backgroundColor: '#f7faf9',
+        backgroundColor: '#f8fafc',
     },
     th: {
         padding: '12px 15px',
-        borderBottom: '1px solid #d8eae4',
+        borderBottom: '1px solid #e2e8f0',
         textAlign: 'left',
         fontWeight: 'bold',
         fontSize: '0.95em',
-        color: '#4a6660',
+        color: '#475569',
     },
     td: {
         padding: '10px 15px',
-        borderBottom: '1px solid #edf5f2',
+        borderBottom: '1px solid #e2e8f0',
         verticalAlign: 'middle',
         fontSize: '0.9em',
     },
     detailRow: {
-        backgroundColor: '#f7faf9',
+        backgroundColor: '#f8fafc',
         padding: '15px',
-        borderTop: '2px solid #edf5f2',
+        borderTop: '2px solid #e2e8f0',
     },
     detailHeader: {
         marginTop: '0',
@@ -1327,21 +1327,22 @@ const styles = {
         marginTop: '10px',
     },
     detailTh: {
-        backgroundColor: '#edf5f2',
+        backgroundColor: '#f1f5f9',
         padding: '10px',
         textAlign: 'left',
-        borderBottom: '1px solid #d8eae4',
+        borderBottom: '1px solid #e2e8f0',
+        color: '#475569',
     },
     detailTd: {
         padding: '10px',
-        borderBottom: '1px solid #d8eae4',
+        borderBottom: '1px solid #e2e8f0',
     },
     anularDetalleButton: {
         padding: '5px 8px',
         backgroundColor: '#f59e0b',
-        color: 'black',
+        color: '#1a2926',
         border: 'none',
-        borderRadius: '3px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '0.8em',
         transition: 'background-color 0.3s ease',
@@ -1366,7 +1367,7 @@ const styles = {
     pageNumber: {
         fontSize: '1em',
         fontWeight: 'bold',
-        color: '#4a6660',
+        color: '#475569',
     },
     modalOverlay: {
         position: 'fixed',
@@ -1435,7 +1436,7 @@ const styles = {
         textAlign: 'right',
         fontStyle: 'italic',
         marginTop: '10px',
-        color: '#4a6660',
+        color: '#475569',
     },
 };
 

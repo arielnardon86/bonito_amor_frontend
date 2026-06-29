@@ -138,56 +138,73 @@ export default function CierresCaja() {
     // ─── Estilos ───────────────────────────────────────────────────────────────
     const s = {
         page: { padding: '24px 20px', maxWidth: 960, margin: '0 auto', fontFamily: 'Inter, sans-serif' },
-        titulo: { fontSize: 22, fontWeight: 700, color: '#1a202c', marginBottom: 20 },
+        titulo: { fontSize: 22, fontWeight: 700, color: '#1a2926', marginBottom: 20 },
         filtros: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 },
-        label: { fontSize: 13, fontWeight: 600, color: '#555' },
-        input: { padding: '7px 10px', border: '1px solid #cbd5e0', borderRadius: 6, fontSize: 14 },
-        btn: { padding: '8px 18px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14 },
-        btnPrimary: { background: '#3c7ef3', color: '#fff' },
+        label: { fontSize: 13, fontWeight: 600, color: '#475569' },
+        input: { padding: '7px 10px', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 14, backgroundColor: '#f8fafc', color: '#1a2926' },
+        btn: { padding: '8px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14 },
+        btnPrimary: { background: '#3b9ede', color: '#fff' },
         card: {
             border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px',
-            marginBottom: 12, cursor: 'pointer', background: '#fff',
+            marginBottom: 12, cursor: 'pointer', background: '#ffffff',
             boxShadow: '0 1px 3px rgba(0,0,0,.06)', transition: 'box-shadow .15s',
         },
         cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 },
         badge: (estado) => ({
             display: 'inline-block', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700,
-            background: estado === 'CERRADO' ? '#c6f6d5' : '#fef3c7',
-            color: estado === 'CERRADO' ? '#276749' : '#92400e',
+            background: estado === 'CERRADO' ? '#edfaf3' : '#fffbeb',
+            color: estado === 'CERRADO' ? '#1a6a40' : '#92400e',
         }),
         statsRow: { display: 'flex', gap: 20, marginTop: 10, flexWrap: 'wrap' },
-        stat: { fontSize: 13, color: '#555' },
-        statVal: { fontWeight: 700, color: '#1a202c' },
+        stat: { fontSize: 13, color: '#475569' },
+        statVal: { fontWeight: 700, color: '#1a2926' },
         overlay: {
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+            position: 'fixed', inset: 0, background: 'rgba(15,25,22,0.55)',
+            backdropFilter: 'blur(2px)',
             display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
             zIndex: 1000, overflowY: 'auto', padding: '24px 12px',
         },
         modal: {
-            background: '#fff', borderRadius: 12, padding: '28px 28px 24px',
+            background: '#ffffff', borderRadius: 16, padding: '28px 28px 24px',
             width: '100%', maxWidth: 720, boxShadow: '0 20px 60px rgba(0,0,0,.25)',
+            maxHeight: '90vh', overflowY: 'auto',
         },
-        modalTitulo: { fontSize: 20, fontWeight: 700, marginBottom: 4, color: '#1a202c' },
-        modalSub: { fontSize: 13, color: '#718096', marginBottom: 20 },
+        modalTitulo: { fontSize: 20, fontWeight: 700, marginBottom: 4, color: '#1a2926' },
+        modalSub: { fontSize: 13, color: '#94a3b8', marginBottom: 20 },
         section: { marginBottom: 20 },
         sectionTitulo: {
             fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em',
-            color: '#718096', borderBottom: '1px solid #e2e8f0', paddingBottom: 6, marginBottom: 10,
+            color: '#94a3b8', borderBottom: '1px solid #e2e8f0', paddingBottom: 6, marginBottom: 10,
         },
         tabla: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
-        th: { textAlign: 'left', padding: '6px 8px', background: '#f7fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 600 },
-        td: { padding: '6px 8px', borderBottom: '1px solid #f0f4f8' },
-        totalRow: { fontWeight: 700, background: '#f7fafc' },
+        th: { textAlign: 'left', padding: '6px 8px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', fontWeight: 600, color: '#475569' },
+        td: { padding: '6px 8px', borderBottom: '1px solid #e2e8f0', color: '#1a2926' },
+        totalRow: { fontWeight: 700, background: '#f1f5f9' },
         diferencia: (val) => ({
             fontSize: 18, fontWeight: 800, marginTop: 12, padding: '12px 16px',
-            borderRadius: 8, textAlign: 'center',
-            background: val >= 0 ? '#c6f6d5' : '#fed7d7',
-            color: val >= 0 ? '#276749' : '#c53030',
+            borderRadius: 10, textAlign: 'center',
+            background: val >= 0 ? '#edfaf3' : '#fef2f2',
+            color: val >= 0 ? '#1a6a40' : '#e25252',
         }),
         acciones: { display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' },
     };
 
+    const mobileStyles = `
+        @media (max-width: 768px) {
+            .cc-filtros { flex-direction: column !important; align-items: stretch !important; }
+            .cc-filtros input { width: 100% !important; box-sizing: border-box !important; }
+            .cc-modal { padding: 18px 14px !important; }
+            .cc-cierre-grid { grid-template-columns: 1fr !important; }
+            .cc-tabla-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .cc-tabla { min-width: 500px; }
+            .cc-acciones { flex-wrap: wrap !important; }
+            .cc-stats-row { flex-direction: column !important; gap: 6px !important; }
+        }
+    `;
+
     return (
+        <>
+        <style>{mobileStyles}</style>
         <div style={s.page}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: s.titulo.marginBottom }}>
                 <h2 style={{ ...s.titulo, marginBottom: 0 }}>Cierres de Caja</h2>
@@ -204,7 +221,7 @@ export default function CierresCaja() {
             </div>
 
             {/* Filtros */}
-            <div style={s.filtros}>
+            <div style={s.filtros} className="cc-filtros">
                 <div>
                     <label style={s.label}>Desde&nbsp;</label>
                     <input type="date" style={s.input} value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} />
@@ -216,7 +233,7 @@ export default function CierresCaja() {
                 <button style={{ ...s.btn, ...s.btnPrimary }} onClick={fetchCierres}>
                     Filtrar
                 </button>
-                <button style={{ ...s.btn, background: '#e2e8f0', color: '#2d3748' }}
+                <button style={{ ...s.btn, background: '#e2e8f0', color: '#475569' }}
                     onClick={() => { setFechaDesde(''); setFechaHasta(''); }}>
                     Limpiar
                 </button>
@@ -224,9 +241,9 @@ export default function CierresCaja() {
 
             {/* Lista */}
             {loading ? (
-                <p style={{ color: '#718096' }}>Cargando cierres…</p>
+                <p style={{ color: '#94a3b8' }}>Cargando cierres…</p>
             ) : cierres.length === 0 ? (
-                <p style={{ color: '#718096' }}>No hay cierres para el período seleccionado.</p>
+                <p style={{ color: '#94a3b8' }}>No hay cierres para el período seleccionado.</p>
             ) : (
                 cierres.map(c => {
                     const totalTeorico = (
@@ -240,17 +257,17 @@ export default function CierresCaja() {
                                 <div>
                                     <strong>{fmtFecha(c.fecha_apertura)}</strong>
                                     {c.fecha_cierre && (
-                                        <span style={{ color: '#718096', fontSize: 13, marginLeft: 8 }}>
+                                        <span style={{ color: '#94a3b8', fontSize: 13, marginLeft: 8 }}>
                                             → {fmtFecha(c.fecha_cierre)}
                                         </span>
                                     )}
                                 </div>
                                 <span style={s.badge(c.estado)}>{c.estado}</span>
                             </div>
-                            <div style={{ fontSize: 13, color: '#555', marginTop: 4 }}>
+                            <div style={{ fontSize: 13, color: '#475569', marginTop: 4 }}>
                                 👤 {c.usuario_nombre}
                             </div>
-                            <div style={s.statsRow}>
+                            <div style={s.statsRow} className="cc-stats-row">
                                 <span style={s.stat}>
                                     Cambio inicial: <span style={s.statVal}>{fmt(c.cambio_inicial)}</span>
                                 </span>
@@ -268,7 +285,7 @@ export default function CierresCaja() {
                                         <span style={s.stat}>
                                             Físico: <span style={s.statVal}>{fmt(c.total_recuento_fisico)}</span>
                                         </span>
-                                        <span style={{ ...s.stat, fontWeight: 700, color: Number(c.diferencia) >= 0 ? '#276749' : '#c53030' }}>
+                                        <span style={{ ...s.stat, fontWeight: 700, color: Number(c.diferencia) >= 0 ? '#1a6a40' : '#e25252' }}>
                                             Diferencia: {fmt(c.diferencia)}
                                         </span>
                                     </>
@@ -288,13 +305,13 @@ export default function CierresCaja() {
                     : (ventasResumen.total_ventas_efectivo ?? Number(detalle.total_ventas_efectivo || 0));
                 return (
                 <div style={s.overlay} onClick={cerrarDetalle}>
-                    <div style={s.modal} onClick={e => e.stopPropagation()} className="no-print-close">
+                    <div style={s.modal} onClick={e => e.stopPropagation()} className="no-print-close cc-modal">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                             <p style={s.modalTitulo}>Detalle de Cierre de Caja</p>
                             <span style={s.badge(detalle.estado)}>{detalle.estado}</span>
                         </div>
                         <p style={s.modalSub}>
-                            <strong style={{ color: '#2d3748' }}>👤 {detalle.usuario_nombre}</strong>
+                            <strong style={{ color: '#1a2926' }}>👤 {detalle.usuario_nombre}</strong>
                             &nbsp;&nbsp;
                             {fmtFecha(detalle.fecha_apertura)}
                             {detalle.fecha_cierre ? ` → ${fmtFecha(detalle.fecha_cierre)}` : ' (turno abierto)'}
@@ -316,19 +333,19 @@ export default function CierresCaja() {
                                     {Number(detalle.total_ingresos_extra || 0) > 0 && (
                                         <tr>
                                             <td style={s.td}>Ingresos extra</td>
-                                            <td style={{ ...s.td, textAlign: 'right', color: '#276749' }}>+ {fmt(detalle.total_ingresos_extra || 0)}</td>
+                                            <td style={{ ...s.td, textAlign: 'right', color: '#1a6a40' }}>+ {fmt(detalle.total_ingresos_extra || 0)}</td>
                                         </tr>
                                     )}
                                     {Number(detalle.total_gastos || 0) > 0 && (
                                         <tr>
                                             <td style={s.td}>Gastos</td>
-                                            <td style={{ ...s.td, textAlign: 'right', color: '#c53030' }}>- {fmt(detalle.total_gastos || 0)}</td>
+                                            <td style={{ ...s.td, textAlign: 'right', color: '#e25252' }}>- {fmt(detalle.total_gastos || 0)}</td>
                                         </tr>
                                     )}
                                     {Number(detalle.total_retiros || 0) > 0 && (
                                         <tr>
                                             <td style={s.td}>Retiros de caja</td>
-                                            <td style={{ ...s.td, textAlign: 'right', color: '#c53030' }}>- {fmt(detalle.total_retiros || 0)}</td>
+                                            <td style={{ ...s.td, textAlign: 'right', color: '#e25252' }}>- {fmt(detalle.total_retiros || 0)}</td>
                                         </tr>
                                     )}
                                     <tr style={s.totalRow}>
@@ -365,11 +382,12 @@ export default function CierresCaja() {
                         <div style={s.section}>
                             <p style={s.sectionTitulo}>Ventas por Método de Pago</p>
                             {loadingDetalle ? (
-                                <p style={{ color: '#718096', fontSize: 13 }}>Cargando…</p>
+                                <p style={{ color: '#94a3b8', fontSize: 13 }}>Cargando…</p>
                             ) : ventasResumen.por_metodo.length === 0 ? (
-                                <p style={{ color: '#718096', fontSize: 13 }}>Sin ventas en este turno.</p>
+                                <p style={{ color: '#94a3b8', fontSize: 13 }}>Sin ventas en este turno.</p>
                             ) : (
-                                <table style={s.tabla}>
+                                <div className="cc-tabla-wrap">
+                                <table style={s.tabla} className="cc-tabla">
                                     <thead>
                                         <tr>
                                             <th style={s.th}>Método de pago</th>
@@ -396,6 +414,7 @@ export default function CierresCaja() {
                                         </tr>
                                     </tbody>
                                 </table>
+                                </div>
                             )}
                         </div>
 
@@ -403,9 +422,9 @@ export default function CierresCaja() {
                         <div style={s.section}>
                             <p style={s.sectionTitulo}>Ventas en Efectivo (detalle)</p>
                             {loadingDetalle ? (
-                                <p style={{ color: '#718096', fontSize: 13 }}>Cargando ventas…</p>
+                                <p style={{ color: '#94a3b8', fontSize: 13 }}>Cargando ventas…</p>
                             ) : ventasDetalle.length === 0 ? (
-                                <p style={{ color: '#718096', fontSize: 13 }}>Sin ventas en efectivo en este turno.</p>
+                                <p style={{ color: '#94a3b8', fontSize: 13 }}>Sin ventas en efectivo en este turno.</p>
                             ) : (
                                 <table style={s.tabla}>
                                     <thead>
@@ -438,7 +457,7 @@ export default function CierresCaja() {
                         <div style={s.section}>
                             <p style={s.sectionTitulo}>Egresos de Caja</p>
                             {detalle.egresos.length === 0 ? (
-                                <p style={{ color: '#718096', fontSize: 13 }}>Sin egresos registrados.</p>
+                                <p style={{ color: '#94a3b8', fontSize: 13 }}>Sin egresos registrados.</p>
                             ) : (
                                 <table style={s.tabla}>
                                     <thead>
@@ -455,12 +474,12 @@ export default function CierresCaja() {
                                                 <td style={s.td}>{fmtFecha(e.fecha)}</td>
                                                 <td style={s.td}>{e.tipo_display}</td>
                                                 <td style={s.td}>{e.concepto}</td>
-                                                <td style={{ ...s.td, textAlign: 'right', color: '#c53030' }}>- {fmt(e.importe)}</td>
+                                                <td style={{ ...s.td, textAlign: 'right', color: '#e25252' }}>- {fmt(e.importe)}</td>
                                             </tr>
                                         ))}
                                         <tr style={s.totalRow}>
                                             <td style={s.td} colSpan={3}>Total</td>
-                                            <td style={{ ...s.td, textAlign: 'right', color: '#c53030' }}>
+                                            <td style={{ ...s.td, textAlign: 'right', color: '#e25252' }}>
                                                 - {fmt(detalle.egresos.reduce((a, e) => a + Number(e.importe), 0))}
                                             </td>
                                         </tr>
@@ -514,17 +533,17 @@ export default function CierresCaja() {
                         {detalle.notas && (
                             <div style={s.section}>
                                 <p style={s.sectionTitulo}>Notas</p>
-                                <p style={{ fontSize: 13, color: '#555' }}>{detalle.notas}</p>
+                                <p style={{ fontSize: 13, color: '#475569' }}>{detalle.notas}</p>
                             </div>
                         )}
 
-                        <div style={s.acciones}>
-                            <button style={{ ...s.btn, background: '#e2e8f0', color: '#2d3748' }} onClick={cerrarDetalle}>
+                        <div style={s.acciones} className="cc-acciones">
+                            <button style={{ ...s.btn, background: '#e2e8f0', color: '#475569' }} onClick={cerrarDetalle}>
                                 Cerrar
                             </button>
                             {detalle.estado !== 'CERRADO' && (user?.is_superuser || user?.is_supervisor) && (
                                 <button
-                                    style={{ ...s.btn, background: '#e53e3e', color: '#fff' }}
+                                    style={{ ...s.btn, background: '#e25252', color: '#fff' }}
                                     onClick={() => setMostrarModalCerrar(true)}
                                 >
                                     🔒 Cerrar Caja
@@ -551,26 +570,26 @@ export default function CierresCaja() {
                 const diferencia = fisico - teorico;
                 return (
                 <div style={{ ...s.overlay, zIndex: 1100 }} onClick={() => setMostrarModalCerrar(false)}>
-                    <div style={{ ...s.modal, maxWidth: 820 }} onClick={e => e.stopPropagation()}>
+                    <div style={{ ...s.modal, maxWidth: 820, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1a202c' }}>
+                            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1a2926' }}>
                                 Cerrar Caja — {detalle.usuario_nombre}
                             </h2>
                             <button onClick={() => setMostrarModalCerrar(false)}
-                                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#718096' }}>✕</button>
+                                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }} className="cc-cierre-grid">
                             {/* Columna izquierda: resumen financiero */}
                             <div>
-                                <div style={{ background: '#f7fafc', borderRadius: 10, padding: 16, border: '1px solid #e2e8f0', marginBottom: 14 }}>
-                                    <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 10 }}>Resumen del turno</p>
+                                <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, border: '1px solid #e2e8f0', marginBottom: 14 }}>
+                                    <p style={{ fontWeight: 700, fontSize: 13, color: '#475569', textTransform: 'uppercase', marginBottom: 10 }}>Resumen del turno</p>
                                     {[
-                                        { label: 'Cambio inicial',      val: detalle.cambio_inicial, color: '#2d3748' },
-                                        { label: 'Ventas en efectivo',  val: efectivo,               color: '#2d3748' },
-                                        ...(ingresos > 0 ? [{ label: '+ Ingresos extra', val: ingresos, color: '#276749' }] : []),
-                                        ...(gastos   > 0 ? [{ label: '- Gastos',         val: gastos,   color: '#c53030', neg: true }] : []),
-                                        ...(retiros  > 0 ? [{ label: '- Retiros',        val: retiros,  color: '#c53030', neg: true }] : []),
+                                        { label: 'Cambio inicial',      val: detalle.cambio_inicial, color: '#1a2926' },
+                                        { label: 'Ventas en efectivo',  val: efectivo,               color: '#1a2926' },
+                                        ...(ingresos > 0 ? [{ label: '+ Ingresos extra', val: ingresos, color: '#1a6a40' }] : []),
+                                        ...(gastos   > 0 ? [{ label: '- Gastos',         val: gastos,   color: '#e25252', neg: true }] : []),
+                                        ...(retiros  > 0 ? [{ label: '- Retiros',        val: retiros,  color: '#e25252', neg: true }] : []),
                                     ].map(({ label, val, color, neg }) => (
                                         <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '3px 0', color }}>
                                             <span>{label}</span>
@@ -584,11 +603,11 @@ export default function CierresCaja() {
                                 </div>
 
                                 {ventasResumen.por_metodo.length > 0 && (
-                                    <div style={{ background: '#f7fafc', borderRadius: 10, padding: 16, border: '1px solid #e2e8f0' }}>
-                                        <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', marginBottom: 8 }}>Ventas por método</p>
+                                    <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, border: '1px solid #e2e8f0' }}>
+                                        <p style={{ fontWeight: 700, fontSize: 13, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>Ventas por método</p>
                                         {ventasResumen.por_metodo.map((m, i) => (
-                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: '#4a5568' }}>
-                                                <span>{m.metodo_pago || 'Sin especificar'} <span style={{ color: '#a0aec0', fontSize: 11 }}>({m.cantidad})</span></span>
+                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: '#475569' }}>
+                                                <span>{m.metodo_pago || 'Sin especificar'} <span style={{ color: '#94a3b8', fontSize: 11 }}>({m.cantidad})</span></span>
                                                 <span style={{ fontWeight: 500 }}>{fmt(m.total)}</span>
                                             </div>
                                         ))}
@@ -596,20 +615,20 @@ export default function CierresCaja() {
                                 )}
 
                                 <div style={{ marginTop: 14 }}>
-                                    <label style={{ fontSize: 13, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>Notas</label>
+                                    <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Notas</label>
                                     <textarea
                                         value={notasCierre}
                                         onChange={e => setNotasCierre(e.target.value)}
                                         rows={3}
                                         placeholder="Observaciones del cierre..."
-                                        style={{ width: '100%', padding: '8px 10px', borderRadius: 7, border: '1px solid #cbd5e0', fontSize: 13, boxSizing: 'border-box', resize: 'vertical' }}
+                                        style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', resize: 'vertical', backgroundColor: '#f8fafc', color: '#1a2926' }}
                                     />
                                 </div>
                             </div>
 
                             {/* Columna derecha: recuento físico */}
                             <div>
-                                <div style={{ background: '#276749', borderRadius: 10, padding: 18, color: '#fff' }}>
+                                <div style={{ background: '#1a6a40', borderRadius: 10, padding: 18, color: '#fff' }}>
                                     <p style={{ fontWeight: 800, fontSize: 15, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 16 }}>
                                         Recuento Físico
                                     </p>
@@ -654,8 +673,8 @@ export default function CierresCaja() {
                                 <div style={{
                                     marginTop: 14, borderRadius: 10, padding: 16, textAlign: 'center',
                                     fontWeight: 800, fontSize: 20,
-                                    background: diferencia >= 0 ? '#c6f6d5' : '#fed7d7',
-                                    color: diferencia >= 0 ? '#276749' : '#c53030',
+                                    background: diferencia >= 0 ? '#edfaf3' : '#fef2f2',
+                                    color: diferencia >= 0 ? '#1a6a40' : '#e25252',
                                 }}>
                                     DIFERENCIA: {fmt(diferencia)}
                                 </div>
@@ -666,7 +685,7 @@ export default function CierresCaja() {
                                     style={{
                                         marginTop: 16, width: '100%', padding: 14, borderRadius: 10,
                                         border: 'none', cursor: guardandoCierre ? 'not-allowed' : 'pointer',
-                                        background: guardandoCierre ? '#a0aec0' : '#e53e3e',
+                                        background: guardandoCierre ? '#94a3b8' : '#e25252',
                                         color: '#fff', fontWeight: 700, fontSize: 16,
                                     }}
                                 >
@@ -679,5 +698,6 @@ export default function CierresCaja() {
                 );
             })()}
         </div>
+        </>
     );
 }

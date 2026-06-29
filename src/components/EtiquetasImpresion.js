@@ -221,7 +221,7 @@ const mobileStyles = {
         cursor: 'pointer',
         border: 'none',
         borderRadius: '5px',
-        backgroundColor: '#28a745',
+        backgroundColor: '#5dc87a',
         color: 'white'
     },
 };

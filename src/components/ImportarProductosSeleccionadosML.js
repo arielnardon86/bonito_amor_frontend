@@ -71,13 +71,13 @@ const ImportarProductosSeleccionadosML = ({ tiendaId, token, onClose, onImport }
     return (
         <div style={{ padding: '24px', minHeight: '400px' }}>
             <h3 style={{ marginTop: 0, marginBottom: '8px', color: '#1a2926', fontSize: '1.1rem', fontWeight: 700 }}>Importar productos</h3>
-            <p style={{ color: '#4a6660', marginBottom: '20px', fontSize: '14px' }}>
+            <p style={{ color: '#475569', marginBottom: '20px', fontSize: '14px' }}>
                 Elegí los productos de Mercado Libre que querés traer a Total Stock.
             </p>
             {loading ? (
-                <p style={{ textAlign: 'center', padding: '40px', color: '#8aa8a0' }}>Cargando productos...</p>
+                <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Cargando productos...</p>
             ) : items.length === 0 ? (
-                <p style={{ textAlign: 'center', padding: '40px', color: '#8aa8a0' }}>No hay productos en tu tienda de Mercado Libre.</p>
+                <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No hay productos en tu tienda de Mercado Libre.</p>
             ) : (
                 <>
                     <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
@@ -85,11 +85,11 @@ const ImportarProductosSeleccionadosML = ({ tiendaId, token, onClose, onImport }
                             <input type="checkbox" checked={Object.keys(seleccionados).length > 0 && Object.keys(seleccionados).every(k => seleccionados[k])} onChange={toggleTodos} style={{ marginRight: '10px', width: '18px', height: '18px', accentColor: '#5dc87a' }} />
                             <span>Seleccionar todos</span>
                         </label>
-                        <span style={{ fontSize: '13px', color: '#8aa8a0' }}>
+                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>
                             {seleccionadosIds().length} de {items.length} seleccionados
                         </span>
                     </div>
-                    <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #d8eae4', borderRadius: '10px', padding: '8px 12px', backgroundColor: '#f7faf9' }}>
+                    <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px', backgroundColor: '#f8fafc' }}>
                         {items.map(it => (
                             <div key={it.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #edf5f2', gap: '12px' }}>
                                 <input
@@ -99,20 +99,20 @@ const ImportarProductosSeleccionadosML = ({ tiendaId, token, onClose, onImport }
                                     style={{ width: '18px', height: '18px', flexShrink: 0, accentColor: '#5dc87a' }}
                                 />
                                 {it.thumbnail && (
-                                    <img src={it.thumbnail} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: '8px', border: '1px solid #d8eae4' }} />
+                                    <img src={it.thumbnail} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                                 )}
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontWeight: 600, color: '#1a2926', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '14px' }}>{it.title || it.id}</div>
-                                    <div style={{ fontSize: '13px', color: '#8aa8a0', marginTop: '2px' }}>${it.price?.toLocaleString('es-AR')} · Stock ML: {it.available_quantity ?? '-'}</div>
+                                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>${it.price?.toLocaleString('es-AR')} · Stock ML: {it.available_quantity ?? '-'}</div>
                                 </div>
                             </div>
                         ))}
                     </div>
                     {total > limit && (
-                        <p style={{ fontSize: '13px', color: '#8aa8a0', marginTop: '10px' }}>Mostrando los primeros {limit} de {total} productos.</p>
+                        <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '10px' }}>Mostrando los primeros {limit} de {total} productos.</p>
                     )}
                     <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                        <button type="button" onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', padding: '9px 20px', backgroundColor: '#ffffff', color: '#1a2926', border: '1px solid #d8eae4', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>Cancelar</button>
+                        <button type="button" onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', padding: '9px 20px', backgroundColor: '#ffffff', color: '#1a2926', border: '1px solid #e2e8f0', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>Cancelar</button>
                         <button type="button" onClick={handleImportar} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 20px', background: 'linear-gradient(135deg, #5dc87a 0%, #38a080 100%)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, boxShadow: '0 4px 14px rgba(93,200,122,0.30)' }}>
                             Importar ({seleccionadosIds().length})
                         </button>

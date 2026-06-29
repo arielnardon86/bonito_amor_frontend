@@ -102,7 +102,7 @@ export default function ModalUpgrade({
 
         {/* Opciones de upgrade */}
         {candidatos.length === 0 ? (
-          <p style={{ color: '#6b7280', fontSize: 14, textAlign: 'center' }}>
+          <p style={{ color: '#94a3b8', fontSize: 14, textAlign: 'center' }}>
             Ya estás en el plan máximo disponible.
           </p>
         ) : (
@@ -115,7 +115,7 @@ export default function ModalUpgrade({
                   key={key}
                   style={{
                     ...s.planCard,
-                    borderColor: seleccionado ? p.color : '#e5e7eb',
+                    borderColor: seleccionado ? p.color : '#e2e8f0',
                     boxShadow: seleccionado ? `0 0 0 2px ${p.color}` : 'none',
                     background: seleccionado ? `${p.color}10` : '#fff',
                   }}
@@ -123,9 +123,9 @@ export default function ModalUpgrade({
                 >
                   <div style={{ ...s.planNombre, color: p.color }}>{p.display}</div>
                   <div style={s.planPrecio}>
-                    <span style={{ color: '#9ca3af', fontSize: 13 }}>$</span>
+                    <span style={{ color: '#94a3b8', fontSize: 13 }}>$</span>
                     <span style={{ ...s.planMonto, color: p.color }}>{p.precio}</span>
-                    <span style={{ color: '#9ca3af', fontSize: 12 }}>/mes</span>
+                    <span style={{ color: '#94a3b8', fontSize: 12 }}>/mes</span>
                   </div>
                   <div style={{ ...s.radio, borderColor: p.color, background: seleccionado ? p.color : 'transparent' }} />
                 </div>
@@ -191,26 +191,26 @@ const s = {
     marginBottom: 20,
   },
   headerLeft: { display: 'flex', alignItems: 'center' },
-  headerTitulo: { fontSize: 18, fontWeight: 700, color: '#1a3a2a' },
+  headerTitulo: { fontSize: 18, fontWeight: 700, color: '#1a2926' },
   btnClose: {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    color: '#9ca3af',
+    color: '#94a3b8',
     fontSize: 18,
   },
   mensajeBloque: {
     background: '#fffbeb',
-    border: '1px solid #fde68a',
-    borderRadius: 8,
+    border: '1px solid #fcd34d',
+    borderRadius: 10,
     padding: '10px 14px',
     fontSize: 13,
     color: '#92400e',
     marginBottom: 16,
   },
   planActualWrap: { marginBottom: 16, fontSize: 14 },
-  planActualLabel: { color: '#6b7280' },
-  planActualNombre: { fontWeight: 600, color: '#1a3a2a', marginLeft: 4 },
+  planActualLabel: { color: '#94a3b8' },
+  planActualNombre: { fontWeight: 600, color: '#1a2926', marginLeft: 4 },
   planesGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
@@ -218,7 +218,7 @@ const s = {
     marginBottom: 16,
   },
   planCard: {
-    border: '2px solid #e5e7eb',
+    border: '2px solid #e2e8f0',
     borderRadius: 10,
     padding: '16px 12px',
     cursor: 'pointer',
@@ -240,15 +240,15 @@ const s = {
     display: 'flex',
     alignItems: 'flex-start',
     fontSize: 12,
-    color: '#6b7280',
-    background: '#f0fdf4',
-    border: '1px solid #bbf7d0',
-    borderRadius: 8,
+    color: '#475569',
+    background: '#edfaf3',
+    border: '1px solid #a8e6c5',
+    borderRadius: 10,
     padding: '10px 12px',
     marginBottom: 16,
   },
   errorMsg: {
-    color: '#dc2626',
+    color: '#e25252',
     fontSize: 13,
     marginBottom: 12,
     textAlign: 'center',
@@ -258,7 +258,7 @@ const s = {
     padding: '13px',
     color: '#fff',
     border: 'none',
-    borderRadius: 8,
+    borderRadius: 10,
     fontSize: 15,
     fontWeight: 600,
     transition: 'opacity 0.2s',

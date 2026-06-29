@@ -143,7 +143,7 @@ const ReciboImpresion = () => {
         } else {
             reciboRef.current.innerHTML = `
                  <div style="text-align: center;">
-                     <h1 style="color: #dc3545;">Error al generar el recibo.</h1>
+                     <h1 style="color: #e25252;">Error al generar el recibo.</h1>
                      <p>No se encontraron datos de venta válidos.</p>
                  </div>
             `;
@@ -215,7 +215,7 @@ const ReciboImpresion = () => {
                         margin: 0 5px;
                     }
                     .no-print-controls button:last-child {
-                        background-color: #28a745;
+                        background-color: #5dc87a;
                         color: white;
                         border: none;
                     }

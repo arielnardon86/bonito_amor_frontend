@@ -13,11 +13,11 @@ import {
 
 const C = {
     verde:    '#5dc87a',
-    verdeOsc: '#3da85f',
-    azul:     '#1e3a8a',
-    azulMed:  '#2563eb',
-    texto:    '#1a3a2a',
-    gris:     '#64748b',
+    verdeOsc: '#3ab87a',
+    azul:     '#1a2926',
+    azulMed:  '#3b9ede',
+    texto:    '#1a2926',
+    gris:     '#475569',
     grisClaro:'#f8fafc',
     pro:      '#3b82f6',
     advanced: '#10b981',
@@ -93,6 +93,7 @@ export default function HomePage() {
     const [showAccessModal, setShowAccessModal] = useState(false);
     const [accessUsername, setAccessUsername] = useState('');
     const [accessPassword, setAccessPassword] = useState('');
+    const [loginLoading, setLoginLoading] = useState(false);
     const [scrolled, setScrolled] = useState(false);
 
     // Recupero de contraseña dentro del modal
@@ -151,7 +152,9 @@ export default function HomePage() {
             Swal.fire({ icon: 'warning', title: 'Campos incompletos', text: 'Ingresá usuario y contraseña.' });
             return;
         }
+        setLoginLoading(true);
         const ok = await login(accessUsername, accessPassword);
+        setLoginLoading(false);
         if (ok) {
             setShowAccessModal(false);
             setAccessUsername('');
@@ -271,7 +274,7 @@ export default function HomePage() {
                                 </div>
                                 <div>
                                     <div style={s.painBadge}>
-                                        <FontAwesomeIcon icon={faExclamationCircle} style={{ marginRight: 5, color: '#ef4444' }} />
+                                        <FontAwesomeIcon icon={faExclamationCircle} style={{ marginRight: 5, color: '#e25252' }} />
                                         Problema
                                     </div>
                                     <h3 style={s.painTitle}>{p.titulo}</h3>
@@ -413,10 +416,10 @@ export default function HomePage() {
                         <div style={s.pricingCardAdvanced} className="pricing-card">
                             <div style={s.advancedBadge}>COMPLETO</div>
                             <div style={s.pricingHeader}>
-                                <h3 style={{ ...s.planName, color: '#064e3b' }}>Advanced</h3>
+                                                <h3 style={{ ...s.planName, color: '#1a6a40' }}>Advanced</h3>
                                 <div style={s.priceRow}>
                                     <span style={{ ...s.priceCurrency, color: C.advanced }}>$</span>
-                                    <span style={{ ...s.priceNum, color: '#064e3b' }}>60.000</span>
+                                    <span style={{ ...s.priceNum, color: '#1a6a40' }}>60.000</span>
                                 </div>
                                 <p style={s.pricePer}>por tienda / por mes</p>
                             </div>
@@ -463,7 +466,7 @@ export default function HomePage() {
                     <img src="/logo-completo.png" alt="Total Stock" style={s.footerLogo} />
                     <p style={s.footerText}>© {new Date().getFullYear()} Total Stock · Todos los derechos reservados.</p>
                     <p style={s.footerSub}>Software de gestión para comercios argentinos.</p>
-                    <p style={{ margin: '14px 0 0', fontSize: '0.85em', color: '#64748b' }}>
+                    <p style={{ margin: '14px 0 0', fontSize: '0.85em', color: '#475569' }}>
                         ¿Tenés dudas o consultas?{' '}
                         <a href="mailto:info@totalstock.com.ar" style={{ color: '#5dc87a', textDecoration: 'none', fontWeight: 600 }}>
                             info@totalstock.com.ar
@@ -522,7 +525,7 @@ export default function HomePage() {
                                     />
                                 </div>
                                 {errorRecupero && (
-                                    <div style={{ fontSize: 13, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '8px 12px' }}>
+                                    <div style={{ fontSize: 13, color: '#e25252', background: '#fef2f2', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px' }}>
                                         {errorRecupero}
                                     </div>
                                 )}
@@ -552,14 +555,14 @@ export default function HomePage() {
                                     <button
                                         type="button"
                                         onClick={() => { setVistaModal('recuperar'); setErrorRecupero(''); }}
-                                        style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                                        style={{ background: 'none', border: 'none', color: '#3b9ede', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
                                     >
                                         ¿Olvidaste tu contraseña?
                                     </button>
                                 </div>
                                 <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                                    <button type="button" onClick={cerrarModal} style={s.modalBtnCancel} className="modal-btn-cancel">Cancelar</button>
-                                    <button type="submit" style={s.modalBtnOk} className="modal-btn-ok">Ingresar →</button>
+                                    <button type="button" onClick={cerrarModal} style={s.modalBtnCancel} className="modal-btn-cancel" disabled={loginLoading}>Cancelar</button>
+                                    <button type="submit" disabled={loginLoading} style={{ ...s.modalBtnOk, opacity: loginLoading ? 0.7 : 1 }} className="modal-btn-ok">{loginLoading ? 'Ingresando…' : 'Ingresar →'}</button>
                                 </div>
                             </form>
                         )}
@@ -583,7 +586,7 @@ export default function HomePage() {
 const s = {
     page: { minHeight: '100vh', backgroundColor: '#fff', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
     loading: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 16 },
-    spinner: { width: 44, height: 44, border: '3px solid #e5e7eb', borderTop: `3px solid ${C.verde}`, borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
+    spinner: { width: 44, height: 44, border: '3px solid #e2e8f0', borderTop: `3px solid ${C.verde}`, borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
 
     // Navbar
     nav: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000, padding: '14px 0', transition: 'all 0.25s', background: 'transparent' },
@@ -592,11 +595,11 @@ const s = {
     navLogo: { height: 44, borderRadius: 6, background: 'rgba(255,255,255,0.9)', padding: '4px 8px' },
     navLinks: { display: 'flex', listStyle: 'none', margin: 0, padding: 0, gap: 8, alignItems: 'center' },
     navLink: { color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '6px 14px', borderRadius: 6, transition: 'background 0.2s' },
-    navBtnSecondary: { background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.4)', borderRadius: 7, padding: '8px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' },
-    navBtnPrimary: { background: C.verde, color: '#fff', border: 'none', borderRadius: 7, padding: '8px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' },
+    navBtnSecondary: { background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.4)', borderRadius: 6, padding: '8px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' },
+    navBtnPrimary: { background: C.verde, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' },
 
     // Hero
-    hero: { background: `linear-gradient(135deg, #0d1f3c 0%, ${C.azul} 50%, #1d4ed8 100%)`, padding: '160px 24px 100px', textAlign: 'center', position: 'relative', overflow: 'hidden', minHeight: '580px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    hero: { background: `linear-gradient(135deg, #0d1f3c 0%, #1a3a5c 50%, #1d4ed8 100%)`, padding: '160px 24px 100px', textAlign: 'center', position: 'relative', overflow: 'hidden', minHeight: '580px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     heroOverlay: { position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(93,200,122,0.12) 0%, transparent 70%)', zIndex: 0 },
     heroContent: { position: 'relative', zIndex: 2, maxWidth: 820, margin: '0 auto' },
     heroPill: { display: 'inline-block', background: 'rgba(93,200,122,0.18)', color: C.verde, border: `1px solid rgba(93,200,122,0.4)`, borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, marginBottom: 28, letterSpacing: 0.3 },
@@ -608,35 +611,35 @@ const s = {
     heroNote: { color: 'rgba(255,255,255,0.45)', fontSize: 13, marginTop: 24 },
 
     // Stats strip
-    statsStrip: { background: '#f8fafc', borderBottom: '1px solid #e5e7eb', padding: '0 24px' },
-    statsInner: { maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0 },
-    statItem: { textAlign: 'center', padding: '32px 20px', borderRight: '1px solid #e5e7eb' },
-    statNum: { fontSize: '2.4em', fontWeight: 800, color: C.azul, lineHeight: 1, marginBottom: 8 },
+    statsStrip: { background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '0 24px' },
+    statsInner: { maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 0 },
+    statItem: { textAlign: 'center', padding: '32px 20px', borderRight: '1px solid #e2e8f0' },
+    statNum: { fontSize: '2.4em', fontWeight: 800, color: '#1a2926', lineHeight: 1, marginBottom: 8 },
     statLabel: { fontSize: 13, color: C.gris, fontWeight: 500 },
 
     // Section commons
     sectionWrap: { maxWidth: 1200, margin: '0 auto', padding: '0 24px' },
     sectionPill: { display: 'inline-block', background: `rgba(93,200,122,0.1)`, color: C.verdeOsc, border: `1px solid rgba(93,200,122,0.3)`, borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 16 },
-    sectionH2: { fontSize: 'clamp(1.7em, 3.5vw, 2.6em)', fontWeight: 800, color: C.azul, marginBottom: 14, lineHeight: 1.2, letterSpacing: -0.5 },
+    sectionH2: { fontSize: 'clamp(1.7em, 3.5vw, 2.6em)', fontWeight: 800, color: '#1a2926', marginBottom: 14, lineHeight: 1.2, letterSpacing: -0.5 },
     sectionSub: { fontSize: '1.05em', color: C.gris, maxWidth: 640, margin: '0 auto 52px', lineHeight: 1.7 },
 
     // Pain section
     painSection: { padding: '90px 0', background: '#fff', textAlign: 'center' },
     painGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24 },
-    painCard: { background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 14, padding: '28px 24px', textAlign: 'left', transition: 'all 0.25s', cursor: 'default', display: 'flex', gap: 20, alignItems: 'flex-start' },
-    painIconWrap: { width: 48, height: 48, background: '#fef2f2', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-    painIcon: { fontSize: '1.4em', color: '#ef4444' },
-    painBadge: { display: 'inline-flex', alignItems: 'center', background: '#fef2f2', color: '#ef4444', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700, marginBottom: 8 },
+    painCard: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '28px 24px', textAlign: 'left', transition: 'all 0.25s', cursor: 'default', display: 'flex', gap: 20, alignItems: 'flex-start' },
+    painIconWrap: { width: 48, height: 48, background: '#fef2f2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    painIcon: { fontSize: '1.4em', color: '#e25252' },
+    painBadge: { display: 'inline-flex', alignItems: 'center', background: '#fef2f2', color: '#e25252', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700, marginBottom: 8 },
     painTitle: { fontSize: '1em', fontWeight: 700, color: C.texto, marginBottom: 6 },
     painDesc: { fontSize: '0.88em', color: C.gris, lineHeight: 1.6, marginBottom: 12 },
-    painSolucion: { display: 'flex', alignItems: 'flex-start', gap: 0, background: '#f0fdf4', borderRadius: 7, padding: '8px 10px' },
+    painSolucion: { display: 'flex', alignItems: 'flex-start', gap: 0, background: '#edfaf3', borderRadius: 6, padding: '8px 10px' },
 
     // Features section
     featSection: { padding: '90px 0', background: C.grisClaro, textAlign: 'center' },
     featGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 22 },
-    featCard: { background: '#fff', borderRadius: 14, padding: '28px 22px', textAlign: 'left', border: '1px solid #e5e7eb', transition: 'all 0.25s', cursor: 'default' },
-    featIconWrap: { width: 46, height: 46, background: 'linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-    featIcon: { fontSize: '1.3em', color: C.azulMed },
+    featCard: { background: '#fff', borderRadius: 16, padding: '28px 22px', textAlign: 'left', border: '1px solid #e2e8f0', transition: 'all 0.25s', cursor: 'default' },
+    featIconWrap: { width: 46, height: 46, background: 'linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+    featIcon: { fontSize: '1.3em', color: '#3b9ede' },
     featTitle: { fontSize: '1em', fontWeight: 700, color: C.texto, marginBottom: 8 },
     featDesc: { fontSize: '0.88em', color: C.gris, lineHeight: 1.65 },
 
@@ -645,12 +648,12 @@ const s = {
     marqueeWrap: { overflow: 'hidden', marginTop: 40, position: 'relative' },
     marqueeTrack: { display: 'flex', gap: 36, width: 'max-content', animation: 'marquee 30s linear infinite' },
     clienteItem: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flexShrink: 0 },
-    clienteCircle: { width: 90, height: 90, borderRadius: '50%', overflow: 'hidden', border: '3px solid #e5e7eb', background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', flexShrink: 0 },
+    clienteCircle: { width: 90, height: 90, borderRadius: '50%', overflow: 'hidden', border: '3px solid #e2e8f0', background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', flexShrink: 0 },
     clienteImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
     clienteNombre: { fontSize: 12, color: C.gris, fontWeight: 600, textAlign: 'center', maxWidth: 90, lineHeight: 1.3 },
 
     // Integraciones
-    integSection: { padding: '80px 0', background: `linear-gradient(135deg, #0d1f3c 0%, ${C.azul} 100%)`, textAlign: 'center' },
+    integSection: { padding: '80px 0', background: `linear-gradient(135deg, #0d1f3c 0%, #1a3a5c 100%)`, textAlign: 'center' },
     integGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginTop: 0 },
     integCard: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '28px 20px', transition: 'all 0.25s', cursor: 'default' },
     integLogo: { width: 56, height: 56, borderRadius: 14, margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.1em', letterSpacing: -0.5 },
@@ -660,24 +663,24 @@ const s = {
     // Pricing
     pricingSection: { padding: '90px 0', background: '#fff', textAlign: 'center' },
     pricingGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 28, alignItems: 'stretch' },
-    pricingCard: { background: '#fff', border: '2px solid #e5e7eb', borderRadius: 16, padding: '36px 28px', display: 'flex', flexDirection: 'column', position: 'relative', transition: 'all 0.25s' },
+    pricingCard: { background: '#fff', border: '2px solid #e2e8f0', borderRadius: 16, padding: '36px 28px', display: 'flex', flexDirection: 'column', position: 'relative', transition: 'all 0.25s' },
     pricingCardFeatured: { background: '#fff', border: `3px solid ${C.pro}`, borderRadius: 16, padding: '36px 28px', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: `0 8px 32px rgba(59,130,246,0.15)`, transform: 'scale(1.03)', transition: 'all 0.25s' },
-    pricingCardAdvanced: { background: '#f0fdf4', border: `2px solid ${C.advanced}`, borderRadius: 16, padding: '36px 28px', display: 'flex', flexDirection: 'column', position: 'relative', transition: 'all 0.25s' },
+    pricingCardAdvanced: { background: '#edfaf3', border: `2px solid ${C.advanced}`, borderRadius: 16, padding: '36px 28px', display: 'flex', flexDirection: 'column', position: 'relative', transition: 'all 0.25s' },
     popularBadge: { position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: C.pro, color: '#fff', borderRadius: 20, padding: '5px 18px', fontSize: 11, fontWeight: 800, letterSpacing: 0.5, whiteSpace: 'nowrap' },
     advancedBadge: { position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: C.advanced, color: '#fff', borderRadius: 20, padding: '5px 18px', fontSize: 11, fontWeight: 800, letterSpacing: 0.5, whiteSpace: 'nowrap' },
-    pricingHeader: { marginBottom: 24, paddingBottom: 20, borderBottom: '1.5px solid #e5e7eb' },
+    pricingHeader: { marginBottom: 24, paddingBottom: 20, borderBottom: '1.5px solid #e2e8f0' },
     planName: { fontSize: '1.4em', fontWeight: 800, color: C.texto, marginBottom: 12 },
     priceRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 2 },
     priceCurrency: { fontSize: '1.4em', fontWeight: 700, color: C.verde, marginTop: 4 },
-    priceNum: { fontSize: '2.8em', fontWeight: 800, color: C.azul, lineHeight: 1 },
+    priceNum: { fontSize: '2.8em', fontWeight: 800, color: '#1a2926', lineHeight: 1 },
     pricePer: { fontSize: 13, color: C.gris, marginTop: 6 },
     featureList: { flex: 1, marginBottom: 24, textAlign: 'left' },
-    featureRow: { display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 14, fontSize: '0.92em', color: '#374151', lineHeight: 1.5 },
-    planCta: { width: '100%', padding: '13px', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s', marginTop: 'auto' },
+    featureRow: { display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 14, fontSize: '0.92em', color: '#475569', lineHeight: 1.5 },
+    planCta: { width: '100%', padding: '13px', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s', marginTop: 'auto' },
     pricingNote: { marginTop: 32, fontSize: 13, color: C.gris },
 
     // CTA Final
-    ctaFinal: { padding: '90px 24px', background: `linear-gradient(135deg, ${C.verdeOsc} 0%, #16a34a 100%)` },
+    ctaFinal: { padding: '90px 24px', background: `linear-gradient(135deg, ${C.verdeOsc} 0%, #3ab87a 100%)` },
     ctaFinalBtn: { background: '#fff', color: C.verdeOsc, border: 'none', borderRadius: 10, padding: '17px 40px', fontSize: 17, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' },
 
     // Footer
@@ -690,13 +693,13 @@ const s = {
     // Modal
     modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 },
     modalBox: { background: '#fff', borderRadius: 16, padding: '36px 40px', width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
-    modalTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, paddingBottom: 20, borderBottom: '1.5px solid #e5e7eb' },
-    modalTitle: { fontSize: '1.5em', fontWeight: 700, color: C.azul, margin: 0 },
-    modalClose: { background: 'transparent', border: 'none', fontSize: '1.8em', color: C.gris, cursor: 'pointer', lineHeight: 1, padding: 4, borderRadius: 6 },
+    modalTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, paddingBottom: 20, borderBottom: '1.5px solid #e2e8f0' },
+    modalTitle: { fontSize: '1.5em', fontWeight: 700, color: '#1a2926', margin: 0 },
+    modalClose: { background: 'transparent', border: 'none', fontSize: '1.8em', color: '#475569', cursor: 'pointer', lineHeight: 1, padding: 4, borderRadius: 6 },
     inputLabel: { display: 'block', fontSize: 13, fontWeight: 600, color: C.texto, marginBottom: 6 },
-    modalInput: { width: '100%', padding: '11px 14px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 14, color: C.texto, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' },
-    modalBtnCancel: { padding: '10px 22px', background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: 7, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
-    modalBtnOk: { padding: '10px 26px', background: C.azulMed, color: '#fff', border: 'none', borderRadius: 7, fontSize: 14, fontWeight: 700, cursor: 'pointer' },
+    modalInput: { width: '100%', padding: '11px 14px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: 14, color: '#1a2926', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' },
+    modalBtnCancel: { padding: '10px 22px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+    modalBtnOk: { padding: '10px 26px', background: '#3b9ede', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: 'pointer' },
 
     // WhatsApp
     whatsapp: { position: 'fixed', bottom: 28, right: 28, width: 58, height: 58, background: 'linear-gradient(135deg, #25D366 0%, #20BA5A 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(37,211,102,0.35)', zIndex: 999, textDecoration: 'none', transition: 'all 0.25s' },
@@ -712,11 +715,11 @@ if (typeof document !== 'undefined') {
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .marquee-track:hover { animation-play-state: paused; }
         .nav-link:hover { background: rgba(128,128,128,0.12) !important; }
-        .nav-scrolled .nav-link:hover { background: rgba(37,99,235,0.08) !important; }
+        .nav-scrolled .nav-link:hover { background: rgba(26,41,38,0.08) !important; }
         .nav-btn-secondary:hover { background: rgba(255,255,255,0.25) !important; }
-        .nav-scrolled .nav-btn-secondary:hover { background: rgba(37,99,235,0.06) !important; }
-        .nav-btn-primary:hover { background: #3da85f !important; transform: translateY(-1px); }
-        .cta-primary:hover { background: #3da85f !important; transform: translateY(-2px); box-shadow: 0 6px 24px rgba(93,200,122,0.5) !important; }
+        .nav-scrolled .nav-btn-secondary:hover { background: rgba(26,41,38,0.06) !important; }
+        .nav-btn-primary:hover { background: #3ab87a !important; transform: translateY(-1px); }
+        .cta-primary:hover { background: #3ab87a !important; transform: translateY(-2px); box-shadow: 0 6px 24px rgba(93,200,122,0.5) !important; }
         .cta-secondary:hover { background: rgba(255,255,255,0.08) !important; }
         .pain-card:hover { border-color: #5dc87a !important; box-shadow: 0 6px 24px rgba(93,200,122,0.12); transform: translateY(-3px); }
         .feat-card:hover { border-color: #93c5fd !important; box-shadow: 0 6px 24px rgba(37,99,235,0.1); transform: translateY(-3px); }
@@ -727,8 +730,8 @@ if (typeof document !== 'undefined') {
         .plan-cta-blue:hover { opacity: 0.88 !important; }
         .cta-final-btn:hover { transform: scale(1.03); box-shadow: 0 6px 24px rgba(0,0,0,0.2) !important; }
         .modal-close:hover { background: #f1f5f9 !important; }
-        .modal-input:focus { border-color: #3b82f6 !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-        .modal-btn-ok:hover { background: #1d4ed8 !important; }
+        .modal-input:focus { border-color: #3b9ede !important; box-shadow: 0 0 0 3px rgba(59,158,222,0.12); }
+        .modal-btn-ok:hover { background: #2a8bc4 !important; }
         .whatsapp-float { animation: wa-pulse 3s ease-in-out infinite; }
         .whatsapp-float:hover { transform: scale(1.1) !important; animation: none; }
         @keyframes wa-pulse {

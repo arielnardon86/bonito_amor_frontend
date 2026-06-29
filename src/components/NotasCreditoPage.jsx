@@ -23,13 +23,13 @@ const ultimoDia  = (y, m) => {
 };
 
 const CHIP = {
-    EMITIDA:   { bg: '#d1fae5', color: '#065f46' },
-    PENDIENTE: { bg: '#fef9c3', color: '#713f12' },
-    ERROR:     { bg: '#fee2e2', color: '#991b1b' },
+    EMITIDA:   { bg: '#edfaf3', color: '#1a6a40' },
+    PENDIENTE: { bg: '#fffbeb', color: '#92400e' },
+    ERROR:     { bg: '#fef2f2', color: '#c53030' },
 };
 
 const Chip = ({ estado }) => {
-    const s = CHIP[estado] || { bg: '#f3f4f6', color: '#374151' };
+    const s = CHIP[estado] || { bg: '#f1f5f9', color: '#475569' };
     return (
         <span style={{ background: s.bg, color: s.color, padding: '2px 10px',
                        borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
@@ -185,11 +185,11 @@ export default function NotasCreditoPage() {
             {/* Resumen */}
             {!loading && !error && (
                 <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-                    <div style={chipResumen('#dbeafe','#1d4ed8')}>
+                    <div style={chipResumen('#f1f5f9','#1a2926')}>
                         {facturas.length} factura{facturas.length !== 1 ? 's' : ''} · {fmt(totalFacturado)}
                     </div>
                     {totalNC > 0 && (
-                        <div style={chipResumen('#fce7f3','#9d174d')}>
+                        <div style={chipResumen('#edfaf3','#1a6a40')}>
                             NC emitidas · {fmt(totalNC)}
                         </div>
                     )}
@@ -198,19 +198,20 @@ export default function NotasCreditoPage() {
 
             {alertMsg && (
                 <div style={{
-                    padding: '10px 16px', borderRadius: 8, marginBottom: 14, fontWeight: 600, fontSize: 14,
-                    background: alertOk ? '#d1fae5' : '#fee2e2',
-                    color:      alertOk ? '#065f46' : '#991b1b',
+                    padding: '10px 16px', borderRadius: 10, marginBottom: 14, fontWeight: 600, fontSize: 14,
+                    background: alertOk ? '#edfaf3' : '#fef2f2',
+                    color:      alertOk ? '#1a6a40' : '#c53030',
+                    border:     alertOk ? '1px solid #e2e8f0' : '1px solid #fca5a5',
                 }}>
                     {alertMsg}
                 </div>
             )}
 
-            {loading && <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Cargando…</div>}
-            {error   && <div style={{ color: '#dc2626', padding: 12 }}>{error}</div>}
+            {loading && <div style={{ textAlign: 'center', padding: 40, color: '#475569' }}>Cargando…</div>}
+            {error   && <div style={{ color: '#e25252', padding: 12 }}>{error}</div>}
 
             {!loading && !error && facturas.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 48, color: '#9ca3af' }}>
+                <div style={{ textAlign: 'center', padding: 48, color: '#94a3b8' }}>
                     No hay facturas de ventas anuladas en {MESES[navMonth - 1]} {navYear}.
                 </div>
             )}
@@ -222,10 +223,10 @@ export default function NotasCreditoPage() {
                     <div key={f.id} style={{ ...card, opacity: tieneNcEmitida ? 0.75 : 1 }}>
                         <div style={cardHead}>
                             <div>
-                                <div style={{ fontWeight: 700, fontSize: 15, color: '#1f2937' }}>
+                                <div style={{ fontWeight: 700, fontSize: 15, color: '#1a2926' }}>
                                     Factura {f.tipo_comprobante} {f.numero_factura_completo}
                                 </div>
-                                <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
+                                <div style={{ fontSize: 13, color: '#475569', marginTop: 2 }}>
                                     {fmtFecha(f.fecha_emision)} · {f.cliente_nombre}
                                     {f.cliente_cuit ? ` · CUIT ${f.cliente_cuit}` : ''}
                                     {' · '}<strong>{fmt(f.total)}</strong>
@@ -241,8 +242,8 @@ export default function NotasCreditoPage() {
 
                         {ncs.map(nc => (
                             <div key={nc.id} style={ncRow}>
-                                <span style={{ fontSize: 16, color: '#9ca3af' }}>↳</span>
-                                <span style={{ fontSize: 13, color: '#374151', flex: 1 }}>
+                                <span style={{ fontSize: 16, color: '#94a3b8' }}>↳</span>
+                                <span style={{ fontSize: 13, color: '#1a2926', flex: 1 }}>
                                     <strong>NC {nc.tipo_comprobante} {nc.numero_nc_completo}</strong>
                                     {' · '}{fmt(nc.monto)}
                                     {nc.cae  ? ` · CAE: ${nc.cae}` : ''}
@@ -250,7 +251,7 @@ export default function NotasCreditoPage() {
                                 </span>
                                 <Chip estado={nc.estado} />
                                 {nc.estado === 'ERROR' && nc.error_mensaje && (
-                                    <span style={{ fontSize: 12, color: '#dc2626' }}>{nc.error_mensaje}</span>
+                                    <span style={{ fontSize: 12, color: '#c53030' }}>{nc.error_mensaje}</span>
                                 )}
                             </div>
                         ))}
@@ -265,7 +266,7 @@ export default function NotasCreditoPage() {
                         <div style={{ fontSize: 17, fontWeight: 700, color: '#111827', marginBottom: 4 }}>
                             Generar Nota de Crédito
                         </div>
-                        <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
+                        <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20 }}>
                             Factura {modalFactura.tipo_comprobante} {modalFactura.numero_factura_completo}
                             {' · '}{modalFactura.cliente_nombre}
                             {' · Total: '}<strong>{fmt(modalFactura.total)}</strong>
@@ -283,8 +284,8 @@ export default function NotasCreditoPage() {
                                style={inp} disabled={emitiendo} />
 
                         {modalError && (
-                            <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px',
-                                          borderRadius: 8, fontSize: 13, marginBottom: 12 }}>
+                            <div style={{ background: '#fef2f2', color: '#c53030', padding: '8px 12px',
+                                          border: '1px solid #fca5a5', borderRadius: 10, fontSize: 13, marginBottom: 12 }}>
                                 {modalError}
                             </div>
                         )}
@@ -304,35 +305,35 @@ export default function NotasCreditoPage() {
 
 // ── Estilos ──────────────────────────────────────────────────────────────────
 const btnNav = {
-    background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8,
+    background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10,
     width: 34, height: 34, cursor: 'pointer', fontSize: 18, lineHeight: 1,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
 };
 const btnHoy = {
-    padding: '4px 14px', background: '#e0e7ff', color: '#3730a3',
-    border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13,
+    padding: '4px 14px', background: '#f1f5f9', color: '#475569',
+    border: '1px solid #e2e8f0', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13,
 };
 const chipResumen = (bg, color) => ({
     background: bg, color, padding: '5px 14px', borderRadius: 999,
     fontSize: 13, fontWeight: 600,
 });
 const card = {
-    background: '#fff', borderRadius: 10,
+    background: '#ffffff', borderRadius: 10,
     boxShadow: '0 1px 4px rgba(0,0,0,.08)', marginBottom: 12, overflow: 'hidden',
 };
 const cardHead = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '13px 18px', borderBottom: '1px solid #f3f4f6',
+    padding: '13px 18px', borderBottom: '1px solid #e2e8f0',
     flexWrap: 'wrap', gap: 8,
 };
 const ncRow = {
     display: 'flex', alignItems: 'center', gap: 10,
-    padding: '8px 18px', borderTop: '1px solid #f9fafb', background: '#f9fafb',
+    padding: '8px 18px', borderTop: '1px solid #e2e8f0', background: '#f8fafc',
     flexWrap: 'wrap',
 };
 const btnGen = {
-    padding: '6px 16px', background: '#2563eb', color: '#fff',
-    border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13,
+    padding: '6px 16px', background: '#3b9ede', color: '#fff',
+    border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13,
     whiteSpace: 'nowrap',
 };
 const overlay = {
@@ -340,23 +341,25 @@ const overlay = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999,
 };
 const modal = {
-    background: '#fff', borderRadius: 12, padding: 26, width: 440, maxWidth: '94vw',
+    background: '#ffffff', borderRadius: 16, padding: 26, width: 440, maxWidth: '94vw',
+    maxHeight: '90vh', overflowY: 'auto',
     boxShadow: '0 8px 32px rgba(0,0,0,.18)',
 };
-const lbl = { fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' };
+const lbl = { fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' };
 const inp = {
-    width: '100%', padding: '8px 11px', border: '1px solid #d1d5db',
-    borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginBottom: 14,
+    width: '100%', padding: '8px 11px', border: '1px solid #e2e8f0',
+    borderRadius: 10, fontSize: 14, boxSizing: 'border-box', marginBottom: 14,
+    color: '#1a2926',
 };
 const btnCan = {
-    padding: '8px 18px', background: '#f3f4f6', color: '#374151',
-    border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600,
+    padding: '8px 18px', background: '#f1f5f9', color: '#475569',
+    border: '1px solid #e2e8f0', borderRadius: 10, cursor: 'pointer', fontWeight: 600,
 };
 const btnConf = {
-    padding: '8px 18px', background: '#2563eb', color: '#fff',
-    border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600,
+    padding: '8px 18px', background: '#5dc87a', color: '#fff',
+    border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600,
 };
 const badgeNcEmitida = {
-    padding: '6px 14px', background: '#d1fae5', color: '#065f46',
-    borderRadius: 8, fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap',
+    padding: '6px 14px', background: '#edfaf3', color: '#1a6a40',
+    borderRadius: 10, fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap',
 };

@@ -33,22 +33,22 @@ const cs = {
     badge: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: '#edfaf3', color: '#1a7a3f', border: '1px solid #a8e6c5' },
     cards: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 },
     card: (border) => ({
-        background: 'var(--ts-surface)', borderRadius: 14, padding: '20px 24px',
+        background: 'var(--ts-surface)', borderRadius: 16, padding: '20px 24px',
         boxShadow: 'var(--ts-shadow-sm)', border: `1px solid ${border}`,
         display: 'flex', flexDirection: 'column', gap: 4,
     }),
     cardLabel: { fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ts-text-3)' },
     cardValue: (color) => ({ fontSize: '1.8rem', fontWeight: 800, color, letterSpacing: '-0.02em', lineHeight: 1.1 }),
     cardSub: { fontSize: 12, color: 'var(--ts-text-3)', marginTop: 2 },
-    formCard: { background: 'var(--ts-surface)', borderRadius: 14, padding: '20px 24px', boxShadow: 'var(--ts-shadow-sm)', border: '1px solid #a8e6c5', marginBottom: 24 },
+    formCard: { background: 'var(--ts-surface)', borderRadius: 16, padding: '20px 24px', boxShadow: 'var(--ts-shadow-sm)', border: '1px solid #e2e8f0', marginBottom: 24 },
     formGrid: { display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 2fr', gap: 14, alignItems: 'end' },
     label: { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ts-text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' },
-    input: { width: '100%', padding: '9px 12px', border: '1px solid var(--ts-border)', borderRadius: 9, fontSize: 14, color: 'var(--ts-text)', background: 'var(--ts-surface)', boxSizing: 'border-box', outline: 'none', fontFamily: 'var(--ts-font)' },
+    input: { width: '100%', padding: '9px 12px', border: '1px solid var(--ts-border)', borderRadius: 10, fontSize: 14, color: 'var(--ts-text)', background: 'var(--ts-surface)', boxSizing: 'border-box', outline: 'none', fontFamily: 'var(--ts-font)' },
     btnPrimary: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 22px', background: 'linear-gradient(135deg, #5dc87a 0%, #38a080 100%)', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 14px rgba(93,200,122,0.28)', fontFamily: 'var(--ts-font)', whiteSpace: 'nowrap' },
     btnSecondary: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', background: '#fff', color: 'var(--ts-text)', border: '1px solid var(--ts-border)', borderRadius: 10, cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'var(--ts-font)' },
-    btnDanger: { padding: '6px 13px', background: 'rgba(226,82,82,0.09)', color: '#dc2626', border: '1px solid rgba(226,82,82,0.25)', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--ts-font)' },
-    btnEdit: { padding: '6px 13px', background: 'rgba(59,154,222,0.09)', color: '#1d6fa8', border: '1px solid rgba(59,154,222,0.25)', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--ts-font)' },
-    tableWrap: { background: 'var(--ts-surface)', borderRadius: 14, boxShadow: 'var(--ts-shadow-sm)', border: '1px solid var(--ts-border)', overflow: 'hidden' },
+    btnDanger: { padding: '6px 13px', background: '#fef2f2', color: '#e25252', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--ts-font)' },
+    btnEdit: { padding: '6px 13px', background: 'rgba(59,154,222,0.09)', color: '#3b9ede', border: '1px solid rgba(59,158,222,0.30)', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--ts-font)' },
+    tableWrap: { background: 'var(--ts-surface)', borderRadius: 16, boxShadow: 'var(--ts-shadow-sm)', border: '1px solid var(--ts-border)', overflow: 'hidden' },
     tableHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px', borderBottom: '1px solid var(--ts-border)' },
     th: { padding: '10px 14px', background: 'var(--ts-surface-alt)', color: 'var(--ts-text-2)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid var(--ts-border)', textAlign: 'left' },
     td: { padding: '11px 14px', borderBottom: '1px solid var(--ts-border-light)', fontSize: 14, color: 'var(--ts-text)', verticalAlign: 'middle' },
@@ -164,8 +164,8 @@ export default function ComprasStock() {
 
     const totalComprometido = compras.reduce((acc, c) => acc + parseFloat(c.monto || 0), 0);
     const saldo = (presupuesto ?? 0) - totalComprometido;
-    const saldoColor = saldo >= 0 ? '#16a34a' : '#dc2626';
-    const saldoCardBorder = saldo >= 0 ? '#a8e6c5' : 'rgba(226,82,82,0.3)';
+    const saldoColor = saldo >= 0 ? '#1a6a40' : '#e25252';
+    const saldoCardBorder = saldo >= 0 ? '#e2e8f0' : '#fca5a5';
 
     const handleAdd = async (e) => {
         e.preventDefault();
@@ -214,7 +214,7 @@ export default function ComprasStock() {
             showCancelButton: true,
             confirmButtonText: 'Eliminar',
             cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#dc2626',
+            confirmButtonColor: '#e25252',
         });
         if (!result.isConfirmed) return;
         try {
@@ -289,11 +289,11 @@ export default function ComprasStock() {
                             ]}
                         />
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <button type="button" onClick={handlePrevMonth} style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontSize: 15, color: 'var(--ts-text-2)', lineHeight: 1 }}>‹</button>
+                            <button type="button" onClick={handlePrevMonth} style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: 15, color: 'var(--ts-text-2)', lineHeight: 1 }}>‹</button>
                             <span style={cs.badge}>● {mesActual}</span>
-                            <button type="button" onClick={handleNextMonth} style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontSize: 15, color: 'var(--ts-text-2)', lineHeight: 1 }}>›</button>
+                            <button type="button" onClick={handleNextMonth} style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: 15, color: 'var(--ts-text-2)', lineHeight: 1 }}>›</button>
                             {!isCurrentMonth && (
-                                <button type="button" onClick={handleCurrentMonth} style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 7, padding: '3px 9px', cursor: 'pointer', fontSize: 11, color: 'var(--ts-text-3)', fontWeight: 600 }}>Hoy</button>
+                                <button type="button" onClick={handleCurrentMonth} style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontSize: 11, color: 'var(--ts-text-3)', fontWeight: 600 }}>Hoy</button>
                             )}
                         </div>
                     </div>
@@ -308,16 +308,16 @@ export default function ComprasStock() {
 
                 {/* Summary cards */}
                 <div className="cs-cards" style={cs.cards}>
-                    <div style={cs.card('#a8e6c5')}>
+                    <div style={cs.card('#e2e8f0')}>
                         <span style={cs.cardLabel}>Presupuesto del mes</span>
-                        <span style={cs.cardValue('#16a34a')}>
+                        <span style={cs.cardValue('#1a6a40')}>
                             {loadingPresupuesto ? '...' : fmt(presupuesto)}
                         </span>
                         <span style={cs.cardSub}>Costo de productos vendidos</span>
                     </div>
-                    <div style={cs.card('#fcd34d')}>
+                    <div style={cs.card('#e2e8f0')}>
                         <span style={cs.cardLabel}>Comprometido</span>
-                        <span style={cs.cardValue('#92400e')}>{fmt(totalComprometido)}</span>
+                        <span style={cs.cardValue('#f59e0b')}>{fmt(totalComprometido)}</span>
                         <span style={cs.cardSub}>{compras.length} {compras.length === 1 ? 'compra' : 'compras'} registradas</span>
                     </div>
                     <div style={cs.card(saldoCardBorder)}>
@@ -331,7 +331,7 @@ export default function ComprasStock() {
 
                 {/* Warning banner when saldo is negative */}
                 {saldo < 0 && (
-                    <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 18px', marginBottom: 20, color: '#991b1b', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 18px', marginBottom: 20, color: '#e25252', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 18 }}>⚠️</span>
                         Presupuesto excedido en {fmt(Math.abs(saldo))}. Revisá las compras comprometidas este mes.
                     </div>

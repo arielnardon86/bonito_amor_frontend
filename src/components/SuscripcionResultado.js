@@ -8,10 +8,10 @@ const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').
 
 const COLORES = {
   verde:    '#5dc87a',
-  rojo:     '#dc2626',
+  rojo:     '#e25252',
   amarillo: '#f59e0b',
-  gris:     '#6b7280',
-  texto:    '#1a3a2a',
+  gris:     '#94a3b8',
+  texto:    '#1a2926',
 };
 
 export default function SuscripcionResultado() {
@@ -145,9 +145,9 @@ export default function SuscripcionResultado() {
 
 const s = {
   page: { minHeight: '100vh', background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)', fontFamily: "'Segoe UI', sans-serif" },
-  header: { padding: '20px 40px', borderBottom: '1px solid #e5e7eb', background: '#fff' },
+  header: { padding: '20px 40px', borderBottom: '1px solid #e2e8f0', background: '#fff' },
   logo: { textDecoration: 'none' },
-  logoText: { fontSize: 24, fontWeight: 700, color: '#1a3a2a' },
+  logoText: { fontSize: 24, fontWeight: 700, color: '#1a2926' },
   container: { maxWidth: 520, margin: '80px auto', padding: '0 20px' },
   card: { background: '#fff', borderRadius: 16, padding: '48px 40px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', textAlign: 'center' },
   titulo: { fontSize: 26, fontWeight: 700, color: COLORES.texto, margin: '0 0 12px' },

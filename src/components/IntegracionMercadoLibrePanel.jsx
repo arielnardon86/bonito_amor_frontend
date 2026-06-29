@@ -156,8 +156,8 @@ export default function IntegracionMercadoLibrePanel() {
             text: 'Se enviará el stock actual de Total Stock a todos los productos sincronizados en ML. Esta acción sobreescribe el stock en Mercado Libre.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#2563eb',
-            cancelButtonColor: '#6b7280',
+            confirmButtonColor: '#3b9ede',
+            cancelButtonColor: '#475569',
             confirmButtonText: 'Sí, actualizar',
             cancelButtonText: 'Cancelar',
         });
@@ -180,8 +180,8 @@ export default function IntegracionMercadoLibrePanel() {
             text: 'Se actualizarán el precio y el stock en Mercado Libre para todos los productos que ya están publicados. Esta acción sobreescribe los valores actuales en ML.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#2563eb',
-            cancelButtonColor: '#6b7280',
+            confirmButtonColor: '#3b9ede',
+            cancelButtonColor: '#475569',
             confirmButtonText: 'Sí, actualizar',
             cancelButtonText: 'Cancelar',
         });
@@ -254,7 +254,7 @@ export default function IntegracionMercadoLibrePanel() {
                                   color: '#fff', fontWeight: 800, fontSize: 14 }}>ML</div>
                     <div>
                         <div style={{ fontWeight: 700, fontSize: 17 }}>Mercado Libre</div>
-                        <div style={{ fontSize: 13, color: '#6b7280' }}>
+                        <div style={{ fontSize: 13, color: '#475569' }}>
                             Registrá ventas de ML automáticamente y sincronizá stock
                         </div>
                     </div>
@@ -328,7 +328,7 @@ export default function IntegracionMercadoLibrePanel() {
                             )}
                             <div style={{ marginTop: 12 }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: 8,
-                                                cursor: 'pointer', fontSize: 13, color: '#374151' }}>
+                                                cursor: 'pointer', fontSize: 13, color: '#475569' }}>
                                     <input
                                         type="checkbox"
                                         checked={tienda?.ml_facturar_ventas !== false}
@@ -376,7 +376,7 @@ export default function IntegracionMercadoLibrePanel() {
                             ↻ Actualizar precio/stock de existentes
                         </button>
                     </div>
-                    <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>
+                    <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
                         Las ventas de ML se registran automáticamente via webhook cuando el usuario completa una compra.
                     </p>
                 </div>
@@ -402,7 +402,7 @@ export default function IntegracionMercadoLibrePanel() {
 // ── Estilos ───────────────────────────────────────────────────────────────────
 const s = {
     root:        { padding: '4px 0', maxWidth: 680 },
-    centered:    { textAlign: 'center', padding: 40, color: '#6b7280' },
+    centered:    { textAlign: 'center', padding: 40, color: '#475569' },
     header:      { display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                    flexWrap: 'wrap', gap: 10, marginBottom: 20 },
     badgeOk:     { background: '#d1fae5', color: '#065f46', padding: '4px 12px',
@@ -410,27 +410,27 @@ const s = {
     badgeNo:     { background: '#fee2e2', color: '#991b1b', padding: '4px 12px',
                    borderRadius: 999, fontSize: 13, fontWeight: 600 },
     alertOk:     { background: '#d1fae5', color: '#065f46', padding: '10px 14px',
-                   borderRadius: 8, fontSize: 13, fontWeight: 500, marginBottom: 12 },
+                   borderRadius: 10, fontSize: 13, fontWeight: 500, marginBottom: 12 },
     alertErr:    { background: '#fee2e2', color: '#991b1b', padding: '10px 14px',
-                   borderRadius: 8, fontSize: 13, fontWeight: 500, marginBottom: 12 },
+                   borderRadius: 10, fontSize: 13, fontWeight: 500, marginBottom: 12 },
     card:        { background: '#fff', borderRadius: 10, padding: '18px 20px',
                    boxShadow: '0 1px 4px rgba(0,0,0,.08)', marginBottom: 14 },
     cardTitle:   { fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 6 },
-    cardDesc:    { fontSize: 13, color: '#6b7280', marginBottom: 14, lineHeight: 1.5 },
-    lbl:         { fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' },
+    cardDesc:    { fontSize: 13, color: '#475569', marginBottom: 14, lineHeight: 1.5 },
+    lbl:         { fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' },
     inp:         { width: '100%', padding: '8px 11px', border: '1px solid #d1d5db',
-                   borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginBottom: 12 },
-    btnPrimary:  { padding: '9px 20px', background: '#2563eb', color: '#fff',
-                   border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
-    btnSecondary:{ padding: '9px 16px', background: '#f3f4f6', color: '#374151',
-                   border: '1px solid #e5e7eb', borderRadius: 8, cursor: 'pointer',
+                   borderRadius: 10, fontSize: 14, boxSizing: 'border-box', marginBottom: 12 },
+    btnPrimary:  { padding: '9px 20px', background: '#3b9ede', color: '#fff',
+                   border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
+    btnSecondary:{ padding: '9px 16px', background: '#f8fafc', color: '#475569',
+                   border: '1px solid #e2e8f0', borderRadius: 10, cursor: 'pointer',
                    fontWeight: 600, fontSize: 13 },
-    btnDanger:   { padding: '8px 18px', background: '#dc2626', color: '#fff',
-                   border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 },
+    btnDanger:   { padding: '8px 18px', background: '#e25252', color: '#fff',
+                   border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13 },
     infoRow:     { display: 'flex', gap: 10, marginBottom: 6, alignItems: 'center' },
-    infoLabel:   { fontSize: 13, color: '#6b7280', minWidth: 120 },
+    infoLabel:   { fontSize: 13, color: '#475569', minWidth: 120 },
     infoVal:     { fontSize: 13, color: '#111827', fontWeight: 600 },
-    link:        { color: '#2563eb' },
+    link:        { color: '#3b9ede' },
     overlay:     { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                    zIndex: 1000, padding: 20 },

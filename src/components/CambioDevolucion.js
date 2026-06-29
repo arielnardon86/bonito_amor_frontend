@@ -69,7 +69,8 @@ const CambioDevolucion = () => {
     
     
     const [procesando, setProcesando] = useState(false);
-    
+    const [tiendaInfo, setTiendaInfo] = useState(null);
+
     const barcodeInputRef = useRef(null);
     const barcodeProductoRef = useRef(null);
 
@@ -110,6 +111,18 @@ const CambioDevolucion = () => {
             setLoadingVenta(false);
         }
     };
+
+    // Cargar info de tienda (para verificar si tiene facturación configurada)
+    useEffect(() => {
+        if (!token || !selectedStoreSlug) return;
+        axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }).then(r => {
+            const tiendas = Array.isArray(r.data) ? r.data : (r.data.results || [r.data]);
+            const found = tiendas.find(t => t.nombre?.trim().toLowerCase() === selectedStoreSlug?.trim().toLowerCase());
+            if (found) setTiendaInfo(found);
+        }).catch(() => {});
+    }, [token, selectedStoreSlug]);
 
     // Cargar métodos de pago y aranceles
     const fetchMetodosPago = useCallback(async () => {
@@ -186,6 +199,17 @@ const CambioDevolucion = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [busquedaVentaId]);
 
+    // Seleccionar / deseleccionar todos los ítems disponibles
+    const handleSeleccionarTodos = () => {
+        const disponibles = (ventaOriginal?.detalles || []).filter(d => !d.anulado_individualmente);
+        const todosSeleccionados = disponibles.every(d => productosADevolver.find(p => p.detalle_venta_id === d.id));
+        if (todosSeleccionados) {
+            setProductosADevolver([]);
+        } else {
+            setProductosADevolver(disponibles.map(d => ({ detalle_venta_id: d.id, cantidad: d.cantidad })));
+        }
+    };
+
     // Toggle producto a devolver
     const toggleProductoADevolver = (detalleVenta) => {
         const existe = productosADevolver.find(p => p.detalle_venta_id === detalleVenta.id);
@@ -242,13 +266,13 @@ const CambioDevolucion = () => {
     const handleAddProductoEnVenta = useCallback((product, quantity = 1) => {
         if (!activeCart) return;
         if (product.stock === 0) {
-            alert('Este producto no tiene stock disponible.');
+            Swal.fire({ title: 'Sin stock', text: 'Este producto no tiene stock disponible.', icon: 'warning', confirmButtonText: 'Entendido' });
             return;
         }
         const currentItemInCart = activeCart.items.find(item => item.product.id === product.id);
         const currentQuantityInCart = currentItemInCart ? currentItemInCart.quantity : 0;
         if (currentQuantityInCart + quantity > product.stock) {
-            alert(`No hay suficiente stock. Disponible: ${product.stock}`);
+            Swal.fire({ title: 'Stock insuficiente', text: `Stock disponible: ${product.stock}. Ya tenés ${currentQuantityInCart} en el carrito.`, icon: 'warning', confirmButtonText: 'Entendido' });
             return;
         }
         addProductToCart(product, quantity);
@@ -378,9 +402,29 @@ const CambioDevolucion = () => {
             }
         }
 
+        // Confirmación antes de ejecutar la operación irreversible
+        const resumenHtml = `<div style="text-align:left;font-size:14px;line-height:1.9">
+            <b>Productos a devolver:</b> ${productosADevolver.length}<br>
+            ${montoDevolucion > 0 ? `<b>Monto a devolver:</b> ${formatearMonto(montoDevolucion)}<br>` : ''}
+            ${activeCart?.items?.length > 0 ? `<b>Productos nuevos:</b> ${activeCart.items.length}<br>` : ''}
+            ${saldoAFavor > 0 ? `<b style="color:#1a6a40">Saldo a favor del cliente: ${formatearMonto(saldoAFavor)}</b>` : ''}
+            ${montoDiferencia > 0 ? `<b style="color:#e25252">El cliente paga la diferencia: ${formatearMonto(montoDiferencia)}</b>` : ''}
+            ${montoDiferencia === 0 && montoDevolucion > 0 ? '<b style="color:#3b9ede">Cambio sin diferencia de precio</b>' : ''}
+        </div>`;
+        const { isConfirmed } = await Swal.fire({
+            title: '¿Confirmar cambio/devolución?',
+            html: resumenHtml,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, procesar',
+            cancelButtonText: 'Revisar',
+            confirmButtonColor: '#5dc87a',
+        });
+        if (!isConfirmed) return;
+
         setProcesando(true);
         setError(null);
-        
+
         try {
             // Preparar detalles del cambio
             const detalles = [];
@@ -580,8 +624,8 @@ const CambioDevolucion = () => {
                         }))
                     };
 
-                    // Preguntar si quiere facturar
-                    const tieneFacturacion = true; // Simplificado, debería verificar desde la tienda
+                    // Preguntar si quiere facturar (solo si la tienda tiene AFIP configurado)
+                    const tieneFacturacion = tiendaInfo && tiendaInfo.tipo_facturacion && tiendaInfo.tipo_facturacion !== 'NINGUNA';
                     
                     if (tieneFacturacion) {
                         Swal.fire({
@@ -602,7 +646,7 @@ const CambioDevolucion = () => {
                                         <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" required>
                                         <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)">
                                         <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)">
-                                        <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #d9d9d9; border-radius: 0.1875em; font-size: 1.125em;">
+                                        <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 1.125em;">
                                             <option value="CF" selected>Consumidor Final</option>
                                             <option value="RI">Responsable Inscripto</option>
                                             <option value="EX">Exento</option>
@@ -797,14 +841,14 @@ const CambioDevolucion = () => {
         <div style={styles.container}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h1 style={styles.pageTitle}>Cambio / Devolución</h1>
-                <button 
+                <button
                     onClick={() => navigate('/punto-venta')}
                     style={{
                         padding: '10px 20px',
-                        backgroundColor: '#6c757d',
+                        backgroundColor: '#94a3b8',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '5px',
+                        borderRadius: '10px',
                         cursor: 'pointer',
                         fontSize: '14px'
                     }}
@@ -859,9 +903,22 @@ const CambioDevolucion = () => {
                     {/* Productos de la venta original - Selección para devolver */}
                     <div style={styles.section}>
                         <h2 style={styles.sectionHeader}>Productos a devolver o cambiar</h2>
-                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
-                            Marque los productos que desea devolver o cambiar
-                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: 8 }}>
+                            <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                                Marcá los productos que querés devolver o cambiar
+                            </p>
+                            {(ventaOriginal?.detalles || []).filter(d => !d.anulado_individualmente).length > 1 && (
+                                <button
+                                    type="button"
+                                    onClick={handleSeleccionarTodos}
+                                    style={{ fontSize: 13, padding: '4px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', cursor: 'pointer', fontWeight: 600 }}
+                                >
+                                    {(ventaOriginal?.detalles || []).filter(d => !d.anulado_individualmente).every(d => productosADevolver.find(p => p.detalle_venta_id === d.id))
+                                        ? 'Deseleccionar todos'
+                                        : 'Seleccionar todos'}
+                                </button>
+                            )}
+                        </div>
                         <div style={styles.tableResponsive}>
                             <table style={styles.table}>
                                 <thead>
@@ -882,9 +939,9 @@ const CambioDevolucion = () => {
 
                                         if (yaDevuelto) {
                                             return (
-                                                <tr key={detalle.id} style={{ ...styles.tableRow, opacity: 0.45, backgroundColor: '#f8f8f8' }}>
+                                                <tr key={detalle.id} style={{ ...styles.tableRow, opacity: 0.45, backgroundColor: '#f1f5f9' }}>
                                                     <td style={styles.td}>
-                                                        <span style={{ fontSize: '11px', color: '#888', fontStyle: 'italic' }}>Ya devuelto</span>
+                                                        <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>Ya devuelto</span>
                                                     </td>
                                                     <td style={styles.td}>{detalle.producto_nombre || 'N/A'}</td>
                                                     <td style={styles.td}>{detalle.cantidad}</td>
@@ -945,7 +1002,7 @@ const CambioDevolucion = () => {
                                                             max={detalle.cantidad}
                                                             value={cantidadADevolver}
                                                             onChange={(e) => actualizarCantidadADevolver(detalle.id, parseInt(e.target.value) || 1)}
-                                                            style={{ width: '60px', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }}
+                                                            style={{ width: '60px', padding: '4px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
                                                         />
                                                     ) : (
                                                         <span>-</span>
@@ -963,7 +1020,7 @@ const CambioDevolucion = () => {
                                 </tbody>
                             </table>
                         </div>
-                        <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#e9ecef', borderRadius: '4px' }}>
+                        <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f1f5f9', borderRadius: '6px' }}>
                             <strong>Total a devolver: {formatearMonto(montoDevolucion)}</strong>
                         </div>
                     </div>
@@ -1227,23 +1284,21 @@ const CambioDevolucion = () => {
                         <p><strong>Monto de productos nuevos:</strong> {formatearMonto(montoNuevo)}</p>
                         <p><strong>Diferencia:</strong> {formatearMonto(montoDiferencia)}</p>
                         {saldoAFavor > 0 && (
-                            <p style={{ color: 'green', fontSize: '18px' }}>
-                                <strong>✅ Saldo a favor: {formatearMonto(saldoAFavor)}</strong>
-                                <br />
-                                <small>Se generará un recibo de nota de crédito automáticamente</small>
-                            </p>
+                            <div style={{ background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 10, padding: '12px 16px', marginTop: 8 }}>
+                                <p style={{ color: '#1a6a40', fontSize: '16px', fontWeight: 700, margin: '0 0 4px' }}>Saldo a favor del cliente: {formatearMonto(saldoAFavor)}</p>
+                                <p style={{ color: '#475569', fontSize: 13, margin: 0 }}>Se generará un recibo de nota de crédito automáticamente</p>
+                            </div>
                         )}
                         {montoDiferencia > 0 && (
-                            <p style={{ color: 'red', fontSize: '18px' }}>
-                                <strong>⚠️ Diferencia a pagar: {formatearMonto(montoDiferencia)}</strong>
-                                <br />
-                                <small>Se creará una venta normal que puede facturarse o recibirse</small>
-                            </p>
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 16px', marginTop: 8 }}>
+                                <p style={{ color: '#e25252', fontSize: '16px', fontWeight: 700, margin: '0 0 4px' }}>El cliente paga la diferencia: {formatearMonto(montoDiferencia)}</p>
+                                <p style={{ color: '#475569', fontSize: 13, margin: 0 }}>Se creará una venta que puede facturarse o recibirse</p>
+                            </div>
                         )}
                         {montoDiferencia === 0 && montoDevolucion > 0 && (
-                            <p style={{ color: 'blue', fontSize: '18px' }}>
-                                <strong>✓ Cambio sin diferencia</strong>
-                            </p>
+                            <div style={{ background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: 10, padding: '12px 16px', marginTop: 8 }}>
+                                <p style={{ color: '#3b9ede', fontSize: '15px', fontWeight: 700, margin: 0 }}>Cambio sin diferencia de precio</p>
+                            </div>
                         )}
                     </div>
 
@@ -1254,7 +1309,7 @@ const CambioDevolucion = () => {
                             disabled={procesando || productosADevolver.length === 0}
                             style={{
                                 ...styles.processSaleButton,
-                                backgroundColor: procesando || productosADevolver.length === 0 ? '#ccc' : '#007bff',
+                                backgroundColor: procesando || productosADevolver.length === 0 ? '#e2e8f0' : '#5dc87a',
                                 cursor: procesando || productosADevolver.length === 0 ? 'not-allowed' : 'pointer'
                             }}
                         >
@@ -1277,44 +1332,44 @@ const CambioDevolucion = () => {
 const styles = {
     container: { padding: 0, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", width: '100%' },
     pageTitle: { color: '#1a2926', fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' },
-    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f7faf9', borderRadius: '10px' },
-    sectionHeader: { color: '#4a6660', fontSize: '1.1rem', borderBottom: '1px solid #edf5f2', paddingBottom: '8px', marginTop: '1rem', marginBottom: '0.5rem' },
-    loadingMessage: { textAlign: 'center', color: '#8aa8a0' },
+    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f1f5f9', borderRadius: '10px' },
+    sectionHeader: { color: '#475569', fontSize: '1.1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginTop: '1rem', marginBottom: '0.5rem' },
+    loadingMessage: { textAlign: 'center', color: '#94a3b8' },
     accessDeniedMessage: { color: '#e25252', textAlign: 'center' },
     noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },
     errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },
-    inputGroup: { display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' },
-    inputField: { padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px', boxSizing: 'border-box', flex: 1 },
-    primaryButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
-    foundProductCard: { border: '1px solid #d8eae4', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginTop: '15px' },
+    inputGroup: { display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap' },
+    inputField: { padding: '8px', border: '1px solid #e2e8f0', borderRadius: '10px', boxSizing: 'border-box', flex: 1 },
+    primaryButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' },
+    foundProductCard: { border: '1px solid #e2e8f0', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginTop: '15px' },
     foundProductText: { margin: 0 },
     productActions: { display: 'flex', gap: '10px' },
-    addProductButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    disabledButton: { padding: '8px 15px', backgroundColor: '#d8eae4', color: '#8aa8a0', border: 'none', borderRadius: '4px', cursor: 'not-allowed' },
-    tableResponsive: { overflowX: 'auto' },
+    addProductButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' },
+    disabledButton: { padding: '8px 15px', backgroundColor: '#e2e8f0', color: '#94a3b8', border: 'none', borderRadius: '10px', cursor: 'not-allowed' },
+    tableResponsive: { overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
     table: { width: '100%', borderCollapse: 'collapse', marginTop: '15px' },
-    tableHeaderRow: { backgroundColor: '#f7faf9' },
-    th: { padding: '10px', borderBottom: '2px solid #d8eae4', textAlign: 'left' },
-    tableRow: { '&:nth-child(even)': { backgroundColor: '#f7faf9' } },
-    td: { padding: '10px', borderBottom: '1px solid #edf5f2', verticalAlign: 'middle' },
+    tableHeaderRow: { backgroundColor: '#f1f5f9' },
+    th: { padding: '10px', borderBottom: '2px solid #e2e8f0', textAlign: 'left' },
+    tableRow: { '&:nth-child(even)': { backgroundColor: '#f1f5f9' } },
+    td: { padding: '10px', borderBottom: '1px solid #e2e8f0', verticalAlign: 'middle' },
     quantityControl: { display: 'flex', alignItems: 'center', gap: '5px' },
-    quantityButton: { padding: '4px 8px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' },
+    quantityButton: { padding: '4px 8px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
     quantityText: { padding: '0 5px' },
-    removeButton: { padding: '8px 12px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    removeButton: { padding: '8px 12px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' },
     totalVenta: { textAlign: 'right', fontSize: '1.2em', color: '#1a2926', marginTop: '15px' },
-    paymentMethodSelectContainer: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' },
+    paymentMethodSelectContainer: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px', flexWrap: 'wrap' },
     paymentMethodLabel: { fontWeight: 'bold' },
-    ajustesContainer: { display: 'flex', justifyContent: 'space-between', gap: '15px', marginTop: '15px' },
-    ajusteGrupo: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1, padding: '10px', border: '1px solid #d8eae4', borderRadius: '6px', backgroundColor: '#fff' },
+    ajustesContainer: { display: 'flex', justifyContent: 'space-between', gap: '15px', marginTop: '15px', flexWrap: 'wrap' },
+    ajusteGrupo: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1, padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#ffffff', flexWrap: 'wrap' },
     ajusteLabel: { fontWeight: 'bold', fontSize: '0.9em' },
-    ajusteInput: { width: '70px', padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px' },
-    ajusteSeparador: { fontWeight: 'bold', color: '#8aa8a0' },
+    ajusteInput: { width: '70px', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' },
+    ajusteSeparador: { fontWeight: 'bold', color: '#94a3b8' },
     finalTotalVenta: { textAlign: 'right', fontSize: '1.5em', color: '#5dc87a', marginTop: '15px' },
     processSaleButton: { display: 'block', width: '100%', padding: '15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', marginTop: '20px' },
-    addButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#8aa8a0' },
+    addButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' },
+    noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#94a3b8' },
     arancelDisplay: { textAlign: 'right', fontSize: '1em', color: '#e25252', marginTop: '5px' },
-    modalCancelButton: { padding: '8px 15px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
+    modalCancelButton: { padding: '8px 15px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' },
 };
 
 export default CambioDevolucion;

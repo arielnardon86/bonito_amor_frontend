@@ -83,7 +83,7 @@ const Navbar = () => {
             title: 'Turno de caja abierto',
             text: 'Tenés un turno de caja abierto. Cerrá la caja antes de cerrar sesión.',
             confirmButtonText: 'Entendido',
-            confirmButtonColor: '#3c7ef3',
+            confirmButtonColor: '#3b9ede',
           });
           return;
         }
@@ -300,10 +300,10 @@ const Navbar = () => {
                       padding: '8px 12px',
                       marginTop: '8px',
                       marginBottom: '8px',
-                      backgroundColor: notificacionesActivas ? '#dc3545' : '#17a2b8',
+                      backgroundColor: notificacionesActivas ? '#e25252' : '#3b9ede',
                       color: '#fff',
                       border: 'none',
-                      borderRadius: '4px',
+                      borderRadius: '6px',
                       cursor: 'pointer',
                       fontSize: '0.9em',
                       width: '100%'
@@ -317,7 +317,7 @@ const Navbar = () => {
                   <button
                     onClick={() => { lockSession(); setIsOpen(false); }}
                     className="logout-button"
-                    style={{ background: '#4a5568', marginBottom: 4 }}
+                    style={{ background: '#475569', marginBottom: 4 }}
                   >
                     <FontAwesomeIcon icon={faLock} />
                     <span>Bloquear sesión</span>
@@ -567,7 +567,7 @@ const AppContent = () => {
             boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
           }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>📧</div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1e3a8a', margin: '0 0 10px' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a2926', margin: '0 0 10px' }}>
               Registrá tu email
             </h2>
             <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, margin: '0 0 24px' }}>
@@ -627,7 +627,7 @@ const AppContent = () => {
       {/* Pantalla de bloqueo de sesión */}
       {sessionLocked && (
         <div style={{
-          position: 'fixed', inset: 0, background: '#1a202c',
+          position: 'fixed', inset: 0, background: 'rgba(26,41,38,0.97)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
         }}>
           <div style={{
@@ -635,10 +635,10 @@ const AppContent = () => {
             boxShadow: '0 24px 80px rgba(0,0,0,.5)', textAlign: 'center',
           }}>
             <div style={{ fontSize: 48, marginBottom: 8 }}>🔒</div>
-            <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#1a202c' }}>
+            <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#1a2926' }}>
               Sesión bloqueada
             </h2>
-            <p style={{ color: '#718096', fontSize: 14, marginBottom: 20 }}>
+            <p style={{ color: '#475569', fontSize: 14, marginBottom: 20 }}>
               {user?.username} — ingresá tu contraseña para continuar
             </p>
             <input
@@ -649,20 +649,20 @@ const AppContent = () => {
               autoFocus
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 15,
-                border: `2px solid ${unlockError ? '#e53e3e' : '#e2e8f0'}`, marginBottom: 8,
+                border: `2px solid ${unlockError ? '#e25252' : '#e2e8f0'}`, marginBottom: 8,
                 boxSizing: 'border-box', outline: 'none', textAlign: 'center',
               }}
               onKeyDown={e => e.key === 'Enter' && handleUnlock()}
             />
             {unlockError && (
-              <p style={{ color: '#e53e3e', fontSize: 13, marginBottom: 8 }}>{unlockError}</p>
+              <p style={{ color: '#e25252', fontSize: 13, marginBottom: 8 }}>{unlockError}</p>
             )}
             <button
               onClick={handleUnlock}
               disabled={unlocking}
               style={{
                 width: '100%', padding: '12px', borderRadius: 8, border: 'none',
-                background: '#3c7ef3', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
+                background: '#3b9ede', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
                 marginBottom: 0,
               }}>
               {unlocking ? 'Verificando...' : 'Desbloquear'}
@@ -682,10 +682,10 @@ const AppContent = () => {
             boxShadow: '0 20px 60px rgba(0,0,0,.3)', textAlign: 'center',
           }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>💰</div>
-            <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1a202c' }}>
+            <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1a2926' }}>
               Inicio de turno
             </h2>
-            <p style={{ color: '#718096', fontSize: 14, marginBottom: 4 }}>
+            <p style={{ color: '#475569', fontSize: 14, marginBottom: 4 }}>
               Ingresá el cambio inicial en efectivo con el que comenzás el turno.
             </p>
             {!user?.is_superuser && (
@@ -695,7 +695,7 @@ const AppContent = () => {
             )}
             {tiendasAutorizadas?.length > 1 && (
               <div style={{ marginBottom: 16, textAlign: 'left' }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#718096', display: 'block', marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>
                   Tienda activa
                 </label>
                 <select
@@ -733,7 +733,7 @@ const AppContent = () => {
                   disabled={guardandoCambioInicial}
                   style={{
                     flex: 1, padding: '12px', borderRadius: 8, border: '1px solid #e2e8f0',
-                    background: '#f7f8fa', color: '#718096', cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                    background: '#f1f5f9', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: 14,
                   }}>
                   Omitir
                 </button>
@@ -743,7 +743,7 @@ const AppContent = () => {
                 disabled={guardandoCambioInicial}
                 style={{
                   flex: 2, padding: '12px', borderRadius: 8, border: 'none',
-                  background: '#3c7ef3', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
+                  background: '#3b9ede', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
                 }}>
                 {guardandoCambioInicial ? 'Guardando...' : 'Iniciar turno'}
               </button>
@@ -751,7 +751,7 @@ const AppContent = () => {
             <button
               onClick={() => logout()}
               style={{
-                marginTop: 14, background: 'none', border: 'none', color: '#a0aec0',
+                marginTop: 14, background: 'none', border: 'none', color: '#94a3b8',
                 cursor: 'pointer', fontSize: 13, textDecoration: 'underline', padding: 0,
               }}>
               Cerrar sesión
@@ -775,7 +775,7 @@ const AppContent = () => {
               mostrarPlanes ? (
                 <>
                   <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
-                  <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1e3a8a', marginBottom: 4 }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a2926', marginBottom: 4 }}>
                     Elegí tu plan
                   </h2>
                   <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
@@ -791,7 +791,7 @@ const AppContent = () => {
                           textAlign: 'left', background: '#f8fafc',
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <span style={{ fontWeight: 700, fontSize: 15, color: '#1e3a8a' }}>{plan.display}</span>
+                            <span style={{ fontWeight: 700, fontSize: 15, color: '#1a2926' }}>{plan.display}</span>
                             <span style={{ fontWeight: 700, fontSize: 15, color: '#5dc87a' }}>
                               ${Number(plan.precio_mensual).toLocaleString('es-AR')}/mes
                             </span>
@@ -828,7 +828,7 @@ const AppContent = () => {
               ) : (
                 <>
                   <div style={{ fontSize: 52, marginBottom: 16 }}>❌</div>
-                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e3a8a', marginBottom: 10 }}>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a2926', marginBottom: 10 }}>
                     Suscripción cancelada
                   </h2>
                   <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 8 }}>
@@ -876,7 +876,7 @@ const AppContent = () => {
             ) : estadoSuscripcion === 'pausada' ? (
               <>
                 <div style={{ fontSize: 52, marginBottom: 16 }}>⏸️</div>
-                <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e3a8a', marginBottom: 10 }}>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a2926', marginBottom: 10 }}>
                   Suscripción pausada
                 </h2>
                 <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 24 }}>
@@ -900,7 +900,7 @@ const AppContent = () => {
             ) : (
               <>
                 <div style={{ fontSize: 52, marginBottom: 16 }}>⏳</div>
-                <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e3a8a', marginBottom: 10 }}>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a2926', marginBottom: 10 }}>
                   Activando tu cuenta
                 </h2>
                 <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 8 }}>

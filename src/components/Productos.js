@@ -489,7 +489,7 @@ const Productos = () => {
                     </div>
                     {tieneVariantes && (
                         <div style={{ width: '100%', marginTop: 8 }}>
-                            <p style={{ fontSize: 13, color: '#4a6660', marginBottom: 8 }}>
+                            <p style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
                                 Ingresá cada variante. El código de barras se genera automáticamente si lo dejás vacío.
                             </p>
                             <div style={{ overflowX: 'auto' }}>
@@ -497,7 +497,7 @@ const Productos = () => {
                                     <thead>
                                         <tr>
                                             {['Talle / Valor', 'Precio', 'Costo', 'Stock', 'Código de barras', ''].map(h => (
-                                                <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #d8eae4', textAlign: 'left', fontWeight: 600 }}>{h}</th>
+                                                <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
@@ -587,8 +587,8 @@ const Productos = () => {
                                 style={{
                                     padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontWeight: 700,
                                     background: stockBajoFilter ? '#fef2f2' : '#f7faf9',
-                                    color: stockBajoFilter ? '#991b1b' : '#4a6660',
-                                    border: `1px solid ${stockBajoFilter ? '#fca5a5' : '#d8eae4'}`,
+                                    color: stockBajoFilter ? '#991b1b' : '#475569',
+                                    border: `1px solid ${stockBajoFilter ? '#fca5a5' : '#e2e8f0'}`,
                                     transition: 'all 0.15s',
                                     whiteSpace: 'nowrap',
                                 }}
@@ -640,7 +640,7 @@ const Productos = () => {
                                         const precio = parseFloat(producto.precio) || 0;
                                         const costo = parseFloat(producto.costo) || 0;
                                         const margen = precio > 0 && costo > 0 ? ((precio - costo) / precio * 100) : null;
-                                        const margenColor = margen === null ? '#8aa8a0' : margen >= 30 ? '#16a34a' : margen >= 15 ? '#d97706' : '#dc2626';
+                                        const margenColor = margen === null ? '#94a3b8' : margen >= 30 ? '#1a6a40' : margen >= 15 ? '#d97706' : '#e25252';
                                         const tieneVars = producto.variantes && producto.variantes.length > 0;
                                         const expandido = !!expandedVariants[producto.id];
                                         return (
@@ -667,7 +667,7 @@ const Productos = () => {
                                                 )}
                                                 {producto.nombre}
                                                 {tieneVars && (
-                                                    <span style={{ marginLeft: 8, fontSize: 11, color: '#4a6660', background: '#d8eae4', borderRadius: 8, padding: '1px 7px' }}>
+                                                    <span style={{ marginLeft: 8, fontSize: 11, color: '#475569', background: '#e2e8f0', borderRadius: 8, padding: '1px 7px' }}>
                                                         {producto.variantes.length} variante{producto.variantes.length !== 1 ? 's' : ''}
                                                     </span>
                                                 )}
@@ -676,11 +676,11 @@ const Productos = () => {
                                             <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.precio)}</td>
                                             <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.costo || 0)}</td>
                                             <td style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
-                                                {tieneVars ? '—' : margen !== null ? `${margen.toFixed(1)}%` : <span style={{ color: '#8aa8a0', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
+                                                {tieneVars ? '—' : margen !== null ? `${margen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                             </td>
-                                            <td style={{ ...styles.td, color: (!tieneVars && producto.stock <= STOCK_BAJO_THRESHOLD) ? '#dc2626' : undefined, fontWeight: (!tieneVars && producto.stock <= STOCK_BAJO_THRESHOLD) ? 700 : undefined }}>
+                                            <td style={{ ...styles.td, color: (!tieneVars && producto.stock <= STOCK_BAJO_THRESHOLD) ? '#e25252' : undefined, fontWeight: (!tieneVars && producto.stock <= STOCK_BAJO_THRESHOLD) ? 700 : undefined }}>
                                                 {tieneVars
-                                                    ? <span style={{ color: '#4a6660', fontSize: 12 }}>
+                                                    ? <span style={{ color: '#475569', fontSize: 12 }}>
                                                         {producto.variantes.reduce((s, v) => s + (v.stock || 0), 0)} total
                                                       </span>
                                                     : <>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</>
@@ -691,7 +691,7 @@ const Productos = () => {
                                                     <span>
                                                         <span style={{ fontWeight: 600 }}>{producto.stock_ultimo_ingreso}</span>
                                                         {producto.fecha_ultimo_ingreso && (
-                                                            <span style={{ marginLeft: 5, fontSize: 11, color: '#8aa8a0' }}>
+                                                            <span style={{ marginLeft: 5, fontSize: 11, color: '#94a3b8' }}>
                                                                 {new Date(producto.fecha_ultimo_ingreso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                                                             </span>
                                                         )}
@@ -744,9 +744,9 @@ const Productos = () => {
                                             const vPrecio = parseFloat(v.precio) || 0;
                                             const vCosto = parseFloat(producto.costo) || 0;
                                             const vMargen = vPrecio > 0 && vCosto > 0 ? ((vPrecio - vCosto) / vPrecio * 100) : null;
-                                            const vMargenColor = vMargen === null ? '#8aa8a0' : vMargen >= 30 ? '#16a34a' : vMargen >= 15 ? '#d97706' : '#dc2626';
+                                            const vMargenColor = vMargen === null ? '#94a3b8' : vMargen >= 30 ? '#1a6a40' : vMargen >= 15 ? '#d97706' : '#e25252';
                                             return (
-                                                <tr key={v.id} style={{ background: '#f7faf9', borderLeft: '3px solid #5dc87a' }}>
+                                                <tr key={v.id} style={{ background: '#f8fafc', borderLeft: '2px solid #a8e6c5' }}>
                                                     <td style={{ ...styles.td, textAlign: 'center' }}>
                                                         <input
                                                             type="checkbox"
@@ -755,16 +755,16 @@ const Productos = () => {
                                                             style={{ width: 16, height: 16, cursor: 'pointer' }}
                                                         />
                                                     </td>
-                                                    <td style={{ ...styles.td, paddingLeft: 28, color: '#4a6660', fontSize: 13 }}>
+                                                    <td style={{ ...styles.td, paddingLeft: 28, color: '#475569', fontSize: 13 }}>
                                                         ↳ {v.talle || '(sin talle)'}
                                                     </td>
                                                     {mostrarTalle && <td style={styles.td}>{v.talle || '-'}</td>}
                                                     <td style={styles.td}>{formatearMonto(v.precio)}</td>
                                                     <td style={styles.td}>—</td>
                                                     <td style={{ ...styles.td, fontWeight: 700, color: vMargenColor }}>
-                                                        {vMargen !== null ? `${vMargen.toFixed(1)}%` : <span style={{ color: '#8aa8a0', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
+                                                        {vMargen !== null ? `${vMargen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                                     </td>
-                                                    <td style={{ ...styles.td, color: v.stock <= STOCK_BAJO_THRESHOLD ? '#dc2626' : undefined, fontWeight: v.stock <= STOCK_BAJO_THRESHOLD ? 700 : undefined }}>
+                                                    <td style={{ ...styles.td, color: v.stock <= STOCK_BAJO_THRESHOLD ? '#e25252' : undefined, fontWeight: v.stock <= STOCK_BAJO_THRESHOLD ? 700 : undefined }}>
                                                         {v.stock}{v.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}
                                                     </td>
                                                     <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
@@ -772,7 +772,7 @@ const Productos = () => {
                                                             <span>
                                                                 <span style={{ fontWeight: 600 }}>{v.stock_ultimo_ingreso}</span>
                                                                 {v.fecha_ultimo_ingreso && (
-                                                                    <span style={{ marginLeft: 5, fontSize: 11, color: '#8aa8a0' }}>
+                                                                    <span style={{ marginLeft: 5, fontSize: 11, color: '#94a3b8' }}>
                                                                         {new Date(v.fecha_ultimo_ingreso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                                                                     </span>
                                                                 )}
@@ -900,7 +900,7 @@ const Productos = () => {
                                 style={styles.modalInput}
                                 placeholder="Ej: 123456789"
                             />
-                            <small style={{ color: '#6b7280', fontSize: 11 }}>
+                            <small style={{ color: '#94a3b8', fontSize: 11 }}>
                                 Ingresalo si el producto ya existe en Tienda Nube y querés vincularlo manualmente.
                             </small>
                         </div>
@@ -946,7 +946,7 @@ const Productos = () => {
                                             max="100"
                                             value={cantidadesModal[id]}
                                             onChange={e => setCantidadesModal(prev => ({ ...prev, [id]: Math.max(1, parseInt(e.target.value) || 1) }))}
-                                            style={{ width: 70, padding: '6px 10px', border: '1px solid #d8eae4', borderRadius: 8, fontSize: 15, fontWeight: 700, textAlign: 'center' }}
+                                            style={{ width: 70, padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 15, fontWeight: 700, textAlign: 'center' }}
                                         />
                                     </div>
                                 );
@@ -1014,7 +1014,7 @@ const Productos = () => {
                         <p style={{ margin: '0 0 4px', fontSize: 14, color: '#1a2926', fontWeight: 600 }}>
                             {productoParaStock.nombre}
                         </p>
-                        <p style={{ margin: '0 0 20px', fontSize: 13, color: '#8aa8a0' }}>
+                        <p style={{ margin: '0 0 20px', fontSize: 13, color: '#94a3b8' }}>
                             Stock actual: <strong style={{ color: '#1a2926' }}>{productoParaStock.stock}</strong>
                         </p>
                         <div style={styles.inputGroupModal}>
@@ -1030,7 +1030,7 @@ const Productos = () => {
                             />
                         </div>
                         {cantidadAGregar && parseInt(cantidadAGregar, 10) > 0 && (
-                            <p style={{ fontSize: 13, color: '#16a34a', margin: '0 0 16px', fontWeight: 600 }}>
+                            <p style={{ fontSize: 13, color: '#1a6a40', margin: '0 0 16px', fontWeight: 600 }}>
                                 Nuevo stock: {(productoParaStock.stock || 0) + parseInt(cantidadAGregar, 10)}
                             </p>
                         )}
@@ -1099,23 +1099,23 @@ const styles = {
     container: { padding: 0, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", width: '100%' },
     title: { color: '#1a2926', fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.25rem' },
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f7faf9', borderRadius: '10px' },
-    sectionTitle: { color: '#4a6660', fontSize: '1.1rem', borderBottom: '1px solid #edf5f2', paddingBottom: '8px', marginTop: '1.5rem', marginBottom: '0.5rem' },
+    sectionTitle: { color: '#475569', fontSize: '1.1rem', borderBottom: '1px solid #edf5f2', paddingBottom: '8px', marginTop: '1.5rem', marginBottom: '0.5rem' },
     form: { display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-end' },
     inputGroup: { flex: '1 1 200px', display: 'flex', flexDirection: 'column' },
     label: { marginBottom: '5px', fontWeight: 'bold' },
-    input: { padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px' },
+    input: { padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' },
     submitButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', alignSelf: 'flex-end' },
     tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
     printButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
     filtersContainer: { display: 'flex', gap: '10px', marginBottom: '20px' },
-    filterInput: { flex: '1', padding: '8px', border: '1px solid #d8eae4', borderRadius: '4px' },
+    filterInput: { flex: '1', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' },
     searchButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
     loadingMessage: { textAlign: 'center', color: '#777' },
     errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },
     tableResponsive: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse' },
-    th: { padding: '10px', borderBottom: '2px solid #d8eae4', textAlign: 'left', backgroundColor: '#f7faf9' },
-    td: { padding: '10px', borderBottom: '1px solid #d8eae4' },
+    th: { padding: '10px', borderBottom: '2px solid #e2e8f0', textAlign: 'left', backgroundColor: '#f7faf9' },
+    td: { padding: '10px', borderBottom: '1px solid #e2e8f0' },
     etiquetasInput: { width: '50px' },
     editButton: { padding: '5px 10px', backgroundColor: '#f59e0b', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' },
     deleteButton: { padding: '5px 10px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },

@@ -119,8 +119,8 @@ const s = {
     maxWidth: 400, width: '100%', textAlign: 'center',
     boxShadow: '0 4px 24px rgba(0,0,0,.09)',
   },
-  title: { fontSize: 22, fontWeight: 800, color: '#1e3a8a', margin: '0 0 8px' },
-  sub:   { fontSize: 14, color: '#64748b', lineHeight: 1.6, margin: '0 0 24px' },
+  title: { fontSize: 22, fontWeight: 800, color: '#1a2926', margin: '0 0 8px' },
+  sub:   { fontSize: 14, color: '#475569', lineHeight: 1.6, margin: '0 0 24px' },
   form:  { display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'left' },
   inputWrap: { position: 'relative' },
   input: {
@@ -134,13 +134,13 @@ const s = {
     background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 0,
   },
   error: {
-    fontSize: 13, color: '#b91c1c', background: '#fef2f2',
-    border: '1px solid #fecaca', borderRadius: 8, padding: '9px 14px',
+    fontSize: 13, color: '#991b1b', background: '#fef2f2',
+    border: '1px solid #fca5a5', borderRadius: 10, padding: '9px 14px',
   },
   btn: {
     padding: '12px 0', fontSize: 15, fontWeight: 700,
-    background: 'linear-gradient(135deg,#5dc87a,#38a080)',
+    background: '#5dc87a',
     color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer',
-    boxShadow: '0 4px 14px rgba(93,200,122,.35)', width: '100%',
+    width: '100%',
   },
 };

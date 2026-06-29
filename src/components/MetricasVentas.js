@@ -412,7 +412,7 @@ const MetricasVentas = () => {
                             <button
                                 type="button"
                                 onClick={handlePrevMes}
-                                style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontSize: 15, color: 'var(--ts-text-2)', lineHeight: 1 }}
+                                style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: 15, color: 'var(--ts-text-2)', lineHeight: 1 }}
                             >‹</button>
                         )}
                         <span style={styles.periodChip}>
@@ -423,14 +423,14 @@ const MetricasVentas = () => {
                             <button
                                 type="button"
                                 onClick={handleNextMes}
-                                style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 7, padding: '3px 10px', cursor: 'pointer', fontSize: 15, color: 'var(--ts-text-2)', lineHeight: 1 }}
+                                style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: 15, color: 'var(--ts-text-2)', lineHeight: 1 }}
                             >›</button>
                         )}
                         {usingNavMonth && !isCurrentNavMonth && (
                             <button
                                 type="button"
                                 onClick={handleMesActual}
-                                style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 7, padding: '3px 9px', cursor: 'pointer', fontSize: 11, color: 'var(--ts-text-3)', fontWeight: 600 }}
+                                style={{ background: 'none', border: '1px solid var(--ts-border)', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontSize: 11, color: 'var(--ts-text-3)', fontWeight: 600 }}
                             >Hoy</button>
                         )}
                     </div>
@@ -504,9 +504,9 @@ const MetricasVentas = () => {
                                 title="Descargar reporte Excel con los filtros aplicados"
                                 style={{
                                     ...styles.filterButton,
-                                    background: (!metrics || loading) ? '#d8eae4' : 'linear-gradient(135deg, #1d6f42 0%, #2a9668 100%)',
+                                    background: (!metrics || loading) ? '#e2e8f0' : 'linear-gradient(135deg, #1d6f42 0%, #2a9668 100%)',
                                     boxShadow: (!metrics || loading) ? 'none' : '0 2px 8px rgba(29,111,66,0.25)',
-                                    color: (!metrics || loading) ? '#4a6660' : 'white',
+                                    color: (!metrics || loading) ? '#475569' : 'white',
                                     cursor: (!metrics || loading) ? 'not-allowed' : 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -548,7 +548,7 @@ const MetricasVentas = () => {
 
                 {/* ── Alerta rentabilidad negativa ───────────────────────────────── */}
                 {!rentPositive && parseFloat(metrics?.rentabilidad_bruta_periodo || 0) < 0 && (
-                    <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 12, padding: '14px 20px', marginBottom: 20, color: '#991b1b', fontSize: 14, lineHeight: 1.5 }}>
+                    <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '14px 20px', marginBottom: 20, color: '#991b1b', fontSize: 14, lineHeight: 1.5 }}>
                         <strong>⚠️ Rentabilidad negativa este período.</strong>{' '}
                         Los egresos superaron las ventas netas. Revisá los costos de compras o aumentá el volumen de ventas.
                     </div>
@@ -564,7 +564,7 @@ const MetricasVentas = () => {
                         <h3 style={styles.cardTitle}>Aranceles</h3>
                         <p style={styles.cardValue}>{formatearMonto((parseFloat(metrics?.total_arancel_ventas || 0) + parseFloat(metrics?.total_costo_envio_ml || 0)))}</p>
                         {metrics?.tienda_tiene_ml && (
-                            <p style={{ fontSize: '0.72rem', color: '#718096', marginTop: 6 }}>
+                            <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 6 }}>
                                 {metrics?.ml_aranceles_automaticos !== false
                                     ? 'Aranceles de métodos de pago (no ML)'
                                     : 'Incluye aranceles ML configurados manualmente'}
@@ -575,12 +575,12 @@ const MetricasVentas = () => {
                         <div style={styles.card}>
                             <h3 style={styles.cardTitle}>Descuentos Mercado Libre</h3>
                             <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_descuentos || 0))}</p>
-                            <div style={{ marginTop: 10, borderTop: '1px solid #edf5f2', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ marginTop: 10, borderTop: '1px solid #e2e8f0', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 {[
                                     ['Comisión ML (cargo por venta)', metrics?.total_ml_sale_fee],
                                     ['Costo de envío al vendedor', metrics?.total_ml_shipping_cost],
                                 ].map(([label, val]) => (
-                                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#4a6660' }}>
+                                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#475569' }}>
                                         <span>{label}</span>
                                         <span style={{ fontWeight: 600 }}>{formatearMonto(parseFloat(val || 0))}</span>
                                     </div>
@@ -624,27 +624,27 @@ const MetricasVentas = () => {
                             return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     {top10.map((p, i) => (
-                                        <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid #edf5f2' }}>
+                                        <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid #e2e8f0' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                                 <span style={{ fontSize: 16, flexShrink: 0, width: 24, textAlign: 'center' }}>
-                                                    {i < medals.length ? medals[i] : <span style={{ color: '#8aa8a0', fontSize: 12, fontWeight: 700 }}>#{i + 1}</span>}
+                                                    {i < medals.length ? medals[i] : <span style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700 }}>#{i + 1}</span>}
                                                 </span>
                                                 <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#1a2926', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                     {p.producto__nombre || 'Sin nombre'}
                                                     {p.producto__talle && p.producto__talle !== 'UNICO'
-                                                        ? <span style={{ color: '#8aa8a0', fontWeight: 400 }}> · T: {p.producto__talle}</span>
+                                                        ? <span style={{ color: '#94a3b8', fontWeight: 400 }}> · T: {p.producto__talle}</span>
                                                         : ''}
                                                 </span>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0, gap: 2 }}>
                                                     <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2926' }}>{p.cantidad_total}</span>
                                                     {metrics?.tienda_tiene_ml && parseInt(p.cantidad_pagados_ml) > 0 && (
-                                                        <span style={{ fontSize: 11, fontWeight: 600, color: '#1a6a40', background: '#edfaf3', borderRadius: 4, padding: '1px 5px' }}>
+                                                        <span style={{ fontSize: 11, fontWeight: 600, color: '#1a6a40', background: '#edfaf3', borderRadius: 6, padding: '1px 5px' }}>
                                                             {parseInt(p.cantidad_pagados_ml)} entregados
                                                         </span>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div style={{ marginLeft: 32, height: 5, backgroundColor: '#edf5f2', borderRadius: 3, overflow: 'hidden' }}>
+                                            <div style={{ marginLeft: 32, height: 5, backgroundColor: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
                                                 <div style={{ height: '100%', width: `${(p.cantidad_total / maxQty) * 100}%`, background: 'linear-gradient(90deg, #5dc87a, #38a080)', borderRadius: 3, transition: 'width 0.4s ease' }} />
                                             </div>
                                         </div>
@@ -668,21 +668,21 @@ const MetricasVentas = () => {
                                         const pct      = totalVendido > 0 ? ((parseFloat(u.total_vendido) / totalVendido) * 100).toFixed(1) : '0.0';
                                         const barWidth = maxVendido > 0 ? (parseFloat(u.total_vendido) / maxVendido) * 100 : 0;
                                         return (
-                                            <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid #edf5f2' }}>
+                                            <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid #e2e8f0' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
                                                     <span style={{ fontSize: 16, flexShrink: 0, width: 24, textAlign: 'center' }}>
                                                         {i < medals.length ? medals[i] : `#${i + 1}`}
                                                     </span>
                                                     <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#1a2926' }}>{u.usuario__username}</span>
-                                                    <span style={{ fontSize: 11, color: '#8aa8a0', fontWeight: 600 }}>{pct}%</span>
+                                                    <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>{pct}%</span>
                                                 </div>
                                                 <div style={{ marginLeft: 32 }}>
-                                                    <div style={{ height: 5, backgroundColor: '#edf5f2', borderRadius: 3, overflow: 'hidden', marginBottom: 4 }}>
+                                                    <div style={{ height: 5, backgroundColor: '#e2e8f0', borderRadius: 3, overflow: 'hidden', marginBottom: 4 }}>
                                                         <div style={{ height: '100%', width: `${barWidth}%`, background: 'linear-gradient(90deg, #3b9ede, #2a9668)', borderRadius: 3, transition: 'width 0.4s ease' }} />
                                                     </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#4a6660' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#475569' }}>
                                                         <span>{formatearMonto(u.total_vendido)}</span>
-                                                        <span style={{ color: '#8aa8a0' }}>{u.cantidad_ventas} venta{u.cantidad_ventas !== 1 ? 's' : ''}</span>
+                                                        <span style={{ color: '#94a3b8' }}>{u.cantidad_ventas} venta{u.cantidad_ventas !== 1 ? 's' : ''}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -717,11 +717,11 @@ const MetricasVentas = () => {
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
                                                     <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2926' }}>{m.metodo_pago}</span>
                                                     <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                                                        <span style={{ fontSize: 11, color: '#8aa8a0', fontWeight: 600 }}>{pct}%</span>
+                                                        <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>{pct}%</span>
                                                         <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2926' }}>{formatearMonto(m.total_vendido)}</span>
                                                     </div>
                                                 </div>
-                                                <div style={{ height: 8, backgroundColor: '#edf5f2', borderRadius: 4, overflow: 'hidden' }}>
+                                                <div style={{ height: 8, backgroundColor: '#e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
                                                     <div style={{ height: '100%', width: `${barWidth}%`, backgroundColor: color, borderRadius: 4, transition: 'width 0.4s ease' }} />
                                                 </div>
                                             </div>
@@ -748,8 +748,8 @@ const MetricasVentas = () => {
                                         const isMax     = parseFloat(e.total_egresos) === maxEgreso;
                                         return (
                                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                <span style={{ fontSize: 12, fontWeight: 600, color: '#8aa8a0', width: 28, flexShrink: 0, textAlign: 'right' }}>{mesNombre}</span>
-                                                <div style={{ flex: 1, height: 10, backgroundColor: '#edf5f2', borderRadius: 5, overflow: 'hidden' }}>
+                                                <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', width: 28, flexShrink: 0, textAlign: 'right' }}>{mesNombre}</span>
+                                                <div style={{ flex: 1, height: 10, backgroundColor: '#e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
                                                     <div style={{
                                                         height: '100%',
                                                         width: `${barWidth}%`,
@@ -758,7 +758,7 @@ const MetricasVentas = () => {
                                                         transition: 'width 0.4s ease'
                                                     }} />
                                                 </div>
-                                                <span style={{ fontSize: 12, fontWeight: 700, color: isMax ? '#991b1b' : '#1a2926', flexShrink: 0, minWidth: 80, textAlign: 'right' }}>{formatearMonto(e.total_egresos)}</span>
+                                                <span style={{ fontSize: 12, fontWeight: 700, color: isMax ? '#e25252' : '#1a2926', flexShrink: 0, minWidth: 80, textAlign: 'right' }}>{formatearMonto(e.total_egresos)}</span>
                                             </div>
                                         );
                                     })}
@@ -804,7 +804,7 @@ const styles = {
     loadingMessage: {
         padding: '20px',
         textAlign: 'center',
-        color: '#4a6660',
+        color: '#475569',
         fontSize: '1.1em',
     },
     accessDeniedMessage: {
@@ -820,7 +820,7 @@ const styles = {
     noStoreSelectedMessage: {
         padding: '50px',
         textAlign: 'center',
-        color: '#8aa8a0',
+        color: '#94a3b8',
         fontSize: '1.2em',
     },
     errorMessage: {
@@ -840,9 +840,9 @@ const styles = {
         marginBottom: '24px',
         padding: '18px 20px',
         backgroundColor: '#ffffff',
-        borderRadius: '12px',
+        borderRadius: '10px',
         boxShadow: '0 1px 3px rgba(0,0,0,.07)',
-        border: '1px solid #edf5f2',
+        border: '1px solid #e2e8f0',
     },
     periodSection: {
         display: 'flex',
@@ -859,7 +859,7 @@ const styles = {
     },
     periodSectionTitle: {
         fontWeight: 700,
-        color: '#4a6660',
+        color: '#475569',
         fontSize: '0.78rem',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
@@ -873,7 +873,7 @@ const styles = {
     periodHint: {
         margin: 0,
         fontSize: '0.78rem',
-        color: '#8aa8a0',
+        color: '#94a3b8',
     },
     validationError: {
         margin: '6px 0 0 0',
@@ -888,19 +888,19 @@ const styles = {
     filterLabel: {
         marginBottom: '5px',
         fontWeight: 600,
-        color: '#4a6660',
+        color: '#475569',
         fontSize: '0.78rem',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
     },
     filterInput: {
         padding: '8px 12px',
-        border: '1.5px solid #d8eae4',
-        borderRadius: '8px',
+        border: '1.5px solid #e2e8f0',
+        borderRadius: '10px',
         minWidth: '140px',
         fontSize: 13,
         color: '#1a2926',
-        backgroundColor: '#f7faf9',
+        backgroundColor: '#f8fafc',
         fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
     },
     filterActions: {
@@ -914,7 +914,7 @@ const styles = {
         background: 'linear-gradient(135deg, #5dc87a 0%, #38a080 100%)',
         color: 'white',
         border: 'none',
-        borderRadius: '8px',
+        borderRadius: '10px',
         cursor: 'pointer',
         fontWeight: 700,
         fontSize: 13,
@@ -927,25 +927,25 @@ const styles = {
         boxShadow: '0 2px 8px rgba(59,158,222,0.20)',
     },
     filterButtonMuted: {
-        background: '#d8eae4',
-        color: '#4a6660',
+        background: '#e2e8f0',
+        color: '#475569',
         boxShadow: 'none',
     },
     heroCards: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
         gap: '16px',
         marginBottom: '16px',
     },
     heroCard: {
         backgroundColor: '#ffffff',
         padding: '22px 20px 18px',
-        borderRadius: '14px',
+        borderRadius: '16px',
         boxShadow: '0 4px 12px rgba(0,0,0,.08)',
         textAlign: 'center',
-        borderLeft: '1px solid #edf5f2',
-        borderRight: '1px solid #edf5f2',
-        borderBottom: '1px solid #edf5f2',
+        borderLeft: '1px solid #e2e8f0',
+        borderRight: '1px solid #e2e8f0',
+        borderBottom: '1px solid #e2e8f0',
         borderTopWidth: 4,
         borderTopStyle: 'solid',
         borderTopColor: '#5dc87a',
@@ -957,7 +957,7 @@ const styles = {
     heroCardIconWrap: {
         width: 42,
         height: 42,
-        borderRadius: '11px',
+        borderRadius: '10px',
         backgroundColor: '#edfaf3',
         display: 'flex',
         alignItems: 'center',
@@ -967,7 +967,7 @@ const styles = {
     },
     heroCardTitle: {
         fontSize: '0.75rem',
-        color: '#4a6660',
+        color: '#475569',
         margin: 0,
         fontWeight: 600,
         textTransform: 'uppercase',
@@ -988,14 +988,14 @@ const styles = {
     card: {
         backgroundColor: '#ffffff',
         padding: '16px 18px',
-        borderRadius: '12px',
+        borderRadius: '10px',
         boxShadow: '0 1px 3px rgba(0,0,0,.07)',
         textAlign: 'center',
-        border: '1px solid #edf5f2',
+        border: '1px solid #e2e8f0',
     },
     cardTitle: {
         fontSize: '0.75rem',
-        color: '#4a6660',
+        color: '#475569',
         margin: '0 0 8px 0',
         fontWeight: 600,
         textTransform: 'uppercase',
@@ -1010,27 +1010,27 @@ const styles = {
     },
     tablesRow1: {
         display: 'grid',
-        gridTemplateColumns: '3fr 2fr',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '16px',
         marginBottom: '16px',
     },
     tablesRow2: {
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '16px',
         marginBottom: '16px',
     },
     tableCard: {
         backgroundColor: '#ffffff',
         padding: '20px 22px',
-        borderRadius: '14px',
+        borderRadius: '16px',
         boxShadow: '0 1px 3px rgba(0,0,0,.07)',
-        border: '1px solid #edf5f2',
+        border: '1px solid #e2e8f0',
     },
     tableTitle: {
         fontSize: '0.78rem',
         fontWeight: 700,
-        color: '#4a6660',
+        color: '#475569',
         marginBottom: '16px',
         marginTop: 0,
         textTransform: 'uppercase',
@@ -1039,7 +1039,7 @@ const styles = {
     noDataMessage: {
         textAlign: 'center',
         marginTop: '20px',
-        color: '#8aa8a0',
+        color: '#94a3b8',
         fontStyle: 'italic',
         fontSize: 13,
     },

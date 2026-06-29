@@ -8,10 +8,10 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const COLORES = {
   verde:    '#5dc87a',
-  verdeOsc: '#3da85f',
-  texto:    '#1a3a2a',
-  gris:     '#6b7280',
-  error:    '#dc2626',
+  verdeOsc: '#3ab87a',
+  texto:    '#1a2926',
+  gris:     '#94a3b8',
+  error:    '#e25252',
   pro:      '#3b82f6',
   proOsc:   '#2563eb',
   advanced: '#10b981',
@@ -190,10 +190,10 @@ export default function Registro() {
 }
 
 const s = {
-  page: { minHeight: '100vh', background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)', fontFamily: "'Segoe UI', sans-serif" },
-  header: { padding: '20px 40px', borderBottom: '1px solid #e5e7eb', background: '#fff' },
+  page: { minHeight: '100vh', background: '#f8fafc', fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" },
+  header: { padding: '20px 40px', borderBottom: '1px solid #e2e8f0', background: '#fff' },
   logo: { textDecoration: 'none' },
-  logoText: { fontSize: 24, fontWeight: 700, color: '#1a3a2a' },
+  logoText: { fontSize: 24, fontWeight: 700, color: '#1a2926' },
   container: { maxWidth: 560, margin: '0 auto', padding: '40px 20px 80px' },
   card: { background: '#fff', borderRadius: 16, padding: '36px 44px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' },
   planBadge: { border: '1.5px solid', borderRadius: 10, padding: '14px 18px', marginBottom: 28 },
@@ -204,11 +204,11 @@ const s = {
   campoWrap: { marginBottom: 16 },
   label: { display: 'block', fontSize: 13, fontWeight: 600, color: COLORES.texto, marginBottom: 5 },
   inputWrap: { position: 'relative' },
-  inputIcon: { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14 },
-  input: { width: '100%', padding: '11px 14px 11px 40px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 14, color: COLORES.texto, outline: 'none', boxSizing: 'border-box' },
+  inputIcon: { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 14 },
+  input: { width: '100%', padding: '11px 14px 11px 40px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: 14, color: COLORES.texto, outline: 'none', boxSizing: 'border-box' },
   inputError: { borderColor: COLORES.error },
   errorMsg: { fontSize: 12, color: COLORES.error, marginTop: 4, display: 'block' },
-  alertaError: { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', color: COLORES.error, fontSize: 14, marginBottom: 18 },
-  btnPrimario: { width: '100%', padding: '14px', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 10, transition: 'background 0.2s' },
+  alertaError: { background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 16px', color: '#991b1b', fontSize: 14, marginBottom: 18 },
+  btnPrimario: { width: '100%', padding: '14px', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 10, transition: 'background 0.2s' },
   loginLink: { textAlign: 'center', marginTop: 18, fontSize: 14, color: COLORES.gris },
 };

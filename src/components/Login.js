@@ -160,12 +160,12 @@ const styles = {
   container: {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
     justifyContent: 'center', minHeight: 'calc(100vh - 60px)',
-    backgroundColor: '#f2f7f5',
+    backgroundColor: '#f8fafc',
     fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
     padding: '20px', textAlign: 'center',
   },
   header: { fontSize: '1.8em', color: '#1a2926', marginBottom: '30px' },
-  cardTitle: { fontSize: 20, fontWeight: 800, color: '#1e3a8a', margin: '0 0 12px' },
+  cardTitle: { fontSize: 20, fontWeight: 800, color: '#1a2926', margin: '0 0 12px' },
   form: {
     display: 'flex', flexDirection: 'column', gap: '16px',
     width: '100%', maxWidth: '350px', padding: '32px',
@@ -174,7 +174,7 @@ const styles = {
   },
   input: {
     padding: '11px 14px', fontSize: '15px',
-    border: '1.5px solid #d8eae4', borderRadius: '10px',
+    border: '1.5px solid #e2e8f0', borderRadius: '10px',
     minHeight: '44px', boxSizing: 'border-box',
     fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
   },
@@ -186,7 +186,7 @@ const styles = {
     fontWeight: 600, boxShadow: '0 4px 14px rgba(93,200,122,.30)',
   },
   linkBtn: {
-    background: 'none', border: 'none', color: '#2563eb',
+    background: 'none', border: 'none', color: '#3b9ede',
     fontSize: 13, cursor: 'pointer', fontWeight: 500,
     padding: '4px 0', textDecoration: 'underline',
     fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",

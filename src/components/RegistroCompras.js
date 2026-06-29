@@ -40,9 +40,9 @@ const categoryColor = (cat) => {
         'Impuestos':       { bg: '#fef2f2', color: '#991b1b', border: '#fca5a5' },
         'Sueldos':         { bg: '#f5f3ff', color: '#5b21b6', border: '#c4b5fd' },
         'Stock / Compras': { bg: '#edfaf3', color: '#1a6a40', border: '#a8e6c5' },
-        'Otros':           { bg: '#f7faf9', color: '#4a6660', border: '#d8eae4' },
+        'Otros':           { bg: '#f8fafc', color: '#475569', border: '#e2e8f0' },
     };
-    return map[cat] || { bg: '#f7faf9', color: '#4a6660', border: '#d8eae4' };
+    return map[cat] || { bg: '#f8fafc', color: '#475569', border: '#e2e8f0' };
 };
 
 // Parse proveedor: detect category prefix from new format "Categoria \u2014 detalle"
@@ -403,8 +403,8 @@ const RegistroCompras = () => {
                             <div style={{ ...styles.formGroup, flex: 2 }} className="rc-form-group">
                                 <label style={styles.formLabel}>
                                     Detalle{newPurchaseCategory === 'Otros'
-                                        ? <span style={{ color: '#dc2626', fontWeight: 700, marginLeft: 4 }}>*</span>
-                                        : <span style={{ color: '#8aa8a0', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> (opcional)</span>
+                                        ? <span style={{ color: '#e25252', fontWeight: 700, marginLeft: 4 }}>*</span>
+                                        : <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> (opcional)</span>
                                     }
                                 </label>
                                 <input
@@ -523,7 +523,7 @@ const RegistroCompras = () => {
                                     {formatearMonto(totalPaginaActual)}
                                 </span>
                             </div>
-                            <span style={{ fontSize: 12, color: '#8aa8a0', marginLeft: 4, borderLeft: '1px solid #fcd34d', paddingLeft: 12 }}>
+                            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4, borderLeft: '1px solid #fcd34d', paddingLeft: 12 }}>
                                 {compras.length} egreso{compras.length !== 1 ? 's' : ''} en esta página
                                 {totalCount > compras.length && ` · ${totalCount} en total`}
                             </span>
@@ -571,7 +571,7 @@ const RegistroCompras = () => {
                                                         day: '2-digit', month: '2-digit', year: 'numeric'
                                                     })}
                                                 </td>
-                                                <td style={{ ...styles.td, fontWeight: 700, color: '#991b1b', whiteSpace: 'nowrap' }}>
+                                                <td style={{ ...styles.td, fontWeight: 700, color: '#e25252', whiteSpace: 'nowrap' }}>
                                                     {formatearMonto(compra.total)}
                                                 </td>
                                                 <td style={styles.td}>
@@ -591,7 +591,7 @@ const RegistroCompras = () => {
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td style={{ ...styles.td, color: '#4a6660', fontSize: 13 }}>
+                                                <td style={{ ...styles.td, color: '#475569', fontSize: 13 }}>
                                                     {compra.usuario?.username || '—'}
                                                 </td>
                                                 <td style={styles.td}>
@@ -613,7 +613,7 @@ const RegistroCompras = () => {
                     ) : (
                         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                             <div style={{ fontSize: 42, marginBottom: 12 }}>📭</div>
-                            <p style={{ color: '#8aa8a0', fontStyle: 'italic', margin: '0 0 14px' }}>
+                            <p style={{ color: '#94a3b8', fontStyle: 'italic', margin: '0 0 14px' }}>
                                 {hasActiveFilter
                                     ? 'No hay egresos que coincidan con el filtro aplicado.'
                                     : 'No hay egresos registrados para esta tienda.'}
@@ -642,7 +642,7 @@ const RegistroCompras = () => {
                             </button>
                             <span style={styles.pageInfo}>
                                 Página {currentPageNumber} de {totalPages}
-                                <span style={{ color: '#8aa8a0', marginLeft: 6 }}>· {totalCount} registros</span>
+                                <span style={{ color: '#94a3b8', marginLeft: 6 }}>· {totalCount} registros</span>
                             </span>
                             <button
                                 onClick={() => fetchCompras(nextPageUrl)}
@@ -667,7 +667,7 @@ const RegistroCompras = () => {
                                 <h3 style={{ margin: 0, color: '#1a2926', fontSize: '1.05rem', fontWeight: 700 }}>Editar egreso</h3>
                                 <button
                                     onClick={() => setEditingCompra(null)}
-                                    style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#8aa8a0', lineHeight: 1, padding: 4 }}
+                                    style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8', lineHeight: 1, padding: 4 }}
                                 >✕</button>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -703,7 +703,7 @@ const RegistroCompras = () => {
                                         className="rc-input"
                                         placeholder="Ej: Alquiler — mes de marzo"
                                     />
-                                    <p style={{ margin: '6px 0 0', fontSize: 11, color: '#8aa8a0' }}>
+                                    <p style={{ margin: '6px 0 0', fontSize: 11, color: '#94a3b8' }}>
                                         Formato sugerido: Categoría — Detalle (ej: Servicios — Luz)
                                     </p>
                                 </div>
@@ -748,34 +748,34 @@ const styles = {
         transition: 'all 0.18s ease',
     },
     newButtonCancel: {
-        background: '#d8eae4', color: '#4a6660', boxShadow: 'none',
+        background: '#e2e8f0', color: '#475569', boxShadow: 'none',
     },
-    loadingMessage: { padding: '20px', textAlign: 'center', color: '#4a6660', fontSize: '1.1em' },
+    loadingMessage: { padding: '20px', textAlign: 'center', color: '#475569', fontSize: '1.1em' },
     accessDeniedMessage: {
-        color: '#991b1b', marginBottom: '10px', padding: '20px',
+        color: '#e25252', marginBottom: '10px', padding: '20px',
         border: '1px solid #fca5a5', textAlign: 'center',
         borderRadius: '10px', backgroundColor: '#fef2f2', fontWeight: 'bold',
     },
-    noStoreSelectedMessage: { padding: '50px', textAlign: 'center', color: '#8aa8a0', fontSize: '1.2em' },
+    noStoreSelectedMessage: { padding: '50px', textAlign: 'center', color: '#94a3b8', fontSize: '1.2em' },
     errorMessage: {
-        color: '#991b1b', marginBottom: '20px', border: '1px solid #fca5a5',
+        color: '#e25252', marginBottom: '20px', border: '1px solid #fca5a5',
         padding: '15px', borderRadius: '10px', backgroundColor: '#fef2f2',
         textAlign: 'center', fontWeight: 'bold',
     },
     formCard: {
         backgroundColor: '#ffffff',
         padding: '20px 24px',
-        borderRadius: '14px',
+        borderRadius: '16px',
         boxShadow: '0 1px 3px rgba(0,0,0,.07)',
-        border: '1px solid #a8e6c5',
+        border: '1px solid #e2e8f0',
         marginBottom: '16px',
     },
     filtersCard: {
         backgroundColor: '#ffffff',
         padding: '18px 20px',
-        borderRadius: '12px',
+        borderRadius: '10px',
         boxShadow: '0 1px 3px rgba(0,0,0,.07)',
-        border: '1px solid #edf5f2',
+        border: '1px solid #e2e8f0',
         marginBottom: '16px',
         display: 'flex',
         flexDirection: 'column',
@@ -784,62 +784,62 @@ const styles = {
     summaryCard: {
         backgroundColor: '#fffbeb',
         border: '1px solid #fcd34d',
-        borderRadius: '12px',
+        borderRadius: '10px',
         padding: '14px 20px',
         marginBottom: '16px',
     },
     tableCard: {
         backgroundColor: '#ffffff',
         padding: '20px 24px',
-        borderRadius: '14px',
+        borderRadius: '16px',
         boxShadow: '0 1px 3px rgba(0,0,0,.07)',
-        border: '1px solid #edf5f2',
+        border: '1px solid #e2e8f0',
     },
     cardTitle: {
-        color: '#4a6660', fontSize: '0.78rem', fontWeight: 700,
+        color: '#475569', fontSize: '0.78rem', fontWeight: 700,
         textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 16px 0',
     },
     periodSection: { display: 'flex', flexDirection: 'column', gap: 6 },
     periodSectionTitle: {
-        fontWeight: 700, color: '#4a6660', fontSize: '0.78rem',
+        fontWeight: 700, color: '#475569', fontSize: '0.78rem',
         textTransform: 'uppercase', letterSpacing: '0.05em',
     },
     periodInputs: { display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' },
-    periodHint: { margin: '4px 0 0', fontSize: 12, color: '#8aa8a0' },
+    periodHint: { margin: '4px 0 0', fontSize: 12, color: '#94a3b8' },
     filtersRow2: { display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' },
     filterGroup: { display: 'flex', flexDirection: 'column', minWidth: 160 },
     filterLabel: {
-        marginBottom: 4, fontWeight: 600, color: '#4a6660',
+        marginBottom: 4, fontWeight: 600, color: '#475569',
         fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em',
     },
     filterInput: {
-        padding: '8px 12px', border: '1.5px solid #d8eae4', borderRadius: '8px',
-        fontSize: 13, color: '#1a2926', backgroundColor: '#f7faf9',
+        padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '10px',
+        fontSize: 13, color: '#1a2926', backgroundColor: '#f8fafc',
         fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
     },
     filterActions: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' },
     filterButton: {
         padding: '9px 18px',
         background: 'linear-gradient(135deg, #5dc87a 0%, #38a080 100%)',
-        color: 'white', border: 'none', borderRadius: '8px',
+        color: 'white', border: 'none', borderRadius: '10px',
         cursor: 'pointer', fontWeight: 700, fontSize: 13,
         fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
         transition: 'all 0.18s ease',
         boxShadow: '0 2px 8px rgba(93,200,122,0.25)',
     },
     filterButtonSecondary: { background: '#3b9ede', boxShadow: '0 2px 8px rgba(59,158,222,0.20)' },
-    filterButtonMuted: { background: '#d8eae4', color: '#4a6660', boxShadow: 'none' },
+    filterButtonMuted: { background: '#e2e8f0', color: '#475569', boxShadow: 'none' },
     validationError: { marginTop: 8, color: '#e25252', fontSize: 13, fontWeight: 600 },
     form: { display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' },
     formGroup: { flex: 1, minWidth: '180px', display: 'flex', flexDirection: 'column' },
     formLabel: {
-        marginBottom: 5, fontWeight: 600, color: '#4a6660',
+        marginBottom: 5, fontWeight: 600, color: '#475569',
         fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em',
     },
     input: {
         width: '100%', padding: '9px 12px',
-        border: '1.5px solid #d8eae4', borderRadius: '8px',
-        fontSize: 14, color: '#1a2926', backgroundColor: '#f7faf9',
+        border: '1.5px solid #e2e8f0', borderRadius: '10px',
+        fontSize: 14, color: '#1a2926', backgroundColor: '#f8fafc',
         fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
         boxSizing: 'border-box', outline: 'none',
         transition: 'border-color 0.15s',
@@ -848,7 +848,7 @@ const styles = {
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         padding: '10px 24px',
         background: 'linear-gradient(135deg, #5dc87a 0%, #38a080 100%)',
-        color: 'white', border: 'none', borderRadius: '8px',
+        color: 'white', border: 'none', borderRadius: '10px',
         cursor: 'pointer', fontWeight: 700, fontSize: 14,
         fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
         boxShadow: '0 4px 14px rgba(93,200,122,0.30)',
@@ -857,19 +857,19 @@ const styles = {
     },
     table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 },
     th: {
-        padding: '10px 14px', borderBottom: '2px solid #d8eae4',
-        backgroundColor: '#f7faf9', fontWeight: 600, fontSize: '0.75rem',
-        color: '#4a6660', textTransform: 'uppercase', letterSpacing: '0.04em',
+        padding: '10px 14px', borderBottom: '2px solid #e2e8f0',
+        backgroundColor: '#f1f5f9', fontWeight: 600, fontSize: '0.75rem',
+        color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em',
         whiteSpace: 'nowrap',
     },
     td: {
-        padding: '11px 14px', borderBottom: '1px solid #edf5f2',
+        padding: '11px 14px', borderBottom: '1px solid #e2e8f0',
         verticalAlign: 'middle', color: '#1a2926',
     },
     editButton: {
         display: 'inline-flex', alignItems: 'center',
-        padding: '6px 14px', borderRadius: '7px',
-        backgroundColor: '#eff6ff', color: '#1e4a8a',
+        padding: '6px 14px', borderRadius: '6px',
+        backgroundColor: '#eff6ff', color: '#1a2926',
         border: '1px solid #93c5fd',
         cursor: 'pointer', fontWeight: 600, fontSize: 12,
         fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
@@ -877,9 +877,9 @@ const styles = {
     },
     deleteButton: {
         display: 'inline-flex', alignItems: 'center',
-        padding: '6px 14px', borderRadius: '7px',
-        backgroundColor: 'rgba(226,82,82,0.08)', color: '#e25252',
-        border: '1px solid rgba(226,82,82,0.25)',
+        padding: '6px 14px', borderRadius: '6px',
+        backgroundColor: '#fef2f2', color: '#e25252',
+        border: '1px solid #fca5a5',
         cursor: 'pointer', fontWeight: 600, fontSize: 12,
         fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
         transition: 'all 0.15s ease', whiteSpace: 'nowrap',
@@ -887,18 +887,18 @@ const styles = {
     paginationContainer: {
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         marginTop: '20px', gap: '12px', paddingTop: '16px',
-        borderTop: '1px solid #edf5f2',
+        borderTop: '1px solid #e2e8f0',
     },
     paginationButton: {
         padding: '8px 18px',
         background: 'linear-gradient(135deg, #5dc87a 0%, #38a080 100%)',
-        color: 'white', border: 'none', borderRadius: '8px',
+        color: 'white', border: 'none', borderRadius: '10px',
         fontWeight: 600, fontSize: 13,
         fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
         boxShadow: '0 2px 8px rgba(93,200,122,0.20)',
         transition: 'all 0.18s ease',
     },
-    pageInfo: { fontSize: 13, fontWeight: 600, color: '#4a6660' },
+    pageInfo: { fontSize: 13, fontWeight: 600, color: '#475569' },
     modalOverlay: {
         position: 'fixed', inset: 0,
         backgroundColor: 'rgba(15,25,22,0.55)',
@@ -908,13 +908,14 @@ const styles = {
     },
     modalCard: {
         backgroundColor: '#ffffff', borderRadius: '16px',
-        border: '1px solid #d8eae4', boxShadow: '0 10px 30px rgba(0,0,0,.10)',
+        border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,.10)',
         width: '100%', maxWidth: 460, padding: '24px 28px',
+        maxHeight: '90vh', overflowY: 'auto',
     },
 };
 
 const rcStyles = `
-    .rc-tr:hover td { background-color: #f7faf9; }
+    .rc-tr:hover td { background-color: #f1f5f9; }
     .rc-input:focus { border-color: #5dc87a !important; background-color: #fff !important; box-shadow: 0 0 0 3px rgba(93,200,122,0.12) !important; }
     .rc-submit-btn:hover { filter: brightness(1.06); }
     @media (max-width: 768px) {

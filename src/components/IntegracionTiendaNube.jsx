@@ -196,7 +196,7 @@ export default function IntegracionTiendaNube() {
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#10b981',
-            cancelButtonColor: '#6b7280',
+            cancelButtonColor: '#475569',
             confirmButtonText: 'Sí, publicar',
             cancelButtonText: 'Cancelar',
         });
@@ -222,8 +222,8 @@ export default function IntegracionTiendaNube() {
             text: 'Se traerán todos los productos de tu tienda online. Los que coincidan por SKU o nombre se vincularán automáticamente; los que no, se crearán como nuevos en Total Stock.',
             icon: 'info',
             showCancelButton: true,
-            confirmButtonColor: '#2563eb',
-            cancelButtonColor: '#6b7280',
+            confirmButtonColor: '#3b9ede',
+            cancelButtonColor: '#475569',
             confirmButtonText: 'Sí, importar',
             cancelButtonText: 'Cancelar',
         });
@@ -253,7 +253,7 @@ export default function IntegracionTiendaNube() {
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#10b981',
-            cancelButtonColor: '#6b7280',
+            cancelButtonColor: '#475569',
             confirmButtonText: 'Sí, actualizar',
             cancelButtonText: 'Cancelar',
         });
@@ -304,7 +304,7 @@ export default function IntegracionTiendaNube() {
                          onError={e => { e.target.style.display = 'none'; }} />
                     <div>
                         <div style={{ fontWeight: 700, fontSize: 17 }}>Tienda Nube</div>
-                        <div style={{ fontSize: 13, color: '#6b7280' }}>
+                        <div style={{ fontSize: 13, color: '#475569' }}>
                             Procesá ventas de tu tienda online automáticamente
                         </div>
                     </div>
@@ -494,7 +494,7 @@ export default function IntegracionTiendaNube() {
 // ── Estilos ───────────────────────────────────────────────────────────────────
 const s = {
     root:      { padding: '4px 0', maxWidth: 680 },
-    centered:  { textAlign: 'center', padding: 40, color: '#6b7280' },
+    centered:  { textAlign: 'center', padding: 40, color: '#475569' },
     header:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                  flexWrap: 'wrap', gap: 10, marginBottom: 20 },
     badgeOk:   { background: '#d1fae5', color: '#065f46', padding: '4px 12px',
@@ -502,25 +502,25 @@ const s = {
     badgeNo:   { background: '#fee2e2', color: '#991b1b', padding: '4px 12px',
                  borderRadius: 999, fontSize: 13, fontWeight: 600 },
     alertOk:   { background: '#d1fae5', color: '#065f46', padding: '10px 14px',
-                 borderRadius: 8, fontSize: 13, fontWeight: 500, marginBottom: 12 },
+                 borderRadius: 10, fontSize: 13, fontWeight: 500, marginBottom: 12 },
     alertErr:  { background: '#fee2e2', color: '#991b1b', padding: '10px 14px',
-                 borderRadius: 8, fontSize: 13, fontWeight: 500, marginBottom: 12 },
+                 borderRadius: 10, fontSize: 13, fontWeight: 500, marginBottom: 12 },
     card:      { background: '#fff', borderRadius: 10, padding: '18px 20px',
                  boxShadow: '0 1px 4px rgba(0,0,0,.08)', marginBottom: 14 },
     cardTitle: { fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 6 },
-    cardDesc:  { fontSize: 13, color: '#6b7280', marginBottom: 14, lineHeight: 1.5 },
-    lbl:       { fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' },
+    cardDesc:  { fontSize: 13, color: '#475569', marginBottom: 14, lineHeight: 1.5 },
+    lbl:       { fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' },
     inp:       { width: '100%', padding: '8px 11px', border: '1px solid #d1d5db',
-                 borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginBottom: 12 },
-    btnPrimary:  { padding: '9px 20px', background: '#2563eb', color: '#fff',
-                   border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
-    btnSecondary:{ padding: '9px 20px', background: '#f3f4f6', color: '#374151',
-                   border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
-    btnDanger:   { padding: '8px 18px', background: '#dc2626', color: '#fff',
-                   border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 },
+                 borderRadius: 10, fontSize: 14, boxSizing: 'border-box', marginBottom: 12 },
+    btnPrimary:  { padding: '9px 20px', background: '#3b9ede', color: '#fff',
+                   border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
+    btnSecondary:{ padding: '9px 20px', background: '#f8fafc', color: '#475569',
+                   border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
+    btnDanger:   { padding: '8px 18px', background: '#e25252', color: '#fff',
+                   border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13 },
     infoRow:   { display: 'flex', gap: 10, marginBottom: 6, alignItems: 'center' },
-    infoLabel: { fontSize: 13, color: '#6b7280', minWidth: 120 },
+    infoLabel: { fontSize: 13, color: '#475569', minWidth: 120 },
     infoVal:   { fontSize: 13, color: '#111827', fontWeight: 600 },
-    link:      { color: '#2563eb' },
-    divider:   { borderTop: '1px solid #f3f4f6', margin: '18px 0' },
+    link:      { color: '#3b9ede' },
+    divider:   { borderTop: '1px solid #f8fafc', margin: '18px 0' },
 };

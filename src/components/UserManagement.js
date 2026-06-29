@@ -209,7 +209,7 @@ const fetchUsers = useCallback(async () => {
     // Redirige si no está autenticado o no es superusuario
     if (!isAuthenticated || !user.is_superuser) {
         // No renderizamos nada aquí, el useEffect ya manejará la navegación
-        return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Acceso denegado. No tienes permisos de administrador.</div>;
+        return <div style={{ textAlign: 'center', marginTop: '50px', color: '#e25252' }}>Acceso denegado. No tienes permisos de administrador.</div>;
     }
 
     return (
@@ -299,7 +299,7 @@ const fetchUsers = useCallback(async () => {
                         </div>
 
                         <button type="submit" style={styles.submitButton}>Actualizar Usuario</button>
-                        <button type="button" onClick={() => setEditingUser(null)} style={{ ...styles.button, backgroundColor: '#6c757d', marginLeft: '10px' }}>Cancelar</button>
+                        <button type="button" onClick={() => setEditingUser(null)} style={{ ...styles.button, backgroundColor: '#94a3b8', marginLeft: '10px' }}>Cancelar</button>
                     </form>
                 </div>
             )}
@@ -308,6 +308,7 @@ const fetchUsers = useCallback(async () => {
             {loadingUsers ? (
                 <p style={{ textAlign: 'center' }}>Cargando usuarios...</p>
             ) : (
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={styles.table}>
                     <thead>
                         <tr>
@@ -332,15 +333,16 @@ const fetchUsers = useCallback(async () => {
                                 <td style={styles.td}>{u.is_staff ? 'Sí' : 'No'}</td>
                                 <td style={styles.td}>{u.is_superuser ? 'Sí' : 'No'}</td>
                                 <td style={styles.td}>
-                                    <button onClick={() => handleEditUserClick(u)} style={{ ...styles.actionButton, backgroundColor: '#ffc107' }}>Editar</button>
+                                    <button onClick={() => handleEditUserClick(u)} style={{ ...styles.actionButton, backgroundColor: '#f59e0b' }}>Editar</button>
                                     {u.id !== user.id && (
-                                        <button onClick={() => handleDeleteUser(u.id)} style={{ ...styles.actionButton, backgroundColor: '#dc3545', marginLeft: '5px' }}>Eliminar</button>
+                                        <button onClick={() => handleDeleteUser(u.id)} style={{ ...styles.actionButton, backgroundColor: '#e25252', marginLeft: '5px' }}>Eliminar</button>
                                     )}
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
+                </div>
             )}
         </div>
     );
@@ -351,58 +353,60 @@ const styles = {
         padding: '20px',
         maxWidth: '900px',
         margin: '20px auto',
-        backgroundColor: '#fff',
-        borderRadius: '8px',
+        backgroundColor: '#ffffff',
+        borderRadius: '10px',
         boxShadow: '0 0 10px rgba(0,0,0,0.1)',
     },
     header: {
         textAlign: 'center',
-        color: '#333',
+        color: '#1a2926',
         marginBottom: '20px',
     },
     subHeader: {
         marginTop: '30px',
         marginBottom: '15px',
-        color: '#555',
+        color: '#475569',
     },
     error: {
-        color: 'red',
-        backgroundColor: '#ffe3e6',
+        color: '#e25252',
+        backgroundColor: '#fef2f2',
         padding: '10px',
-        borderRadius: '5px',
+        borderRadius: '6px',
+        border: '1px solid #fca5a5',
         marginBottom: '15px',
         textAlign: 'center',
     },
     button: {
-        backgroundColor: '#28a745',
+        backgroundColor: '#5dc87a',
         color: 'white',
         padding: '10px 15px',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '16px',
         marginBottom: '20px',
     },
     formContainer: {
-        backgroundColor: '#f8f9fa',
+        backgroundColor: '#f8fafc',
         padding: '20px',
-        borderRadius: '8px',
+        borderRadius: '10px',
         marginBottom: '20px',
-        border: '1px solid #e9ecef',
+        border: '1px solid #e2e8f0',
     },
     form: {
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '15px',
     },
     input: {
-        width: 'calc(100% - 20px)', // Ajuste para padding
+        width: 'calc(100% - 20px)',
         padding: '10px',
-        border: '1px solid #ced4da',
-        borderRadius: '4px',
+        border: '1px solid #e2e8f0',
+        borderRadius: '6px',
+        color: '#1a2926',
     },
     checkboxGroup: {
-        gridColumn: '1 / -1', // Ocupa ambas columnas
+        gridColumn: '1 / -1',
         display: 'flex',
         flexDirection: 'column',
         gap: '10px',
@@ -413,18 +417,19 @@ const styles = {
         display: 'flex',
         alignItems: 'center',
         cursor: 'pointer',
+        color: '#475569',
     },
     checkboxInput: {
         marginRight: '8px',
-        transform: 'scale(1.2)', // Hace el checkbox un poco más grande
+        transform: 'scale(1.2)',
     },
     submitButton: {
-        gridColumn: '1 / -1', // Ocupa ambas columnas
-        backgroundColor: '#007bff',
+        gridColumn: '1 / -1',
+        backgroundColor: '#3b9ede',
         color: 'white',
         padding: '10px 15px',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '16px',
         marginTop: '10px',
@@ -435,20 +440,23 @@ const styles = {
         marginTop: '20px',
     },
     th: {
-        backgroundColor: '#e9ecef',
+        backgroundColor: '#f1f5f9',
         padding: '12px',
         textAlign: 'left',
-        borderBottom: '1px solid #dee2e6',
+        borderBottom: '1px solid #e2e8f0',
+        color: '#475569',
+        fontWeight: '600',
     },
     td: {
         padding: '12px',
-        borderBottom: '1px solid #dee2e6',
+        borderBottom: '1px solid #e2e8f0',
+        color: '#1a2926',
     },
     actionButton: {
         color: 'white',
         padding: '8px 12px',
         border: 'none',
-        borderRadius: '5px',
+        borderRadius: '6px',
         cursor: 'pointer',
         fontSize: '14px',
     },

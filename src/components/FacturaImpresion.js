@@ -189,7 +189,7 @@ const FacturaImpresion = () => {
             if (facturaRef.current) {
                 facturaRef.current.innerHTML = `
                     <div style="text-align: center; padding: 20px;">
-                        <h1 style="color: #dc3545;">Error al generar la factura.</h1>
+                        <h1 style="color: #e25252;">Error al generar la factura.</h1>
                         <p>No se encontraron datos de factura válidos.</p>
                     </div>
                 `;
