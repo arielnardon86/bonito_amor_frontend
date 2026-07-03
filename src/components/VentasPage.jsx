@@ -215,25 +215,29 @@ const VentasPage = () => {
         };
     }, []);
 
-    const handleAnularVenta = async (ventaId) => {
-        console.log('Botón Anular Venta presionado para ID:', ventaId);
+    const handleAnularVenta = async (venta) => {
         if (!token) {
             showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
             return;
         }
 
-        setConfirmMessage('¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.');
+        const esCambio = venta.es_diferencia_pendiente || venta.es_nota_credito;
+        const mensaje = esCambio
+            ? '¿Estás seguro de que quieres ANULAR este cambio/devolución? Se revertirá el stock y la operación quedará cancelada. Esta acción es irreversible.'
+            : '¿Estás seguro de que quieres ANULAR esta venta completa? Esta acción es irreversible y afectará el stock.';
+
+        setConfirmMessage(mensaje);
         setConfirmAction(() => async () => {
             setShowConfirmModal(false);
             try {
-                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${ventaId}/anular/`, {}, {
+                await axios.patch(`${BASE_API_ENDPOINT}/api/ventas/${venta.id}/anular/`, {}, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                showCustomAlert('Venta anulada con éxito!', 'success');
+                showCustomAlert(esCambio ? 'Cambio/devolución anulado con éxito.' : 'Venta anulada con éxito!', 'success');
                 fetchVentas();
             } catch (err) {
-                showCustomAlert('Error al anular la venta: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
-                console.error('Error anulando venta:', err.response || err);
+                showCustomAlert('Error al anular: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
+                console.error('Error anulando:', err.response || err);
             }
         });
         setShowConfirmModal(true);
@@ -703,9 +707,9 @@ const VentasPage = () => {
                                                 {!venta.anulada && !isStaffOnly && (
                                                     <button
                                                         className="icon-btn"
-                                                        onClick={() => handleAnularVenta(venta.id)}
+                                                        onClick={() => handleAnularVenta(venta)}
                                                         style={{ color: 'white', backgroundColor: '#e25252' }}
-                                                        data-tooltip="Anular venta"
+                                                        data-tooltip={venta.es_diferencia_pendiente || venta.es_nota_credito ? 'Anular Cambio/Devolución' : 'Anular venta'}
                                                     >
                                                         <FontAwesomeIcon icon={faCircleXmark} />
                                                     </button>

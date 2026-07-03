@@ -566,13 +566,16 @@ const CambioDevolucion = () => {
                 };
 
                 if (redondearMonto) {
-                    const subtotalCrudo = activeCart.total;
-                    const ajusteTotalEfectivo = montoDiferencia - subtotalCrudo;
+                    // Express the adjustment relative to the raw difference (new items total
+                    // minus devolution credit) so the backend can apply it correctly:
+                    // total = rawDiff ± adjustment  (rawDiff = activeCart.total - montoDevolucion)
+                    const rawDiff = activeCart.total - montoDevolucion;
+                    const ajusteSobreDiferencia = montoDiferencia - rawDiff;
                     datosAjusteParaBackend = {
                         descuento_porcentaje: 0,
-                        descuento_monto: ajusteTotalEfectivo < 0 ? Math.abs(ajusteTotalEfectivo) : 0,
+                        descuento_monto: ajusteSobreDiferencia < 0 ? Math.abs(ajusteSobreDiferencia) : 0,
                         recargo_porcentaje: 0,
-                        recargo_monto: ajusteTotalEfectivo > 0 ? ajusteTotalEfectivo : 0,
+                        recargo_monto: ajusteSobreDiferencia > 0 ? ajusteSobreDiferencia : 0,
                     };
                 }
 
