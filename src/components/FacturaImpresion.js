@@ -145,13 +145,13 @@ const FacturaImpresion = () => {
             if (arcaUrl) {
                 try {
                     const qrDataUrl = await QRCode.toDataURL(arcaUrl, {
-                        width: 150,
+                        width: 120,
                         margin: 1,
                         color: { dark: '#000000', light: '#ffffff' },
                     });
                     qrImgTag = `
-                        <div style="text-align:center; margin-top:4mm;">
-                            <img src="${qrDataUrl}" alt="QR ARCA" style="width:28mm; height:28mm; display:block; margin:0 auto 1mm;" />
+                        <div style="text-align:center; margin-top:2mm;">
+                            <img src="${qrDataUrl}" alt="QR ARCA" style="width:22mm; height:22mm; display:block; margin:0 auto 1mm;" />
                             <p style="font-size:2mm; color:#000; margin:0; -webkit-font-smoothing:none;">Verificá en <strong>afip.gob.ar/fe/qr</strong></p>
                         </div>
                     `;
@@ -231,7 +231,7 @@ const FacturaImpresion = () => {
                         <p style="font-size: 4mm; font-weight: bold; color: #000; margin: 2mm 0; text-align: right; -webkit-font-smoothing: none; border-top: 1px solid #000; padding-top: 2mm;"><strong>TOTAL: ${formatearMonto(totalFinal)}</strong></p>
                     </div>
 
-                    <div class="footer" style="text-align: center; margin-top: 5mm; padding-top: 3mm; border-top: 1px solid #000;">
+                    <div class="footer" style="text-align: center; margin-top: 3mm; padding-top: 2mm; border-top: 1px solid #000;">
                         <p style="font-size: 2.5mm; color: #000; -webkit-font-smoothing: none;"><i>¡Gracias por su compra!</i></p>
                         ${qrImgTag}
                     </div>
@@ -305,11 +305,11 @@ const FacturaImpresion = () => {
             <div ref={facturaRef} id="factura-content"></div>
 
             <style>{`
-                @page { margin: 0; }
+                @page { size: 80mm auto; margin: 0; }
                 @media print {
                     body * { visibility: hidden; }
                     #factura-content, #factura-content * { visibility: visible; }
-                    #factura-content { position: absolute; left: 0; top: 0; width: 100%; }
+                    #factura-content { position: absolute; left: 0; top: 0; width: 80mm; }
                     button { display: none !important; }
                 }
             `}</style>
