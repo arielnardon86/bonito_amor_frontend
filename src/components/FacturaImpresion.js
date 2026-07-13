@@ -305,6 +305,7 @@ const FacturaImpresion = () => {
             <div ref={facturaRef} id="factura-content"></div>
 
             <style>{`
+                @page { margin: 0; }
                 @media print {
                     body * { visibility: hidden; }
                     #factura-content, #factura-content * { visibility: visible; }
