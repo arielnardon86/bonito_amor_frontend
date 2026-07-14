@@ -40,6 +40,10 @@ const CambioDevolucion = () => {
     const ventaInicial = location.state?.venta || null;
     
     const [ventaOriginal, setVentaOriginal] = useState(ventaInicial);
+    // Tienda donde realmente se procesa el cambio/devolución: debe ser la tienda de la venta
+    // original (el backend valida el producto nuevo y descuenta stock contra esa tienda),
+    // no la tienda activa del usuario, que puede diferir si es supervisor con varias tiendas autorizadas.
+    const tiendaOperativaSlug = ventaOriginal?.tienda_nombre || selectedStoreSlug;
     const [loadingVenta, setLoadingVenta] = useState(false);
     const [busquedaVentaId, setBusquedaVentaId] = useState('');
     const [error, setError] = useState(null);
@@ -114,15 +118,15 @@ const CambioDevolucion = () => {
 
     // Cargar info de tienda (para verificar si tiene facturación configurada)
     useEffect(() => {
-        if (!token || !selectedStoreSlug) return;
+        if (!token || !tiendaOperativaSlug) return;
         axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
             headers: { 'Authorization': `Bearer ${token}` }
         }).then(r => {
             const tiendas = Array.isArray(r.data) ? r.data : (r.data.results || [r.data]);
-            const found = tiendas.find(t => t.nombre?.trim().toLowerCase() === selectedStoreSlug?.trim().toLowerCase());
+            const found = tiendas.find(t => t.nombre?.trim().toLowerCase() === tiendaOperativaSlug?.trim().toLowerCase());
             if (found) setTiendaInfo(found);
         }).catch(() => {});
-    }, [token, selectedStoreSlug]);
+    }, [token, tiendaOperativaSlug]);
 
     // Cargar métodos de pago y aranceles
     const fetchMetodosPago = useCallback(async () => {
@@ -138,28 +142,28 @@ const CambioDevolucion = () => {
     }, [token]);
 
     const fetchAranceles = useCallback(async () => {
-        if (!token || !selectedStoreSlug) return;
+        if (!token || !tiendaOperativaSlug) return;
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/aranceles-tienda/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
-                params: { tienda_slug: selectedStoreSlug }
+                params: { tienda_slug: tiendaOperativaSlug }
             });
             setArancelesTienda(response.data.results || response.data || []);
         } catch (err) {
             console.error('Error al cargar aranceles:', err);
         }
-    }, [token, selectedStoreSlug]);
+    }, [token, tiendaOperativaSlug]);
 
-    // Cargar productos disponibles
+    // Cargar productos disponibles (siempre de la tienda de la venta original, no de la tienda activa)
     const fetchProductos = useCallback(async (page = 1, searchQuery = '') => {
-        if (!token || !selectedStoreSlug) return;
+        if (!token || !tiendaOperativaSlug) return;
         setLoadingProducts(true);
         setError(null);
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: {
-                    tienda_slug: selectedStoreSlug,
+                    tienda_slug: tiendaOperativaSlug,
                     search: searchQuery,
                     page: page,
                 },
@@ -171,15 +175,15 @@ const CambioDevolucion = () => {
         } finally {
             setLoadingProducts(false);
         }
-    }, [token, selectedStoreSlug]);
+    }, [token, tiendaOperativaSlug]);
 
     useEffect(() => {
-        if (selectedStoreSlug && token) {
+        if (tiendaOperativaSlug && token) {
             fetchMetodosPago();
             fetchAranceles();
             fetchProductos(1, filterTerm);
         }
-    }, [selectedStoreSlug, token, fetchMetodosPago, fetchAranceles, fetchProductos, filterTerm]);
+    }, [tiendaOperativaSlug, token, fetchMetodosPago, fetchAranceles, fetchProductos, filterTerm]);
 
     // Manejar lectura de código de barras para buscar venta
     useEffect(() => {
@@ -234,14 +238,14 @@ const CambioDevolucion = () => {
 
     // Buscar producto por código de barras
     const handleBuscarProducto = useCallback(async () => {
-        if (!busquedaProducto || !selectedStoreSlug) return;
-        
+        if (!busquedaProducto || !tiendaOperativaSlug) return;
+
         try {
             let response;
             try {
                 response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
                     headers: { 'Authorization': `Bearer ${token}` },
-                    params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
+                    params: { barcode: busquedaProducto, tienda_slug: tiendaOperativaSlug }
                 });
             } catch (error) {
                 if (error.response && error.response.status === 404) {
@@ -260,7 +264,7 @@ const CambioDevolucion = () => {
             setProductoSeleccionado(null);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [busquedaProducto, selectedStoreSlug, token]);
+    }, [busquedaProducto, tiendaOperativaSlug, token]);
 
     // Agregar producto al carrito
     const handleAddProductoEnVenta = useCallback((product, quantity = 1) => {
@@ -583,7 +587,7 @@ const CambioDevolucion = () => {
                 // Si el descuento cubre todo (montoAPagar=0), registrar con método 'Descuento'
                 const metodoPagoVenta = montoAPagar > 0 ? metodoPagoSeleccionado : 'Descuento';
                 const ventaData = {
-                    tienda_slug: selectedStoreSlug,
+                    tienda_slug: tiendaOperativaSlug,
                     metodo_pago: metodoPagoVenta,
                     ...datosAjusteParaBackend,
                     arancel_aplicado_id: finalArancelId,
@@ -612,7 +616,7 @@ const CambioDevolucion = () => {
                     
                     const ventaParaRecibo = {
                         ...ventaResponse.data,
-                        tienda_nombre: selectedStoreSlug,
+                        tienda_nombre: tiendaOperativaSlug,
                         descuento_porcentaje: datosAjusteParaBackend.descuento_porcentaje,
                         descuento_monto: datosAjusteParaBackend.descuento_monto,
                         recargo_porcentaje: datosAjusteParaBackend.recargo_porcentaje,
@@ -729,7 +733,7 @@ const CambioDevolucion = () => {
                         );
                         const ventaNotaCredito = {
                             ...ventaNotaCreditoResponse.data,
-                            tienda_nombre: selectedStoreSlug,
+                            tienda_nombre: tiendaOperativaSlug,
                             usuario_nombre: user?.first_name || user?.username || 'Usuario Desconocido'
                         };
                         navigate('/recibo', { state: { venta: ventaNotaCredito, fromCambioDevolucion: true } });
