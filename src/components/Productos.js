@@ -47,6 +47,7 @@ const Productos = () => {
         costo: '',
         stock: '',
         codigo_barras: '',
+        iva_porcentaje: '',
     });
     const [tieneVariantes, setTieneVariantes] = useState(false);
     const [variantesNuevas, setVariantesNuevas] = useState([
@@ -171,6 +172,10 @@ const Productos = () => {
                     return;
                 }
 
+                // IVA es una propiedad impositiva del producto, no varía por talle/variante:
+                // se carga una sola vez en el formulario y se aplica al padre y a todas las variantes.
+                const ivaParaCrear = newProduct.iva_porcentaje === '' ? null : newProduct.iva_porcentaje;
+
                 // Crear producto padre (contenedor) luego variantes
                 const padreData = {
                     nombre: newProduct.nombre,
@@ -179,6 +184,7 @@ const Productos = () => {
                     stock: 0,
                     codigo_barras: null,
                     talle: null,
+                    iva_porcentaje: ivaParaCrear,
                     tienda_slug: selectedStoreSlug,
                 };
                 const { data: padre } = await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, padreData, {
@@ -194,6 +200,7 @@ const Productos = () => {
                         stock: v.stock || 0,
                         codigo_barras: v.codigo_barras || generarCodigoDeBarrasEAN13(),
                         talle: v.talle || null,
+                        iva_porcentaje: ivaParaCrear,
                         producto_padre: padre.id,
                         tienda_slug: selectedStoreSlug,
                     };
@@ -204,6 +211,7 @@ const Productos = () => {
             } else {
                 const productToCreate = {
                     ...newProduct,
+                    iva_porcentaje: newProduct.iva_porcentaje === '' ? null : newProduct.iva_porcentaje,
                     codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
                     tienda_slug: selectedStoreSlug,
                     talle: null,
@@ -213,7 +221,7 @@ const Productos = () => {
                 });
             }
 
-            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '' });
+            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', iva_porcentaje: '' });
             setTieneVariantes(false);
             setVariantesNuevas([{ talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }]);
             setBarcodeNombreSugerido('');
@@ -472,6 +480,18 @@ const Productos = () => {
                         />
                     </div>
                     <div style={styles.inputGroup}>
+                        <label style={styles.label}>IVA % (Opcional)</label>
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={newProduct.iva_porcentaje}
+                            onChange={(e) => setNewProduct({ ...newProduct, iva_porcentaje: e.target.value })}
+                            style={styles.input}
+                            placeholder="Ej: 21"
+                        />
+                    </div>
+                    <div style={styles.inputGroup}>
                         <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Stock</label>
                         <input
                             type="number"
@@ -634,6 +654,7 @@ const Productos = () => {
                                         {mostrarTalle && <th style={styles.th}>Talle</th>}
                                         <th style={styles.th}>Precio</th>
                                         <th style={styles.th}>Costo</th>
+                                        <th style={styles.th}>IVA</th>
                                         <th style={styles.th}>Margen</th>
                                         <th style={styles.th}>Stock actual</th>
                                         <th style={styles.th}>Últ. cambio stock</th>
@@ -685,6 +706,11 @@ const Productos = () => {
                                             {mostrarTalle && <td style={styles.td}>{producto.talle || (tieneVars ? '—' : '-')}</td>}
                                             <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.precio)}</td>
                                             <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.costo || 0)}</td>
+                                            <td style={styles.td}>
+                                                {!tieneVars && producto.iva_porcentaje !== null && producto.iva_porcentaje !== undefined
+                                                    ? <>{parseFloat(producto.iva_porcentaje)}<span style={{ color: '#94a3b8', fontSize: '0.75em' }}>%</span></>
+                                                    : <span style={{ color: '#94a3b8' }}>—</span>}
+                                            </td>
                                             <td style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
                                                 {tieneVars ? '—' : margen !== null ? `${margen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                             </td>
@@ -770,6 +796,7 @@ const Productos = () => {
                                                     </td>
                                                     {mostrarTalle && <td style={styles.td}>{v.talle || '-'}</td>}
                                                     <td style={styles.td}>{formatearMonto(v.precio)}</td>
+                                                    <td style={styles.td}>—</td>
                                                     <td style={styles.td}>—</td>
                                                     <td style={{ ...styles.td, fontWeight: 700, color: vMargenColor }}>
                                                         {vMargen !== null ? `${vMargen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
