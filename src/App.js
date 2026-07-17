@@ -11,10 +11,13 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { SalesProvider } from './components/SalesContext'; 
 import EtiquetasImpresion from './components/EtiquetasImpresion';
 import ReciboImpresion from './components/ReciboImpresion';
+import ReciboCobroCuentaCorriente from './components/ReciboCobroCuentaCorriente';
 import FacturaImpresion from './components/FacturaImpresion';
 import TicketCambioImpresion from './components/TicketCambioImpresion';
 import CambioDevolucion from './components/CambioDevolucion';
 import PanelAdministracionTienda from './components/PanelAdministracionTienda';
+import Clientes from './components/Clientes';
+import ClienteDetalle from './components/ClienteDetalle';
 
 import MetricasVentas from './components/MetricasVentas';
 import ComprasStock from './components/ComprasStock';
@@ -49,6 +52,7 @@ import {
   faLock,
   faLockOpen,
   faEnvelope,
+  faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Soporte de notificaciones push (gesto de usuario requerido en móvil)
@@ -211,6 +215,15 @@ const Navbar = () => {
                 <Link to="/ventas" className={location.pathname === '/ventas' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faListAlt} className="nav-icon" />
                   <span>Listado de Ventas</span>
+                </Link>
+              </li>
+            )}
+
+            {user && (user.is_staff || user.is_superuser || user.is_supervisor) && (
+              <li onClick={() => setIsOpen(false)}>
+                <Link to="/clientes" className={location.pathname === '/clientes' ? 'active' : ''}>
+                  <FontAwesomeIcon icon={faUsers} className="nav-icon" />
+                  <span>Clientes</span>
                 </Link>
               </li>
             )}
@@ -982,7 +995,18 @@ const AppContent = () => {
                   <VentasPage />
                 </ProtectedRoute>
               } />
+              <Route path="/clientes" element={
+                <ProtectedRoute staffOnly={true} supervisorAllowed={true}>
+                  <Clientes />
+                </ProtectedRoute>
+              } />
+              <Route path="/clientes/:clienteId" element={
+                <ProtectedRoute staffOnly={true} supervisorAllowed={true}>
+                  <ClienteDetalle />
+                </ProtectedRoute>
+              } />
               <Route path="/recibo" element={<ReciboImpresion />} />
+              <Route path="/recibo-cobro" element={<ReciboCobroCuentaCorriente />} />
               <Route path="/factura" element={<FacturaImpresion />} />
               <Route path="/ticket-cambio" element={<TicketCambioImpresion />} />
               <Route path="/cambio-devolucion" element={

@@ -48,10 +48,16 @@ const PuntoVenta = () => {
     const [metodosPago, setMetodosPago] = useState([]);
     const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
     
-    const [arancelesTienda, setArancelesTienda] = useState([]); 
+    const [arancelesTienda, setArancelesTienda] = useState([]);
     const [arancelSeleccionadoId, setArancelSeleccionadoId] = useState('');
-    const [arancelesML, setArancelesML] = useState([]); 
-    
+    const [arancelesML, setArancelesML] = useState([]);
+
+    // Cuenta Corriente: cliente obligatorio, buscable por CUIT/CUIL
+    const [busquedaClienteCC, setBusquedaClienteCC] = useState('');
+    const [clientesEncontradosCC, setClientesEncontradosCC] = useState([]);
+    const [clienteSeleccionadoCC, setClienteSeleccionadoCC] = useState(null);
+    const [buscandoClienteCC, setBuscandoClienteCC] = useState(false);
+
     // ESTADO ORIGINAL (NO SE TOCA, SOLO PARA CÓDIGO DE BARRAS)
     const [busquedaProducto, setBusquedaProducto] = useState('');
     
@@ -393,6 +399,36 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug, user]);
 
+    // Cuenta Corriente: búsqueda de cliente por CUIT/CUIL, acotada a la tienda activa
+    // (misma tienda que se resolverá para la venta, nunca al conjunto de tiendas autorizadas).
+    const buscarClienteCC = useCallback(async () => {
+        if (!token || !selectedStoreSlug || !busquedaClienteCC.trim()) {
+            setClientesEncontradosCC([]);
+            return;
+        }
+        setBuscandoClienteCC(true);
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/clientes/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug, search: busquedaClienteCC.trim() },
+            });
+            const resultados = response.data.results || response.data || [];
+            // El CUIT/CUIL es único por cliente: si hay un solo resultado, se selecciona
+            // directamente sin pedirle al cajero que lo confirme con un clic más.
+            if (resultados.length === 1) {
+                setClienteSeleccionadoCC(resultados[0]);
+                setClientesEncontradosCC([]);
+            } else {
+                setClientesEncontradosCC(resultados);
+            }
+        } catch (err) {
+            console.error('Error al buscar cliente:', err.response?.data || err.message);
+            setClientesEncontradosCC([]);
+        } finally {
+            setBuscandoClienteCC(false);
+        }
+    }, [token, selectedStoreSlug, busquedaClienteCC]);
+
     // Fetch de Aranceles Mercado Libre (por producto: arancel % + costo envío)
     const fetchArancelesML = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
@@ -667,7 +703,8 @@ const PuntoVenta = () => {
     const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
     const isMercadoLibre = metodoPagoSeleccionado === 'Mercado Libre';
     const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero && !isMercadoLibre; // ML usa aranceles por producto, no Plan/Arancel
-    
+    const isCuentaCorriente = metodoPagoSeleccionado === 'Cuenta Corriente';
+
     // Filtrar los aranceles disponibles para el método de pago seleccionado
     // Usar comparación flexible (trim y case-insensitive) para evitar problemas de formato
     const arancelesDisponibles = arancelesTienda.filter(a => {
@@ -828,7 +865,12 @@ const PuntoVenta = () => {
             Swal.fire('Error', 'Por favor, selecciona el Plan / Arancel.', 'error');
             return;
         }
-        
+
+        if (!isModoCombinado && isCuentaCorriente && !clienteSeleccionadoCC) {
+            Swal.fire('Error', 'Por favor, selecciona un Cliente para vender a Cuenta Corriente.', 'error');
+            return;
+        }
+
         const isDiscountApplied = parseFloat(descuentoMonto) > 0 || parseFloat(descuentoPorcentaje) > 0;
         const isSurchargeApplied = parseFloat(recargoMonto) > 0 || parseFloat(recargoPorcentaje) > 0;
 
@@ -997,6 +1039,12 @@ const PuntoVenta = () => {
                     if (arancelCombinadoParaBackend !== undefined) {
                         ventaData.arancel_combinado = arancelCombinadoParaBackend;
                     }
+                    if (!isModoCombinado && clienteSeleccionadoCC) {
+                        // Se envía el cliente independientemente del método de pago: además de ser
+                        // obligatorio para Cuenta Corriente, permite guardar el consumo en su
+                        // historial aunque haya pagado con otro método.
+                        ventaData.cliente_id = clienteSeleccionadoCC.id;
+                    }
 
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
@@ -1028,6 +1076,9 @@ const PuntoVenta = () => {
                     finalizeCart(activeCartId);
                     setMetodoPagoSeleccionado(metodosPago.find(m => m.nombre === 'Efectivo')?.nombre || (metodosPago.length > 0 ? metodosPago[0].nombre : ''));
                     setArancelSeleccionadoId('');
+                    setClienteSeleccionadoCC(null);
+                    setBusquedaClienteCC('');
+                    setClientesEncontradosCC([]);
                     setDescuentoPorcentaje('');
                     setDescuentoMonto('');
                     setRecargoPorcentaje('');
@@ -1917,6 +1968,59 @@ const PuntoVenta = () => {
                                 </div>
                             );
                         })()}
+                        {!formasPago.length && (
+                            <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
+                                <label style={styles.paymentMethodLabel}>Cliente {isCuentaCorriente ? '(obligatorio)' : '(opcional)'}</label>
+                                {clienteSeleccionadoCC ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 10, padding: '8px 12px' }}>
+                                        <span style={{ flex: 1 }}>
+                                            <strong>{clienteSeleccionadoCC.nombre_razon_social}</strong> — {clienteSeleccionadoCC.cuit_cuil}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setClienteSeleccionadoCC(null); setBusquedaClienteCC(''); setClientesEncontradosCC([]); }}
+                                            style={{ background: 'none', border: 'none', color: '#e25252', cursor: 'pointer', textDecoration: 'underline', fontSize: 13 }}
+                                        >
+                                            Cambiar
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <div style={{ display: 'flex', gap: 10 }}>
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar cliente por CUIT/CUIL o nombre..."
+                                                value={busquedaClienteCC}
+                                                onChange={(e) => setBusquedaClienteCC(e.target.value)}
+                                                onKeyPress={(e) => { if (e.key === 'Enter') buscarClienteCC(); }}
+                                                style={{ ...styles.inputField, marginBottom: 0, flex: 1 }}
+                                            />
+                                            <button type="button" onClick={buscarClienteCC} disabled={buscandoClienteCC} style={styles.primaryButton}>
+                                                {buscandoClienteCC ? 'Buscando...' : 'Buscar'}
+                                            </button>
+                                        </div>
+                                        {clientesEncontradosCC.length > 0 && (
+                                            <div style={{ marginTop: 8, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+                                                {clientesEncontradosCC.map(cliente => (
+                                                    <div
+                                                        key={cliente.id}
+                                                        onClick={() => { setClienteSeleccionadoCC(cliente); setClientesEncontradosCC([]); }}
+                                                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                                                    >
+                                                        <strong>{cliente.nombre_razon_social}</strong> — {cliente.cuit_cuil}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {!clienteSeleccionadoCC && isCuentaCorriente && (
+                                            <div style={styles.arancelWarning}>
+                                                Se requiere seleccionar un cliente para vender a Cuenta Corriente.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div style={styles.ajustesContainer} className="ajustesContainer">
                             <div style={styles.ajusteGrupo} className="ajusteGrupo">
                                 <label htmlFor="recargoMonto" style={styles.ajusteLabel}>Recargo $</label>
