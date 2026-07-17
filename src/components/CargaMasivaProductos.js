@@ -1,5 +1,5 @@
 // CargaMasivaProductos.js
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
@@ -64,6 +64,88 @@ const CargaMasivaProductos = () => {
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [confirmando, setConfirmando] = useState(false);
     const [resultadoFinal, setResultadoFinal] = useState(null);
+
+    // Gestión de Rubros y % IVA (ver/editar/crear, independiente de una carga puntual)
+    const [rubros, setRubros] = useState([]);
+    const [loadingRubros, setLoadingRubros] = useState(true);
+    const [rubroEditando, setRubroEditando] = useState(null);
+    const [valorEditadoIva, setValorEditadoIva] = useState('');
+    const [guardandoEdicionRubro, setGuardandoEdicionRubro] = useState(false);
+    const [mostrarNuevoRubro, setMostrarNuevoRubro] = useState(false);
+    const [nuevoRubroNombre, setNuevoRubroNombre] = useState('');
+    const [nuevoRubroIva, setNuevoRubroIva] = useState('');
+    const [guardandoNuevoRubro, setGuardandoNuevoRubro] = useState(false);
+
+    const fetchRubros = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        setLoadingRubros(true);
+        try {
+            const resp = await axios.get(`${BASE_API_ENDPOINT}/api/rubros/`, {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug },
+            });
+            setRubros(resp.data.results || resp.data || []);
+        } catch (err) {
+            // silencioso: no bloquea la pantalla de carga si falla
+        } finally {
+            setLoadingRubros(false);
+        }
+    }, [token, selectedStoreSlug]);
+
+    useEffect(() => { fetchRubros(); }, [fetchRubros]);
+
+    const empezarEdicionRubro = (rubro) => {
+        setRubroEditando(rubro.id);
+        setValorEditadoIva(String(rubro.iva_porcentaje));
+    };
+
+    const guardarEdicionRubro = async (rubroId) => {
+        const iva = parseFloat(valorEditadoIva);
+        if (isNaN(iva) || iva < 0) {
+            Swal.fire('Error', 'Ingresá un % de IVA válido.', 'error');
+            return;
+        }
+        setGuardandoEdicionRubro(true);
+        try {
+            await axios.patch(`${BASE_API_ENDPOINT}/api/rubros/${rubroId}/`, { iva_porcentaje: iva }, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setRubroEditando(null);
+            fetchRubros();
+        } catch (err) {
+            Swal.fire('Error', 'No se pudo actualizar el IVA del rubro.', 'error');
+        } finally {
+            setGuardandoEdicionRubro(false);
+        }
+    };
+
+    const crearRubro = async () => {
+        const iva = parseFloat(nuevoRubroIva);
+        if (!nuevoRubroNombre.trim()) {
+            Swal.fire('Error', 'Ingresá un nombre de rubro.', 'error');
+            return;
+        }
+        if (isNaN(iva) || iva < 0) {
+            Swal.fire('Error', 'Ingresá un % de IVA válido.', 'error');
+            return;
+        }
+        setGuardandoNuevoRubro(true);
+        try {
+            await axios.post(`${BASE_API_ENDPOINT}/api/rubros/`, {
+                tienda_slug: selectedStoreSlug, nombre: nuevoRubroNombre.trim(), iva_porcentaje: iva,
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            setMostrarNuevoRubro(false);
+            setNuevoRubroNombre('');
+            setNuevoRubroIva('');
+            fetchRubros();
+        } catch (err) {
+            const data = err.response?.data;
+            const msg = data ? Object.values(data).flat().join(' — ') : 'No se pudo crear el rubro.';
+            Swal.fire('Error', msg, 'error');
+        } finally {
+            setGuardandoNuevoRubro(false);
+        }
+    };
 
     const resetear = () => {
         setStep('upload');
@@ -188,6 +270,7 @@ const CargaMasivaProductos = () => {
                     tienda_slug: selectedStoreSlug, nombre: r.nombre, iva_porcentaje: parseFloat(r.iva),
                 }, { headers: { Authorization: `Bearer ${token}` } });
             }
+            fetchRubros();
             await ejecutarPreview(filasParsed);
         } catch (err) {
             Swal.fire('Error', 'No se pudo guardar el IVA de los rubros.', 'error');
@@ -247,6 +330,88 @@ const CargaMasivaProductos = () => {
                         </label>
                     </div>
                     {error && <div style={styles.errorMessage}>{error}</div>}
+                </div>
+            )}
+
+            {step === 'upload' && (
+                <div style={styles.section}>
+                    <h2 style={styles.sectionHeader}>Rubros y % IVA</h2>
+                    <p style={{ color: '#94a3b8', fontSize: 14, marginTop: 0 }}>
+                        Acá se ven y se editan los rubros ya guardados para esta tienda. Se usan para calcular
+                        el precio de venta cuando el archivo no trae un IVA explícito por fila.
+                    </p>
+                    {loadingRubros ? (
+                        <p style={styles.noDataMessage}>Cargando...</p>
+                    ) : rubros.length === 0 ? (
+                        <p style={styles.noDataMessage}>Todavía no hay rubros guardados.</p>
+                    ) : (
+                        <div style={styles.tableResponsive}>
+                            <table style={styles.table}>
+                                <thead>
+                                    <tr style={styles.tableHeaderRow}>
+                                        <th style={styles.th}>Rubro</th>
+                                        <th style={styles.th}>IVA %</th>
+                                        <th style={styles.th}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rubros.map((r) => (
+                                        <tr key={r.id} style={styles.tableRow}>
+                                            <td style={styles.td}>{r.nombre}</td>
+                                            <td style={styles.td}>
+                                                {rubroEditando === r.id ? (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <input
+                                                            type="number" min="0" step="0.01" autoFocus
+                                                            value={valorEditadoIva}
+                                                            onChange={(e) => setValorEditadoIva(e.target.value)}
+                                                            onKeyDown={(e) => { if (e.key === 'Enter') guardarEdicionRubro(r.id); if (e.key === 'Escape') setRubroEditando(null); }}
+                                                            style={{ ...styles.inputField, width: 90 }}
+                                                        />
+                                                        <button onClick={() => guardarEdicionRubro(r.id)} disabled={guardandoEdicionRubro} style={styles.iconButtonGreen} title="Guardar">✓</button>
+                                                        <button onClick={() => setRubroEditando(null)} style={styles.iconButtonGray} title="Cancelar">✕</button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <span>{r.iva_porcentaje}%</span>
+                                                        <button onClick={() => empezarEdicionRubro(r)} style={styles.pencilButton} title="Editar IVA">✏️</button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td style={styles.td}></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {mostrarNuevoRubro ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+                            <input
+                                type="text" placeholder="Nombre del rubro"
+                                value={nuevoRubroNombre}
+                                onChange={(e) => setNuevoRubroNombre(e.target.value)}
+                                style={{ ...styles.inputField, width: 200 }}
+                            />
+                            <input
+                                type="number" min="0" step="0.01" placeholder="% IVA"
+                                value={nuevoRubroIva}
+                                onChange={(e) => setNuevoRubroIva(e.target.value)}
+                                style={{ ...styles.inputField, width: 100 }}
+                            />
+                            <button onClick={crearRubro} disabled={guardandoNuevoRubro} style={styles.primaryButton}>
+                                {guardandoNuevoRubro ? 'Guardando...' : 'Guardar rubro'}
+                            </button>
+                            <button onClick={() => { setMostrarNuevoRubro(false); setNuevoRubroNombre(''); setNuevoRubroIva(''); }} style={styles.modalCancelButton}>
+                                Cancelar
+                            </button>
+                        </div>
+                    ) : (
+                        <button onClick={() => setMostrarNuevoRubro(true)} style={{ ...styles.secondaryButton, marginTop: 16 }}>
+                            + Nuevo rubro
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -361,6 +526,9 @@ const styles = {
     container: { padding: 0, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", width: '100%' },
     pageTitle: { color: '#1a2926', fontSize: '1.5rem', fontWeight: 600, margin: 0 },
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f1f5f9', borderRadius: '10px' },
+    pencilButton: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#94a3b8', padding: 2, lineHeight: 1 },
+    iconButtonGreen: { background: '#5dc87a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', width: 28, height: 28, fontWeight: 700 },
+    iconButtonGray: { background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: 6, cursor: 'pointer', width: 28, height: 28, fontWeight: 700 },
     sectionHeader: { color: '#475569', fontSize: '1.1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginTop: 0, marginBottom: '0.5rem' },
     helpList: { fontSize: 14, color: '#475569', lineHeight: 1.6, paddingLeft: 20 },
     errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px', marginTop: 15 },
