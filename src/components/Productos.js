@@ -393,18 +393,28 @@ const Productos = () => {
     
     return (
         <div style={styles.container}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <h1 style={{ ...styles.title, marginBottom: 0 }}>Productos</h1>
-                <HelpButton
-                    titulo="Gestión de Productos"
-                    bullets={[
-                        'Buscá productos por nombre o código de barras',
-                        'Creá nuevos productos: el código de barras se genera automáticamente si no lo tenés',
-                        'Seleccioná uno o varios productos y hacé clic en "Imprimir Etiquetas" para generar etiquetas con código de barras',
-                        'Los Supervisores pueden agregar productos pero no editarlos ni eliminarlos',
-                        'Solo los Administradores pueden editar precio, stock o eliminar productos',
-                    ]}
-                />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <h1 style={{ ...styles.title, marginBottom: 0 }}>Productos</h1>
+                    <HelpButton
+                        titulo="Gestión de Productos"
+                        bullets={[
+                            'Buscá productos por nombre o código de barras',
+                            'Creá nuevos productos: el código de barras se genera automáticamente si no lo tenés',
+                            'Seleccioná uno o varios productos y hacé clic en "Imprimir Etiquetas" para generar etiquetas con código de barras',
+                            'Los Supervisores pueden agregar productos pero no editarlos ni eliminarlos',
+                            'Solo los Administradores pueden editar precio, stock o eliminar productos',
+                            'Importá productos en lote desde Excel/CSV con "Importar productos"',
+                        ]}
+                    />
+                </div>
+                <button
+                    type="button"
+                    onClick={() => navigate('/productos/carga-masiva')}
+                    style={{ padding: '8px 16px', backgroundColor: '#3b9ede', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
+                >
+                    Importar productos
+                </button>
             </div>
             
             <div style={styles.section}>

@@ -17,6 +17,7 @@ import TicketCambioImpresion from './components/TicketCambioImpresion';
 import CambioDevolucion from './components/CambioDevolucion';
 import PanelAdministracionTienda from './components/PanelAdministracionTienda';
 import Clientes from './components/Clientes';
+import CargaMasivaProductos from './components/CargaMasivaProductos';
 import ClienteDetalle from './components/ClienteDetalle';
 
 import MetricasVentas from './components/MetricasVentas';
@@ -1022,6 +1023,11 @@ const AppContent = () => {
               <Route path="/productos" element={
                 <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
                   <Productos />
+                </ProtectedRoute>
+              } />
+              <Route path="/productos/carga-masiva" element={
+                <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
+                  <CargaMasivaProductos />
                 </ProtectedRoute>
               } />
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />
