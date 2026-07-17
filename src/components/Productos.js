@@ -653,7 +653,8 @@ const Productos = () => {
                                         <th style={styles.th}>Nombre</th>
                                         {mostrarTalle && <th style={styles.th}>Talle</th>}
                                         <th style={styles.th}>Precio</th>
-                                        <th style={styles.th}>Costo</th>
+                                        <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>sin IVA</span></th>
+                                        <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>con IVA</span></th>
                                         <th style={styles.th}>IVA</th>
                                         <th style={styles.th}>Margen</th>
                                         <th style={styles.th}>Stock actual</th>
@@ -670,7 +671,10 @@ const Productos = () => {
                                     ).map(producto => {
                                         const precio = parseFloat(producto.precio) || 0;
                                         const costo = parseFloat(producto.costo) || 0;
-                                        const margen = precio > 0 && costo > 0 ? ((precio - costo) / precio * 100) : null;
+                                        const ivaPct = parseFloat(producto.iva_porcentaje) || 0;
+                                        const costoConIva = costo * (1 + ivaPct / 100);
+                                        // El margen se calcula contra el costo con IVA (si no hay IVA cargado, es igual al costo sin IVA).
+                                        const margen = precio > 0 && costoConIva > 0 ? ((precio - costoConIva) / precio * 100) : null;
                                         const margenColor = margen === null ? '#94a3b8' : margen >= 30 ? '#1a6a40' : margen >= 15 ? '#d97706' : '#e25252';
                                         const tieneVars = producto.variantes && producto.variantes.length > 0;
                                         const expandido = !!expandedVariants[producto.id];
@@ -706,6 +710,7 @@ const Productos = () => {
                                             {mostrarTalle && <td style={styles.td}>{producto.talle || (tieneVars ? '—' : '-')}</td>}
                                             <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.precio)}</td>
                                             <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.costo || 0)}</td>
+                                            <td style={styles.td}>{tieneVars ? '—' : formatearMonto(costoConIva)}</td>
                                             <td style={styles.td}>
                                                 {!tieneVars && producto.iva_porcentaje !== null && producto.iva_porcentaje !== undefined
                                                     ? <>{parseFloat(producto.iva_porcentaje)}<span style={{ color: '#94a3b8', fontSize: '0.75em' }}>%</span></>
@@ -796,6 +801,7 @@ const Productos = () => {
                                                     </td>
                                                     {mostrarTalle && <td style={styles.td}>{v.talle || '-'}</td>}
                                                     <td style={styles.td}>{formatearMonto(v.precio)}</td>
+                                                    <td style={styles.td}>—</td>
                                                     <td style={styles.td}>—</td>
                                                     <td style={styles.td}>—</td>
                                                     <td style={{ ...styles.td, fontWeight: 700, color: vMargenColor }}>
