@@ -90,6 +90,26 @@ const Presupuesto = () => {
         return () => clearTimeout(timeout);
     }, [filterTerm, fetchProductos]);
 
+    // Escaneo de código de barras: mismo patrón que Punto de Venta. El lector actúa como
+    // teclado y dispara "Enter" al terminar; si el código no matchea un producto, el término
+    // ya quedó aplicado como filtro por nombre gracias al efecto de arriba.
+    const buscarProductoPorCodigo = useCallback(async () => {
+        if (!filterTerm.trim() || !token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { barcode: filterTerm.trim(), tienda_slug: selectedStoreSlug },
+            });
+            agregarProducto(response.data, 1);
+            setFilterTerm('');
+        } catch (err) {
+            if (err.response?.status !== 404) {
+                console.error('Error al buscar producto por código de barras:', err);
+            }
+            // 404: no es un código de barras válido, se deja el término como filtro por nombre.
+        }
+    }, [filterTerm, token, selectedStoreSlug]);
+
     const fetchMetodosPago = useCallback(async () => {
         if (!token) return;
         try {
@@ -564,11 +584,15 @@ const Presupuesto = () => {
                         <div style={styles.inputGroup}>
                             <input
                                 type="text"
-                                placeholder="Buscar por nombre..."
+                                placeholder="Código de barras o nombre..."
                                 value={filterTerm}
                                 onChange={(e) => setFilterTerm(e.target.value)}
+                                onKeyPress={(e) => { if (e.key === 'Enter') buscarProductoPorCodigo(); }}
                                 style={styles.inputField}
                             />
+                            <button type="button" onClick={buscarProductoPorCodigo} style={styles.primaryButton}>
+                                Buscar
+                            </button>
                         </div>
                         {loadingProductos ? (
                             <p style={styles.noDataMessage}>Cargando productos...</p>
