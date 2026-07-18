@@ -47,14 +47,24 @@ const Presupuesto = () => {
     const [metodosPago, setMetodosPago] = useState([]);
     const [metodoPagoSugerido, setMetodoPagoSugerido] = useState('');
     const [notas, setNotas] = useState('');
+    const [fechaVigencia, setFechaVigencia] = useState('');
 
     const [generando, setGenerando] = useState(false);
     const [presupuestoActivo, setPresupuestoActivo] = useState(null);
 
-    // Búsqueda de presupuesto existente
-    const [busquedaId, setBusquedaId] = useState('');
-    const [buscandoPresupuesto, setBuscandoPresupuesto] = useState(false);
-    const [errorBusqueda, setErrorBusqueda] = useState(null);
+    // Edición de un presupuesto ya generado (solo posible mientras está Pendiente)
+    const [editandoId, setEditandoId] = useState(null);
+
+    // Listado + filtros de presupuestos existentes
+    const [listaPresupuestos, setListaPresupuestos] = useState([]);
+    const [loadingLista, setLoadingLista] = useState(false);
+    const [errorLista, setErrorLista] = useState(null);
+    const [filtroId, setFiltroId] = useState('');
+    const [filtroCliente, setFiltroCliente] = useState('');
+    const [filtroFechaDesde, setFiltroFechaDesde] = useState('');
+    const [filtroFechaHasta, setFiltroFechaHasta] = useState('');
+    const [listaNextUrl, setListaNextUrl] = useState(null);
+    const [listaPrevUrl, setListaPrevUrl] = useState(null);
 
     const [enviandoEmail, setEnviandoEmail] = useState(false);
 
@@ -161,7 +171,7 @@ const Presupuesto = () => {
         return subtotal;
     }, [calcularSubtotal, descuentoMonto, descuentoPorcentaje, recargoMonto, recargoPorcentaje]);
 
-    // ── Generar presupuesto ──────────────────────────────────────────────────
+    // ── Generar / editar presupuesto ─────────────────────────────────────────
     const limpiarFormularioNuevo = () => {
         setItems([]);
         setClienteSeleccionado(null);
@@ -171,6 +181,8 @@ const Presupuesto = () => {
         setRecargoPorcentaje(''); setRecargoMonto('');
         setMetodoPagoSugerido('');
         setNotas('');
+        setFechaVigencia('');
+        setEditandoId(null);
     };
 
     const cargarPresupuestoCompleto = async (id) => {
@@ -178,6 +190,26 @@ const Presupuesto = () => {
             headers: { 'Authorization': `Bearer ${token}` },
         });
         setPresupuestoActivo(response.data);
+    };
+
+    const iniciarEdicion = (p) => {
+        setPresupuestoActivo(null);
+        setModo('nuevo');
+        setEditandoId(p.id);
+        setItems((p.detalles || []).filter(d => d.producto).map(d => ({
+            product: { ...d.producto, precio: d.precio_unitario },
+            quantity: d.cantidad,
+        })));
+        setClienteSeleccionado({ id: p.cliente, nombre_razon_social: p.cliente_nombre, cuit_cuil: p.cliente_cuit });
+        setBusquedaCliente('');
+        setClientesEncontrados([]);
+        setDescuentoPorcentaje(parseFloat(p.descuento_porcentaje) || '');
+        setDescuentoMonto(parseFloat(p.descuento_monto) || '');
+        setRecargoPorcentaje(parseFloat(p.recargo_porcentaje) || '');
+        setRecargoMonto(parseFloat(p.recargo_monto) || '');
+        setMetodoPagoSugerido(p.metodo_pago_sugerido || '');
+        setNotas(p.notas || '');
+        setFechaVigencia(p.fecha_vigencia || '');
     };
 
     const generarPresupuesto = async () => {
@@ -205,13 +237,24 @@ const Presupuesto = () => {
                 recargo_monto: parseFloat(recargoMonto) || 0,
                 metodo_pago_sugerido: metodoPagoSugerido || null,
                 notas: notas || null,
+                fecha_vigencia: fechaVigencia || null,
             };
-            const response = await axios.post(`${BASE_API_ENDPOINT}/api/presupuestos/`, payload, {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-            await cargarPresupuestoCompleto(response.data.id);
+
+            let idResultado;
+            if (editandoId) {
+                const response = await axios.put(`${BASE_API_ENDPOINT}/api/presupuestos/${editandoId}/`, payload, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                idResultado = response.data.id;
+            } else {
+                const response = await axios.post(`${BASE_API_ENDPOINT}/api/presupuestos/`, payload, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                idResultado = response.data.id;
+            }
+            await cargarPresupuestoCompleto(idResultado);
             limpiarFormularioNuevo();
-            Swal.fire('¡Listo!', 'Presupuesto generado correctamente.', 'success');
+            Swal.fire('¡Listo!', editandoId ? 'Presupuesto actualizado correctamente.' : 'Presupuesto generado correctamente.', 'success');
         } catch (err) {
             const data = err.response?.data;
             const msg = data ? Object.entries(data).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' — ') : err.message;
@@ -221,30 +264,69 @@ const Presupuesto = () => {
         }
     };
 
-    // ── Buscar presupuesto existente ─────────────────────────────────────────
-    const buscarPresupuesto = async () => {
-        if (!busquedaId.trim() || !token || !selectedStoreSlug) return;
-        setBuscandoPresupuesto(true);
-        setErrorBusqueda(null);
+    // ── Listado + filtros de presupuestos existentes ────────────────────────
+    const fetchListaPresupuestos = useCallback(async (pageUrl = null) => {
+        if (!token || !selectedStoreSlug) return;
+        setLoadingLista(true);
+        setErrorLista(null);
         try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/presupuestos/`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { tienda_slug: selectedStoreSlug, id: busquedaId.trim() },
-            });
-            const resultados = response.data.results || response.data || [];
-            if (resultados.length === 1) {
-                setPresupuestoActivo(resultados[0]);
-                setBusquedaId('');
-            } else if (resultados.length > 1) {
-                setErrorBusqueda('Hay más de un presupuesto que coincide. Ingresá el ID completo.');
-            } else {
-                setErrorBusqueda('Presupuesto no encontrado.');
-            }
+            const response = pageUrl
+                ? await axios.get(pageUrl, { headers: { 'Authorization': `Bearer ${token}` } })
+                : await axios.get(`${BASE_API_ENDPOINT}/api/presupuestos/`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    params: {
+                        tienda_slug: selectedStoreSlug,
+                        id: filtroId.trim() || undefined,
+                        cliente: filtroCliente.trim() || undefined,
+                        fecha_desde: filtroFechaDesde || undefined,
+                        fecha_hasta: filtroFechaHasta || undefined,
+                    },
+                });
+            setListaPresupuestos(response.data.results || response.data || []);
+            setListaNextUrl(response.data.next || null);
+            setListaPrevUrl(response.data.previous || null);
         } catch (err) {
-            setErrorBusqueda('Error al buscar presupuesto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setErrorLista('Error al cargar presupuestos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
         } finally {
-            setBuscandoPresupuesto(false);
+            setLoadingLista(false);
         }
+    }, [token, selectedStoreSlug, filtroId, filtroCliente, filtroFechaDesde, filtroFechaHasta]);
+
+    useEffect(() => {
+        if (modo === 'buscar' && !presupuestoActivo) {
+            fetchListaPresupuestos();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [modo]);
+
+    const limpiarFiltros = () => {
+        setFiltroId(''); setFiltroCliente(''); setFiltroFechaDesde(''); setFiltroFechaHasta('');
+        setTimeout(() => fetchListaPresupuestos(), 0);
+    };
+
+    const eliminarPresupuesto = (p) => {
+        Swal.fire({
+            title: '¿Eliminar presupuesto?',
+            text: `Se eliminará el presupuesto Nº ${p.id}. Esta acción no se puede deshacer.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#e25252',
+        }).then(async (result) => {
+            if (!result.isConfirmed) return;
+            try {
+                await axios.delete(`${BASE_API_ENDPOINT}/api/presupuestos/${p.id}/`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                setPresupuestoActivo(null);
+                fetchListaPresupuestos();
+                Swal.fire('Eliminado', 'El presupuesto fue eliminado.', 'success');
+            } catch (err) {
+                const msg = err.response?.data?.length ? err.response.data.join(' ') : (err.response?.data || err.message);
+                Swal.fire('Error', typeof msg === 'string' ? msg : 'No se pudo eliminar el presupuesto.', 'error');
+            }
+        });
     };
 
     // ── Acciones sobre un presupuesto activo ────────────────────────────────
@@ -308,7 +390,7 @@ const Presupuesto = () => {
 
             <div style={styles.tabRow}>
                 <button
-                    onClick={() => { setModo('nuevo'); setPresupuestoActivo(null); }}
+                    onClick={() => { setModo('nuevo'); setPresupuestoActivo(null); limpiarFormularioNuevo(); }}
                     style={modo === 'nuevo' ? styles.tabButtonActive : styles.tabButton}
                 >
                     Nuevo presupuesto
@@ -323,26 +405,113 @@ const Presupuesto = () => {
 
             {modo === 'buscar' && !presupuestoActivo && (
                 <div style={styles.section}>
-                    <h2 style={styles.sectionHeader}>Buscar por ID</h2>
-                    <div style={styles.inputGroup}>
+                    <h2 style={styles.sectionHeader}>Presupuestos</h2>
+                    <div style={styles.filtrosGrid}>
                         <input
                             type="text"
-                            placeholder="ID de presupuesto (completo o parcial)..."
-                            value={busquedaId}
-                            onChange={(e) => setBusquedaId(e.target.value)}
-                            onKeyPress={(e) => { if (e.key === 'Enter') buscarPresupuesto(); }}
+                            placeholder="ID (completo o parcial)..."
+                            value={filtroId}
+                            onChange={(e) => setFiltroId(e.target.value)}
+                            onKeyPress={(e) => { if (e.key === 'Enter') fetchListaPresupuestos(); }}
                             style={styles.inputField}
                         />
-                        <button onClick={buscarPresupuesto} disabled={buscandoPresupuesto} style={styles.primaryButton}>
-                            {buscandoPresupuesto ? 'Buscando...' : 'Buscar'}
-                        </button>
+                        <input
+                            type="text"
+                            placeholder="Cliente (nombre o CUIT/CUIL)..."
+                            value={filtroCliente}
+                            onChange={(e) => setFiltroCliente(e.target.value)}
+                            onKeyPress={(e) => { if (e.key === 'Enter') fetchListaPresupuestos(); }}
+                            style={styles.inputField}
+                        />
+                        <label style={styles.filtroFechaLabel}>
+                            Desde
+                            <input
+                                type="date"
+                                value={filtroFechaDesde}
+                                onChange={(e) => setFiltroFechaDesde(e.target.value)}
+                                style={styles.inputField}
+                            />
+                        </label>
+                        <label style={styles.filtroFechaLabel}>
+                            Hasta
+                            <input
+                                type="date"
+                                value={filtroFechaHasta}
+                                onChange={(e) => setFiltroFechaHasta(e.target.value)}
+                                style={styles.inputField}
+                            />
+                        </label>
                     </div>
-                    {errorBusqueda && <div style={styles.errorMessage}>{errorBusqueda}</div>}
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 15 }}>
+                        <button onClick={() => fetchListaPresupuestos()} disabled={loadingLista} style={styles.primaryButton}>
+                            {loadingLista ? 'Buscando...' : 'Buscar'}
+                        </button>
+                        <button onClick={limpiarFiltros} style={styles.secondaryButton}>Limpiar filtros</button>
+                    </div>
+
+                    {errorLista && <div style={styles.errorMessage}>{errorLista}</div>}
+
+                    {loadingLista ? (
+                        <p style={styles.noDataMessage}>Cargando presupuestos...</p>
+                    ) : listaPresupuestos.length === 0 ? (
+                        <p style={styles.noDataMessage}>No hay presupuestos para mostrar.</p>
+                    ) : (
+                        <div style={styles.tableResponsive}>
+                            <table style={styles.table}>
+                                <thead>
+                                    <tr style={styles.tableHeaderRow}>
+                                        <th style={styles.th}>ID</th>
+                                        <th style={styles.th}>Cliente</th>
+                                        <th style={styles.th}>Fecha</th>
+                                        <th style={styles.th}>Estado</th>
+                                        <th style={styles.th}>Total</th>
+                                        <th style={styles.th}>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {listaPresupuestos.map(p => (
+                                        <tr key={p.id} style={styles.tableRow}>
+                                            <td style={styles.td} title={p.id}>{String(p.id).slice(0, 8)}</td>
+                                            <td style={styles.td}>{p.cliente_nombre}</td>
+                                            <td style={styles.td}>{new Date(p.fecha_creacion).toLocaleDateString('es-AR')}</td>
+                                            <td style={styles.td}>{p.estado_display}</td>
+                                            <td style={styles.td}>{formatearMonto(p.total)}</td>
+                                            <td style={styles.td}>
+                                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                                    <button onClick={() => setPresupuestoActivo(p)} style={styles.smallButtonGreen}>Ver</button>
+                                                    {p.estado === 'PENDIENTE' && (
+                                                        <button onClick={() => iniciarEdicion(p)} style={styles.smallButtonBlue}>Editar</button>
+                                                    )}
+                                                    {p.estado !== 'CONVERTIDO' && (
+                                                        <button onClick={() => eliminarPresupuesto(p)} style={styles.smallButtonRed}>Eliminar</button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {(listaNextUrl || listaPrevUrl) && (
+                        <div style={{ display: 'flex', gap: 10, marginTop: 15, justifyContent: 'center' }}>
+                            <button onClick={() => fetchListaPresupuestos(listaPrevUrl)} disabled={!listaPrevUrl} style={styles.secondaryButton}>Anterior</button>
+                            <button onClick={() => fetchListaPresupuestos(listaNextUrl)} disabled={!listaNextUrl} style={styles.secondaryButton}>Siguiente</button>
+                        </div>
+                    )}
                 </div>
             )}
 
             {modo === 'nuevo' && !presupuestoActivo && (
                 <>
+                    {editandoId && (
+                        <div style={styles.editandoBanner}>
+                            <span>Editando presupuesto Nº {editandoId}</span>
+                            <button onClick={limpiarFormularioNuevo} style={styles.linkButtonDanger}>Cancelar edición</button>
+                        </div>
+                    )}
+
                     <div style={styles.section}>
                         <h2 style={styles.sectionHeader}>Cliente (obligatorio)</h2>
                         {clienteSeleccionado ? (
@@ -522,6 +691,16 @@ const Presupuesto = () => {
                             </div>
 
                             <div style={styles.paymentMethodSelectContainer}>
+                                <label style={styles.paymentMethodLabel}>Válido hasta</label>
+                                <input
+                                    type="date"
+                                    value={fechaVigencia}
+                                    onChange={(e) => setFechaVigencia(e.target.value)}
+                                    style={{ ...styles.inputField, flex: 1 }}
+                                />
+                            </div>
+
+                            <div style={styles.paymentMethodSelectContainer}>
                                 <label style={styles.paymentMethodLabel}>Notas</label>
                                 <input
                                     type="text"
@@ -539,7 +718,7 @@ const Presupuesto = () => {
                                 disabled={generando}
                                 style={{ ...styles.processButton, ...(generando ? { opacity: 0.65, cursor: 'not-allowed' } : {}) }}
                             >
-                                {generando ? 'Generando...' : 'Generar Presupuesto'}
+                                {generando ? 'Guardando...' : (editandoId ? 'Guardar cambios' : 'Generar Presupuesto')}
                             </button>
                         </div>
                     )}
@@ -552,6 +731,9 @@ const Presupuesto = () => {
                     <p style={styles.detalleLinea}><strong>Cliente:</strong> {presupuestoActivo.cliente_nombre} — {presupuestoActivo.cliente_cuit}</p>
                     <p style={styles.detalleLinea}><strong>Estado:</strong> {presupuestoActivo.estado_display}</p>
                     <p style={styles.detalleLinea}><strong>Fecha:</strong> {new Date(presupuestoActivo.fecha_creacion).toLocaleString('es-AR')}</p>
+                    {presupuestoActivo.fecha_vigencia && (
+                        <p style={styles.detalleLinea}><strong>Válido hasta:</strong> {new Date(presupuestoActivo.fecha_vigencia + 'T00:00:00').toLocaleDateString('es-AR')}</p>
+                    )}
 
                     <div style={styles.tableResponsive}>
                         <table style={styles.table}>
@@ -584,7 +766,13 @@ const Presupuesto = () => {
                             {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}
                         </button>
                         {presupuestoActivo.estado === 'PENDIENTE' && (
-                            <button onClick={generarCarritoVenta} style={styles.primaryButton}>Generar carrito de venta</button>
+                            <>
+                                <button onClick={() => iniciarEdicion(presupuestoActivo)} style={styles.secondaryButton}>Editar</button>
+                                <button onClick={generarCarritoVenta} style={styles.primaryButton}>Generar carrito de venta</button>
+                            </>
+                        )}
+                        {presupuestoActivo.estado !== 'CONVERTIDO' && (
+                            <button onClick={() => eliminarPresupuesto(presupuestoActivo)} style={styles.dangerButton}>Eliminar</button>
                         )}
                     </div>
                     {presupuestoActivo.estado === 'CONVERTIDO' && (
@@ -592,7 +780,7 @@ const Presupuesto = () => {
                     )}
 
                     <button
-                        onClick={() => { setPresupuestoActivo(null); }}
+                        onClick={() => { setPresupuestoActivo(null); if (modo === 'buscar') fetchListaPresupuestos(); }}
                         style={{ ...styles.linkButton, marginTop: 15 }}
                     >
                         ← Volver
@@ -611,14 +799,18 @@ const styles = {
     tabButtonActive: { padding: '10px 18px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 },
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f1f5f9', borderRadius: '10px' },
     sectionHeader: { color: '#475569', fontSize: '1.1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginTop: 0, marginBottom: '0.5rem' },
-    errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px', marginTop: 10 },
+    errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px', marginTop: 10, marginBottom: 10 },
     noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#94a3b8' },
     inputGroup: { display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' },
     inputField: { padding: '8px', border: '1px solid #e2e8f0', borderRadius: '10px', boxSizing: 'border-box', flex: 1, width: '100%' },
     primaryButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 },
     secondaryButton: { padding: '10px 15px', backgroundColor: '#94a3b8', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 },
+    dangerButton: { padding: '10px 15px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 },
     addButton: { padding: '7px 14px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9em' },
     removeButton: { padding: '6px 12px', backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9em' },
+    smallButtonGreen: { fontSize: 13, padding: '6px 10px', borderRadius: 6, border: 'none', background: '#5dc87a', color: 'white', cursor: 'pointer', fontWeight: 600 },
+    smallButtonBlue: { fontSize: 13, padding: '6px 10px', borderRadius: 6, border: 'none', background: '#3b9ede', color: 'white', cursor: 'pointer', fontWeight: 600 },
+    smallButtonRed: { fontSize: 13, padding: '6px 10px', borderRadius: 6, border: 'none', background: '#e25252', color: 'white', cursor: 'pointer', fontWeight: 600 },
     tableResponsive: { overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
     table: { width: '100%', borderCollapse: 'collapse', marginTop: '10px' },
     tableHeaderRow: { backgroundColor: '#e2e8f0' },
@@ -646,6 +838,9 @@ const styles = {
     detalleLinea: { margin: '4px 0', color: '#334155' },
     accionesRow: { display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' },
     arancelWarning: { padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', color: '#92400e', fontSize: '0.9em', marginTop: 10 },
+    filtrosGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 15 },
+    filtroFechaLabel: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600, color: '#475569' },
+    editandoBanner: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 15px', marginBottom: 15, color: '#92400e', fontWeight: 600 },
 };
 
 export default Presupuesto;

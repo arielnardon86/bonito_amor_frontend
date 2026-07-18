@@ -69,6 +69,14 @@ const ReciboImpresion = () => {
                 saldoAFavorMonto = parseFloat(venta.cambio_devolucion_diferencia.saldo_a_favor);
             }
             
+            // Fecha límite de pago (solo Cuenta Corriente, cuando se cargó al procesar la venta)
+            let fechaLimitePagoHtml = '';
+            if (venta.metodo_pago === 'Cuenta Corriente' && venta.fecha_limite_pago) {
+                const fechaLimite = new Date(venta.fecha_limite_pago + 'T00:00:00');
+                const fechaLimiteTexto = !isNaN(fechaLimite.getTime()) ? fechaLimite.toLocaleDateString() : venta.fecha_limite_pago;
+                fechaLimitePagoHtml = `<p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha límite de pago: ${fechaLimiteTexto}</p>`;
+            }
+
             // Información adicional si viene de un cambio/devolución
             let infoCambioDevolucion = '';
             if (esDiferenciaPendiente && venta?.cambio_devolucion_diferencia) {
@@ -83,8 +91,10 @@ const ReciboImpresion = () => {
                     <div class="header">
                         <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${tituloRecibo}</h2>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
+                        ${venta.tienda_direccion ? `<p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Domicilio: ${venta.tienda_direccion}</p>` : ''}
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">ID de Venta: ${codigoNumerico}</p>
+                        ${fechaLimitePagoHtml}
                         ${infoCambioDevolucion}
                         <hr>
                     </div>

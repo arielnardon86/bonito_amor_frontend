@@ -95,6 +95,9 @@ const PuntoVenta = () => {
     const [recargoPorcentaje, setRecargoPorcentaje] = useState('');
     const [recargoMonto, setRecargoMonto] = useState('');
 
+    // Cuenta Corriente: fecha límite acordada para cancelar el pago (informativa, sale en recibo/factura)
+    const [fechaLimitePago, setFechaLimitePago] = useState('');
+
     const [redondearMonto, setRedondearMonto] = useState(false);
     const [redondearMontoArriba, setRedondearMontoArriba] = useState(false);
     const [procesandoVenta, setProcesandoVenta] = useState(false);
@@ -1111,16 +1114,20 @@ const PuntoVenta = () => {
                     if (presupuestoOrigenId) {
                         ventaData.presupuesto_id = presupuestoOrigenId;
                     }
+                    if (isCuentaCorriente && fechaLimitePago) {
+                        ventaData.fecha_limite_pago = fechaLimitePago;
+                    }
 
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
-                    
+
                     showCustomAlert('Venta procesada con éxito. ID: ' + response.data.id, 'success');
-                    
+
                     const ventaParaRecibo = {
-                        ...response.data, 
+                        ...response.data,
                         tienda_nombre: selectedStoreSlug,
+                        tienda_direccion: tiendaInfo?.direccion || null,
                         descuento_porcentaje: datosAjusteParaBackend.descuento_porcentaje,
                         descuento_monto: datosAjusteParaBackend.descuento_monto,
                         recargo_porcentaje: datosAjusteParaBackend.recargo_porcentaje,
@@ -1145,6 +1152,7 @@ const PuntoVenta = () => {
                     setClienteSeleccionadoCC(null);
                     setBusquedaClienteCC('');
                     setClientesEncontradosCC([]);
+                    setFechaLimitePago('');
                     setDescuentoPorcentaje('');
                     setDescuentoMonto('');
                     setRecargoPorcentaje('');
@@ -2086,6 +2094,18 @@ const PuntoVenta = () => {
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        )}
+                        {!formasPago.length && isCuentaCorriente && (
+                            <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
+                                <label htmlFor="fechaLimitePago" style={styles.paymentMethodLabel}>Fecha límite de pago</label>
+                                <input
+                                    type="date"
+                                    id="fechaLimitePago"
+                                    value={fechaLimitePago}
+                                    onChange={(e) => setFechaLimitePago(e.target.value)}
+                                    style={{ ...styles.inputField, marginBottom: 0, flex: 1 }}
+                                />
                             </div>
                         )}
                         <div style={styles.ajustesContainer} className="ajustesContainer">
