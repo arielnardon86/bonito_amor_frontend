@@ -1,7 +1,7 @@
 // components/PuntoVenta.js
 // BONITO_AMOR/frontend/src/components/PuntoVenta.js
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useSales } from './SalesContext';
@@ -29,6 +29,14 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const PuntoVenta = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Presupuesto convertido en carrito de venta (viene de navigate('/punto-venta', { state: { presupuesto } }))
+    const [presupuestoOrigenId, setPresupuestoOrigenId] = useState(null);
+    const [presupuestoPendiente, setPresupuestoPendiente] = useState(null);
+    const [cartIdPendientePresupuesto, setCartIdPendientePresupuesto] = useState(null);
+    // Evita duplicar el carrito si el efecto de precarga corre dos veces (p. ej. React.StrictMode en desarrollo)
+    const presupuestoProcesadoRef = useRef(null);
 
     const {
         carts,
@@ -128,6 +136,61 @@ const PuntoVenta = () => {
     const [mostrarModalEgresos, setMostrarModalEgresos] = useState(false);
     const [egresoForm, setEgresoForm] = useState({ tipo: 'EGRESO', concepto: '', importe: '' });
     const [guardandoEgreso, setGuardandoEgreso]         = useState(false);
+
+    // Precarga de carrito desde un Presupuesto (viene de navigate('/punto-venta', { state: { presupuesto } })).
+    // Paso 1: crear el carrito y guardar sus datos; los items se agregan en un efecto aparte (ver más abajo)
+    // porque `activeCartId`/`addProductToCart` leen el estado de SalesContext, que recién refleja el carrito
+    // recién creado después de un re-render (no de forma sincrónica en el mismo tick).
+    useEffect(() => {
+        const presupuesto = location.state?.presupuesto;
+        if (!presupuesto) return;
+        if (presupuestoProcesadoRef.current === presupuesto.id) return;
+        presupuestoProcesadoRef.current = presupuesto.id;
+
+        const nuevoCartId = createNewCart(`Presupuesto #${String(presupuesto.id).slice(0, 8)}`);
+
+        if (presupuesto.descuento_porcentaje && parseFloat(presupuesto.descuento_porcentaje) > 0) {
+            setDescuentoPorcentaje(parseFloat(presupuesto.descuento_porcentaje));
+        } else if (presupuesto.descuento_monto && parseFloat(presupuesto.descuento_monto) > 0) {
+            setDescuentoMonto(parseFloat(presupuesto.descuento_monto));
+        } else if (presupuesto.recargo_porcentaje && parseFloat(presupuesto.recargo_porcentaje) > 0) {
+            setRecargoPorcentaje(parseFloat(presupuesto.recargo_porcentaje));
+        } else if (presupuesto.recargo_monto && parseFloat(presupuesto.recargo_monto) > 0) {
+            setRecargoMonto(parseFloat(presupuesto.recargo_monto));
+        }
+
+        if (presupuesto.cliente) {
+            setClienteSeleccionadoCC({
+                id: presupuesto.cliente,
+                nombre_razon_social: presupuesto.cliente_nombre,
+                cuit_cuil: presupuesto.cliente_cuit,
+            });
+        }
+
+        setPresupuestoOrigenId(presupuesto.id);
+        setPresupuestoPendiente(presupuesto);
+        setCartIdPendientePresupuesto(nuevoCartId);
+        // Limpiar el state de navegación para no volver a precargar en un refresh/remount
+        navigate(location.pathname, { replace: true, state: {} });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.state]);
+
+    // Paso 2: una vez que el carrito recién creado quedó activo de verdad (activeCartId ya lo refleja),
+    // recién ahí se pueden agregar los productos del presupuesto sin pisar el carrito equivocado.
+    useEffect(() => {
+        if (!presupuestoPendiente || !cartIdPendientePresupuesto) return;
+        if (activeCartId !== cartIdPendientePresupuesto) return;
+
+        (presupuestoPendiente.detalles || []).forEach(detalle => {
+            if (detalle.producto) {
+                addProductToCart(detalle.producto, detalle.cantidad);
+            }
+        });
+
+        setPresupuestoPendiente(null);
+        setCartIdPendientePresupuesto(null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeCartId, presupuestoPendiente, cartIdPendientePresupuesto]);
 
     // ── Cierre de Caja: helpers ───────────────────────────────────────────────
     const fetchCierreActivo = useCallback(async () => {
@@ -1045,6 +1108,9 @@ const PuntoVenta = () => {
                         // historial aunque haya pagado con otro método.
                         ventaData.cliente_id = clienteSeleccionadoCC.id;
                     }
+                    if (presupuestoOrigenId) {
+                        ventaData.presupuesto_id = presupuestoOrigenId;
+                    }
 
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
@@ -1086,6 +1152,7 @@ const PuntoVenta = () => {
                     setRedondearMonto(false);
                     setRedondearMontoArriba(false);
                     setFormasPago([]);
+                    setPresupuestoOrigenId(null);
                     
                     // Verificar si la tienda tiene facturación configurada
                     // Asegurarnos de tener la información más actualizada de la tienda

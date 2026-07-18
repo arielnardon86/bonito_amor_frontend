@@ -17,6 +17,7 @@ import TicketCambioImpresion from './components/TicketCambioImpresion';
 import CambioDevolucion from './components/CambioDevolucion';
 import PanelAdministracionTienda from './components/PanelAdministracionTienda';
 import Clientes from './components/Clientes';
+import Presupuesto from './components/Presupuesto';
 import CargaMasivaProductos from './components/CargaMasivaProductos';
 import ClienteDetalle from './components/ClienteDetalle';
 
@@ -54,6 +55,7 @@ import {
   faLockOpen,
   faEnvelope,
   faUsers,
+  faFileInvoiceDollar,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Soporte de notificaciones push (gesto de usuario requerido en móvil)
@@ -225,6 +227,15 @@ const Navbar = () => {
                 <Link to="/clientes" className={location.pathname === '/clientes' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faUsers} className="nav-icon" />
                   <span>Clientes</span>
+                </Link>
+              </li>
+            )}
+
+            {user && (user.is_staff || user.is_superuser || user.is_supervisor) && (
+              <li onClick={() => setIsOpen(false)}>
+                <Link to="/presupuesto" className={location.pathname === '/presupuesto' ? 'active' : ''}>
+                  <FontAwesomeIcon icon={faFileInvoiceDollar} className="nav-icon" />
+                  <span>Presupuesto</span>
                 </Link>
               </li>
             )}
@@ -1004,6 +1015,11 @@ const AppContent = () => {
               <Route path="/clientes/:clienteId" element={
                 <ProtectedRoute staffOnly={true} supervisorAllowed={true}>
                   <ClienteDetalle />
+                </ProtectedRoute>
+              } />
+              <Route path="/presupuesto" element={
+                <ProtectedRoute staffOnly={true} supervisorAllowed={true}>
+                  <Presupuesto />
                 </ProtectedRoute>
               } />
               <Route path="/recibo" element={<ReciboImpresion />} />
