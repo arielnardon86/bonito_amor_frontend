@@ -223,6 +223,13 @@ const ClienteDetalle = () => {
                         <button onClick={abrirCobro} style={styles.smallButtonGreen}>Cobrar deuda</button>
                     )}
                 </div>
+                {historial.tiene_deuda_vencida && (
+                    <div style={styles.alertaVencida}>
+                        ⚠️ Deuda vencida{historial.fecha_vencimiento_mas_antigua && (
+                            <> desde el {new Date(historial.fecha_vencimiento_mas_antigua + 'T00:00:00').toLocaleDateString('es-AR')}</>
+                        )}.
+                    </div>
+                )}
             </div>
 
             <div style={styles.section}>
@@ -344,6 +351,7 @@ const styles = {
     pageTitle: { color: '#1a2926', fontSize: '1.5rem', fontWeight: 600, margin: 0 },
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f1f5f9', borderRadius: '10px' },
     sectionHeader: { color: '#475569', fontSize: '1.1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginTop: 0, marginBottom: '0.5rem' },
+    alertaVencida: { marginTop: 16, padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '10px', color: '#92400e', fontWeight: 600 },
     infoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 },
     infoLabel: { fontSize: 12, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.4 },
     pencilButton: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#94a3b8', padding: 2, lineHeight: 1 },

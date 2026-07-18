@@ -36,6 +36,10 @@ const Clientes = () => {
     const [busqueda, setBusqueda] = useState('');
     const [busquedaAplicada, setBusquedaAplicada] = useState('');
 
+    // Alerta de deuda vencida (Cuenta Corriente)
+    const [deudaVencidaCount, setDeudaVencidaCount] = useState(0);
+    const [mostrandoSoloVencidos, setMostrandoSoloVencidos] = useState(false);
+
     // Alta de cliente nuevo (la edición se hace desde la página del cliente)
     const [mostrarNuevoCliente, setMostrarNuevoCliente] = useState(false);
     const [formData, setFormData] = useState(FORM_INICIAL);
@@ -64,6 +68,46 @@ const Clientes = () => {
     }, [token, selectedStoreSlug, busquedaAplicada]);
 
     useEffect(() => { fetchClientes(); }, [fetchClientes]);
+
+    const fetchDeudaVencidaCount = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/clientes/deuda_vencida/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug },
+            });
+            setDeudaVencidaCount(response.data.count || 0);
+        } catch (err) {
+            console.error('Error al verificar deuda vencida:', err);
+        }
+    }, [token, selectedStoreSlug]);
+
+    useEffect(() => { fetchDeudaVencidaCount(); }, [fetchDeudaVencidaCount]);
+
+    const verSoloVencidos = async () => {
+        if (!token || !selectedStoreSlug) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/clientes/deuda_vencida/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug },
+            });
+            setClientes(response.data.results || []);
+            setNextPageUrl(null);
+            setPrevPageUrl(null);
+            setMostrandoSoloVencidos(true);
+        } catch (err) {
+            setError('Error al cargar clientes con deuda vencida: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const volverATodos = () => {
+        setMostrandoSoloVencidos(false);
+        fetchClientes();
+    };
 
     // ── Alta de cliente ─────────────────────────────────────────────────────
     const abrirNuevoCliente = () => {
@@ -119,19 +163,33 @@ const Clientes = () => {
         <div style={styles.container}>
             <h1 style={styles.pageTitle}>Clientes</h1>
 
-            <div style={styles.section}>
-                <div style={styles.inputGroup}>
-                    <input
-                        type="text"
-                        placeholder="Buscar por nombre o CUIT/CUIL..."
-                        value={busqueda}
-                        onChange={(e) => setBusqueda(e.target.value)}
-                        onKeyPress={(e) => { if (e.key === 'Enter') setBusquedaAplicada(busqueda); }}
-                        style={styles.inputField}
-                    />
-                    <button onClick={() => setBusquedaAplicada(busqueda)} style={styles.secondaryButton}>Buscar</button>
-                    <button onClick={abrirNuevoCliente} style={styles.primaryButton}>+ Nuevo Cliente</button>
+            {deudaVencidaCount > 0 && !mostrandoSoloVencidos && (
+                <div style={styles.alertaVencida}>
+                    <span>⚠️ {deudaVencidaCount} cliente{deudaVencidaCount > 1 ? 's' : ''} con deuda de Cuenta Corriente vencida.</span>
+                    <button onClick={verSoloVencidos} style={styles.alertaVencidaButton}>Ver</button>
                 </div>
+            )}
+
+            <div style={styles.section}>
+                {mostrandoSoloVencidos ? (
+                    <div style={styles.inputGroup}>
+                        <strong style={{ color: '#92400e' }}>Mostrando clientes con deuda vencida</strong>
+                        <button onClick={volverATodos} style={styles.secondaryButton}>← Ver todos los clientes</button>
+                    </div>
+                ) : (
+                    <div style={styles.inputGroup}>
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre o CUIT/CUIL..."
+                            value={busqueda}
+                            onChange={(e) => setBusqueda(e.target.value)}
+                            onKeyPress={(e) => { if (e.key === 'Enter') setBusquedaAplicada(busqueda); }}
+                            style={styles.inputField}
+                        />
+                        <button onClick={() => setBusquedaAplicada(busqueda)} style={styles.secondaryButton}>Buscar</button>
+                        <button onClick={abrirNuevoCliente} style={styles.primaryButton}>+ Nuevo Cliente</button>
+                    </div>
+                )}
 
                 {error && <div style={styles.errorMessage}>{error}</div>}
                 {loading ? (
@@ -160,6 +218,14 @@ const Clientes = () => {
                                             <td style={styles.td}>{cliente.telefono || '—'}</td>
                                             <td style={{ ...styles.td, fontWeight: 700, color: saldo > 0 ? '#e25252' : '#1a6a40' }}>
                                                 {formatearMonto(saldo)}
+                                                {cliente.tiene_deuda_vencida && (
+                                                    <span
+                                                        style={styles.badgeVencida}
+                                                        title={cliente.fecha_vencimiento_mas_antigua ? `Vencida desde el ${new Date(cliente.fecha_vencimiento_mas_antigua + 'T00:00:00').toLocaleDateString('es-AR')}` : 'Vencida'}
+                                                    >
+                                                        Vencida
+                                                    </span>
+                                                )}
                                             </td>
                                             <td style={styles.td}>
                                                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -227,6 +293,9 @@ const styles = {
     container: { padding: 0, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", width: '100%' },
     pageTitle: { color: '#1a2926', fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' },
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f1f5f9', borderRadius: '10px' },
+    alertaVencida: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '10px', color: '#92400e', fontWeight: 600, marginBottom: '20px', flexWrap: 'wrap' },
+    alertaVencidaButton: { padding: '8px 16px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
+    badgeVencida: { display: 'inline-block', marginLeft: 8, fontSize: 11, fontWeight: 700, color: 'white', background: '#e25252', borderRadius: 6, padding: '2px 6px', verticalAlign: 'middle' },
     sectionHeader: { color: '#475569', fontSize: '1.1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginTop: '1rem', marginBottom: '0.5rem' },
     errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px', marginBottom: 15 },
     noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#94a3b8' },
