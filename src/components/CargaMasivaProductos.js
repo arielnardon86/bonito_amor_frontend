@@ -119,6 +119,28 @@ const CargaMasivaProductos = () => {
         }
     };
 
+    const eliminarRubro = (rubro) => {
+        Swal.fire({
+            title: '¿Eliminar rubro?',
+            html: `Se eliminará <strong>${rubro.nombre}</strong>. Los productos que ya lo tenían asignado quedan sin rubro (no se borran ni se modifican).`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#e25252',
+        }).then(async (result) => {
+            if (!result.isConfirmed) return;
+            try {
+                await axios.delete(`${BASE_API_ENDPOINT}/api/rubros/${rubro.id}/`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                fetchRubros();
+            } catch (err) {
+                Swal.fire('Error', 'No se pudo eliminar el rubro.', 'error');
+            }
+        });
+    };
+
     const crearRubro = async () => {
         const iva = parseFloat(nuevoRubroIva);
         if (!nuevoRubroNombre.trim()) {
@@ -378,7 +400,9 @@ const CargaMasivaProductos = () => {
                                                     </div>
                                                 )}
                                             </td>
-                                            <td style={styles.td}></td>
+                                            <td style={styles.td}>
+                                                <button onClick={() => eliminarRubro(r)} style={styles.pencilButton} title="Eliminar rubro">🗑️</button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
