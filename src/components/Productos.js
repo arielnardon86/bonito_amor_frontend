@@ -48,7 +48,24 @@ const Productos = () => {
         stock: '',
         codigo_barras: '',
         iva_porcentaje: '',
+        rubro: '',
     });
+
+    // Rubro (categoría opcional, propia de cada tienda)
+    const [rubros, setRubros] = useState([]);
+    const [filtroRubroId, setFiltroRubroId] = useState('');
+    const [showNuevoRubroModal, setShowNuevoRubroModal] = useState(false);
+    const [nuevoRubroNombre, setNuevoRubroNombre] = useState('');
+    const [nuevoRubroIva, setNuevoRubroIva] = useState('');
+    const [guardandoNuevoRubro, setGuardandoNuevoRubro] = useState(false);
+    const [rubroModalDestino, setRubroModalDestino] = useState('nuevo_producto'); // 'nuevo_producto' | 'edicion' | 'masivo'
+
+    // Edición en masa por rubro
+    const [showEditarMasivoModal, setShowEditarMasivoModal] = useState(false);
+    const [rubroMasivoId, setRubroMasivoId] = useState('');
+    const [modoMasivo, setModoMasivo] = useState('iva');
+    const [valorMasivo, setValorMasivo] = useState('');
+    const [guardandoMasivo, setGuardandoMasivo] = useState(false);
     const [tieneVariantes, setTieneVariantes] = useState(false);
     const [variantesNuevas, setVariantesNuevas] = useState([
         { talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }
@@ -126,7 +143,8 @@ const Productos = () => {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: {
                     tienda_slug: selectedStoreSlug,
-                    search: searchTerm
+                    search: searchTerm,
+                    rubro_id: filtroRubroId || undefined,
                 }
             });
             setProductos(response.data.results);
@@ -138,7 +156,92 @@ const Productos = () => {
             setError('Error al cargar productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
         }
-    }, [token, selectedStoreSlug, searchTerm]);
+    }, [token, selectedStoreSlug, searchTerm, filtroRubroId]);
+
+    const fetchRubros = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/rubros/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug },
+            });
+            setRubros(response.data.results || response.data || []);
+        } catch (err) {
+            console.error('Error al cargar rubros:', err);
+        }
+    }, [token, selectedStoreSlug]);
+
+    useEffect(() => { fetchRubros(); }, [fetchRubros]);
+
+    const crearRubroRapido = async () => {
+        const iva = parseFloat(nuevoRubroIva);
+        if (!nuevoRubroNombre.trim()) {
+            setError('Ingresá un nombre de rubro.');
+            return;
+        }
+        if (isNaN(iva) || iva < 0 || iva > 100) {
+            setError('El IVA del rubro debe ser un número entre 0 y 100.');
+            return;
+        }
+        setGuardandoNuevoRubro(true);
+        setError(null);
+        try {
+            const { data: rubroCreado } = await axios.post(`${BASE_API_ENDPOINT}/api/rubros/`, {
+                tienda_slug: selectedStoreSlug, nombre: nuevoRubroNombre.trim(), iva_porcentaje: iva,
+            }, { headers: { 'Authorization': `Bearer ${token}` } });
+            await fetchRubros();
+            if (rubroModalDestino === 'edicion') {
+                setEditProduct(prev => prev ? { ...prev, rubro: rubroCreado.id } : prev);
+            } else if (rubroModalDestino === 'masivo') {
+                setRubroMasivoId(rubroCreado.id);
+            } else {
+                setNewProduct(prev => ({ ...prev, rubro: rubroCreado.id }));
+            }
+            setShowNuevoRubroModal(false);
+            setNuevoRubroNombre('');
+            setNuevoRubroIva('');
+        } catch (err) {
+            setError('Error al crear el rubro: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setGuardandoNuevoRubro(false);
+        }
+    };
+
+    const abrirNuevoRubroModal = (destino) => {
+        setRubroModalDestino(destino);
+        setNuevoRubroNombre('');
+        setNuevoRubroIva('');
+        setShowNuevoRubroModal(true);
+    };
+
+    const handleEditarMasivo = async () => {
+        if (!rubroMasivoId) {
+            setError('Seleccioná un rubro para editar en masa.');
+            return;
+        }
+        const valor = parseFloat(valorMasivo);
+        if (isNaN(valor)) {
+            setError('Ingresá un valor válido.');
+            return;
+        }
+        setGuardandoMasivo(true);
+        setError(null);
+        try {
+            const { data } = await axios.post(`${BASE_API_ENDPOINT}/api/productos/editar_masivo/`, {
+                tienda_slug: selectedStoreSlug, rubro_id: rubroMasivoId, modo: modoMasivo, valor,
+            }, { headers: { 'Authorization': `Bearer ${token}` } });
+            setShowEditarMasivoModal(false);
+            setValorMasivo('');
+            fetchProductos();
+            const nombreRubro = rubros.find(r => r.id === rubroMasivoId)?.nombre || '';
+            const mensajeOmitidos = data.omitidos > 0 ? ` (${data.omitidos} sin costo cargado, se omitieron)` : '';
+            window.alert(`Se actualizaron ${data.actualizados} producto(s) del rubro "${nombreRubro}"${mensajeOmitidos}.`);
+        } catch (err) {
+            setError('Error al editar en masa: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setGuardandoMasivo(false);
+        }
+    };
 
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_supervisor || user.is_staff) && selectedStoreSlug) {
@@ -172,9 +275,10 @@ const Productos = () => {
                     return;
                 }
 
-                // IVA es una propiedad impositiva del producto, no varía por talle/variante:
-                // se carga una sola vez en el formulario y se aplica al padre y a todas las variantes.
+                // IVA y Rubro son propiedades del producto que no varían por talle/variante:
+                // se cargan una sola vez en el formulario y se aplican al padre y a todas las variantes.
                 const ivaParaCrear = newProduct.iva_porcentaje === '' ? null : newProduct.iva_porcentaje;
+                const rubroParaCrear = newProduct.rubro || null;
 
                 // Crear producto padre (contenedor) luego variantes
                 const padreData = {
@@ -185,6 +289,7 @@ const Productos = () => {
                     codigo_barras: null,
                     talle: null,
                     iva_porcentaje: ivaParaCrear,
+                    rubro: rubroParaCrear,
                     tienda_slug: selectedStoreSlug,
                 };
                 const { data: padre } = await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, padreData, {
@@ -201,6 +306,7 @@ const Productos = () => {
                         codigo_barras: v.codigo_barras || generarCodigoDeBarrasEAN13(),
                         talle: v.talle || null,
                         iva_porcentaje: ivaParaCrear,
+                        rubro: rubroParaCrear,
                         producto_padre: padre.id,
                         tienda_slug: selectedStoreSlug,
                     };
@@ -212,6 +318,7 @@ const Productos = () => {
                 const productToCreate = {
                     ...newProduct,
                     iva_porcentaje: newProduct.iva_porcentaje === '' ? null : newProduct.iva_porcentaje,
+                    rubro: newProduct.rubro || null,
                     codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
                     tienda_slug: selectedStoreSlug,
                     talle: null,
@@ -221,7 +328,7 @@ const Productos = () => {
                 });
             }
 
-            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', iva_porcentaje: '' });
+            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', iva_porcentaje: '', rubro: '' });
             setTieneVariantes(false);
             setVariantesNuevas([{ talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }]);
             setBarcodeNombreSugerido('');
@@ -492,6 +599,23 @@ const Productos = () => {
                         />
                     </div>
                     <div style={styles.inputGroup}>
+                        <label style={styles.label}>Rubro (Opcional)</label>
+                        <select
+                            value={newProduct.rubro}
+                            onChange={(e) => {
+                                if (e.target.value === '__nuevo__') { abrirNuevoRubroModal('nuevo_producto'); return; }
+                                setNewProduct({ ...newProduct, rubro: e.target.value });
+                            }}
+                            style={styles.input}
+                        >
+                            <option value="">Sin rubro</option>
+                            {rubros.map(r => (
+                                <option key={r.id} value={r.id}>{r.nombre}</option>
+                            ))}
+                            <option value="__nuevo__">+ Crear nuevo rubro...</option>
+                        </select>
+                    </div>
+                    <div style={styles.inputGroup}>
                         <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Stock</label>
                         <input
                             type="number"
@@ -603,6 +727,27 @@ const Productos = () => {
                         )}
                     </div>
                     <button onClick={() => fetchProductos()} style={styles.searchButton}>Buscar</button>
+                    {rubros.length > 0 && (
+                        <select
+                            value={filtroRubroId}
+                            onChange={(e) => setFiltroRubroId(e.target.value)}
+                            style={{ ...styles.filterInput, flex: 'none', width: 180 }}
+                        >
+                            <option value="">Todos los rubros</option>
+                            {rubros.map(r => (
+                                <option key={r.id} value={r.id}>{r.nombre}</option>
+                            ))}
+                        </select>
+                    )}
+                    {rubros.length > 0 && user.is_superuser && (
+                        <button
+                            type="button"
+                            onClick={() => { setRubroMasivoId(filtroRubroId || rubros[0]?.id || ''); setModoMasivo('iva'); setValorMasivo(''); setShowEditarMasivoModal(true); }}
+                            style={{ padding: '8px 15px', backgroundColor: '#3b9ede', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                            Editar en masa por rubro
+                        </button>
+                    )}
                     {(() => {
                         const stockBajoCount = productos.reduce((acc, p) => {
                             if (p.variantes && p.variantes.length > 0) {
@@ -656,6 +801,7 @@ const Productos = () => {
                                         <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>sin IVA</span></th>
                                         <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>con IVA</span></th>
                                         <th style={styles.th}>IVA</th>
+                                        <th style={styles.th}>Rubro</th>
                                         <th style={styles.th}>Margen</th>
                                         <th style={styles.th}>Stock actual</th>
                                         <th style={styles.th}>Últ. cambio stock</th>
@@ -714,6 +860,11 @@ const Productos = () => {
                                             <td style={styles.td}>
                                                 {!tieneVars && producto.iva_porcentaje !== null && producto.iva_porcentaje !== undefined
                                                     ? <>{parseFloat(producto.iva_porcentaje)}<span style={{ color: '#94a3b8', fontSize: '0.75em' }}>%</span></>
+                                                    : <span style={{ color: '#94a3b8' }}>—</span>}
+                                            </td>
+                                            <td style={styles.td}>
+                                                {!tieneVars && producto.rubro_nombre
+                                                    ? producto.rubro_nombre
                                                     : <span style={{ color: '#94a3b8' }}>—</span>}
                                             </td>
                                             <td style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
@@ -801,6 +952,7 @@ const Productos = () => {
                                                     </td>
                                                     {mostrarTalle && <td style={styles.td}>{v.talle || '-'}</td>}
                                                     <td style={styles.td}>{formatearMonto(v.precio)}</td>
+                                                    <td style={styles.td}>—</td>
                                                     <td style={styles.td}>—</td>
                                                     <td style={styles.td}>—</td>
                                                     <td style={styles.td}>—</td>
@@ -925,6 +1077,23 @@ const Productos = () => {
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Rubro (Opcional):</label>
+                            <select
+                                value={editProduct.rubro || ''}
+                                onChange={(e) => {
+                                    if (e.target.value === '__nuevo__') { abrirNuevoRubroModal('edicion'); return; }
+                                    setEditProduct({ ...editProduct, rubro: e.target.value || null });
+                                }}
+                                style={styles.modalInput}
+                            >
+                                <option value="">Sin rubro</option>
+                                {rubros.map(r => (
+                                    <option key={r.id} value={r.id}>{r.nombre}</option>
+                                ))}
+                                <option value="__nuevo__">+ Crear nuevo rubro...</option>
+                            </select>
+                        </div>
+                        <div style={styles.inputGroupModal}>
                             <label style={styles.label}>Talle (Opcional):</label>
                             <input
                                 type="text"
@@ -961,7 +1130,106 @@ const Productos = () => {
                     </div>
                 </div>
             )}
-            
+
+            {/* Modal de creación rápida de rubro */}
+            {showNuevoRubroModal && (
+                <div style={styles.modalOverlay} onClick={() => setShowNuevoRubroModal(false)}>
+                    <div style={{ ...styles.modalContent, maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ marginTop: 0 }}>Nuevo rubro</h3>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Nombre:</label>
+                            <input
+                                type="text"
+                                value={nuevoRubroNombre}
+                                onChange={(e) => setNuevoRubroNombre(e.target.value)}
+                                style={styles.modalInput}
+                                placeholder="Ej: Herramientas"
+                            />
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>IVA %:</label>
+                            <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                value={nuevoRubroIva}
+                                onChange={(e) => setNuevoRubroIva(e.target.value)}
+                                style={styles.modalInput}
+                                placeholder="Ej: 21"
+                            />
+                        </div>
+                        <div style={styles.modalActions}>
+                            <button onClick={crearRubroRapido} disabled={guardandoNuevoRubro} style={styles.modalConfirmButton}>
+                                {guardandoNuevoRubro ? 'Creando...' : 'Crear'}
+                            </button>
+                            <button onClick={() => setShowNuevoRubroModal(false)} style={styles.modalCancelButton}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de edición en masa por rubro */}
+            {showEditarMasivoModal && (
+                <div style={styles.modalOverlay} onClick={() => setShowEditarMasivoModal(false)}>
+                    <div style={{ ...styles.modalContent, maxWidth: 420, textAlign: 'left' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ marginTop: 0 }}>Editar en masa por rubro</h3>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Rubro:</label>
+                            <select
+                                value={rubroMasivoId}
+                                onChange={(e) => {
+                                    if (e.target.value === '__nuevo__') { abrirNuevoRubroModal('masivo'); return; }
+                                    setRubroMasivoId(e.target.value);
+                                }}
+                                style={styles.modalInput}
+                            >
+                                {rubros.map(r => (
+                                    <option key={r.id} value={r.id}>{r.nombre}</option>
+                                ))}
+                                <option value="__nuevo__">+ Crear nuevo rubro...</option>
+                            </select>
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Qué modificar:</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                    <input type="radio" checked={modoMasivo === 'iva'} onChange={() => setModoMasivo('iva')} />
+                                    <span>Cambiar IVA % (a todos los productos del rubro)</span>
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                    <input type="radio" checked={modoMasivo === 'margen'} onChange={() => setModoMasivo('margen')} />
+                                    <span>Cambiar % de margen (recalcula el precio según costo + IVA actual)</span>
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                    <input type="radio" checked={modoMasivo === 'ajuste_precio'} onChange={() => setModoMasivo('ajuste_precio')} />
+                                    <span>Aumentar o bajar precio % (sin tocar costo ni IVA)</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>
+                                {modoMasivo === 'iva' ? 'Nuevo IVA %:' : modoMasivo === 'margen' ? 'Nuevo margen %:' : 'Ajuste % (negativo para bajar precio):'}
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={valorMasivo}
+                                onChange={(e) => setValorMasivo(e.target.value)}
+                                style={styles.modalInput}
+                                placeholder={modoMasivo === 'ajuste_precio' ? 'Ej: 10 o -10' : 'Ej: 21'}
+                            />
+                        </div>
+                        <div style={styles.modalActions}>
+                            <button onClick={handleEditarMasivo} disabled={guardandoMasivo} style={styles.modalConfirmButton}>
+                                {guardandoMasivo ? 'Aplicando...' : 'Aplicar'}
+                            </button>
+                            <button onClick={() => setShowEditarMasivoModal(false)} style={styles.modalCancelButton}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal de cantidad de etiquetas */}
             {showEtiquetasModal && (
                 <div style={styles.modalOverlay} onClick={() => setShowEtiquetasModal(false)}>
