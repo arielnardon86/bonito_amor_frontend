@@ -358,6 +358,71 @@ body {
 .main-content.with-sidebar { margin-left: 260px; }
 .main-content.no-sidebar   { margin-left: 0; }
 
+/* ── Sidebar colapsado (solo escritorio, opcional) ──────────────────────────── */
+@media (min-width: 769px) {
+  .sidebar.collapsed { width: 72px; transition: width 0.2s ease; }
+  .sidebar { transition: width 0.2s ease, transform 0.3s ease; }
+
+  .sidebar.collapsed .sidebar-label,
+  .sidebar.collapsed .store-name-sidebar,
+  .sidebar.collapsed .store-selector-sidebar {
+    display: none;
+  }
+
+  .sidebar.collapsed .sidebar-links li a {
+    justify-content: center;
+    padding: 11px 0;
+    gap: 0;
+  }
+
+  .sidebar.collapsed .nav-icon { width: auto; }
+
+  .sidebar.collapsed .app-logo-image {
+    max-width: 40px;
+    height: 40px;
+    width: 40px;
+    object-fit: cover;
+    padding: 4px;
+  }
+
+  .sidebar.collapsed .user-info {
+    justify-content: center;
+    padding: 10px 0 14px;
+  }
+
+  .sidebar.collapsed .logout-button,
+  .sidebar.collapsed .notifications-enable-button,
+  .sidebar.collapsed .sidebar-footer-link {
+    padding-left: 0;
+    padding-right: 0;
+    justify-content: center;
+  }
+
+  .main-content.with-sidebar.sidebar-collapsed { margin-left: 72px; }
+
+  .sidebar-collapse-toggle {
+    position: absolute;
+    top: 24px;
+    right: -14px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--ts-green, #5dc87a);
+    color: #fff;
+    border: 2px solid #0f1e3a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1001;
+    font-size: 0.8rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    transition: background 0.15s;
+  }
+
+  .sidebar-collapse-toggle:hover { background: #4db568; }
+}
+
 .container {
   padding: 28px 32px;
   max-width: 1600px;

@@ -56,6 +56,8 @@ import {
   faEnvelope,
   faUsers,
   faFileInvoiceDollar,
+  faChevronLeft,
+  faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Soporte de notificaciones push (gesto de usuario requerido en móvil)
@@ -70,7 +72,7 @@ const BASE_API_URL = (() => {
 })();
 
 // Componente para la navegación
-const Navbar = () => {
+const Navbar = ({ collapsed, onToggleCollapsed }) => {
   const { isAuthenticated, user, logout, token, selectedStoreSlug, selectStore, tiendasAutorizadas, lockSession } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -173,7 +175,17 @@ const Navbar = () => {
       {/* Overlay para mobile cuando el menú está abierto */}
       {isOpen && <div className="sidebar-overlay" onClick={toggleMenu}></div>}
 
-      <nav className={`sidebar ${isOpen ? 'active' : ''}`}>
+      <nav className={`sidebar ${isOpen ? 'active' : ''} ${collapsed ? 'collapsed' : ''}`}>
+        {!isMobile && (
+          <button
+            type="button"
+            className="sidebar-collapse-toggle"
+            onClick={onToggleCollapsed}
+            title={collapsed ? 'Expandir menú' : 'Ocultar menú'}
+          >
+            <FontAwesomeIcon icon={collapsed ? faChevronRight : faChevronLeft} />
+          </button>
+        )}
         <div className="sidebar-header">
           <Link to="/" className="sidebar-logo" onClick={() => setIsOpen(false)}>
             <img src="/logo-completo.png" alt="Total Stock Logo" className="app-logo-image" />
@@ -196,7 +208,7 @@ const Navbar = () => {
             ) : (
               <div className="store-name-sidebar">
                 <FontAwesomeIcon icon={faStore} className="store-icon" />
-                <span><strong>{selectedStoreSlug}</strong></span>
+                <span className="sidebar-label"><strong>{selectedStoreSlug}</strong></span>
               </div>
             )
           )}
@@ -208,7 +220,7 @@ const Navbar = () => {
               <li onClick={() => setIsOpen(false)}>
                 <Link to="/punto-venta" className={location.pathname === '/punto-venta' || location.pathname === '/' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faShoppingCart} className="nav-icon" />
-                  <span>Punto de Venta</span>
+                  <span className="sidebar-label">Punto de Venta</span>
                 </Link>
               </li>
             )}
@@ -217,7 +229,7 @@ const Navbar = () => {
               <li onClick={() => setIsOpen(false)}>
                 <Link to="/ventas" className={location.pathname === '/ventas' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faListAlt} className="nav-icon" />
-                  <span>Listado de Ventas</span>
+                  <span className="sidebar-label">Listado de Ventas</span>
                 </Link>
               </li>
             )}
@@ -226,7 +238,7 @@ const Navbar = () => {
               <li onClick={() => setIsOpen(false)}>
                 <Link to="/clientes" className={location.pathname === '/clientes' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faUsers} className="nav-icon" />
-                  <span>Clientes</span>
+                  <span className="sidebar-label">Clientes</span>
                 </Link>
               </li>
             )}
@@ -235,7 +247,7 @@ const Navbar = () => {
               <li onClick={() => setIsOpen(false)}>
                 <Link to="/presupuesto" className={location.pathname === '/presupuesto' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faFileInvoiceDollar} className="nav-icon" />
-                  <span>Presupuesto</span>
+                  <span className="sidebar-label">Presupuesto</span>
                 </Link>
               </li>
             )}
@@ -244,7 +256,7 @@ const Navbar = () => {
               <li onClick={() => setIsOpen(false)}>
                 <Link to="/productos" className={location.pathname === '/productos' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faBox} className="nav-icon" />
-                  <span>Gestión de Productos</span>
+                  <span className="sidebar-label">Gestión de Productos</span>
                 </Link>
               </li>
             )}
@@ -254,13 +266,13 @@ const Navbar = () => {
                 <li onClick={() => setIsOpen(false)}>
                   <Link to="/registro-compras" className={location.pathname === '/registro-compras' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faMoneyBillWave} className="nav-icon" />
-                    <span>Registro de Egresos</span>
+                    <span className="sidebar-label">Registro de Egresos</span>
                   </Link>
                 </li>
                 <li onClick={() => setIsOpen(false)}>
                   <Link to="/compras-stock" className={location.pathname === '/compras-stock' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faTruck} className="nav-icon" />
-                    <span>Compras / Stock</span>
+                    <span className="sidebar-label">Compras / Stock</span>
                   </Link>
                 </li>
               </>
@@ -271,13 +283,13 @@ const Navbar = () => {
                 <li onClick={() => setIsOpen(false)}>
                   <Link to="/metricas-ventas" className={location.pathname === '/metricas-ventas' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faChartLine} className="nav-icon" />
-                    <span>Métricas de Ventas</span>
+                    <span className="sidebar-label">Métricas de Ventas</span>
                   </Link>
                 </li>
                 <li onClick={() => setIsOpen(false)}>
                   <Link to="/panel-administracion-tienda" className={location.pathname === '/panel-administracion-tienda' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faCog} className="nav-icon" />
-                    <span>Panel de Administración</span>
+                    <span className="sidebar-label">Panel de Administración</span>
                   </Link>
                 </li>
               </>
@@ -287,7 +299,7 @@ const Navbar = () => {
               <li onClick={() => setIsOpen(false)}>
                 <Link to="/cierres-caja" className={location.pathname === '/cierres-caja' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faCashRegister} className="nav-icon" />
-                  <span>Cierres de Caja</span>
+                  <span className="sidebar-label">Cierres de Caja</span>
                 </Link>
               </li>
             )}
@@ -304,7 +316,7 @@ const Navbar = () => {
                   }}
                 >
                   <FontAwesomeIcon icon={faBell} />
-                  <span>Activar notificaciones</span>
+                  <span className="sidebar-label">Activar notificaciones</span>
                 </button>
               </li>
             )}
@@ -312,7 +324,7 @@ const Navbar = () => {
               <li className="sidebar-footer">
                 <div className="user-info">
                   <FontAwesomeIcon icon={faUser} className="user-icon" />
-                  <span className="username">{user?.username}</span>
+                  <span className="username sidebar-label">{user?.username}</span>
                 </div>
 
                 {/* Botón de notificaciones solo para mobile (PWA) */}
@@ -345,11 +357,12 @@ const Navbar = () => {
                     style={{ background: '#475569', marginBottom: 4 }}
                   >
                     <FontAwesomeIcon icon={faLock} />
-                    <span>Bloquear sesión</span>
+                    <span className="sidebar-label">Bloquear sesión</span>
                   </button>
                 )}
                 <a
                   href="mailto:info@totalstock.com.ar"
+                  className="sidebar-footer-link"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 7,
                     padding: '7px 10px', marginBottom: 6, borderRadius: 7,
@@ -360,11 +373,11 @@ const Navbar = () => {
                   title="Contactar soporte"
                 >
                   <FontAwesomeIcon icon={faEnvelope} style={{ fontSize: 11, opacity: 0.7 }} />
-                  <span>info@totalstock.com.ar</span>
+                  <span className="sidebar-label">info@totalstock.com.ar</span>
                 </a>
                 <button onClick={handleLogout} className="logout-button">
                   <FontAwesomeIcon icon={faSignOutAlt} />
-                  <span>Cerrar Sesión</span>
+                  <span className="sidebar-label">Cerrar Sesión</span>
                 </button>
               </li>
             )}
@@ -397,6 +410,8 @@ const AppContent = () => {
   const [mostrarPlanes, setMostrarPlanes] = useState(false);
   const [planesData, setPlanesData] = useState([]);
   const [cargandoPlan, setCargandoPlan] = useState('');
+  // Sidebar colapsado (solo escritorio, opcional): siempre arranca expandido al cargar la página.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Cuando MP redirige a la raíz con ?preapproval_id=XXX:
   // - Guardar el ID para pasarlo al verificar si el gate aparece
@@ -577,7 +592,7 @@ const AppContent = () => {
 
   return (
     <>
-      <Navbar />
+      <Navbar collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed(c => !c)} />
 
       {/* Modal: admin sin email registrado */}
       {isAuthenticated && !loading && user?.is_superuser && !user?.email && !emailModalOmitido && !suscripcionPendiente && !sessionLocked && (
@@ -978,7 +993,7 @@ const AppContent = () => {
         </div>
       )}
 
-      <div className={`main-content ${isAuthenticated && selectedStoreSlug ? 'with-sidebar' : 'no-sidebar'}`}>
+      <div className={`main-content ${isAuthenticated && selectedStoreSlug ? 'with-sidebar' : 'no-sidebar'} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="container">
         <Routes>
           <Route path="/login/:storeSlug" element={<Login />} />
