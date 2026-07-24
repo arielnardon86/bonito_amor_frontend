@@ -181,7 +181,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label-container.layout-estandar .label .price {
                         font-weight: bold;
-                        font-size: 3.6mm;
+                        font-size: 4.4mm;
                         margin-top: 2px;
                     }
 
@@ -236,7 +236,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label-container.layout-termica .label .price {
                         font-weight: bold;
-                        font-size: 3.2mm;
+                        font-size: 3.9mm;
                         margin-top: 0.3mm;
                     }
 
