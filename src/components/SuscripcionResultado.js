@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -50,6 +50,21 @@ export default function SuscripcionResultado() {
   const esFallo = resultado
     ? resultado.estado === 'error_mp'
     : (statusParam === 'failure' || statusParam === 'rejected');
+
+  // Conversión de Google Ads: se dispara una sola vez, cuando la suscripción quedó
+  // confirmada como activa. Reemplazar AW-XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXX por el
+  // ID de conversión + etiqueta que da Google Ads (Herramientas → Conversiones →
+  // "Compras" → Ver detalles de la etiqueta → Fragmento de evento).
+  const conversionEnviada = useRef(false);
+  useEffect(() => {
+    if (esOk && !conversionEnviada.current && typeof window.gtag === 'function') {
+      conversionEnviada.current = true;
+      window.gtag('event', 'conversion', {
+        send_to: 'AW-XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXX',
+        transaction_id: preapprovalId || resultado?.username || '',
+      });
+    }
+  }, [esOk, preapprovalId, resultado]);
 
   // Auto-redirect cuando esOk
   useEffect(() => {

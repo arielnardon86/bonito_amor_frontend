@@ -1,6 +1,7 @@
 // Productos.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
@@ -66,6 +67,7 @@ const Productos = () => {
     const [modoMasivo, setModoMasivo] = useState('iva');
     const [valorMasivo, setValorMasivo] = useState('');
     const [guardandoMasivo, setGuardandoMasivo] = useState(false);
+    const [descargandoExcel, setDescargandoExcel] = useState(false);
     const [tieneVariantes, setTieneVariantes] = useState(false);
     const [variantesNuevas, setVariantesNuevas] = useState([
         { talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }
@@ -240,6 +242,38 @@ const Productos = () => {
             setError('Error al editar en masa: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
         } finally {
             setGuardandoMasivo(false);
+        }
+    };
+
+    const handleDescargarExcel = async () => {
+        setDescargandoExcel(true);
+        setError(null);
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/exportar/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug },
+            });
+            const filas = response.data.productos || [];
+            if (filas.length === 0) {
+                window.alert('No hay productos para descargar.');
+                return;
+            }
+            // Mismo orden y encabezados que la plantilla de carga masiva, para que el
+            // archivo se pueda volver a importar tal cual (en esta tienda o en otra).
+            const headers = ['Código Interno', 'Nombre', 'Rubro', 'IVA %', 'Costo', 'Precio de Venta', 'Margen %', 'Cantidad', 'Código de Barras'];
+            const filasArray = filas.map(f => [
+                f.codigo_interno, f.nombre, f.rubro, f.iva_porcentaje, f.costo,
+                f.precio_venta, f.margen_porcentaje, f.cantidad, f.codigo_barras,
+            ]);
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...filasArray]);
+            XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+            const fecha = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `productos_${selectedStoreSlug}_${fecha}.xlsx`);
+        } catch (err) {
+            setError('Error al descargar productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setDescargandoExcel(false);
         }
     };
 
@@ -520,16 +554,27 @@ const Productos = () => {
                             'Los Supervisores pueden agregar productos pero no editarlos ni eliminarlos',
                             'Solo los Administradores pueden editar precio, stock o eliminar productos',
                             'Importá productos en lote desde Excel/CSV con "Importar productos"',
+                            'Descargá todo tu catálogo con "Descargar Excel" (mismo formato que la plantilla de importación, sirve para llevarlo a otra tienda)',
                         ]}
                     />
                 </div>
-                <button
-                    type="button"
-                    onClick={() => navigate('/productos/carga-masiva')}
-                    style={{ padding: '8px 16px', backgroundColor: '#3b9ede', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
-                >
-                    Importar productos
-                </button>
+                <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                        type="button"
+                        onClick={handleDescargarExcel}
+                        disabled={descargandoExcel}
+                        style={{ padding: '8px 16px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: descargandoExcel ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                    >
+                        {descargandoExcel ? 'Descargando...' : 'Descargar Excel'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/productos/carga-masiva')}
+                        style={{ padding: '8px 16px', backgroundColor: '#3b9ede', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                        Importar productos
+                    </button>
+                </div>
             </div>
             
             <div style={styles.section}>
