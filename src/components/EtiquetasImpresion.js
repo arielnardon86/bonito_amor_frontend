@@ -59,7 +59,7 @@ const EtiquetasImpresion = () => {
                         });
                     } catch (e) {
                         console.error('Error generando código de barras:', e);
-                        tempDiv.innerHTML = `<p>Sin código de barras</p><p class="product-name">${nombreMostrado}</p><p class="price">Precio: ${formatearMonto(producto.precio)}</p>`;
+                        tempDiv.innerHTML = `<p>Sin código de barras</p><p class="product-name">${nombreMostrado}</p><p class="price">${formatearMonto(producto.precio)}</p>`;
                         labelsRef.current.appendChild(tempDiv);
                         continue;
                     }
@@ -68,7 +68,7 @@ const EtiquetasImpresion = () => {
                         <p class="product-name">${nombreMostrado}</p>
                         ${detalleMostrado ? `<p class="variant-detail">${detalleMostrado}</p>` : ''}
                         <div class="barcode-wrapper"></div>
-                        <p class="price">Precio: ${formatearMonto(producto.precio)}</p>
+                        <p class="price">${formatearMonto(producto.precio)}</p>
                     `;
                     if (svgElement) {
                         tempDiv.querySelector('.barcode-wrapper').appendChild(svgElement);
@@ -181,7 +181,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label-container.layout-estandar .label .price {
                         font-weight: bold;
-                        font-size: 3mm;
+                        font-size: 3.6mm;
                         margin-top: 2px;
                     }
 
@@ -236,7 +236,7 @@ const EtiquetasImpresion = () => {
                     }
                     .label-container.layout-termica .label .price {
                         font-weight: bold;
-                        font-size: 2.6mm;
+                        font-size: 3.2mm;
                         margin-top: 0.3mm;
                     }
 
