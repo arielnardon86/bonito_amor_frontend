@@ -344,7 +344,7 @@ export default function IntegracionTiendaNube() {
 
                 <label style={{ ...s.lbl, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                     <input type="checkbox" checked={facturar} onChange={e => setFacturar(e.target.checked)} />
-                    Facturar ventas automáticamente (AFIP)
+                    Facturar ventas automáticamente (ARCA)
                 </label>
 
                 <button style={s.btnPrimary} onClick={handleGuardar} disabled={guardando}>

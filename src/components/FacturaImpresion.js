@@ -11,14 +11,14 @@ const FacturaImpresion = () => {
     const { factura, venta, skipReciboPrompt } = location.state || {};
     const facturaRef = useRef(null);
 
-    // Tipo de comprobante → código numérico ARCA/AFIP
+    // Tipo de comprobante → código numérico ARCA
     const TIPO_CMP_CODIGO = { 'A': 1, 'B': 6, 'C': 11 };
 
-    // Tipo de documento receptor → código numérico ARCA/AFIP
+    // Tipo de documento receptor → código numérico ARCA
     const TIPO_DOC_CODIGO = { 'CUIT': 80, 'DNI': 96 };
 
     /**
-     * Construye el JSON ARCA/AFIP y retorna la URL de validación:
+     * Construye el JSON ARCA y retorna la URL de validación:
      * https://www.afip.gob.ar/fe/qr/?p=<base64url>
      */
     const buildArcaUrl = (factura) => {

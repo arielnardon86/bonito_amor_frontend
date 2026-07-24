@@ -115,7 +115,7 @@ const PanelAdministracionTienda = () => {
     const [loading, setLoading] = useState(true);
     const [tiendaInfo, setTiendaInfo] = useState(null);
 
-    // Estados para el wizard AFIP
+    // Estados para el wizard de facturación ARCA
     const [afipEstado, setAfipEstado] = useState(null); // resultado de facturacion/estado
     const [afipPasoActivo, setAfipPasoActivo] = useState(1);
     const [afipForm, setAfipForm] = useState({
@@ -129,6 +129,7 @@ const PanelAdministracionTienda = () => {
     const [afipCertB64, setAfipCertB64] = useState('');
     const [afipCertModo, setAfipCertModo] = useState('archivo'); // 'archivo' | 'base64'
     const [afipSaving, setAfipSaving] = useState(false);
+    const [puntoVentaGuardadoLocal, setPuntoVentaGuardadoLocal] = useState(false);
     
     // Estados para usuarios
     const [users, setUsers] = useState([]);
@@ -207,7 +208,7 @@ const PanelAdministracionTienda = () => {
     const [usuarios, setUsuarios] = useState([]);
 
     // Cargar información de la tienda (ML, facturación, etc.)
-    // Cargar estado AFIP desde el backend (debe ir ANTES de fetchTiendaInfo)
+    // Cargar estado de facturación ARCA desde el backend (debe ir ANTES de fetchTiendaInfo)
     const fetchAfipEstado = useCallback(async (tiendaId) => {
         if (!token || !tiendaId) return;
         try {
@@ -221,7 +222,10 @@ const PanelAdministracionTienda = () => {
                 ...prev,
                 cuit: d.cuit || '',
                 punto_venta: d.punto_venta || 1,
-                tipo_facturacion: (d.tipo_facturacion && d.tipo_facturacion !== 'NINGUNA') ? d.tipo_facturacion : 'AFIP',
+                // Único sistema con integración real hoy; el valor 'ARCA' quedó de una
+                // versión anterior que lo ofrecía como alternativa pero nunca se implementó
+                // (la prueba de conexión sólo funciona con 'AFIP'), así que se normaliza acá.
+                tipo_facturacion: 'AFIP',
                 condicion_iva_emisor: d.condicion_iva_emisor || 'MT',
                 modo_test_afip: false,
             }));
@@ -231,7 +235,7 @@ const PanelAdministracionTienda = () => {
             else if (!d.paso4_cert) setAfipPasoActivo(4);
             else setAfipPasoActivo(5);
         } catch (err) {
-            console.error('Error al cargar estado AFIP:', err);
+            console.error('Error al cargar estado de facturación:', err);
         }
     }, [token]);
 
@@ -254,8 +258,8 @@ const PanelAdministracionTienda = () => {
         }
     }, [token, selectedStoreSlug, fetchAfipEstado]);
 
-    // Guardar configuración básica AFIP (paso 1)
-    const handleGuardarConfigAfip = useCallback(async () => {
+    // Guardar configuración básica ARCA (paso 1, y también reutilizado en el paso 5 para el punto de venta)
+    const handleGuardarConfigAfip = useCallback(async (siguientePaso = 2) => {
         if (!tiendaInfo?.id) return;
         const cuitDigits = afipForm.cuit.replace(/\D/g, '');
         if (cuitDigits.length !== 11) {
@@ -272,7 +276,8 @@ const PanelAdministracionTienda = () => {
             await fetchAfipEstado(tiendaInfo.id);
             await fetchTiendaInfo();
             Swal.fire({ icon: 'success', title: 'Configuración guardada', timer: 1800, showConfirmButton: false });
-            setAfipPasoActivo(2);
+            if (siguientePaso === 6) setPuntoVentaGuardadoLocal(true);
+            setAfipPasoActivo(siguientePaso);
         } catch (err) {
             const msg = err.response?.data?.error || err.message || 'Error al guardar.';
             Swal.fire('Error', msg, 'error');
@@ -281,7 +286,7 @@ const PanelAdministracionTienda = () => {
         }
     }, [token, tiendaInfo, afipForm, fetchAfipEstado, fetchTiendaInfo]);
 
-    // Cargar certificado AFIP (paso 4)
+    // Cargar certificado ARCA (paso 4)
     const handleCargarCertificado = useCallback(async () => {
         if (!tiendaInfo?.id) return;
         setAfipSaving(true);
@@ -366,7 +371,7 @@ const PanelAdministracionTienda = () => {
         }
     }, [token, tiendaInfo]);
 
-    // Generar clave privada y CSR para AFIP (clave se guarda en la tienda en base64; se devuelve CSR para descargar)
+    // Generar clave privada y CSR para ARCA (clave se guarda en la tienda en base64; se devuelve CSR para descargar)
     const handleGenerarCsr = useCallback(async () => {
         if (!token || !tiendaInfo?.id) {
             Swal.fire('Error', 'No se encontró la tienda o falta autenticación.', 'error');
@@ -378,7 +383,7 @@ const PanelAdministracionTienda = () => {
         }
 
         const { value: formValues } = await Swal.fire({
-            title: 'Generar clave y CSR para AFIP',
+            title: 'Generar clave y CSR para ARCA',
             html: `
                 <p style="text-align:left; margin-bottom:12px;">Total Stock generará la clave privada (y la guardará) y un archivo CSR con los datos de tu tienda. Opcionalmente indicá alias y razón social para el certificado.</p>
                 <label style="display:block; text-align:left; margin-bottom:4px;">Alias (CN) – ej. TotalStock</label>
@@ -426,7 +431,7 @@ const PanelAdministracionTienda = () => {
                 title: 'Listo',
                 html: `
                     <p>La clave privada quedó guardada en Total Stock.</p>
-                    <p>Se descargó el archivo <strong>.csr</strong>. Subilo en AFIP (Certificados → Obtener certificado), descargá el .crt y pegá su contenido en base64 en el campo "Certificado AFIP" en la configuración de la tienda.</p>
+                    <p>Se descargó el archivo <strong>.csr</strong>. Subilo en ARCA (Certificados → Obtener certificado), descargá el .crt y pegá su contenido en base64 en el campo "Certificado ARCA" en la configuración de la tienda.</p>
                 `
             });
         } catch (err) {
@@ -1205,7 +1210,7 @@ const PanelAdministracionTienda = () => {
                         titulo={{
                             'usuarios': 'Gestión de Usuarios',
                             'medios-pago-aranceles': 'Medios de Pago y Aranceles',
-                            'habilitar-facturador': 'Facturación AFIP (ARCA)',
+                            'habilitar-facturador': 'Facturación electrónica (ARCA)',
                             'notas-credito': 'Notas de Crédito',
                             'aranceles-ml': 'Aranceles MercadoLibre',
                             'tiendanube': 'Integración TiendaNube',
@@ -1224,14 +1229,14 @@ const PanelAdministracionTienda = () => {
                                 'Los aranceles afectan el análisis de rentabilidad por venta.',
                             ],
                             'habilitar-facturador': [
-                                'Configurá los datos de tu empresa para emitir facturas electrónicas ante AFIP/ARCA.',
+                                'Configurá los datos de tu empresa para emitir facturas electrónicas ante ARCA.',
                                 'El proceso requiere configurar CUIT, punto de venta, CSR y certificado.',
                                 'Una vez operativo, podrás emitir Facturas A y B desde el Punto de Venta.',
                             ],
                             'notas-credito': [
                                 'Emitir notas de crédito para anular o ajustar facturas electrónicas ya emitidas.',
                                 'Buscá la factura original por número y generá la nota de crédito correspondiente.',
-                                'Requiere que el facturador AFIP/ARCA esté operativo.',
+                                'Requiere que el facturador ARCA esté operativo.',
                             ],
                             'aranceles-ml': [
                                 'Configurá los aranceles de MercadoLibre según categoría de producto.',
@@ -1803,14 +1808,15 @@ const PanelAdministracionTienda = () => {
                 </div>
             )}
 
-            {/* TAB: HABILITAR FACTURADOR - Información para alta en facturación electrónica (AFIP) */}
+            {/* TAB: HABILITAR FACTURADOR - Información para alta en facturación electrónica (ARCA) */}
             {activeTab === 'habilitar-facturador' && (() => {
                 const pasos = [
                     { num: 1, label: 'Configurar datos', ok: afipEstado?.paso1_config },
                     { num: 2, label: 'Generar clave y CSR', ok: afipEstado?.paso2_csr },
-                    { num: 3, label: 'Subir CSR a AFIP', ok: afipEstado?.paso2_csr }, // completado si ya generó el CSR
+                    { num: 3, label: 'Subir CSR a ARCA', ok: afipEstado?.paso2_csr }, // completado si ya generó el CSR
                     { num: 4, label: 'Cargar certificado', ok: afipEstado?.paso4_cert },
-                    { num: 5, label: 'Probar conexión', ok: false },
+                    { num: 5, label: 'Configurar punto de venta', ok: puntoVentaGuardadoLocal },
+                    { num: 6, label: 'Probar conexión', ok: false },
                 ];
                 const todoListo = afipEstado?.paso1_config && afipEstado?.paso2_csr && afipEstado?.paso4_cert;
 
@@ -1849,10 +1855,10 @@ const PanelAdministracionTienda = () => {
                 <div style={styles.tabContent}>
                     <div style={{ maxWidth: 820 }}>
                         <h2 style={{ marginTop: 0, marginBottom: 4, fontSize: '1.35rem', color: '#1a2926' }}>
-                            Facturación electrónica AFIP
+                            Facturación electrónica ARCA
                         </h2>
                         <p style={{ marginBottom: 24, color: '#475569', fontSize: 14 }}>
-                            Seguí los pasos para conectar tu tienda con AFIP y emitir facturas electrónicas.
+                            Seguí los pasos para conectar tu tienda con ARCA y emitir facturas electrónicas.
                         </p>
 
                         {/* Estado general */}
@@ -1883,9 +1889,9 @@ const PanelAdministracionTienda = () => {
                                 {/* PASO 1: Configurar datos */}
                                 {afipPasoActivo === 1 && (
                                     <div>
-                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 1 — Configurar datos AFIP</h3>
+                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 1 — Configurar datos ARCA</h3>
                                         <p style={{ color: '#475569', fontSize: 14, marginBottom: 20 }}>
-                                            Ingresá los datos fiscales de la tienda. Necesitás tener un <strong>punto de venta habilitado para factura electrónica</strong> en AFIP (Comprobantes en línea → Punto de venta).
+                                            Ingresá el CUIT y la condición frente al IVA de la tienda. El <strong>punto de venta</strong> se configura más adelante, en el paso 5 — no hace falta tenerlo a mano todavía.
                                         </p>
 
                                         <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>CUIT <span style={{ color: '#e25252' }}>*</span></label>
@@ -1895,16 +1901,6 @@ const PanelAdministracionTienda = () => {
                                             placeholder="Ej: 20-12345678-9"
                                             value={afipForm.cuit}
                                             onChange={e => setAfipForm(p => ({ ...p, cuit: e.target.value }))}
-                                        />
-
-                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Número de punto de venta AFIP <span style={{ color: '#e25252' }}>*</span></label>
-                                        <input
-                                            style={inputStyle}
-                                            type="number"
-                                            min={1}
-                                            placeholder="Ej: 1"
-                                            value={afipForm.punto_venta}
-                                            onChange={e => setAfipForm(p => ({ ...p, punto_venta: parseInt(e.target.value) || 1 }))}
                                         />
 
                                         <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Condición IVA del emisor <span style={{ color: '#e25252' }}>*</span></label>
@@ -1919,18 +1915,11 @@ const PanelAdministracionTienda = () => {
                                             <option value="CF">Consumidor Final</option>
                                             <option value="NR">No Responsable</option>
                                         </select>
+                                        <p style={{ marginTop: -8, marginBottom: 16, fontSize: 13, color: '#475569' }}>
+                                            ¿No sabés cuál sos? Es la misma categoría con la que estás inscripto en ARCA: si pagás una cuota fija mensual sos <strong>Monotributo</strong>; si facturás IVA discriminado sos <strong>Responsable Inscripto</strong>. Ante la duda, consultá con tu contador.
+                                        </p>
 
-                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Sistema de facturación</label>
-                                        <select
-                                            style={{ ...inputStyle, background: '#fff' }}
-                                            value={afipForm.tipo_facturacion}
-                                            onChange={e => setAfipForm(p => ({ ...p, tipo_facturacion: e.target.value }))}
-                                        >
-                                            <option value="AFIP">AFIP (recomendado)</option>
-                                            <option value="ARCA">ARCA</option>
-                                        </select>
-
-                                        <button style={btnPrimary(afipSaving)} onClick={handleGuardarConfigAfip} disabled={afipSaving}>
+                                        <button style={btnPrimary(afipSaving)} onClick={() => handleGuardarConfigAfip(2)} disabled={afipSaving}>
                                             {afipSaving ? 'Guardando...' : 'Guardar y continuar →'}
                                         </button>
                                     </div>
@@ -1946,7 +1935,7 @@ const PanelAdministracionTienda = () => {
                                             </div>
                                         )}
                                         <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
-                                            Total Stock genera una <strong>clave privada RSA</strong> y un <strong>CSR</strong> (Certificate Signing Request) con los datos de tu tienda. La clave privada queda guardada de forma segura; vos solo te llevás el archivo <code>.csr</code> para subirlo a AFIP en el siguiente paso.
+                                            Total Stock genera una <strong>clave privada RSA</strong> y un <strong>CSR</strong> (Certificate Signing Request) con los datos de tu tienda. La clave privada queda guardada de forma segura; vos solo te llevás el archivo <code>.csr</code> para subirlo a ARCA en el siguiente paso.
                                         </p>
                                         {afipEstado?.paso2_csr && (
                                             <div style={{ background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14, color: '#1a6a40' }}>
@@ -1971,23 +1960,23 @@ const PanelAdministracionTienda = () => {
                                     </div>
                                 )}
 
-                                {/* PASO 3: Subir CSR a AFIP */}
+                                {/* PASO 3: Subir CSR a ARCA */}
                                 {afipPasoActivo === 3 && (
                                     <div>
-                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 3 — Subir el CSR a AFIP</h3>
+                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 3 — Subir el CSR a ARCA</h3>
                                         <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
-                                            Con el archivo <code>.csr</code> que descargaste, hacé lo siguiente en AFIP:
+                                            Con el archivo <code>.csr</code> que descargaste, hacé lo siguiente en ARCA:
                                         </p>
                                         <ol style={{ paddingLeft: 20, color: '#475569', lineHeight: 1.9, fontSize: 14 }}>
-                                            <li>Ingresá a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" rel="noopener noreferrer" style={{ color: '#3b9ede' }}>AFIP con tu CUIT y clave fiscal</a>.</li>
+                                            <li>Ingresá a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" rel="noopener noreferrer" style={{ color: '#3b9ede' }}>ARCA con tu CUIT y clave fiscal</a>.</li>
                                             <li>Buscá el servicio <strong>"Administración de Certificados Digitales"</strong>.</li>
                                             <li>Hacé clic en <strong>"Agregar alias"</strong> y completá un nombre (ej. <em>TotalStock</em>).</li>
                                             <li>En el alias creado, elegí <strong>"Nueva solicitud de certificado"</strong> y subí el archivo <code>.csr</code>.</li>
-                                            <li>AFIP te devuelve un archivo <strong>.crt</strong> — descargalo.</li>
+                                            <li>ARCA te devuelve un archivo <strong>.crt</strong> — descargalo.</li>
                                         </ol>
                                         <div style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10, padding: '12px 16px', marginTop: 16, marginBottom: 20 }}>
                                             <strong style={{ color: '#1a2926' }}>🔗 Enlace directo:</strong>{' '}
-                                            <a href="https://wsaahomo.afip.gov.ar/ws/services/LoginCms" target="_blank" rel="noopener noreferrer" style={{ color: '#3b9ede' }}>AFIP – Administración de Certificados</a>
+                                            <a href="https://wsaahomo.afip.gov.ar/ws/services/LoginCms" target="_blank" rel="noopener noreferrer" style={{ color: '#3b9ede' }}>ARCA – Administración de Certificados</a>
                                             <br />
                                             <span style={{ fontSize: 13, color: '#475569' }}>Si tu modo está en "prueba", usá el ambiente de <strong>homologación</strong>; si es producción, usá el ambiente real.</span>
                                         </div>
@@ -2000,9 +1989,9 @@ const PanelAdministracionTienda = () => {
                                 {/* PASO 4: Cargar certificado */}
                                 {afipPasoActivo === 4 && (
                                     <div>
-                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 4 — Cargar el certificado AFIP</h3>
+                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 4 — Cargar el certificado ARCA</h3>
                                         <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
-                                            Cargá el certificado que obtuviste de AFIP. Podés subir el archivo <code>.crt</code> directamente o pegar el contenido en base64.
+                                            Cargá el certificado que obtuviste de ARCA. Podés subir el archivo <code>.crt</code> directamente o pegar el contenido en base64.
                                         </p>
 
                                         {/* Selector de modo */}
@@ -2055,22 +2044,65 @@ const PanelAdministracionTienda = () => {
                                     </div>
                                 )}
 
-                                {/* PASO 5: Probar conexión */}
+                                {/* PASO 5: Configurar punto de venta */}
                                 {afipPasoActivo === 5 && (
                                     <div>
-                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 5 — Probar la conexión</h3>
+                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 5 — Configurar el punto de venta</h3>
+                                        <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
+                                            Ahora que ya tenés el certificado cargado, necesitás un <strong>punto de venta habilitado para Web Service</strong> en ARCA. No se puede reutilizar un punto de venta manual/aplicativo — tiene que darse de alta específicamente para facturación electrónica por Web Service.
+                                        </p>
+
+                                        <div style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 18px', marginBottom: 20, fontSize: 14, color: '#1a2926' }}>
+                                            <strong>🔗 En ARCA:</strong> Ingresá a{' '}
+                                            <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" rel="noopener noreferrer" style={{ color: '#3b9ede' }}>
+                                                ARCA con tu CUIT y clave fiscal
+                                            </a>{' '}
+                                            y buscá <strong>"Puntos de Venta y Domicilios"</strong> (dentro de Comprobantes en línea) para dar de alta uno nuevo o revisar los existentes.
+                                            <div style={{ marginTop: 12 }}>
+                                                {afipForm.condicion_iva_emisor === 'MT' && (
+                                                    <span>Como tu condición IVA es <strong>Monotributo</strong>, al crearlo elegí la modalidad: <strong>"Factura Electrónica - Monotributo - Web Service"</strong>.</span>
+                                                )}
+                                                {afipForm.condicion_iva_emisor === 'RI' && (
+                                                    <span>Como tu condición IVA es <strong>Responsable Inscripto</strong>, al crearlo elegí la modalidad: <strong>"RECE para aplicativo y Web Service"</strong>.</span>
+                                                )}
+                                                {!['MT', 'RI'].includes(afipForm.condicion_iva_emisor) && (
+                                                    <span>Tu condición IVA no es Monotributo ni Responsable Inscripto — consultá con tu contador o el soporte de ARCA qué modalidad de punto de venta corresponde a tu categoría (en general, alguna variante "Web Service").</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Número de punto de venta <span style={{ color: '#e25252' }}>*</span></label>
+                                        <input
+                                            style={inputStyle}
+                                            type="number"
+                                            min={1}
+                                            placeholder="Ej: 1"
+                                            value={afipForm.punto_venta}
+                                            onChange={e => setAfipForm(p => ({ ...p, punto_venta: parseInt(e.target.value) || 1 }))}
+                                        />
+
+                                        <button style={btnPrimary(afipSaving)} onClick={() => handleGuardarConfigAfip(6)} disabled={afipSaving}>
+                                            {afipSaving ? 'Guardando...' : 'Guardar y continuar →'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* PASO 6: Probar conexión */}
+                                {afipPasoActivo === 6 && (
+                                    <div>
+                                        <h3 style={{ marginTop: 0, color: '#1a2926' }}>Paso 6 — Probar la conexión</h3>
                                         {!todoListo && (
                                             <div style={{ background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 14 }}>
                                                 ⚠️ Completá los pasos anteriores antes de probar.
-                                                {!afipEstado?.paso1_config && <div>— Falta: configurar CUIT y punto de venta (paso 1)</div>}
+                                                {!afipEstado?.paso1_config && <div>— Falta: configurar CUIT (paso 1)</div>}
                                                 {!afipEstado?.paso2_csr && <div>— Falta: generar clave y CSR (paso 2)</div>}
                                                 {!afipEstado?.paso4_cert && <div>— Falta: cargar el certificado (paso 4)</div>}
                                             </div>
                                         )}
                                         <div style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 18px', marginBottom: 20, fontSize: 14, color: '#1a2926' }}>
-                                            <strong>⚠️ Antes de continuar, autorizá el certificado en AFIP:</strong>
+                                            <strong>⚠️ Antes de continuar, autorizá el certificado en ARCA:</strong>
                                             <ol style={{ margin: '10px 0 0 0', paddingLeft: 20, lineHeight: 2 }}>
-                                                <li>Ingresá a <strong>afip.gob.ar</strong> con tu CUIT y clave fiscal.</li>
+                                                <li>Ingresá a <strong>ARCA</strong> con tu CUIT y clave fiscal.</li>
                                                 <li>Abrí <strong>Administrador de Relaciones de Clave Fiscal</strong>.</li>
                                                 <li>Hacé clic en <strong>Nueva Relación</strong>.</li>
                                                 <li>Seleccioná <strong>ARCA → Web Services → Facturación Electrónica</strong>.</li>
@@ -2080,7 +2112,7 @@ const PanelAdministracionTienda = () => {
                                             </ol>
                                         </div>
                                         <p style={{ color: '#475569', fontSize: 14, marginBottom: 20 }}>
-                                            Una vez autorizado el certificado en AFIP, Total Stock va a emitir una <strong>factura de prueba por $1</strong> para verificar que la conexión funciona correctamente. El comprobante quedará registrado en AFIP.
+                                            Una vez autorizado el certificado en ARCA, Total Stock va a emitir una <strong>factura de prueba por $1</strong> para verificar que la conexión funciona correctamente. El comprobante quedará registrado en ARCA.
                                         </p>
                                         <button style={btnSuccess(!todoListo)} onClick={handleProbarFacturacion} disabled={!todoListo}>
                                             Probar facturación (emitir $1 de prueba)
@@ -2088,7 +2120,7 @@ const PanelAdministracionTienda = () => {
                                         <div style={{ marginTop: 24, padding: '12px 16px', background: '#f8fafc', borderRadius: 10, fontSize: 13, color: '#475569' }}>
                                             ¿Algo no funciona?{' '}
                                             <a href="https://www.afip.gob.ar/fe/comprobantes/" target="_blank" rel="noopener noreferrer" style={{ color: '#3b9ede' }}>
-                                                Documentación AFIP — Facturación electrónica
+                                                Documentación ARCA — Facturación electrónica
                                             </a>
                                         </div>
                                     </div>
@@ -2104,9 +2136,9 @@ const PanelAdministracionTienda = () => {
                             </summary>
                             <ul style={{ margin: '12px 0 0 0', paddingLeft: 20, color: '#475569', lineHeight: 1.8, fontSize: 14 }}>
                                 <li><strong>CUIT</strong> al día (persona física o jurídica).</li>
-                                <li><strong>Clave fiscal nivel 3</strong> en AFIP.</li>
+                                <li><strong>Clave fiscal nivel 3</strong> en ARCA.</li>
                                 <li>Inscripción en el <strong>régimen correspondiente</strong> (Monotributo, Responsable Inscripto, IVA Exento, etc.).</li>
-                                <li>Un <strong>punto de venta</strong> habilitado para facturación electrónica en AFIP (Comprobantes en línea → Punto de venta).</li>
+                                <li>Un <strong>punto de venta</strong> habilitado para facturación electrónica en ARCA (Comprobantes en línea → Punto de venta).</li>
                             </ul>
                         </details>
                     </div>
@@ -2554,7 +2586,7 @@ const PanelAdministracionTienda = () => {
                                 <p style={{ fontWeight: 700, fontSize: 14, color: '#1a2926', marginBottom: 14 }}>Funcionalidades</p>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                     {[
-                                        { key: 'permite_factura_electronica', label: 'Factura electrónica (AFIP)' },
+                                        { key: 'permite_factura_electronica', label: 'Factura electrónica (ARCA)' },
                                         { key: 'permite_integracion_ecommerce', label: 'Integraciones (Tienda Nube / Mercado Libre)' },
                                     ].map(({ key, label }) => {
                                         const enabled = planInfo[key];
@@ -2646,7 +2678,7 @@ const PanelAdministracionTienda = () => {
                         upgradeMotivo === 'ecommerce'
                             ? 'Las integraciones con Mercado Libre y Tienda Nube requieren el plan Advanced.'
                             : upgradeMotivo === 'factura'
-                                ? 'La facturación electrónica (AFIP/ARCA) requiere el plan Pro o Advanced.'
+                                ? 'La facturación electrónica (ARCA) requiere el plan Pro o Advanced.'
                                 : ''
                     }
                     token={token}

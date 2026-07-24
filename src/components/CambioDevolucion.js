@@ -631,7 +631,7 @@ const CambioDevolucion = () => {
                         }))
                     };
 
-                    // Preguntar si quiere facturar (solo si la tienda tiene AFIP configurado)
+                    // Preguntar si quiere facturar (solo si la tienda tiene ARCA configurado)
                     const tieneFacturacion = tiendaInfo && tiendaInfo.tipo_facturacion && tiendaInfo.tipo_facturacion !== 'NINGUNA';
                     
                     if (tieneFacturacion) {

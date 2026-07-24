@@ -501,7 +501,7 @@ const IntegracionMercadoLibre = () => {
                                 <span><strong>Facturar automáticamente</strong> las ventas de Mercado Libre</span>
                             </label>
                             <p style={{ margin: '8px 0 0 26px', fontSize: '12px', color: '#94a3b8' }}>
-                                Si está desactivado, las ventas se registran pero solo se emite recibo (no se genera factura electrónica AFIP/ARCA).
+                                Si está desactivado, las ventas se registran pero solo se emite recibo (no se genera factura electrónica ARCA).
                             </p>
                         </div>
                     </div>
@@ -654,7 +654,7 @@ const IntegracionMercadoLibre = () => {
                 <ul style={{ marginBottom: 0, paddingLeft: '18px', lineHeight: 1.7 }}>
                     <li><strong>Desde Total Stock:</strong> Actualizá el stock en ML cuando vendas por otro canal (solo stock, no precio).</li>
                     <li><strong>Traer de ML:</strong> Importá productos, elegí cuáles o actualizá existentes (precio y stock desde ML).</li>
-                    <li><strong>Facturación:</strong> Podés elegir si las ventas de ML se facturan automáticamente (AFIP/ARCA) o solo se emite recibo.</li>
+                    <li><strong>Facturación:</strong> Podés elegir si las ventas de ML se facturan automáticamente (ARCA) o solo se emite recibo.</li>
                 </ul>
             </div>
 

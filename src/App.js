@@ -839,7 +839,7 @@ const AppContent = () => {
                           <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 12, color: '#475569', lineHeight: 1.8 }}>
                             {plan.max_productos > 0 && <li>Hasta {plan.max_productos.toLocaleString('es-AR')} productos</li>}
                             {plan.max_usuarios > 0 && <li>Hasta {plan.max_usuarios} usuarios</li>}
-                            {plan.permite_factura_electronica && <li>Factura electrónica AFIP</li>}
+                            {plan.permite_factura_electronica && <li>Factura electrónica ARCA</li>}
                             {plan.permite_integracion_ecommerce && <li>Integración Tienda Nube / Mercado Libre</li>}
                           </ul>
                           <button

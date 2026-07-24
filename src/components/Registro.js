@@ -31,7 +31,7 @@ const PLAN_INFO = {
     precio: '40.000',
     color: COLORES.pro,
     colorOsc: COLORES.proOsc,
-    features: ['Hasta 2.500 productos', '4 usuarios', 'Factura electrónica (ARCA/AFIP)'],
+    features: ['Hasta 2.500 productos', '4 usuarios', 'Factura electrónica (ARCA)'],
   },
   advanced: {
     display: 'Advanced',

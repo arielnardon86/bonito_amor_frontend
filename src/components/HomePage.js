@@ -62,7 +62,7 @@ const FEATURES = [
     { icon: faWarehouse,    titulo: 'Stock en Tiempo Real', desc: 'Controlá productos, precios y stock. Búsqueda por código de barras incluida.' },
     { icon: faChartLine,    titulo: 'Reportes y Métricas', desc: 'Sabé qué vendés, cuánto ganás y cuáles son tus productos estrella.' },
     { icon: faExchangeAlt,  titulo: 'Cambios y Devoluciones', desc: 'Gestioná cambios con notas de crédito y ajuste de stock automático.' },
-    { icon: faFileInvoice,  titulo: 'Factura Electrónica', desc: 'Emití facturas A, B y C integradas con ARCA/AFIP sin salir del sistema.' },
+    { icon: faFileInvoice,  titulo: 'Factura Electrónica', desc: 'Emití facturas A, B y C integradas con ARCA sin salir del sistema.' },
     { icon: faPrint,        titulo: 'Recibos y Etiquetas', desc: 'Imprimí tickets, recibos y etiquetas compatibles con impresoras térmicas.' },
     { icon: faUsers,        titulo: 'Control de Usuarios', desc: 'Asigná roles con permisos diferenciados: admin, supervisor o cajero.' },
     { icon: faGlobe,        titulo: 'E-Commerce Integrado', desc: 'Publicá en Mercado Libre y Tienda Nube, importá órdenes y sincronizá stock.' },
@@ -81,7 +81,7 @@ const CLIENTES = [
 ];
 
 const INTEGRACIONES = [
-    { nombre: 'ARCA / AFIP', color: '#003087', letra: 'A', desc: 'Factura electrónica oficial' },
+    { nombre: 'ARCA', color: '#003087', letra: 'A', desc: 'Factura electrónica oficial' },
     { nombre: 'Mercado Libre', color: '#ffe600', textColor: '#333', letra: 'ML', desc: 'Publicaciones y órdenes' },
     { nombre: 'Tienda Nube', color: '#0097ff', letra: 'TN', desc: 'Sincronización de catálogo' },
     { nombre: 'Mercado Pago', color: '#009ee3', letra: 'MP', desc: 'Suscripciones y pagos' },
@@ -400,7 +400,7 @@ export default function HomePage() {
                                 <p style={s.pricePer}>por tienda / por mes</p>
                             </div>
                             <div style={s.featureList}>
-                                {['Hasta 2.500 productos','4 usuarios','Punto de venta + stock','Recibos de compra','Factura electrónica ARCA/AFIP'].map(f => (
+                                {['Hasta 2.500 productos','4 usuarios','Punto de venta + stock','Recibos de compra','Factura electrónica ARCA'].map(f => (
                                     <div key={f} style={s.featureRow}>
                                         <FontAwesomeIcon icon={faCheck} style={{ color: C.pro, fontSize: 12, marginTop: 3, flexShrink: 0 }} />
                                         <span>{f}</span>
