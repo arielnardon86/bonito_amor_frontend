@@ -579,58 +579,6 @@ const Presupuesto = () => {
                         )}
                     </div>
 
-                    <div style={styles.section}>
-                        <h2 style={styles.sectionHeader}>Productos</h2>
-                        <div style={styles.inputGroup}>
-                            <input
-                                type="text"
-                                placeholder="Código de barras o nombre..."
-                                value={filterTerm}
-                                onChange={(e) => setFilterTerm(e.target.value)}
-                                onKeyPress={(e) => { if (e.key === 'Enter') buscarProductoPorCodigo(); }}
-                                style={styles.inputField}
-                            />
-                            <button type="button" onClick={buscarProductoPorCodigo} style={styles.primaryButton}>
-                                Buscar
-                            </button>
-                        </div>
-                        {loadingProductos ? (
-                            <p style={styles.noDataMessage}>Cargando productos...</p>
-                        ) : (
-                            <div style={styles.tableResponsive}>
-                                <table style={styles.table}>
-                                    <thead>
-                                        <tr style={styles.tableHeaderRow}>
-                                            <th style={styles.th}>Nombre</th>
-                                            <th style={styles.th}>Precio</th>
-                                            <th style={styles.th}>Stock</th>
-                                            <th style={styles.th}>Acción</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {productos.length > 0 ? productos.flatMap(product => {
-                                            if (product.variantes && product.variantes.length > 0) {
-                                                return product.variantes.map(v => ({ ...v, nombre: v.nombre || product.nombre }));
-                                            }
-                                            return [product];
-                                        }).map(product => (
-                                            <tr key={product.id} style={styles.tableRow}>
-                                                <td style={styles.td}>{product.nombre}</td>
-                                                <td style={styles.td}>{formatearMonto(product.precio)}</td>
-                                                <td style={styles.td}>{product.stock}</td>
-                                                <td style={styles.td}>
-                                                    <button onClick={() => agregarProducto(product, 1)} style={styles.addButton}>Añadir</button>
-                                                </td>
-                                            </tr>
-                                        )) : (
-                                            <tr><td colSpan={4} style={{ ...styles.noDataMessage, textAlign: 'center', padding: '16px' }}>No se encontraron productos.</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-
                     {items.length > 0 && (
                         <div style={styles.section}>
                             <h2 style={styles.sectionHeader}>Carrito del presupuesto</h2>
@@ -746,6 +694,58 @@ const Presupuesto = () => {
                             </button>
                         </div>
                     )}
+
+                    <div style={styles.section}>
+                        <h2 style={styles.sectionHeader}>Productos</h2>
+                        <div style={styles.inputGroup}>
+                            <input
+                                type="text"
+                                placeholder="Código de barras o nombre..."
+                                value={filterTerm}
+                                onChange={(e) => setFilterTerm(e.target.value)}
+                                onKeyPress={(e) => { if (e.key === 'Enter') buscarProductoPorCodigo(); }}
+                                style={styles.inputField}
+                            />
+                            <button type="button" onClick={buscarProductoPorCodigo} style={styles.primaryButton}>
+                                Buscar
+                            </button>
+                        </div>
+                        {loadingProductos ? (
+                            <p style={styles.noDataMessage}>Cargando productos...</p>
+                        ) : (
+                            <div style={styles.tableResponsive}>
+                                <table style={styles.table}>
+                                    <thead>
+                                        <tr style={styles.tableHeaderRow}>
+                                            <th style={styles.th}>Nombre</th>
+                                            <th style={styles.th}>Precio</th>
+                                            <th style={styles.th}>Stock</th>
+                                            <th style={styles.th}>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {productos.length > 0 ? productos.flatMap(product => {
+                                            if (product.variantes && product.variantes.length > 0) {
+                                                return product.variantes.map(v => ({ ...v, nombre: v.nombre || product.nombre }));
+                                            }
+                                            return [product];
+                                        }).map(product => (
+                                            <tr key={product.id} style={styles.tableRow}>
+                                                <td style={styles.td}>{product.nombre}</td>
+                                                <td style={styles.td}>{formatearMonto(product.precio)}</td>
+                                                <td style={styles.td}>{product.stock}</td>
+                                                <td style={styles.td}>
+                                                    <button onClick={() => agregarProducto(product, 1)} style={styles.addButton}>Añadir</button>
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr><td colSpan={4} style={{ ...styles.noDataMessage, textAlign: 'center', padding: '16px' }}>No se encontraron productos.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
                 </>
             )}
 
