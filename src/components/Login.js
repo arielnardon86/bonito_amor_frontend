@@ -126,6 +126,8 @@ function Login() {
         <form onSubmit={handleSubmit} style={styles.form} className="login-form">
           <input
             type="text"
+            name="username"
+            autoComplete="username"
             placeholder="Nombre de usuario"
             value={username}
             onChange={e => setUsername(e.target.value)}
@@ -134,6 +136,8 @@ function Login() {
           />
           <input
             type="password"
+            name="password"
+            autoComplete="current-password"
             placeholder="Contraseña"
             value={password}
             onChange={e => setPassword(e.target.value)}
