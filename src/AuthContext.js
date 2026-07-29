@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+import Swal from 'sweetalert2';
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,18 @@ const normalizeApiUrl = (url) => {
 };
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
+
+// Estado del interceptor de refresh de token, compartido entre todas las requests
+// (vive a nivel de módulo porque axios es un singleton, no depende de renders de React).
+let refrescandoToken = false;
+let suscriptoresRefresh = [];
+let sesionExpiradaMostrada = false;
+
+const suscribirseARefresh = (cb) => { suscriptoresRefresh.push(cb); };
+const notificarRefreshListo = (nuevoToken) => {
+    suscriptoresRefresh.forEach(cb => cb(nuevoToken));
+    suscriptoresRefresh = [];
+};
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -60,6 +73,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = useCallback(() => {
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         localStorage.removeItem('selectedStoreSlug');
         localStorage.removeItem('tiendasAutorizadas');
@@ -78,6 +92,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await axios.post(`${BASE_API_ENDPOINT}/api/token/`, { username, password });
             const newToken = response.data.access;
+            const newRefreshToken = response.data.refresh;
             const decodedUser = jwtDecode(newToken);
 
             const autorizadas = decodedUser.tiendas_autorizadas || [];
@@ -91,6 +106,7 @@ export const AuthProvider = ({ children }) => {
             }
 
             localStorage.setItem('token', newToken);
+            if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
             axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
             const userData = {
@@ -179,6 +195,78 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         loadUserInitial();
     }, [loadUserInitial]);
+
+    const mostrarSesionExpirada = useCallback(() => {
+        if (sesionExpiradaMostrada) return;
+        sesionExpiradaMostrada = true;
+        logout();
+        Swal.fire({
+            icon: 'info',
+            title: 'Tu sesión expiró',
+            text: 'Por seguridad, tenés que iniciar sesión de nuevo para continuar.',
+            confirmButtonText: 'Iniciar sesión',
+            allowOutsideClick: false,
+        }).then(() => {
+            window.location.href = '/login';
+        });
+    }, [logout]);
+
+    // Cuando el access token vence (5 días), en vez de que cada pantalla muestre su
+    // propio "Error al cargar X" genérico, se intenta renovar en silencio con el
+    // refresh token (30 días) y se reintenta la request original. Solo si el refresh
+    // también falla (o no existe) se corta la sesión con un mensaje claro.
+    useEffect(() => {
+        const interceptorId = axios.interceptors.response.use(
+            (response) => response,
+            async (error) => {
+                const originalRequest = error.config;
+                const url = originalRequest?.url || '';
+                const esEndpointDeAuth = url.includes('/api/token/');
+
+                if (error.response?.status !== 401 || esEndpointDeAuth || originalRequest._retryTrasRefresh) {
+                    return Promise.reject(error);
+                }
+
+                const storedRefreshToken = localStorage.getItem('refreshToken');
+                if (!storedRefreshToken) {
+                    mostrarSesionExpirada();
+                    return Promise.reject(error);
+                }
+
+                originalRequest._retryTrasRefresh = true;
+
+                if (refrescandoToken) {
+                    return new Promise((resolve, reject) => {
+                        suscribirseARefresh((nuevoToken) => {
+                            if (!nuevoToken) { reject(error); return; }
+                            originalRequest.headers['Authorization'] = `Bearer ${nuevoToken}`;
+                            resolve(axios(originalRequest));
+                        });
+                    });
+                }
+
+                refrescandoToken = true;
+                try {
+                    const refreshResponse = await axios.post(`${BASE_API_ENDPOINT}/api/token/refresh/`, {
+                        refresh: storedRefreshToken,
+                    });
+                    const nuevoAccessToken = refreshResponse.data.access;
+                    localStorage.setItem('token', nuevoAccessToken);
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${nuevoAccessToken}`;
+                    refrescandoToken = false;
+                    notificarRefreshListo(nuevoAccessToken);
+                    originalRequest.headers['Authorization'] = `Bearer ${nuevoAccessToken}`;
+                    return axios(originalRequest);
+                } catch (refreshError) {
+                    refrescandoToken = false;
+                    notificarRefreshListo(null);
+                    mostrarSesionExpirada();
+                    return Promise.reject(error);
+                }
+            }
+        );
+        return () => axios.interceptors.response.eject(interceptorId);
+    }, [mostrarSesionExpirada]);
 
     const clearError = useCallback(() => {
         setAuthError(null);
