@@ -1,7 +1,7 @@
 // frontend/src/components/PanelAdministracionTienda.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -110,8 +110,15 @@ const PanelAdministracionTienda = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas, logout } = useAuth();
     const navigate = useNavigate();
     const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken, error: notificationError } = useNotifications();
-    
-    const [activeTab, setActiveTab] = useState('usuarios');
+    const [searchParams] = useSearchParams();
+
+    // Permite entrar directo a una pestaña con ?tab=nombre (ej. para el link de
+    // "URL de configuraciones" del homologado de Tienda Nube: ?tab=tiendanube).
+    const [activeTab, setActiveTab] = useState(() => {
+        const tabsValidos = ['usuarios', 'medios-pago-aranceles', 'habilitar-facturador', 'notas-credito', 'aranceles-ml', 'tiendanube', 'mercadolibre-panel', 'mi-plan', 'historial'];
+        const tabParam = searchParams.get('tab');
+        return tabsValidos.includes(tabParam) ? tabParam : 'usuarios';
+    });
     const [loading, setLoading] = useState(true);
     const [tiendaInfo, setTiendaInfo] = useState(null);
 

@@ -25,6 +25,7 @@ import MetricasVentas from './components/MetricasVentas';
 import ComprasStock from './components/ComprasStock';
 import VentasPage from './components/VentasPage';
 import HomePage from './components/HomePage';
+import PoliticaPrivacidad from './components/PoliticaPrivacidad';
 import CierresCaja from './components/CierresCaja';
 import Registro from './components/Registro';
 import SuscripcionResultado from './components/SuscripcionResultado';
@@ -998,6 +999,7 @@ const AppContent = () => {
         <Routes>
           <Route path="/login/:storeSlug" element={<Login />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/privacidad" element={<PoliticaPrivacidad />} />
 
           <Route path="/" element={
             isAuthenticated && selectedStoreSlug ? (
