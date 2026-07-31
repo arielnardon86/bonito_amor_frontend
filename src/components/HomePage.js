@@ -80,6 +80,7 @@ const CLIENTES = [
     { src: '/clientes/total-dark.jpg',         nombre: 'Total Dark' },
     { src: '/clientes/las-cholitas.jpg',       nombre: 'Las Cholitas' },
     { src: '/clientes/ferreteria-rioja.jpg',   nombre: 'Ferretería Rioja' },
+    { src: '/clientes/blanqueria-del-lago.jpg', nombre: 'Blanquería del Lago' },
 ];
 
 const INTEGRACIONES = [
