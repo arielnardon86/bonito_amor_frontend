@@ -78,13 +78,15 @@ const CLIENTES = [
     { src: '/clientes/high-duo.png',           nombre: 'High Duo' },
     { src: '/clientes/la-pasion-del-hincha.jpeg', nombre: 'La Pasión del Hincha' },
     { src: '/clientes/total-dark.jpg',         nombre: 'Total Dark' },
+    { src: '/clientes/las-cholitas.jpg',       nombre: 'Las Cholitas' },
+    { src: '/clientes/ferreteria-rioja.jpg',   nombre: 'Ferretería Rioja' },
 ];
 
 const INTEGRACIONES = [
-    { nombre: 'ARCA', color: '#003087', letra: 'A', desc: 'Factura electrónica oficial' },
-    { nombre: 'Mercado Libre', color: '#ffe600', textColor: '#333', letra: 'ML', desc: 'Publicaciones y órdenes' },
-    { nombre: 'Tienda Nube', color: '#0097ff', letra: 'TN', desc: 'Sincronización de catálogo' },
-    { nombre: 'Mercado Pago', color: '#009ee3', letra: 'MP', desc: 'Suscripciones y pagos' },
+    { nombre: 'ARCA', src: '/integraciones/arca.jpg', desc: 'Factura electrónica oficial' },
+    { nombre: 'Mercado Libre', src: '/integraciones/mercado-libre.png', desc: 'Publicaciones y órdenes' },
+    { nombre: 'Tienda Nube', src: '/integraciones/tienda-nube.png', desc: 'Sincronización de catálogo' },
+    { nombre: 'Mercado Pago', src: '/integraciones/mercado-pago.jpeg', desc: 'Suscripciones y pagos' },
 ];
 
 export default function HomePage() {
@@ -324,8 +326,8 @@ export default function HomePage() {
                     <div style={s.integGrid}>
                         {INTEGRACIONES.map((ig, i) => (
                             <div key={i} style={s.integCard} className="integ-card">
-                                <div style={{ ...s.integLogo, background: ig.color, color: ig.textColor || '#fff' }}>
-                                    {ig.letra}
+                                <div style={s.integLogo}>
+                                    <img src={ig.src} alt={ig.nombre} style={s.integImg} />
                                 </div>
                                 <div style={s.integName}>{ig.nombre}</div>
                                 <div style={s.integDesc}>{ig.desc}</div>
@@ -656,7 +658,8 @@ const s = {
     integSection: { padding: '80px 0', background: `linear-gradient(135deg, #0d1f3c 0%, #1a3a5c 100%)`, textAlign: 'center' },
     integGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginTop: 0 },
     integCard: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '28px 20px', transition: 'all 0.25s', cursor: 'default' },
-    integLogo: { width: 56, height: 56, borderRadius: 14, margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.1em', letterSpacing: -0.5 },
+    integLogo: { width: 56, height: 56, borderRadius: 14, margin: '0 auto 12px', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.15)' },
+    integImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
     integName: { fontSize: '1em', fontWeight: 700, color: '#fff', marginBottom: 4 },
     integDesc: { fontSize: '0.82em', color: 'rgba(255,255,255,0.55)' },
 
