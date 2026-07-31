@@ -232,7 +232,7 @@ export default function HomePage() {
                 <div style={s.heroContent}>
                     <span style={s.heroPill}>
                         <FontAwesomeIcon icon={faBolt} style={{ marginRight: 6, fontSize: 11 }} />
-                        7 días de prueba gratis · Sin tarjeta de crédito
+                        7 días de prueba gratis 
                     </span>
                     <h1 style={s.heroH1}>
                         Gestioná tu negocio<br />
