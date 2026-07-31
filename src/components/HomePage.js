@@ -9,6 +9,7 @@ import {
     faWarehouse, faPrint, faUsers, faCheck, faGlobe,
     faBoxOpen, faClock, faSync, faStore,
     faExclamationCircle, faBolt, faShieldAlt,
+    faFileContract, faAddressBook,
 } from '@fortawesome/free-solid-svg-icons';
 
 const C = {
@@ -24,7 +25,7 @@ const C = {
 };
 
 const STATS = [
-    { number: '9',    label: 'herramientas integradas', icon: faBolt },
+    { number: '11',   label: 'herramientas integradas', icon: faBolt },
     { number: '7',    label: 'días de prueba gratis',   icon: faCheck },
     { number: '3',    label: 'planes desde $35.000/mes',icon: faShieldAlt },
     { number: '24/7', label: 'soporte por WhatsApp',    icon: faUsers },
@@ -62,6 +63,8 @@ const FEATURES = [
     { icon: faWarehouse,    titulo: 'Stock en Tiempo Real', desc: 'Controlá productos, precios y stock. Búsqueda por código de barras incluida.' },
     { icon: faChartLine,    titulo: 'Reportes y Métricas', desc: 'Sabé qué vendés, cuánto ganás y cuáles son tus productos estrella.' },
     { icon: faExchangeAlt,  titulo: 'Cambios y Devoluciones', desc: 'Gestioná cambios con notas de crédito y ajuste de stock automático.' },
+    { icon: faFileContract, titulo: 'Presupuestos', desc: 'Generá presupuestos con vigencia, convertilos en venta en un clic y mandalos por mail.' },
+    { icon: faAddressBook,  titulo: 'Base de Clientes', desc: 'Cargá tus clientes, llevá cuenta corriente y su historial de compras.' },
     { icon: faFileInvoice,  titulo: 'Factura Electrónica', desc: 'Emití facturas A, B y C integradas con ARCA sin salir del sistema.' },
     { icon: faPrint,        titulo: 'Recibos y Etiquetas', desc: 'Imprimí tickets, recibos y etiquetas compatibles con impresoras térmicas.' },
     { icon: faUsers,        titulo: 'Control de Usuarios', desc: 'Asigná roles con permisos diferenciados: admin, supervisor o cajero.' },
@@ -88,6 +91,13 @@ const INTEGRACIONES = [
     { nombre: 'Mercado Libre', src: '/integraciones/mercado-libre.png', desc: 'Publicaciones y órdenes' },
     { nombre: 'Tienda Nube', src: '/integraciones/tienda-nube.png', desc: 'Sincronización de catálogo' },
     { nombre: 'Mercado Pago', src: '/integraciones/mercado-pago.jpeg', desc: 'Suscripciones y pagos' },
+];
+
+const CAPTURAS = [
+    { src: '/capturas/punto-de-venta.png', titulo: 'Punto de Venta', desc: 'Cobrá rápido, combiná métodos de pago y llevá el carrito de cada venta bajo control.' },
+    { src: '/capturas/gestion-productos.png', titulo: 'Gestión de Productos', desc: 'Precio, costo, margen y stock de cada producto, todo en una sola vista.' },
+    { src: '/capturas/presupuesto.png', titulo: 'Presupuestos', desc: 'Armá un presupuesto para un cliente y convertilo en venta cuando confirme.' },
+    { src: '/capturas/metricas-ventas.png', titulo: 'Métricas de Ventas', desc: 'Rentabilidad, productos más vendidos y ventas por método de pago, al día.' },
 ];
 
 export default function HomePage() {
@@ -298,7 +308,7 @@ export default function HomePage() {
                 <div style={s.sectionWrap}>
                     <span style={s.sectionPill}>Todo en un lugar</span>
                     <h2 style={s.sectionH2}>
-                        <span style={{ color: C.verde }}>9 herramientas</span> integradas en una sola plataforma
+                        <span style={{ color: C.verde }}>11 herramientas</span> integradas en una sola plataforma
                     </h2>
                     <p style={s.sectionSub}>
                         Sin integraciones externas complicadas. Todo lo que necesitás para operar tu negocio desde el día uno.
@@ -312,6 +322,40 @@ export default function HomePage() {
                                 <h3 style={s.featTitle}>{f.titulo}</h3>
                                 <p style={s.featDesc}>{f.desc}</p>
                             </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ── CAPTURAS DEL SISTEMA ── */}
+            <section id="capturas" style={s.capturasSection}>
+                <div style={s.sectionWrap}>
+                    <span style={s.sectionPill}>Mirá cómo es</span>
+                    <h2 style={s.sectionH2}>Así es Total Stock por dentro</h2>
+                    <p style={s.sectionSub}>
+                        Capturas reales del sistema — no maquetas. Esto es lo que vas a usar todos los días.
+                    </p>
+                    <div style={s.capturasGrid}>
+                        {CAPTURAS.map((cap, i) => (
+                            <figure key={i} style={s.capturaCard} className="captura-card">
+                                <div style={s.capturaWindowBar}>
+                                    <span style={{ ...s.capturaDot, background: '#e25252' }} />
+                                    <span style={{ ...s.capturaDot, background: '#f5a623' }} />
+                                    <span style={{ ...s.capturaDot, background: '#5dc87a' }} />
+                                </div>
+                                <img
+                                    src={cap.src}
+                                    alt={`Pantalla de ${cap.titulo} en Total Stock, sistema de gestión para comercios`}
+                                    style={s.capturaImg}
+                                    loading="lazy"
+                                    width="1920"
+                                    height="1080"
+                                />
+                                <figcaption style={s.capturaCaption}>
+                                    <h3 style={s.capturaTitulo}>{cap.titulo}</h3>
+                                    <p style={s.capturaDesc}>{cap.desc}</p>
+                                </figcaption>
+                            </figure>
                         ))}
                     </div>
                 </div>
@@ -645,6 +689,17 @@ const s = {
     featIcon: { fontSize: '1.3em', color: '#3b9ede' },
     featTitle: { fontSize: '1em', fontWeight: 700, color: C.texto, marginBottom: 8 },
     featDesc: { fontSize: '0.88em', color: C.gris, lineHeight: 1.65 },
+
+    // Capturas del sistema
+    capturasSection: { padding: '80px 0', background: '#fff' },
+    capturasGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 28, marginTop: 20, textAlign: 'left' },
+    capturaCard: { background: C.grisClaro, borderRadius: 16, overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', margin: 0 },
+    capturaWindowBar: { display: 'flex', gap: 6, padding: '10px 14px', background: '#e2e8f0' },
+    capturaDot: { width: 10, height: 10, borderRadius: '50%', display: 'inline-block' },
+    capturaImg: { width: '100%', height: 'auto', display: 'block', aspectRatio: '16 / 9', objectFit: 'cover', objectPosition: 'top' },
+    capturaCaption: { padding: '18px 20px', margin: 0 },
+    capturaTitulo: { fontSize: '1.05em', fontWeight: 700, color: C.texto, margin: '0 0 6px' },
+    capturaDesc: { fontSize: '0.88em', color: C.gris, lineHeight: 1.6, margin: 0 },
 
     // Clientes
     clientesSection: { padding: '80px 0 70px', background: C.grisClaro, overflow: 'hidden' },

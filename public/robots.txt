@@ -1,3 +1,22 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Disallow: /punto-venta
+Disallow: /productos
+Disallow: /ventas
+Disallow: /clientes
+Disallow: /presupuesto
+Disallow: /panel-administracion-tienda
+Disallow: /metricas-ventas
+Disallow: /compras-stock
+Disallow: /registro-compras
+Disallow: /cierres-caja
+Disallow: /recibo
+Disallow: /recibo-cobro
+Disallow: /factura
+Disallow: /ticket-cambio
+Disallow: /cambio-devolucion
+Disallow: /etiquetas
+Disallow: /nueva-contrasena
+Disallow: /suscripcion
+
+Sitemap: https://totalstock.com.ar/sitemap.xml
