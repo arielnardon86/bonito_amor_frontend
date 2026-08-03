@@ -361,6 +361,85 @@ export default function HomePage() {
                 </div>
             </section>
 
+            {/* ── RESPONSIVE + NOTIFICACIONES ── */}
+            <section style={s.responsiveSection}>
+                <div style={s.sectionWrap}>
+                    <span style={s.sectionPill}>Funciona donde estés</span>
+                    <h2 style={s.sectionH2}>Usalo desde el celular, sin instalar nada</h2>
+                    <p style={s.sectionSub}>
+                        Total Stock se adapta a la pantalla que tengas: celular, tablet o computadora. Se abre desde el navegador y se ve y funciona bien en cualquiera de los tres.
+                    </p>
+                    <div style={s.responsiveGrid}>
+                        <div style={s.responsiveCol}>
+                            <div style={s.phoneFrame}>
+                                <div style={s.phoneNotch} />
+                                <img
+                                    src="/capturas/punto-de-venta-mobile.png"
+                                    alt="Punto de Venta de Total Stock funcionando en la pantalla de un celular"
+                                    style={s.phoneScreen}
+                                    loading="lazy"
+                                />
+                            </div>
+                            <p style={s.responsiveCaption}>
+                                Captura real de Punto de Venta abierto desde un celular — mismo sistema, pantalla adaptada.
+                            </p>
+                        </div>
+
+                        <div style={s.responsiveCol}>
+                            <div style={s.phoneFrame}>
+                                <div style={s.phoneNotch} />
+                                <div style={s.notifScreenBg}>
+                                    <div style={s.notifCard}>
+                                        <div style={s.notifIcon}>
+                                            <img src="/logo-icon-only.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={s.notifTitleRow}>
+                                                <span style={s.notifApp}>Total Stock</span>
+                                                <span style={s.notifTime}>ahora</span>
+                                            </div>
+                                            <div style={s.notifTitle}>💰 Nueva venta registrada</div>
+                                            <div style={s.notifBody}>Zapatillas Urbanas x1 — $34.500 (Efectivo)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p style={s.responsiveCaption}>
+                                Ejemplo de la notificación que recibís en tiempo real ni bien se registra una venta.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style={s.installBox}>
+                        <h3 style={s.installTitle}>📲 Activá las notificaciones de venta en tu celular</h3>
+                        <p style={s.installIntro}>
+                            Para recibir el aviso apenas se hace una venta, instalá Total Stock en la pantalla de inicio de tu celular (es gratis y lleva 10 segundos):
+                        </p>
+                        <div style={s.installSteps}>
+                            <div style={s.installStep}>
+                                <strong style={s.installStepTitle}>📱 iPhone (Safari)</strong>
+                                <ol style={s.installOl}>
+                                    <li>Entrá a totalstock.com.ar desde Safari.</li>
+                                    <li>Tocá el ícono de <strong>Compartir</strong> (el cuadrado con la flecha hacia arriba).</li>
+                                    <li>Elegí <strong>"Agregar a inicio"</strong> y confirmá.</li>
+                                </ol>
+                            </div>
+                            <div style={s.installStep}>
+                                <strong style={s.installStepTitle}>🤖 Android (Chrome)</strong>
+                                <ol style={s.installOl}>
+                                    <li>Entrá a totalstock.com.ar desde Chrome.</li>
+                                    <li>Tocá el menú (los <strong>3 puntos</strong> arriba a la derecha).</li>
+                                    <li>Elegí <strong>"Instalar app"</strong> o <strong>"Agregar a pantalla de inicio"</strong>.</li>
+                                </ol>
+                            </div>
+                        </div>
+                        <p style={s.installNota}>
+                            Una vez instalado, entrá a Total Stock y activá "Activar notificaciones" desde el menú lateral. En iPhone, este paso es necesario para que las notificaciones funcionen; en Android y en la computadora podés recibirlas incluso sin instalar la app.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
             {/* ── INTEGRACIONES ── */}
             <section style={s.integSection}>
                 <div style={s.sectionWrap}>
@@ -700,6 +779,31 @@ const s = {
     capturaCaption: { padding: '18px 20px', margin: 0 },
     capturaTitulo: { fontSize: '1.05em', fontWeight: 700, color: C.texto, margin: '0 0 6px' },
     capturaDesc: { fontSize: '0.88em', color: C.gris, lineHeight: 1.6, margin: 0 },
+
+    // Responsive + notificaciones
+    responsiveSection: { padding: '80px 0', background: C.grisClaro },
+    responsiveGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 40, marginTop: 32, alignItems: 'start' },
+    responsiveCol: { textAlign: 'center' },
+    phoneFrame: { width: 240, margin: '0 auto', background: '#111', borderRadius: 34, padding: '10px 8px', boxShadow: '0 20px 44px rgba(0,0,0,0.22)', position: 'relative' },
+    phoneNotch: { position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', width: 70, height: 16, background: '#111', borderRadius: 10, zIndex: 2 },
+    phoneScreen: { width: '100%', display: 'block', borderRadius: 24, border: '1px solid #222' },
+    responsiveCaption: { fontSize: '0.85em', color: C.gris, marginTop: 16, lineHeight: 1.5, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' },
+    notifScreenBg: { width: '100%', aspectRatio: '1170 / 1992', borderRadius: 24, border: '1px solid #222', background: `linear-gradient(160deg, ${C.azul} 0%, #234a3e 55%, ${C.verde} 130%)`, position: 'relative', overflow: 'hidden' },
+    notifCard: { position: 'absolute', top: 46, left: '5%', right: '5%', background: 'rgba(255,255,255,0.97)', borderRadius: 14, padding: '10px 12px', boxShadow: '0 10px 26px rgba(0,0,0,0.25)', display: 'flex', gap: 10, alignItems: 'flex-start', textAlign: 'left' },
+    notifIcon: { width: 26, height: 26, borderRadius: 7, overflow: 'hidden', flexShrink: 0, marginTop: 2 },
+    notifTitleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+    notifApp: { fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.3 },
+    notifTime: { fontSize: 10, color: '#94a3b8' },
+    notifTitle: { fontSize: 12.5, fontWeight: 700, color: C.texto, marginBottom: 1 },
+    notifBody: { fontSize: 11.5, color: C.gris, lineHeight: 1.4 },
+    installBox: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '28px 30px', marginTop: 48, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', textAlign: 'left' },
+    installTitle: { fontSize: '1.15em', fontWeight: 800, color: C.texto, margin: '0 0 10px' },
+    installIntro: { fontSize: '0.95em', color: C.gris, lineHeight: 1.6, margin: '0 0 20px' },
+    installSteps: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 },
+    installStep: { background: C.grisClaro, borderRadius: 12, padding: '16px 18px' },
+    installStepTitle: { fontSize: '0.95em', color: C.texto, display: 'block', marginBottom: 8 },
+    installOl: { margin: 0, paddingLeft: 20, fontSize: '0.88em', color: C.gris, lineHeight: 1.8 },
+    installNota: { fontSize: '0.82em', color: '#94a3b8', lineHeight: 1.6, margin: '20px 0 0', fontStyle: 'italic' },
 
     // Clientes
     clientesSection: { padding: '80px 0 70px', background: C.grisClaro, overflow: 'hidden' },
