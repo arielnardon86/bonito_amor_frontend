@@ -2504,9 +2504,18 @@ const PanelAdministracionTienda = () => {
                     ) : !planInfo ? (
                         <p style={{ color: '#94a3b8', textAlign: 'center', padding: 40 }}>No se pudo cargar la información del plan.</p>
                     ) : planInfo.legacy ? (
-                        <div style={{ background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 16, padding: '24px 28px', maxWidth: 480 }}>
+                        <div style={{ background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 16, padding: '24px 28px', maxWidth: 520 }}>
                             <p style={{ fontWeight: 700, fontSize: 16, color: '#1a2926', marginBottom: 8 }}>Cuenta legacy</p>
-                            <p style={{ fontSize: 14, color: '#475569' }}>Tu cuenta tiene acceso completo sin restricciones de plan.</p>
+                            <p style={{ fontSize: 14, color: '#475569', marginBottom: 18 }}>Tu cuenta tiene acceso completo sin restricciones de plan.</p>
+                            <button
+                                style={{ padding: '10px 20px', background: '#3b9ede', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                                onClick={() => { setUpgradeMotivo(''); setShowUpgradeModal(true); }}
+                            >
+                                Suscribirme a un plan
+                            </button>
+                            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 12, marginBottom: 0 }}>
+                                Elegí el plan que más te convenga y completá el pago en Mercado Pago. Tu cuenta legacy sigue teniendo acceso completo hasta que termines la suscripción.
+                            </p>
                         </div>
                     ) : (() => {
                         const enTrial = planInfo.estado === 'trial';
