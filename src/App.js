@@ -564,6 +564,14 @@ const AppContent = () => {
     }
   }, [loading, isAuthenticated, selectedStoreSlug, token]);
 
+  // Tienda legacy marcada como "requiere_eleccion_plan": mostrar directamente
+  // el listado de planes (sin pantalla intermedia de "suscripción cancelada").
+  useEffect(() => {
+    if (estadoSuscripcion === 'requiere_plan' && planesData.length === 0) {
+      axios.get(`${BASE_API_URL}/api/planes/`).then(r => setPlanesData(r.data)).catch(() => {});
+    }
+  }, [estadoSuscripcion, planesData.length]);
+
   const handleConfirmarCambioInicial = async () => {
     if (!token || !selectedStoreSlug) return;
     if (cambioInicialInput === '') {
@@ -812,15 +820,17 @@ const AppContent = () => {
             background: '#fff', borderRadius: 20, padding: '48px 40px', maxWidth: 480,
             width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
           }}>
-            {estadoSuscripcion === 'cancelada' ? (
-              mostrarPlanes ? (
+            {(estadoSuscripcion === 'cancelada' || estadoSuscripcion === 'requiere_plan') ? (
+              (mostrarPlanes || estadoSuscripcion === 'requiere_plan') ? (
                 <>
                   <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
                   <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a2926', marginBottom: 4 }}>
                     Elegí tu plan
                   </h2>
                   <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
-                    7 días de prueba gratis · Cancelá cuando quieras
+                    {estadoSuscripcion === 'requiere_plan'
+                      ? 'Para seguir usando Total Stock, elegí el plan que mejor se ajuste a tu tienda.'
+                      : '7 días de prueba gratis · Cancelá cuando quieras'}
                   </p>
                   {planesData.length === 0 ? (
                     <p style={{ color: '#94a3b8', fontSize: 14 }}>Cargando planes...</p>
@@ -859,12 +869,14 @@ const AppContent = () => {
                       ))}
                     </div>
                   )}
-                  <button
-                    onClick={() => setMostrarPlanes(false)}
-                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer' }}
-                  >
-                    ← Volver
-                  </button>
+                  {estadoSuscripcion !== 'requiere_plan' && (
+                    <button
+                      onClick={() => setMostrarPlanes(false)}
+                      style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer' }}
+                    >
+                      ← Volver
+                    </button>
+                  )}
                 </>
               ) : (
                 <>
