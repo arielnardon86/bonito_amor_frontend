@@ -458,7 +458,8 @@ const PanelAdministracionTienda = () => {
                 // Cargar info del plan al montar para poder bloquear tabs restringidas
                 if (!planInfo) {
                     axios.get(`${BASE_API_ENDPOINT}/api/suscripcion/mi-plan/`, {
-                        headers: { Authorization: `Bearer ${token}` }
+                        headers: { Authorization: `Bearer ${token}` },
+                        params: { tienda_slug: selectedStoreSlug }
                     }).then(r => setPlanInfo(r.data)).catch(() => {});
                 }
                 if (activeTab === 'usuarios') {
@@ -1361,7 +1362,8 @@ const PanelAdministracionTienda = () => {
                         setActiveTab('mi-plan');
                         setLoadingPlan(true);
                         axios.get(`${BASE_API_ENDPOINT}/api/suscripcion/mi-plan/`, {
-                            headers: { Authorization: `Bearer ${token}` }
+                            headers: { Authorization: `Bearer ${token}` },
+                            params: { tienda_slug: selectedStoreSlug }
                         }).then(r => setPlanInfo(r.data)).catch(() => setPlanInfo(null)).finally(() => setLoadingPlan(false));
                     }}
                     style={activeTab === 'mi-plan' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
@@ -2683,6 +2685,7 @@ const PanelAdministracionTienda = () => {
                     visible={showUpgradeModal}
                     onClose={() => { setShowUpgradeModal(false); setUpgradeMotivo(''); }}
                     planActual={planInfo.plan}
+                    tiendaSlug={selectedStoreSlug}
                     planesSugeridos={
                         upgradeMotivo === 'ecommerce'
                             ? ['advanced']
@@ -2702,7 +2705,8 @@ const PanelAdministracionTienda = () => {
                         setPlanInfo(prev => prev ? { ...prev, plan: nuevoPlan } : prev);
                         setLoadingPlan(true);
                         axios.get(`${BASE_API_ENDPOINT}/api/suscripcion/mi-plan/`, {
-                            headers: { Authorization: `Bearer ${token}` }
+                            headers: { Authorization: `Bearer ${token}` },
+                            params: { tienda_slug: selectedStoreSlug }
                         }).then(r => setPlanInfo(r.data)).catch(() => {}).finally(() => setLoadingPlan(false));
                     }}
                 />
@@ -2747,7 +2751,7 @@ const PanelAdministracionTienda = () => {
                                     try {
                                         await axios.post(
                                             `${BASE_API_ENDPOINT}/api/suscripcion/cancelar/`,
-                                            {},
+                                            { tienda_slug: selectedStoreSlug },
                                             { headers: { Authorization: `Bearer ${token}` } }
                                         );
                                         setShowCancelModal(false);

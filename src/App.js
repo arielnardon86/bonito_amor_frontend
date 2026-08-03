@@ -470,7 +470,7 @@ const AppContent = () => {
     try {
       const resp = await axios.post(
         `${BASE_API_URL}/api/suscripcion/cambiar-plan/`,
-        { plan: planNombre },
+        { plan: planNombre, tienda_slug: selectedStoreSlug },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (resp.data.checkout_url) {
@@ -493,6 +493,7 @@ const AppContent = () => {
       const preapprovalIdParam = preapprovalIdUrl || urlParams.get('preapproval_id') || '';
       const resp = await axios.post(`${BASE_API_URL}/api/suscripcion/verificar-pago/`, {
         preapproval_id: preapprovalIdParam,
+        tienda_slug: selectedStoreSlug,
       });
       if (resp.data.activa) {
         setSuscripcionPendiente(false);
@@ -555,6 +556,7 @@ const AppContent = () => {
     if (!loading && isAuthenticated && selectedStoreSlug && token) {
       axios.get(`${BASE_API_URL}/api/suscripcion/mi-plan/`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: { tienda_slug: selectedStoreSlug },
       }).then(r => {
         // legacy stores: esta_activa no viene en la respuesta → siempre activas
         const bloqueada = r.data.legacy ? false : r.data.esta_activa === false;

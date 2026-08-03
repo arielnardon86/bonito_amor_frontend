@@ -32,6 +32,7 @@ export default function ModalUpgrade({
   planesSugeridos = [],
   mensaje = '',
   token,
+  tiendaSlug,
   onUpgradeOk,
 }) {
   const [planElegido, setPlanElegido] = useState(null);
@@ -52,7 +53,7 @@ export default function ModalUpgrade({
     try {
       const { data } = await axios.post(
         `${API_BASE_URL}/api/suscripcion/cambiar-plan/`,
-        { plan: planElegido },
+        { plan: planElegido, tienda_slug: tiendaSlug },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (data.checkout_url) {
