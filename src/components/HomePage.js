@@ -107,7 +107,11 @@ export default function HomePage() {
     const [accessUsername, setAccessUsername] = useState('');
     const [accessPassword, setAccessPassword] = useState('');
     const [loginLoading, setLoginLoading] = useState(false);
-    const [scrolled, setScrolled] = useState(false);
+    // Se inicializa leyendo el scroll real (no siempre 0): si el navegador restaura
+    // la posición de scroll al recargar, el header no debe asumir que está arriba
+    // del todo — si no, queda con texto blanco sobre una sección que ya no es el
+    // hero azul, hasta que el usuario vuelve a scrollear y el listener lo corrige.
+    const [scrolled, setScrolled] = useState(() => (typeof window !== 'undefined' ? window.scrollY > 40 : false));
 
     // Recupero de contraseña dentro del modal
     // 'login' | 'recuperar' | 'enviado'
