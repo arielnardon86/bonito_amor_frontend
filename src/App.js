@@ -203,18 +203,6 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
           <Link to="/" className="sidebar-logo" onClick={() => setIsOpen(false)}>
             <img src="/logo-completo.png" alt="Total Stock Logo" className="app-logo-image" />
           </Link>
-          {tiendaLogo && (
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 8px' }}>
-              <img
-                src={tiendaLogo}
-                alt="Logo de la tienda"
-                style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  objectFit: 'cover', border: '2px solid rgba(255,255,255,0.25)',
-                }}
-              />
-            </div>
-          )}
           {selectedStoreSlug && (
             tiendasAutorizadas.length > 1 ? (
               <div className="store-selector-sidebar">
@@ -236,6 +224,18 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
                 <span className="sidebar-label"><strong>{selectedStoreSlug}</strong></span>
               </div>
             )
+          )}
+          {tiendaLogo && (
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 4px' }}>
+              <img
+                src={tiendaLogo}
+                alt="Logo de la tienda"
+                style={{
+                  width: 52, height: 52, borderRadius: '50%',
+                  objectFit: 'cover', border: '2px solid rgba(255,255,255,0.25)',
+                }}
+              />
+            </div>
           )}
         </div>
 
