@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faStore, faUser, faEnvelope, faLock, faPhone, faSpinner, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faStore, faUser, faEnvelope, faLock, faPhone, faSpinner, faCheck, faIdCard } from '@fortawesome/free-solid-svg-icons';
+import { resizeLogoToBase64 } from '../utils/resizeLogo';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -49,11 +50,24 @@ export default function Registro() {
   const [planSeleccionado, setPlanSeleccionado] = useState('starter');
   const [form, setForm] = useState({
     nombre_tienda: '', email: '', username: '',
-    password: '', password2: '', telefono: '',
+    password: '', password2: '', telefono: '', cuit: '',
   });
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [logoBase64, setLogoBase64] = useState(null);
+  const [logoError, setLogoError] = useState('');
+
+  const handleLogoChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError('');
+    try {
+      setLogoBase64(await resizeLogoToBase64(file));
+    } catch {
+      setLogoError('No se pudo procesar la imagen. Probá con otro archivo.');
+    }
+  };
 
   useEffect(() => {
     const p = searchParams.get('plan');
@@ -65,6 +79,7 @@ export default function Registro() {
     if (!form.nombre_tienda.trim()) e.nombre_tienda = 'El nombre de la tienda es obligatorio.';
     if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Email inválido.';
     if (!form.username.trim() || form.username.length < 3) e.username = 'El usuario debe tener al menos 3 caracteres.';
+    if (form.cuit.replace(/\D/g, '').length !== 11) e.cuit = 'El CUIT/CUIL debe tener 11 dígitos.';
     if (!form.password || form.password.length < 6) e.password = 'La contraseña debe tener al menos 6 caracteres.';
     if (form.password !== form.password2) e.password2 = 'Las contraseñas no coinciden.';
     setErrores(e);
@@ -82,6 +97,8 @@ export default function Registro() {
         username:      form.username.trim().toLowerCase(),
         password:      form.password,
         telefono:      form.telefono.trim(),
+        cuit:          form.cuit.trim(),
+        logo:          logoBase64,
         plan:          planSeleccionado,
       });
 
@@ -160,8 +177,31 @@ export default function Registro() {
           {errorGeneral && <div style={s.alertaError}>{errorGeneral}</div>}
 
           {campo('nombre_tienda', 'Nombre de tu tienda', faStore, 'text', 'Ej: Ropa María')}
+
+          <div style={s.campoWrap}>
+            <label style={s.label}>Logo de tu tienda (opcional)</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: '50%', overflow: 'hidden',
+                background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1.5px solid #e2e8f0', flexShrink: 0,
+              }}>
+                {logoBase64
+                  ? <img src={logoBase64} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <FontAwesomeIcon icon={faStore} style={{ color: '#94a3b8' }} />
+                }
+              </div>
+              <label style={{ fontSize: 13, color: COLORES.verdeOsc, fontWeight: 600, cursor: 'pointer' }}>
+                {logoBase64 ? 'Cambiar imagen' : 'Subir imagen'}
+                <input type="file" accept="image/*" onChange={handleLogoChange} style={{ display: 'none' }} />
+              </label>
+            </div>
+            {logoError && <span style={s.errorMsg}>{logoError}</span>}
+          </div>
+
           {campo('email', 'Email', faEnvelope, 'email', 'tu@email.com')}
           {campo('username', 'Usuario', faUser, 'text', 'Ej: maria_ropa')}
+          {campo('cuit', 'CUIT/CUIL de la tienda', faIdCard, 'text', 'Ej: 20-12345678-9')}
           {campo('telefono', 'Teléfono (opcional)', faPhone, 'tel', '+54 11...')}
           {campo('password', 'Contraseña', faLock, 'password', 'Mínimo 6 caracteres')}
           {campo('password2', 'Repetir contraseña', faLock, 'password', 'Repetí tu contraseña')}

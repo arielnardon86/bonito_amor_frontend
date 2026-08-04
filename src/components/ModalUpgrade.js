@@ -33,11 +33,13 @@ export default function ModalUpgrade({
   mensaje = '',
   token,
   tiendaSlug,
+  cuitActual,
   onUpgradeOk,
 }) {
   const [planElegido, setPlanElegido] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
+  const [cuitInput, setCuitInput] = useState('');
 
   if (!visible) return null;
 
@@ -48,12 +50,16 @@ export default function ModalUpgrade({
 
   const handleUpgrade = async () => {
     if (!planElegido) return;
+    if (!cuitActual && cuitInput.replace(/\D/g, '').length !== 11) {
+      setError('Ingresá el CUIT/CUIL de tu tienda (11 dígitos) para continuar.');
+      return;
+    }
     setCargando(true);
     setError('');
     try {
       const { data } = await axios.post(
         `${API_BASE_URL}/api/suscripcion/cambiar-plan/`,
-        { plan: planElegido, tienda_slug: tiendaSlug },
+        { plan: planElegido, tienda_slug: tiendaSlug, cuit: cuitActual || cuitInput },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (data.checkout_url) {
@@ -100,6 +106,27 @@ export default function ModalUpgrade({
             {PLAN_INFO[planActual]?.display || planActual}
           </span>
         </div>
+
+        {!cuitActual && (
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 5 }}>
+              CUIT/CUIL de la tienda
+            </label>
+            <input
+              type="text"
+              value={cuitInput}
+              onChange={e => setCuitInput(e.target.value)}
+              placeholder="Ej: 20-12345678-9"
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 8,
+                border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
+              }}
+            />
+            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 6, marginBottom: 0 }}>
+              Lo necesitamos para poder facturarte la suscripción.
+            </p>
+          </div>
+        )}
 
         {/* Opciones de upgrade */}
         {candidatos.length === 0 ? (

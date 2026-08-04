@@ -6,8 +6,9 @@ import { useNotifications } from '../hooks/useNotifications';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
+import { resizeLogoToBase64 } from '../utils/resizeLogo';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPencil, faTrash, faKey } from '@fortawesome/free-solid-svg-icons';
+import { faPencil, faTrash, faKey, faStore } from '@fortawesome/free-solid-svg-icons';
 import HelpButton from './HelpButton';
 import NotasCreditoPage from './NotasCreditoPage';
 import IntegracionTiendaNube from './IntegracionTiendaNube';
@@ -107,7 +108,7 @@ const notificacionesSoportadas = () =>
     typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
 
 const PanelAdministracionTienda = () => {
-    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas, logout } = useAuth();
+    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas, logout, renombrarTiendaLocal } = useAuth();
     const navigate = useNavigate();
     const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken, error: notificationError } = useNotifications();
     const [searchParams] = useSearchParams();
@@ -121,6 +122,13 @@ const PanelAdministracionTienda = () => {
     });
     const [loading, setLoading] = useState(true);
     const [tiendaInfo, setTiendaInfo] = useState(null);
+
+    // Datos editables de la tienda (nombre + logo) desde el panel
+    const [nombreTiendaInput, setNombreTiendaInput] = useState('');
+    const [logoPreview, setLogoPreview] = useState(null);
+    const [logoParaGuardar, setLogoParaGuardar] = useState(undefined); // undefined = sin cambios, null = quitar logo
+    const [guardandoDatosTienda, setGuardandoDatosTienda] = useState(false);
+    const [errorDatosTienda, setErrorDatosTienda] = useState('');
 
     // Estados para el wizard de facturación ARCA
     const [afipEstado, setAfipEstado] = useState(null); // resultado de facturacion/estado
@@ -257,6 +265,9 @@ const PanelAdministracionTienda = () => {
             const tienda = Array.isArray(tiendas) ? tiendas.find(t => t.nombre === selectedStoreSlug) : tiendas;
             if (tienda) {
                 setTiendaInfo(tienda);
+                setNombreTiendaInput(tienda.nombre || '');
+                setLogoPreview(tienda.logo || null);
+                setLogoParaGuardar(undefined);
                 setMlArancelesAutomaticos(tienda.ml_aranceles_automaticos !== false);
                 await fetchAfipEstado(tienda.id);
             }
@@ -264,6 +275,51 @@ const PanelAdministracionTienda = () => {
             console.error('Error al cargar información de la tienda:', err);
         }
     }, [token, selectedStoreSlug, fetchAfipEstado]);
+
+    const handleLogoFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            const base64 = await resizeLogoToBase64(file);
+            setLogoPreview(base64);
+            setLogoParaGuardar(base64);
+        } catch (err) {
+            setErrorDatosTienda('No se pudo procesar la imagen. Probá con otro archivo.');
+        }
+    };
+
+    const handleQuitarLogo = () => {
+        setLogoPreview(null);
+        setLogoParaGuardar(null);
+    };
+
+    const handleGuardarDatosTienda = async () => {
+        if (!nombreTiendaInput.trim()) {
+            setErrorDatosTienda('El nombre de la tienda no puede estar vacío.');
+            return;
+        }
+        setGuardandoDatosTienda(true);
+        setErrorDatosTienda('');
+        const nombreAnterior = selectedStoreSlug;
+        const body = { tienda_slug: selectedStoreSlug };
+        if (nombreTiendaInput.trim() !== tiendaInfo?.nombre) body.nombre = nombreTiendaInput.trim();
+        if (logoParaGuardar !== undefined) body.logo = logoParaGuardar;
+
+        try {
+            const { data } = await axios.patch(`${BASE_API_ENDPOINT}/api/tienda/actualizar-datos/`, body, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setTiendaInfo(prev => prev ? { ...prev, nombre: data.nombre, logo: data.logo } : prev);
+            setLogoParaGuardar(undefined);
+            if (body.nombre && body.nombre !== nombreAnterior) {
+                renombrarTiendaLocal(nombreAnterior, data.nombre);
+            }
+        } catch (err) {
+            setErrorDatosTienda(err.response?.data?.error || 'No se pudieron guardar los cambios. Intentá de nuevo.');
+        } finally {
+            setGuardandoDatosTienda(false);
+        }
+    };
 
     // Guardar configuración básica ARCA (paso 1, y también reutilizado en el paso 5 para el punto de venta)
     const handleGuardarConfigAfip = useCallback(async (siguientePaso = 2) => {
@@ -1383,6 +1439,65 @@ const PanelAdministracionTienda = () => {
             {/* TAB: USUARIOS */}
             {activeTab === 'usuarios' && (
                 <div style={styles.tabContent}>
+                    <div style={{
+                        background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12,
+                        padding: '20px 24px', marginBottom: 24, display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap',
+                    }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                            <div style={{
+                                width: 72, height: 72, borderRadius: '50%', overflow: 'hidden',
+                                background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                border: '2px solid #cbd5e1',
+                            }}>
+                                {logoPreview
+                                    ? <img src={logoPreview} alt="Logo de la tienda" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    : <FontAwesomeIcon icon={faStore} style={{ fontSize: 24, color: '#94a3b8' }} />
+                                }
+                            </div>
+                            <label style={{
+                                fontSize: 12, color: '#3b9ede', cursor: 'pointer', fontWeight: 600,
+                            }}>
+                                {logoPreview ? 'Cambiar logo' : 'Subir logo'}
+                                <input type="file" accept="image/*" onChange={handleLogoFileChange} style={{ display: 'none' }} />
+                            </label>
+                            {logoPreview && (
+                                <button
+                                    onClick={handleQuitarLogo}
+                                    style={{ background: 'none', border: 'none', color: '#e25252', fontSize: 12, cursor: 'pointer' }}
+                                >
+                                    Quitar logo
+                                </button>
+                            )}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 220 }}>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 6 }}>
+                                Nombre de la tienda
+                            </label>
+                            <input
+                                type="text"
+                                value={nombreTiendaInput}
+                                onChange={e => setNombreTiendaInput(e.target.value)}
+                                style={{
+                                    width: '100%', maxWidth: 340, padding: '9px 12px', borderRadius: 8,
+                                    border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
+                                }}
+                            />
+                            {errorDatosTienda && (
+                                <p style={{ color: '#e25252', fontSize: 13, marginTop: 8, marginBottom: 0 }}>{errorDatosTienda}</p>
+                            )}
+                            <button
+                                onClick={handleGuardarDatosTienda}
+                                disabled={guardandoDatosTienda}
+                                style={{
+                                    marginTop: 12, padding: '9px 20px', borderRadius: 8, border: 'none',
+                                    background: guardandoDatosTienda ? '#94a3b8' : '#5dc87a', color: '#fff',
+                                    fontSize: 14, fontWeight: 600, cursor: guardandoDatosTienda ? 'not-allowed' : 'pointer',
+                                }}
+                            >
+                                {guardandoDatosTienda ? 'Guardando...' : 'Guardar cambios'}
+                            </button>
+                        </div>
+                    </div>
                     <div style={styles.sectionHeader} className="panel-admin-section-header">
                         <button onClick={() => {
                             setEditingUser(null);
@@ -2686,6 +2801,7 @@ const PanelAdministracionTienda = () => {
                     onClose={() => { setShowUpgradeModal(false); setUpgradeMotivo(''); }}
                     planActual={planInfo.plan}
                     tiendaSlug={selectedStoreSlug}
+                    cuitActual={planInfo.cuit}
                     planesSugeridos={
                         upgradeMotivo === 'ecommerce'
                             ? ['advanced']

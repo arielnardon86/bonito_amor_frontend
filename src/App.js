@@ -77,8 +77,20 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
   const { isAuthenticated, user, logout, token, selectedStoreSlug, selectStore, tiendasAutorizadas, lockSession } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [tiendaLogo, setTiendaLogo] = useState(null);
   const location = useLocation();
   const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken } = useNotifications();
+
+  useEffect(() => {
+    if (isAuthenticated && selectedStoreSlug && token) {
+      axios.get(`${BASE_API_URL}/api/suscripcion/mi-plan/`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { tienda_slug: selectedStoreSlug },
+      }).then(r => setTiendaLogo(r.data.logo || null)).catch(() => setTiendaLogo(null));
+    } else {
+      setTiendaLogo(null);
+    }
+  }, [isAuthenticated, selectedStoreSlug, token]);
 
   const handleLogout = async () => {
     if (user?.cierre_caja_habilitado && !user?.is_supervisor && !user?.is_superuser && token && selectedStoreSlug) {
@@ -191,6 +203,18 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
           <Link to="/" className="sidebar-logo" onClick={() => setIsOpen(false)}>
             <img src="/logo-completo.png" alt="Total Stock Logo" className="app-logo-image" />
           </Link>
+          {tiendaLogo && (
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 8px' }}>
+              <img
+                src={tiendaLogo}
+                alt="Logo de la tienda"
+                style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  objectFit: 'cover', border: '2px solid rgba(255,255,255,0.25)',
+                }}
+              />
+            </div>
+          )}
           {selectedStoreSlug && (
             tiendasAutorizadas.length > 1 ? (
               <div className="store-selector-sidebar">
@@ -401,6 +425,8 @@ const AppContent = () => {
   const [unlocking, setUnlocking] = useState(false);
   const [suscripcionPendiente, setSuscripcionPendiente] = useState(false);
   const [estadoSuscripcion, setEstadoSuscripcion] = useState('');
+  const [cuitTienda, setCuitTienda] = useState('');
+  const [cuitInput, setCuitInput] = useState('');
   const [emailPendiente, setEmailPendiente] = useState('');
   const [guardandoEmail, setGuardandoEmail] = useState(false);
   const [errorEmail, setErrorEmail] = useState('');
@@ -466,11 +492,15 @@ const AppContent = () => {
   };
 
   const handleElegirPlan = async (planNombre) => {
+    if (!cuitTienda && cuitInput.replace(/\D/g, '').length !== 11) {
+      setMensajeVerificacion('Ingresá el CUIT/CUIL de tu tienda (11 dígitos) para suscribirte.');
+      return;
+    }
     setCargandoPlan(planNombre);
     try {
       const resp = await axios.post(
         `${BASE_API_URL}/api/suscripcion/cambiar-plan/`,
-        { plan: planNombre, tienda_slug: selectedStoreSlug },
+        { plan: planNombre, tienda_slug: selectedStoreSlug, cuit: cuitTienda || cuitInput },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (resp.data.checkout_url) {
@@ -562,6 +592,7 @@ const AppContent = () => {
         const bloqueada = r.data.legacy ? false : r.data.esta_activa === false;
         setSuscripcionPendiente(bloqueada);
         setEstadoSuscripcion(r.data.estado || '');
+        setCuitTienda(r.data.cuit || '');
       }).catch(() => {});
     }
   }, [loading, isAuthenticated, selectedStoreSlug, token]);
@@ -834,6 +865,29 @@ const AppContent = () => {
                       ? 'Para seguir usando Total Stock, elegí el plan que mejor se ajuste a tu tienda.'
                       : '7 días de prueba gratis · Cancelá cuando quieras'}
                   </p>
+                  {!cuitTienda && (
+                    <div style={{ marginBottom: 16, textAlign: 'left' }}>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 5 }}>
+                        CUIT/CUIL de la tienda
+                      </label>
+                      <input
+                        type="text"
+                        value={cuitInput}
+                        onChange={e => setCuitInput(e.target.value)}
+                        placeholder="Ej: 20-12345678-9"
+                        style={{
+                          width: '100%', padding: '10px 12px', borderRadius: 8,
+                          border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
+                        }}
+                      />
+                      <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 6, marginBottom: 0 }}>
+                        Lo necesitamos para poder facturarte la suscripción.
+                      </p>
+                      {mensajeVerificacion && (
+                        <p style={{ fontSize: 12, color: '#e25252', marginTop: 6, marginBottom: 0 }}>{mensajeVerificacion}</p>
+                      )}
+                    </div>
+                  )}
                   {planesData.length === 0 ? (
                     <p style={{ color: '#94a3b8', fontSize: 14 }}>Cargando planes...</p>
                   ) : (

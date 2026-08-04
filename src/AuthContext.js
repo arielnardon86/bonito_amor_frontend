@@ -276,6 +276,22 @@ export const AuthProvider = ({ children }) => {
         setUser(prev => prev ? { ...prev, ...updates } : prev);
     }, []);
 
+    // El nombre de la tienda funciona como su identificador (tienda_slug) en toda la
+    // app. Cuando un cliente lo cambia desde el panel, hay que reflejarlo acá para que
+    // la sesión actual (selectedStoreSlug + tiendasAutorizadas) siga funcionando sin
+    // relogin.
+    const renombrarTiendaLocal = useCallback((nombreAnterior, nombreNuevo) => {
+        setTiendasAutorizadas(prev => {
+            const actualizado = prev.map(t => t.nombre === nombreAnterior ? { ...t, nombre: nombreNuevo } : t);
+            localStorage.setItem('tiendasAutorizadas', JSON.stringify(actualizado));
+            return actualizado;
+        });
+        if (selectedStoreSlug === nombreAnterior) {
+            setSelectedStoreSlug(nombreNuevo);
+            localStorage.setItem('selectedStoreSlug', nombreNuevo);
+        }
+    }, [selectedStoreSlug]);
+
     const contextValue = {
         user,
         token,
@@ -291,6 +307,7 @@ export const AuthProvider = ({ children }) => {
         error: authError,
         clearError,
         updateUser,
+        renombrarTiendaLocal,
         sessionLocked,
         lockSession,
         unlockSession,
