@@ -646,13 +646,17 @@ const CambioDevolucion = () => {
                             cancelButtonText: 'No',
                         }).then(async (result) => {
                             if (result.isConfirmed) {
+                                // Monotributista solo puede emitir Factura C sin importar la condición de IVA
+                                // del cliente: no tiene sentido preguntarla, así que no se la ofrecemos.
+                                const esMonotributista = tiendaInfo?.condicion_iva_emisor === 'MT';
                                 // Mostrar formulario para factura
                                 const { value: formValues } = await Swal.fire({
                                     title: 'Datos del Cliente para Factura',
                                     html: `
-                                        <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" required>
+                                        <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="Consumidor Final" required>
                                         <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)">
                                         <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)">
+                                        ${esMonotributista ? '' : `
                                         <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 1.125em;">
                                             <option value="CF" selected>Consumidor Final</option>
                                             <option value="RI">Responsable Inscripto</option>
@@ -660,6 +664,7 @@ const CambioDevolucion = () => {
                                             <option value="MT">Monotributo</option>
                                             <option value="NR">No Responsable</option>
                                         </select>
+                                        `}
                                     `,
                                     focusConfirm: false,
                                     showCancelButton: true,
@@ -675,7 +680,9 @@ const CambioDevolucion = () => {
                                             cliente_nombre: nombre.trim(),
                                             cliente_cuit: document.getElementById('cliente_cuit').value.trim() || null,
                                             cliente_domicilio: document.getElementById('cliente_domicilio').value.trim() || null,
-                                            cliente_condicion_iva: document.getElementById('cliente_condicion_iva').value
+                                            cliente_condicion_iva: esMonotributista
+                                                ? 'CF'
+                                                : document.getElementById('cliente_condicion_iva').value
                                         };
                                     }
                                 });

@@ -1220,13 +1220,17 @@ const PuntoVenta = () => {
                             cancelButtonText: 'No, nada',
                         }).then(async (result) => {
                             if (result.isConfirmed) {
+                                // Monotributista solo puede emitir Factura C sin importar la condición de IVA
+                                // del cliente: no tiene sentido preguntarla, así que no se la ofrecemos.
+                                const esMonotributista = tiendaActual?.condicion_iva_emisor === 'MT';
                                 // Mostrar formulario para datos del cliente
                                 const { value: formValues } = await Swal.fire({
                                     title: 'Datos del Cliente para Factura',
                                     html: `
-                                        <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" required>
+                                        <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="Consumidor Final" required>
                                         <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" type="text">
                                         <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)">
+                                        ${esMonotributista ? '' : `
                                         <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #d9d9d9; border-radius: 0.1875em; font-size: 1.125em;">
                                             <option value="CF" selected>Consumidor Final</option>
                                             <option value="RI">Responsable Inscripto</option>
@@ -1234,6 +1238,7 @@ const PuntoVenta = () => {
                                             <option value="MT">Monotributo</option>
                                             <option value="NR">No Responsable</option>
                                         </select>
+                                        `}
                                     `,
                                     focusConfirm: false,
                                     showCancelButton: true,
@@ -1243,13 +1248,15 @@ const PuntoVenta = () => {
                                         const nombre = document.getElementById('cliente_nombre').value;
                                         const cuit = document.getElementById('cliente_cuit').value;
                                         const domicilio = document.getElementById('cliente_domicilio').value;
-                                        const condicionIva = document.getElementById('cliente_condicion_iva').value;
-                                        
+                                        const condicionIva = esMonotributista
+                                            ? 'CF'
+                                            : document.getElementById('cliente_condicion_iva').value;
+
                                         if (!nombre || nombre.trim() === '') {
                                             Swal.showValidationMessage('El nombre del cliente es requerido');
                                             return false;
                                         }
-                                        
+
                                         return {
                                             cliente_nombre: nombre.trim(),
                                             cliente_cuit: cuit.trim() || null,
