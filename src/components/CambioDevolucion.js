@@ -655,6 +655,7 @@ const CambioDevolucion = () => {
                                     html: `
                                         <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="Consumidor Final" required>
                                         <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)">
+                                        <p style="margin: -8px 0 8px; font-size: 12px; color: #94a3b8;">Ingresalo solo con números, sin guiones ni puntos (ej: 20123456789)</p>
                                         <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)">
                                         ${esMonotributista ? '' : `
                                         <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 1.125em;">
