@@ -427,6 +427,7 @@ const AppContent = () => {
   const [estadoSuscripcion, setEstadoSuscripcion] = useState('');
   const [cuitTienda, setCuitTienda] = useState('');
   const [cuitInput, setCuitInput] = useState('');
+  const [planPendiente, setPlanPendiente] = useState('');
   const [emailPendiente, setEmailPendiente] = useState('');
   const [guardandoEmail, setGuardandoEmail] = useState(false);
   const [errorEmail, setErrorEmail] = useState('');
@@ -593,6 +594,7 @@ const AppContent = () => {
         setSuscripcionPendiente(bloqueada);
         setEstadoSuscripcion(r.data.estado || '');
         setCuitTienda(r.data.cuit || '');
+        setPlanPendiente(r.data.plan || '');
       }).catch(() => {});
     }
   }, [loading, isAuthenticated, selectedStoreSlug, token]);
@@ -1012,15 +1014,9 @@ const AppContent = () => {
                 <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a2926', marginBottom: 10 }}>
                   Activando tu cuenta
                 </h2>
-                <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 8 }}>
-                  Si ya completaste el pago en Mercado Pago, hacé click en <strong>"Verificar pago"</strong>.
-                  Lo buscamos y activamos tu acceso al instante.
-                </p>
-                <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 24 }}>
-                  ¿Todavía no pagaste?{' '}
-                  <a href="/" style={{ color: '#5dc87a', fontWeight: 600, textDecoration: 'none' }}>
-                    Volvé al inicio →
-                  </a>
+                <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.65, marginBottom: 18 }}>
+                  Si todavía no completaste el pago, hacé click en <strong>"Ir a pagar ahora"</strong>.
+                  Si ya pagaste, hacé click en <strong>"Verificar pago"</strong> y activamos tu acceso al instante.
                 </p>
                 {mensajeVerificacion && (
                   <div style={{
@@ -1033,18 +1029,34 @@ const AppContent = () => {
                     {mensajeVerificacion}
                   </div>
                 )}
+                {planPendiente && (
+                  <button
+                    onClick={() => handleElegirPlan(planPendiente)}
+                    disabled={!!cargandoPlan}
+                    style={{
+                      background: cargandoPlan ? '#94a3b8' : '#5dc87a',
+                      border: 'none', borderRadius: 10,
+                      padding: '14px 24px', fontSize: 15, color: '#fff', cursor: cargandoPlan ? 'not-allowed' : 'pointer',
+                      fontWeight: 700, marginBottom: 12, width: '100%',
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    {cargandoPlan ? '🔍 Redirigiendo a MP...' : '💳 Ir a pagar ahora'}
+                  </button>
+                )}
                 <button
                   onClick={handleVerificarPago}
                   disabled={verificandoPago}
                   style={{
-                    background: verificandoPago ? '#94a3b8' : '#5dc87a',
-                    border: 'none', borderRadius: 10,
-                    padding: '14px 24px', fontSize: 15, color: '#fff', cursor: verificandoPago ? 'not-allowed' : 'pointer',
+                    background: '#fff', color: '#5dc87a',
+                    border: '1.5px solid #5dc87a', borderRadius: 10,
+                    padding: '14px 24px', fontSize: 15, cursor: verificandoPago ? 'not-allowed' : 'pointer',
                     fontWeight: 700, marginBottom: 12, width: '100%',
                     transition: 'background 0.2s',
+                    opacity: verificandoPago ? 0.6 : 1,
                   }}
                 >
-                  {verificandoPago ? '🔍 Buscando tu pago...' : '✓ Verificar pago'}
+                  {verificandoPago ? '🔍 Buscando tu pago...' : '✓ Ya pagué, verificar'}
                 </button>
               </>
             )}
