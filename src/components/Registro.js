@@ -86,12 +86,14 @@ export default function Registro() {
     return Object.keys(e).length === 0;
   };
 
+  const instalacionTiendaNube = sessionStorage.getItem('tn_instalacion_token');
+
   const handleSubmit = async () => {
     if (!validar()) return;
     setCargando(true);
     setErrorGeneral('');
     try {
-      const { data } = await axios.post(`${API_BASE_URL}/api/registro/`, {
+      const body = {
         nombre_tienda: form.nombre_tienda.trim(),
         email:         form.email.trim().toLowerCase(),
         username:      form.username.trim().toLowerCase(),
@@ -100,7 +102,17 @@ export default function Registro() {
         cuit:          form.cuit.trim(),
         logo:          logoBase64,
         plan:          planSeleccionado,
-      });
+      };
+      const endpoint = instalacionTiendaNube
+        ? `${API_BASE_URL}/api/tiendanube/instalar/completar-registro/`
+        : `${API_BASE_URL}/api/registro/`;
+      if (instalacionTiendaNube) body.instalacion_token = instalacionTiendaNube;
+
+      const { data } = await axios.post(endpoint, body);
+
+      // Si la validación falla no llegamos acá, así que recién ahora es seguro
+      // dar por completada la instalación de Tienda Nube.
+      sessionStorage.removeItem('tn_instalacion_token');
 
       localStorage.setItem('token',             data.token_access);
       localStorage.setItem('refreshToken',      data.token_refresh);
@@ -173,6 +185,10 @@ export default function Registro() {
           </div>
 
           <h2 style={s.titulo}>Creá tu cuenta</h2>
+
+          {instalacionTiendaNube && (
+            <div style={s.avisoTiendaNube}>🛍️ Al crear tu cuenta, la conectamos automáticamente con tu tienda de Tienda Nube.</div>
+          )}
 
           {errorGeneral && <div style={s.alertaError}>{errorGeneral}</div>}
 
@@ -249,6 +265,7 @@ const s = {
   inputError: { borderColor: COLORES.error },
   errorMsg: { fontSize: 12, color: COLORES.error, marginTop: 4, display: 'block' },
   alertaError: { background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 16px', color: '#991b1b', fontSize: 14, marginBottom: 18 },
+  avisoTiendaNube: { background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 10, padding: '12px 16px', color: '#1a2926', fontSize: 13, marginBottom: 18 },
   btnPrimario: { width: '100%', padding: '14px', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 10, transition: 'background 0.2s' },
   loginLink: { textAlign: 'center', marginTop: 18, fontSize: 14, color: COLORES.gris },
 };

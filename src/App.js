@@ -29,6 +29,7 @@ import PoliticaPrivacidad from './components/PoliticaPrivacidad';
 import CierresCaja from './components/CierresCaja';
 import Registro from './components/Registro';
 import SuscripcionResultado from './components/SuscripcionResultado';
+import TiendaNubeInstalar from './components/TiendaNubeInstalar';
 import NuevaContrasena from './components/NuevaContrasena';
 import { useNotifications } from './hooks/useNotifications';
 import Swal from 'sweetalert2';
@@ -1080,6 +1081,7 @@ const AppContent = () => {
           <Route path="/login/:storeSlug" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/privacidad" element={<PoliticaPrivacidad />} />
+          <Route path="/tiendanube/instalar" element={<TiendaNubeInstalar />} />
 
           <Route path="/" element={
             isAuthenticated && selectedStoreSlug ? (

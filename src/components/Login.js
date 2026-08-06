@@ -27,6 +27,34 @@ function Login() {
     clearError();
     const success = await login(username, password);
     if (success) {
+      const instalacionTiendaNube = sessionStorage.getItem('tn_instalacion_token');
+      if (instalacionTiendaNube) {
+        try {
+          await axios.post(
+            `${BASE_API_URL}/api/tiendanube/instalar/vincular-cuenta-existente/`,
+            { instalacion_token: instalacionTiendaNube },
+            { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } },
+          );
+          sessionStorage.removeItem('tn_instalacion_token');
+          Swal.fire({
+            icon: 'success',
+            title: '¡Tu tienda de Tienda Nube ya está conectada!',
+            timer: 2200,
+            showConfirmButton: false,
+          });
+          navigate('/panel-administracion-tienda?tab=tiendanube');
+          return;
+        } catch (err) {
+          sessionStorage.removeItem('tn_instalacion_token');
+          Swal.fire({
+            icon: 'warning',
+            title: 'Iniciaste sesión, pero no pudimos conectar Tienda Nube',
+            text: err.response?.data?.error || 'Probá conectarla de nuevo desde Panel de Administración → Tienda Nube.',
+          });
+          navigate('/');
+          return;
+        }
+      }
       Swal.fire({
         icon: 'success',
         title: '¡Inicio de sesión exitoso!',

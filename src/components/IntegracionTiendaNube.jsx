@@ -30,9 +30,6 @@ export default function IntegracionTiendaNube() {
     const [error,        setError]       = useState(null);
     const [successMsg,   setSuccessMsg]  = useState('');
 
-    // Campos del formulario de configuración
-    const [appId,       setAppId]       = useState('');
-    const [clientSecret,setClientSecret]= useState('');
     const [facturar,    setFacturar]    = useState(true);
 
     // Conexión manual con token
@@ -65,7 +62,6 @@ export default function IntegracionTiendaNube() {
         try {
             const res = await axios.get(`${BASE}/api/tiendas/${id}/`, { headers });
             setTienda(res.data);
-            setAppId(res.data.tn_app_id || '');
             setFacturar(res.data.tn_facturar_ventas !== false);
         } catch { /* ignore */ }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -86,17 +82,13 @@ export default function IntegracionTiendaNube() {
         });
     }, [isAuthenticated, token, selectedStoreSlug]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // ── Guardar configuración (app_id, client_secret, facturar) ──────────────
+    // ── Guardar configuración (facturar automáticamente) ──────────────────────
     const handleGuardar = async () => {
         if (!tiendaId) return;
-        if (!appId.trim()) { showError('El App ID es obligatorio.'); return; }
         setGuardando(true);
         try {
-            const body = { tn_app_id: appId.trim(), tn_facturar_ventas: facturar };
-            if (clientSecret.trim()) body.tn_client_secret = clientSecret.trim();
-            await axios.patch(`${BASE}/api/tiendas/${tiendaId}/`, body, { headers });
-            setClientSecret('');
-            await Promise.all([fetchTienda(tiendaId), fetchStatus(tiendaId)]);
+            await axios.patch(`${BASE}/api/tiendas/${tiendaId}/`, { tn_facturar_ventas: facturar }, { headers });
+            await fetchTienda(tiendaId);
             showSuccess('Configuración guardada.');
         } catch (e) {
             showError(e.response?.data?.error || 'Error al guardar la configuración.');
@@ -126,44 +118,18 @@ export default function IntegracionTiendaNube() {
         } finally { setGuardandoToken(false); }
     };
 
-    // ── OAuth: abrir popup ────────────────────────────────────────────────────
+    // ── OAuth: redirigir a Tienda Nube ────────────────────────────────────────
+    // Tienda Nube vuelve a mandar al comerciante a /tiendanube/instalar?code=...
+    // (la misma página que se usa para instalaciones nuevas desde la App
+    // Store); como ya tiene sesión iniciada, esa página lo conecta directo y
+    // lo trae de vuelta acá.
     const handleConectar = async () => {
         if (!tiendaId) return;
         setConectando(true);
         setError(null);
         try {
             const res = await axios.get(`${BASE}/api/tiendas/${tiendaId}/tiendanube/auth-url/`, { headers });
-            const authUrl = res.data.auth_url;
-
-            // Configurar listener antes de abrir el popup
-            const messageHandler = async (event) => {
-                if (event.data?.type === 'TN_OAUTH_SUCCESS') {
-                    window.removeEventListener('message', messageHandler);
-                    const code = event.data.code;
-                    try {
-                        await axios.post(
-                            `${BASE}/api/tiendas/${tiendaId}/tiendanube/callback/`,
-                            { code },
-                            { headers },
-                        );
-                        await Promise.all([fetchTienda(tiendaId), fetchStatus(tiendaId)]);
-                        showSuccess('¡Tienda Nube conectada exitosamente!');
-                    } catch (e2) {
-                        showError(e2.response?.data?.error || 'Error al completar la autenticación.');
-                    } finally { setConectando(false); }
-                }
-            };
-            window.addEventListener('message', messageHandler);
-
-            const popup = window.open(authUrl, 'tn_oauth', 'width=600,height=700');
-            // Fallback: monitorear si el popup se cierra sin enviar mensaje
-            const interval = setInterval(() => {
-                if (popup?.closed) {
-                    clearInterval(interval);
-                    window.removeEventListener('message', messageHandler);
-                    setConectando(false);
-                }
-            }, 800);
+            window.location.href = res.data.auth_url;
         } catch (e) {
             showError(e.response?.data?.error || 'Error al obtener la URL de autorización.');
             setConectando(false);
@@ -292,7 +258,7 @@ export default function IntegracionTiendaNube() {
     if (!tiendaId) return <div style={s.centered}>No se encontró la tienda.</div>;
 
     const conectado   = tnStatus?.connected;
-    const tieneConfig = tnStatus?.has_app_id && tnStatus?.has_client_secret;
+    const tieneConfig = tnStatus?.app_configurada;
     const tieneWebhook = Boolean(tnStatus?.webhook_id);
 
     return (
@@ -318,44 +284,28 @@ export default function IntegracionTiendaNube() {
             {error      && <div style={s.alertErr}>{error}</div>}
             {successMsg && <div style={s.alertOk}>{successMsg}</div>}
 
-            {/* Paso 1 — Configurar credenciales */}
+            {!tieneConfig && (
+                <div style={s.alertErr}>
+                    La app de Tienda Nube todavía no está configurada del lado del servidor. Contactá a soporte de Total Stock.
+                </div>
+            )}
+
+            {/* Configuración: facturación automática */}
             <div style={s.card}>
-                <div style={s.cardTitle}>Paso 1 — Credenciales de la aplicación</div>
-                <p style={s.cardDesc}>
-                    Creá una app en el <a href="https://partners.tiendanube.com" target="_blank" rel="noreferrer" style={s.link}>
-                    Panel de Partners de Tienda Nube</a> y copiá el App ID y Client Secret.
-                </p>
-
-                <label style={s.lbl}>App ID *</label>
-                <input
-                    style={s.inp} value={appId}
-                    onChange={e => setAppId(e.target.value)}
-                    placeholder="Ej: 12345"
-                    disabled={guardando}
-                />
-
-                <label style={s.lbl}>Client Secret {tieneConfig ? '(dejar vacío para no cambiar)' : '*'}</label>
-                <input
-                    type="password" style={s.inp} value={clientSecret}
-                    onChange={e => setClientSecret(e.target.value)}
-                    placeholder={tieneConfig ? '••••••••••••••••' : 'Tu client secret'}
-                    disabled={guardando}
-                />
-
-                <label style={{ ...s.lbl, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <div style={s.cardTitle}>Configuración</div>
+                <label style={{ ...s.lbl, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}>
                     <input type="checkbox" checked={facturar} onChange={e => setFacturar(e.target.checked)} />
                     Facturar ventas automáticamente (ARCA)
                 </label>
-
-                <button style={s.btnPrimary} onClick={handleGuardar} disabled={guardando}>
-                    {guardando ? 'Guardando…' : 'Guardar configuración'}
+                <button style={s.btnSecondary} onClick={handleGuardar} disabled={guardando}>
+                    {guardando ? 'Guardando…' : 'Guardar'}
                 </button>
             </div>
 
-            {/* Paso 2 — Conectar OAuth */}
+            {/* Paso 1 — Conectar OAuth */}
             {tieneConfig && (
                 <div style={s.card}>
-                    <div style={s.cardTitle}>Paso 2 — Conectar tu tienda</div>
+                    <div style={s.cardTitle}>Paso 1 — Conectar tu tienda</div>
                     {conectado ? (
                         <div>
                             <div style={s.infoRow}>
@@ -377,7 +327,7 @@ export default function IntegracionTiendaNube() {
                     ) : (
                         <div>
                             <p style={s.cardDesc}>
-                                Al hacer clic se abrirá una ventana de Tienda Nube para autorizar la app.
+                                Al hacer clic te vamos a redirigir a Tienda Nube para autorizar la app, y después volvés acá automáticamente.
                             </p>
                             <button style={s.btnPrimary} onClick={handleConectar} disabled={conectando}>
                                 {conectando ? 'Conectando…' : 'Conectar con Tienda Nube'}
@@ -413,10 +363,10 @@ export default function IntegracionTiendaNube() {
                 </div>
             )}
 
-            {/* Paso 3 — Webhook */}
+            {/* Paso 2 — Webhook */}
             {conectado && (
                 <div style={s.card}>
-                    <div style={s.cardTitle}>Paso 3 — Webhook de ventas</div>
+                    <div style={s.cardTitle}>Paso 2 — Webhook de ventas</div>
                     <p style={s.cardDesc}>
                         El webhook notifica a Total Stock cuando se paga una orden en Tienda Nube
                         y registra la venta automáticamente.
@@ -446,10 +396,10 @@ export default function IntegracionTiendaNube() {
                 </div>
             )}
 
-            {/* Paso 4 — Sincronización de productos */}
+            {/* Paso 3 — Sincronización de productos */}
             {conectado && (
                 <div style={s.card}>
-                    <div style={s.cardTitle}>Paso 4 — Sincronización de productos</div>
+                    <div style={s.cardTitle}>Paso 3 — Sincronización de productos</div>
                     <p style={s.cardDesc}>
                         Importá los productos de tu tienda online o actualizá el stock en Tienda Nube
                         con los valores actuales de Total Stock.
