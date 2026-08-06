@@ -187,7 +187,7 @@ export default function Registro() {
           <h2 style={s.titulo}>Creá tu cuenta</h2>
 
           {instalacionTiendaNube && (
-            <div style={s.avisoTiendaNube}>🛍️ Al crear tu cuenta, la conectamos automáticamente con tu tienda de Tienda Nube.</div>
+            <div style={s.avisoTiendaNube}>🛍️ Al crear tu cuenta, la conectamos automáticamente con tu tienda de Tienda Nube. La integración requiere el plan Advanced.</div>
           )}
 
           {errorGeneral && <div style={s.alertaError}>{errorGeneral}</div>}

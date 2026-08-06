@@ -102,7 +102,8 @@ export default function TiendaNubeInstalar() {
             <div style={s.icono}>🛍️</div>
             <h2 style={s.titulo}>Ya autorizaste el acceso</h2>
             <p style={s.texto}>Para terminar de conectar tu tienda de Tienda Nube con Total Stock, creá una cuenta o iniciá sesión si ya tenés una.</p>
-            <Link to="/registro" style={s.boton}>Crear cuenta nueva →</Link>
+            {/* La integración con Tiendanube requiere plan Advanced: se ofrece directo, sin elegir. */}
+            <Link to="/registro?plan=advanced" style={s.boton}>Crear cuenta nueva →</Link>
             <Link to="/login" style={s.botonSecundario}>Ya tengo cuenta</Link>
           </>
         )}
