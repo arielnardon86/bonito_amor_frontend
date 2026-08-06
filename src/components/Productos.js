@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPencil, faTrash, faPlus, faArrowUp } from '@fortawesome/free-solid-svg-icons';
+import { faPencil, faTrash, faPlus, faArrowUp, faRightLeft, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import HelpButton from './HelpButton';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -29,7 +29,7 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 
 const Productos = () => {
-    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
+    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas } = useAuth();
     const navigate = useNavigate();
 
     const [productos, setProductos] = useState([]);
@@ -95,6 +95,18 @@ const Productos = () => {
     const [productoParaStock, setProductoParaStock] = useState(null);
     const [cantidadAGregar, setCantidadAGregar] = useState('');
     const [loadingAddStock, setLoadingAddStock] = useState(false);
+
+    const [showTransferirStockModal, setShowTransferirStockModal] = useState(false);
+    const [productoParaTransferir, setProductoParaTransferir] = useState(null);
+    const [tiendaDestinoTransferir, setTiendaDestinoTransferir] = useState('');
+    const [cantidadTransferir, setCantidadTransferir] = useState('');
+    const [loadingTransferir, setLoadingTransferir] = useState(false);
+
+    const [showTransferirFamiliaModal, setShowTransferirFamiliaModal] = useState(false);
+    const [familiaParaTransferir, setFamiliaParaTransferir] = useState(null);
+    const [tiendaDestinoFamilia, setTiendaDestinoFamilia] = useState('');
+    const [cantidadesFamilia, setCantidadesFamilia] = useState({});
+    const [loadingTransferirFamilia, setLoadingTransferirFamilia] = useState(false);
 
     const generarCodigoDeBarrasEAN13 = () => {
         let code = '779' + Math.floor(100000000 + Math.random() * 900000000).toString();
@@ -469,6 +481,52 @@ const Productos = () => {
             setError('Error al agregar stock: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
         } finally {
             setLoadingAddStock(false);
+        }
+    };
+
+    const handleTransferirStock = async () => {
+        const cantidad = parseInt(cantidadTransferir, 10);
+        if (!cantidad || cantidad <= 0 || cantidad > (productoParaTransferir.stock || 0) || !tiendaDestinoTransferir) return;
+        setLoadingTransferir(true);
+        try {
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/productos/${productoParaTransferir.id}/transferir-stock/`,
+                { tienda_destino: tiendaDestinoTransferir, cantidad },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setShowTransferirStockModal(false);
+            setProductoParaTransferir(null);
+            setTiendaDestinoTransferir('');
+            setCantidadTransferir('');
+            fetchProductos(currentPageUrl);
+        } catch (err) {
+            setError('Error al transferir stock: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setLoadingTransferir(false);
+        }
+    };
+
+    const handleTransferirFamilia = async () => {
+        const variantes = Object.entries(cantidadesFamilia)
+            .map(([id, c]) => ({ id, cantidad: parseInt(c, 10) }))
+            .filter(v => v.cantidad > 0);
+        if (variantes.length === 0 || !tiendaDestinoFamilia) return;
+        setLoadingTransferirFamilia(true);
+        try {
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/productos/${familiaParaTransferir.id}/transferir-stock-lote/`,
+                { tienda_destino: tiendaDestinoFamilia, variantes },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setShowTransferirFamiliaModal(false);
+            setFamiliaParaTransferir(null);
+            setTiendaDestinoFamilia('');
+            setCantidadesFamilia({});
+            fetchProductos(currentPageUrl);
+        } catch (err) {
+            setError('Error al transferir stock: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setLoadingTransferirFamilia(false);
         }
     };
 
@@ -973,6 +1031,26 @@ const Productos = () => {
                                                         <FontAwesomeIcon icon={faArrowUp} />
                                                     </button>
                                                 )}
+                                                {(user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 && !tieneVars && (
+                                                    <button
+                                                        className="icon-btn"
+                                                        onClick={() => { setProductoParaTransferir(producto); setTiendaDestinoTransferir(''); setCantidadTransferir(''); setShowTransferirStockModal(true); }}
+                                                        style={{ color: 'white', backgroundColor: '#7c3aed' }}
+                                                        data-tooltip="Transferir stock a otra tienda"
+                                                    >
+                                                        <FontAwesomeIcon icon={faRightLeft} />
+                                                    </button>
+                                                )}
+                                                {(user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 && tieneVars && (
+                                                    <button
+                                                        className="icon-btn"
+                                                        onClick={() => { setFamiliaParaTransferir(producto); setTiendaDestinoFamilia(''); setCantidadesFamilia({}); setShowTransferirFamiliaModal(true); }}
+                                                        style={{ color: 'white', backgroundColor: '#7c3aed' }}
+                                                        data-tooltip="Transferir variantes a otra tienda"
+                                                    >
+                                                        <FontAwesomeIcon icon={faLayerGroup} />
+                                                    </button>
+                                                )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -1043,6 +1121,16 @@ const Productos = () => {
                                                                 data-tooltip="Agregar stock"
                                                             >
                                                                 <FontAwesomeIcon icon={faArrowUp} />
+                                                            </button>
+                                                        )}
+                                                        {(user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 && (
+                                                            <button
+                                                                className="icon-btn"
+                                                                onClick={() => { setProductoParaTransferir({ ...v, nombre: `${producto.nombre} · T: ${v.talle || ''}` }); setTiendaDestinoTransferir(''); setCantidadTransferir(''); setShowTransferirStockModal(true); }}
+                                                                style={{ color: 'white', backgroundColor: '#7c3aed' }}
+                                                                data-tooltip="Transferir stock a otra tienda"
+                                                            >
+                                                                <FontAwesomeIcon icon={faRightLeft} />
                                                             </button>
                                                         )}
                                                         </div>
@@ -1403,6 +1491,124 @@ const Productos = () => {
                                 style={{ ...styles.modalConfirmButton, backgroundColor: '#3b82f6', opacity: (!cantidadAGregar || parseInt(cantidadAGregar, 10) <= 0) ? 0.5 : 1 }}
                             >
                                 {loadingAddStock ? 'Guardando...' : 'Confirmar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal transferir stock (individual) */}
+            {showTransferirStockModal && productoParaTransferir && (
+                <div style={styles.modalOverlay} onClick={() => setShowTransferirStockModal(false)}>
+                    <div style={{ ...styles.modalContent, maxWidth: 380, textAlign: 'left' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ margin: '0 0 16px', color: '#1a2926' }}>Transferir Stock</h3>
+                        <p style={{ margin: '0 0 4px', fontSize: 14, color: '#1a2926', fontWeight: 600 }}>
+                            {productoParaTransferir.nombre}
+                        </p>
+                        <p style={{ margin: '0 0 20px', fontSize: 13, color: '#94a3b8' }}>
+                            Stock actual: <strong style={{ color: '#1a2926' }}>{productoParaTransferir.stock}</strong>
+                        </p>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Transferir a:</label>
+                            <select
+                                value={tiendaDestinoTransferir}
+                                onChange={e => setTiendaDestinoTransferir(e.target.value)}
+                                style={styles.modalInput}
+                            >
+                                <option value="">Seleccionar tienda…</option>
+                                {tiendasAutorizadas.filter(t => t.nombre !== selectedStoreSlug).map(t => (
+                                    <option key={t.id} value={t.nombre}>{t.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Cantidad a transferir:</label>
+                            <input
+                                type="number"
+                                min="1"
+                                max={productoParaTransferir.stock || 0}
+                                value={cantidadTransferir}
+                                onChange={e => setCantidadTransferir(e.target.value)}
+                                style={styles.modalInput}
+                                autoFocus
+                                onKeyDown={e => e.key === 'Enter' && handleTransferirStock()}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                            <button
+                                onClick={() => { setShowTransferirStockModal(false); setProductoParaTransferir(null); setTiendaDestinoTransferir(''); setCantidadTransferir(''); }}
+                                style={styles.modalCancelButton}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleTransferirStock}
+                                disabled={!tiendaDestinoTransferir || !cantidadTransferir || parseInt(cantidadTransferir, 10) <= 0 || parseInt(cantidadTransferir, 10) > (productoParaTransferir.stock || 0) || loadingTransferir}
+                                style={{ ...styles.modalConfirmButton, backgroundColor: '#7c3aed', opacity: (!tiendaDestinoTransferir || !cantidadTransferir || parseInt(cantidadTransferir, 10) <= 0) ? 0.5 : 1 }}
+                            >
+                                {loadingTransferir ? 'Transfiriendo…' : 'Confirmar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal transferir familia de variantes (lote) */}
+            {showTransferirFamiliaModal && familiaParaTransferir && (
+                <div style={styles.modalOverlay} onClick={() => setShowTransferirFamiliaModal(false)}>
+                    <div style={{ ...styles.modalContent, maxWidth: 460, textAlign: 'left' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ margin: '0 0 16px', color: '#1a2926' }}>Transferir variantes de "{familiaParaTransferir.nombre}"</h3>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Transferir a:</label>
+                            <select
+                                value={tiendaDestinoFamilia}
+                                onChange={e => setTiendaDestinoFamilia(e.target.value)}
+                                style={styles.modalInput}
+                            >
+                                <option value="">Seleccionar tienda…</option>
+                                {tiendasAutorizadas.filter(t => t.nombre !== selectedStoreSlug).map(t => (
+                                    <option key={t.id} value={t.nombre}>{t.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', margin: '12px 0' }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ textAlign: 'left', fontSize: 12, color: '#94a3b8', padding: '4px 6px' }}>Talle</th>
+                                    <th style={{ textAlign: 'left', fontSize: 12, color: '#94a3b8', padding: '4px 6px' }}>Stock</th>
+                                    <th style={{ textAlign: 'left', fontSize: 12, color: '#94a3b8', padding: '4px 6px' }}>Cantidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {familiaParaTransferir.variantes.map(v => (
+                                    <tr key={v.id}>
+                                        <td style={{ padding: '4px 6px', fontSize: 13 }}>{v.talle || '(sin talle)'}</td>
+                                        <td style={{ padding: '4px 6px', fontSize: 13 }}>{v.stock}</td>
+                                        <td style={{ padding: '4px 6px' }}>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max={v.stock || 0}
+                                                value={cantidadesFamilia[v.id] || ''}
+                                                onChange={e => setCantidadesFamilia(prev => ({ ...prev, [v.id]: e.target.value }))}
+                                                style={{ ...styles.modalInput, width: 80, padding: '4px 8px' }}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                            <button
+                                onClick={() => { setShowTransferirFamiliaModal(false); setFamiliaParaTransferir(null); setTiendaDestinoFamilia(''); setCantidadesFamilia({}); }}
+                                style={styles.modalCancelButton}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleTransferirFamilia}
+                                disabled={!tiendaDestinoFamilia || Object.values(cantidadesFamilia).every(c => !(parseInt(c, 10) > 0)) || loadingTransferirFamilia}
+                                style={{ ...styles.modalConfirmButton, backgroundColor: '#7c3aed', opacity: (!tiendaDestinoFamilia || Object.values(cantidadesFamilia).every(c => !(parseInt(c, 10) > 0))) ? 0.5 : 1 }}
+                            >
+                                {loadingTransferirFamilia ? 'Transfiriendo…' : 'Confirmar'}
                             </button>
                         </div>
                     </div>
