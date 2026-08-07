@@ -106,14 +106,19 @@ const EtiquetasImpresion = () => {
                     onChange={handleTipoImpresionChange}
                     style={mobileStyles.printerSelect}
                 >
-                    <option value="estandar">Impresora estándar (actual)</option>
+                    <option value="estandar">Impresora estándar (rollo angosto)</option>
+                    <option value="a4_grilla">Hoja A4 (máx. etiquetas por hoja)</option>
                     <option value="xprinter_39x20">Térmica Xprinter XP-410B (rollo 39x20mm)</option>
                 </select>
                 <button onClick={handlePrint} style={mobileStyles.printButton}>Imprimir</button>
             </div>
 
             <div
-                className={`label-container ${tipoImpresion === 'xprinter_39x20' ? 'layout-termica' : 'layout-estandar'}`}
+                className={`label-container ${
+                    tipoImpresion === 'xprinter_39x20' ? 'layout-termica'
+                    : tipoImpresion === 'a4_grilla' ? 'layout-a4'
+                    : 'layout-estandar'
+                }`}
                 ref={labelsRef}
             >
                 {/* Las etiquetas se renderizarán aquí */}
@@ -180,6 +185,65 @@ const EtiquetasImpresion = () => {
                         padding: 0 1mm;
                     }
                     .label-container.layout-estandar .label .price {
+                        font-weight: bold;
+                        font-size: 4.4mm;
+                        margin-top: 2px;
+                    }
+
+                    /* Layout "a4": misma etiqueta de 37x37mm que "estandar", pero en grilla a lo
+                       ancho de toda la hoja A4 (5 columnas x 7 filas ≈ 35 etiquetas por hoja),
+                       sin salto de página forzado por etiqueta — el navegador pagina solo
+                       cuando la grilla no entra más en la hoja actual. */
+                    .label-container.layout-a4 {
+                        display: flex;
+                        flex-wrap: wrap;
+                        justify-content: flex-start;
+                        align-content: flex-start;
+                        width: 200mm;
+                        margin: 0 auto;
+                        box-sizing: border-box;
+                    }
+
+                    .label-container.layout-a4 .label {
+                        width: 37mm;
+                        height: 37mm;
+                        padding: 1mm 2mm;
+                        display: inline-block;
+                        text-align: center;
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                        box-sizing: border-box;
+                        vertical-align: top;
+                        overflow: hidden;
+                    }
+
+                    .label-container.layout-a4 .label p {
+                        margin: 0;
+                        font-size: 2mm;
+                        line-height: 1.1;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        max-width: 100%;
+                        font-weight: bold;
+                        color: #000;
+                        -webkit-font-smoothing: none;
+                    }
+                    .label-container.layout-a4 .label .product-name {
+                        font-weight: bold;
+                        font-size: 2.2mm;
+                    }
+                    .label-container.layout-a4 .label .variant-detail {
+                        font-weight: 600;
+                        font-size: 2mm;
+                        margin-top: 1px;
+                    }
+                    .label-container.layout-a4 .label .barcode-wrapper {
+                        margin-top: 2px;
+                        margin-bottom: 2px;
+                        padding: 0 1mm;
+                    }
+                    .label-container.layout-a4 .label .price {
                         font-weight: bold;
                         font-size: 4.4mm;
                         margin-top: 2px;
@@ -259,8 +323,9 @@ const EtiquetasImpresion = () => {
                         }
 
                         @page {
-                            margin: 0;
+                            margin: ${tipoImpresion === 'a4_grilla' ? '5mm' : '0'};
                             ${tipoImpresion === 'xprinter_39x20' ? 'size: 39mm 20mm;' : ''}
+                            ${tipoImpresion === 'a4_grilla' ? 'size: A4;' : ''}
                             @top-left { content: none; }
                             @top-center { content: none; }
                             @top-right { content: none; }

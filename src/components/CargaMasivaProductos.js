@@ -327,6 +327,24 @@ const CargaMasivaProductos = () => {
         }
     };
 
+    const handleImprimirEtiquetasLote = () => {
+        const productosParaImprimir = (resultadoFinal?.resultados || [])
+            .filter((r) => !r.error && r.codigo_barras)
+            .map((r) => ({
+                id: r.codigo_interno,
+                nombre: r.nombre,
+                precio: parseFloat(r.precio_venta) || 0,
+                codigo_barras: r.codigo_barras,
+                variante_detalle: '',
+                labelQuantity: 1,
+            }));
+        if (productosParaImprimir.length === 0) {
+            Swal.fire('Sin etiquetas', 'Ninguna fila del lote tiene código de barras para imprimir.', 'info');
+            return;
+        }
+        navigate('/etiquetas', { state: { productosParaImprimir } });
+    };
+
     return (
         <div style={styles.container}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: 10 }}>
@@ -536,9 +554,14 @@ const CargaMasivaProductos = () => {
                     {resultadoFinal.errores > 0 && (
                         <p style={{ color: '#e25252' }}><strong>{resultadoFinal.errores}</strong> fila(s) no se pudieron procesar.</p>
                     )}
-                    <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
                         <button onClick={resetear} style={styles.secondaryButton}>Importar otro archivo</button>
                         <button onClick={() => navigate('/productos')} style={styles.primaryButton}>Ir a Gestión de Productos</button>
+                        {(resultadoFinal.creados > 0 || resultadoFinal.actualizados > 0) && (
+                            <button onClick={handleImprimirEtiquetasLote} style={styles.primaryButton}>
+                                Imprimir etiquetas de este lote
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
