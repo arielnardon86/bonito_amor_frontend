@@ -50,13 +50,14 @@ export default function Registro() {
   const [planSeleccionado, setPlanSeleccionado] = useState('starter');
   const [form, setForm] = useState({
     nombre_tienda: '', email: '', username: '',
-    password: '', password2: '', telefono: '', cuit: '',
+    password: '', password2: '', telefono: '', cuit: '', mp_payer_email: '',
   });
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState('');
   const [cargando, setCargando] = useState(false);
   const [logoBase64, setLogoBase64] = useState(null);
   const [logoError, setLogoError] = useState('');
+  const [cuitDuplicado, setCuitDuplicado] = useState(false);
 
   const handleLogoChange = async (e) => {
     const file = e.target.files?.[0];
@@ -74,12 +75,33 @@ export default function Registro() {
     if (p && PLAN_INFO[p]) setPlanSeleccionado(p);
   }, [searchParams]);
 
+  // Aviso informativo (no bloqueante): si el CUIT ya está registrado en otra
+  // cuenta, se le sugiere al usuario pedir que le unifiquen el acceso en vez
+  // de crear una cuenta suelta. Debounce para no consultar en cada tecla.
+  useEffect(() => {
+    const cuitLimpio = form.cuit.replace(/\D/g, '');
+    if (cuitLimpio.length !== 11) {
+      setCuitDuplicado(false);
+      return;
+    }
+    const timeout = setTimeout(async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE_URL}/api/verificar-cuit/`, { params: { cuit: cuitLimpio } });
+        setCuitDuplicado(!!data.existe);
+      } catch {
+        // Chequeo puramente informativo: si falla, no molestamos al usuario.
+      }
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [form.cuit]);
+
   const validar = () => {
     const e = {};
     if (!form.nombre_tienda.trim()) e.nombre_tienda = 'El nombre de la tienda es obligatorio.';
     if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Email inválido.';
     if (!form.username.trim() || form.username.length < 3) e.username = 'El usuario debe tener al menos 3 caracteres.';
     if (form.cuit.replace(/\D/g, '').length !== 11) e.cuit = 'El CUIT/CUIL debe tener 11 dígitos.';
+    if (!form.mp_payer_email.trim() || !/\S+@\S+\.\S+/.test(form.mp_payer_email)) e.mp_payer_email = 'Email inválido.';
     if (!form.password || form.password.length < 6) e.password = 'La contraseña debe tener al menos 6 caracteres.';
     if (form.password !== form.password2) e.password2 = 'Las contraseñas no coinciden.';
     setErrores(e);
@@ -100,6 +122,7 @@ export default function Registro() {
         password:      form.password,
         telefono:      form.telefono.trim(),
         cuit:          form.cuit.trim(),
+        mp_payer_email: form.mp_payer_email.trim().toLowerCase(),
         logo:          logoBase64,
         plan:          planSeleccionado,
       };
@@ -218,9 +241,20 @@ export default function Registro() {
           {campo('email', 'Email', faEnvelope, 'email', 'tu@email.com')}
           {campo('username', 'Usuario', faUser, 'text', 'Ej: maria_ropa')}
           {campo('cuit', 'CUIT/CUIL de la tienda', faIdCard, 'text', 'Ej: 20-12345678-9')}
+          {cuitDuplicado && (
+            <div style={{ ...s.avisoTiendaNube, marginTop: -8 }}>
+              Ya existe una cuenta registrada con este CUIT. Si es tu otro local, podés crear esta cuenta igual y
+              después escribinos a <a href="mailto:info@totalstock.com.ar" style={{ color: COLORES.verdeOsc, fontWeight: 600 }}>info@totalstock.com.ar</a> para
+              unificar el acceso y ver ambas tiendas con el mismo usuario.
+            </div>
+          )}
           {campo('telefono', 'Teléfono (opcional)', faPhone, 'tel', '+54 11...')}
           {campo('password', 'Contraseña', faLock, 'password', 'Mínimo 6 caracteres')}
           {campo('password2', 'Repetir contraseña', faLock, 'password', 'Repetí tu contraseña')}
+          {campo('mp_payer_email', 'Email de tu cuenta de Mercado Pago', faEnvelope, 'email', 'tu-email@ejemplo.com')}
+          <p style={s.ayudaCampo}>
+            Tiene que ser el email con el que iniciás sesión en Mercado Pago — puede ser distinto al de Total Stock.
+          </p>
 
           <button
             style={{ ...s.btnPrimario, background: plan.color, opacity: cargando ? 0.75 : 1 }}
@@ -264,6 +298,7 @@ const s = {
   input: { width: '100%', padding: '11px 14px 11px 40px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: 14, color: COLORES.texto, outline: 'none', boxSizing: 'border-box' },
   inputError: { borderColor: COLORES.error },
   errorMsg: { fontSize: 12, color: COLORES.error, marginTop: 4, display: 'block' },
+  ayudaCampo: { fontSize: 12, color: COLORES.gris, marginTop: -10, marginBottom: 16 },
   alertaError: { background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 16px', color: '#991b1b', fontSize: 14, marginBottom: 18 },
   avisoTiendaNube: { background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 10, padding: '12px 16px', color: '#1a2926', fontSize: 13, marginBottom: 18 },
   btnPrimario: { width: '100%', padding: '14px', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 10, transition: 'background 0.2s' },
