@@ -48,6 +48,16 @@ const MAPEO_COLUMNAS = {
 
 const COLUMNAS_REQUERIDAS = ['codigo_interno', 'nombre', 'costo', 'cantidad'];
 
+// Con archivos muy grandes, el navegador puede quedarse sin memoria al parsear
+// el Excel y sobre todo al renderizar la tabla de vista previa (una fila = varios
+// nodos DOM, sin virtualización). Por encima de este umbral pedimos dividir el
+// archivo en partes, en vez de arriesgar un crash de la pestaña.
+const MAX_FILAS_IMPORT = 5000;
+// La tabla de preview solo muestra hasta esta cantidad de filas (priorizando las
+// que tienen error, que son las que hay que corregir) para no generar decenas de
+// miles de nodos DOM de golpe. Al confirmar se procesan TODAS las filas igual.
+const PREVIEW_DISPLAY_LIMIT = 500;
+
 const CargaMasivaProductos = () => {
     const { token, selectedStoreSlug } = useAuth();
     const navigate = useNavigate();
@@ -247,6 +257,15 @@ const CargaMasivaProductos = () => {
 
             if (rawRows.length === 0) {
                 setError('El archivo no tiene filas de datos.');
+                return;
+            }
+            if (rawRows.length > MAX_FILAS_IMPORT) {
+                setError(
+                    `El archivo tiene ${rawRows.length.toLocaleString('es-AR')} filas. Por ahora el máximo por ` +
+                    `importación es ${MAX_FILAS_IMPORT.toLocaleString('es-AR')} (archivos más grandes pueden hacer ` +
+                    `quedarse sin memoria al navegador). Dividí el archivo en partes de hasta ` +
+                    `${MAX_FILAS_IMPORT.toLocaleString('es-AR')} filas e importalas una por una.`
+                );
                 return;
             }
 
@@ -495,42 +514,61 @@ const CargaMasivaProductos = () => {
                                 <strong>{previewData.resultados.filter((r) => !r.error).length}</strong> fila(s) listas para importar,{' '}
                                 <strong style={{ color: '#e25252' }}>{previewData.errores}</strong> con error.
                             </p>
-                            <div style={styles.tableResponsive}>
-                                <table style={styles.table}>
-                                    <thead>
-                                        <tr style={styles.tableHeaderRow}>
-                                            <th style={styles.th}>Fila</th>
-                                            <th style={styles.th}>Código Interno</th>
-                                            <th style={styles.th}>Nombre</th>
-                                            <th style={styles.th}>Estado</th>
-                                            <th style={styles.th}>IVA %</th>
-                                            <th style={styles.th}>Precio de Venta</th>
-                                            <th style={styles.th}>Cantidad</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {previewData.resultados.map((r) => (
-                                            <tr key={r.fila} style={r.error ? styles.tableRowError : styles.tableRow}>
-                                                <td style={styles.td}>{r.fila}</td>
-                                                <td style={styles.td}>{r.codigo_interno}</td>
-                                                <td style={styles.td}>{r.nombre}</td>
-                                                <td style={styles.td}>
-                                                    {r.error ? (
-                                                        <span style={{ color: '#e25252' }}>{r.error}</span>
-                                                    ) : (
-                                                        <span style={{ color: r.estado === 'nuevo' ? '#1a6a40' : '#3b9ede', fontWeight: 700 }}>
-                                                            {r.estado === 'nuevo' ? 'Nuevo' : 'Reposición'}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td style={styles.td}>{r.iva_porcentaje ?? '—'}</td>
-                                                <td style={styles.td}>{r.precio_venta ? formatearMonto(r.precio_venta) : '—'}</td>
-                                                <td style={styles.td}>{r.cantidad ?? '—'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            {(() => {
+                                const conError = previewData.resultados.filter((r) => r.error);
+                                const sinError = previewData.resultados.filter((r) => !r.error);
+                                const filasAMostrar = conError.length >= PREVIEW_DISPLAY_LIMIT
+                                    ? conError.slice(0, PREVIEW_DISPLAY_LIMIT)
+                                    : [...conError, ...sinError.slice(0, PREVIEW_DISPLAY_LIMIT - conError.length)];
+                                const ocultas = previewData.resultados.length - filasAMostrar.length;
+                                return (
+                                    <>
+                                        {ocultas > 0 && (
+                                            <p style={{ color: '#94a3b8', fontSize: 13 }}>
+                                                Mostrando {filasAMostrar.length.toLocaleString('es-AR')} de{' '}
+                                                {previewData.resultados.length.toLocaleString('es-AR')} filas
+                                                (priorizando las que tienen error). Al confirmar se procesan todas.
+                                            </p>
+                                        )}
+                                        <div style={styles.tableResponsive}>
+                                            <table style={styles.table}>
+                                                <thead>
+                                                    <tr style={styles.tableHeaderRow}>
+                                                        <th style={styles.th}>Fila</th>
+                                                        <th style={styles.th}>Código Interno</th>
+                                                        <th style={styles.th}>Nombre</th>
+                                                        <th style={styles.th}>Estado</th>
+                                                        <th style={styles.th}>IVA %</th>
+                                                        <th style={styles.th}>Precio de Venta</th>
+                                                        <th style={styles.th}>Cantidad</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {filasAMostrar.map((r) => (
+                                                        <tr key={r.fila} style={r.error ? styles.tableRowError : styles.tableRow}>
+                                                            <td style={styles.td}>{r.fila}</td>
+                                                            <td style={styles.td}>{r.codigo_interno}</td>
+                                                            <td style={styles.td}>{r.nombre}</td>
+                                                            <td style={styles.td}>
+                                                                {r.error ? (
+                                                                    <span style={{ color: '#e25252' }}>{r.error}</span>
+                                                                ) : (
+                                                                    <span style={{ color: r.estado === 'nuevo' ? '#1a6a40' : '#3b9ede', fontWeight: 700 }}>
+                                                                        {r.estado === 'nuevo' ? 'Nuevo' : 'Reposición'}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td style={styles.td}>{r.iva_porcentaje ?? '—'}</td>
+                                                            <td style={styles.td}>{r.precio_venta ? formatearMonto(r.precio_venta) : '—'}</td>
+                                                            <td style={styles.td}>{r.cantidad ?? '—'}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                                 <button onClick={resetear} style={styles.modalCancelButton}>Cancelar</button>
                                 <button
