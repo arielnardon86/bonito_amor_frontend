@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -601,6 +601,11 @@ export default function HomePage() {
                         <a href="mailto:info@totalstock.com.ar" style={{ color: '#5dc87a', textDecoration: 'none', fontWeight: 600 }}>
                             info@totalstock.com.ar
                         </a>
+                    </p>
+                    <p style={{ margin: '10px 0 0', fontSize: '0.85em' }}>
+                        <Link to="/privacidad" style={{ color: '#475569', textDecoration: 'none' }}>
+                            Política de privacidad
+                        </Link>
                     </p>
                 </div>
             </footer>
