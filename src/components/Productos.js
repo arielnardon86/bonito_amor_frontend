@@ -93,6 +93,12 @@ const Productos = () => {
 
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
     const [seleccionandoTodosEtiquetas, setSeleccionandoTodosEtiquetas] = useState(false);
+    // "Todos" trae de a MAX_ETIQUETAS_SELECCION_MASIVA por tanda (orden alfabético,
+    // igual que el listado). loteEtiquetasActual indica qué tanda trae el próximo
+    // click; infoLoteEtiquetas es lo que se le muestra al cliente para que sepa
+    // desde/hasta qué producto llegó la tanda ya impresa.
+    const [loteEtiquetasActual, setLoteEtiquetasActual] = useState(1);
+    const [infoLoteEtiquetas, setInfoLoteEtiquetas] = useState(null);
     const [mostrarTalle, setMostrarTalle] = useState(false);
     const [stockBajoFilter, setStockBajoFilter] = useState(false);
     const STOCK_BAJO_THRESHOLD = 5;
@@ -179,6 +185,13 @@ const Productos = () => {
             setLoadingProducts(false);
         }
     }, [token, selectedStoreSlug, searchTerm, filtroRubroId]);
+
+    // Un filtro nuevo (rubro o búsqueda) implica volver a arrancar la numeración
+    // de tandas de "Seleccionar todos" desde la primera.
+    useEffect(() => {
+        setLoteEtiquetasActual(1);
+        setInfoLoteEtiquetas(null);
+    }, [filtroRubroId, searchTerm]);
 
     const fetchRubros = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
@@ -563,30 +576,53 @@ const Productos = () => {
                     tienda_slug: selectedStoreSlug,
                     search: searchTerm,
                     rubro_id: filtroRubroId || undefined,
-                    page_size: MAX_ETIQUETAS_SELECCION_MASIVA + 1, // +1 para poder detectar "hay más de lo permitido"
+                    page_size: MAX_ETIQUETAS_SELECCION_MASIVA,
+                    page: loteEtiquetasActual,
                 },
             });
             const resultados = response.data.results || [];
-            const ids = [];
-            resultados.forEach(p => {
-                if (p.variantes && p.variantes.length > 0) {
-                    p.variantes.forEach(v => ids.push(v.id));
-                } else {
-                    ids.push(p.id);
-                }
-            });
-            if (ids.length > MAX_ETIQUETAS_SELECCION_MASIVA) {
-                Swal.fire(
-                    'Demasiados productos',
-                    `Este filtro tiene más de ${MAX_ETIQUETAS_SELECCION_MASIVA} etiquetas para imprimir de una sola vez. ` +
-                    `Filtrá por un rubro más específico o buscá un subconjunto antes de seleccionar todos.`,
-                    'warning'
-                );
+            if (resultados.length === 0) {
+                Swal.fire('Ya está', 'No hay más productos para traer con este filtro. Se reinicia desde el principio.', 'info');
+                setLoteEtiquetasActual(1);
+                setInfoLoteEtiquetas(null);
                 return;
             }
+
+            const ids = [];
+            const nombresIncluidos = [];
+            resultados.forEach(p => {
+                if (p.variantes && p.variantes.length > 0) {
+                    p.variantes.forEach(v => {
+                        ids.push(v.id);
+                        nombresIncluidos.push(v.talle ? `${p.nombre} - ${v.talle}` : p.nombre);
+                    });
+                } else {
+                    ids.push(p.id);
+                    nombresIncluidos.push(p.nombre);
+                }
+            });
+
+            const totalProductos = response.data.count;
+            const totalLotes = Math.max(1, Math.ceil(totalProductos / MAX_ETIQUETAS_SELECCION_MASIVA));
+            const hayMasTandas = loteEtiquetasActual < totalLotes;
+            const desde = nombresIncluidos[0];
+            const hasta = nombresIncluidos[nombresIncluidos.length - 1];
+
             const seleccionadas = {};
             ids.forEach(id => { seleccionadas[id] = true; });
             setEtiquetasSeleccionadas(seleccionadas);
+            setInfoLoteEtiquetas({ lote: loteEtiquetasActual, totalLotes, desde, hasta, cantidad: ids.length });
+
+            await Swal.fire(
+                totalLotes > 1 ? `Tanda ${loteEtiquetasActual} de ${totalLotes}` : 'Listo',
+                `Se seleccionaron ${ids.length} etiqueta(s), en orden alfabético: desde "${desde}" hasta "${hasta}".` +
+                (hayMasTandas
+                    ? ' Imprimí esta tanda y después volvé a tildar "Todos" para traer la próxima (continúa justo después de la última de esta tanda).'
+                    : ''),
+                'info'
+            );
+
+            setLoteEtiquetasActual(hayMasTandas ? loteEtiquetasActual + 1 : 1);
         } catch (err) {
             setError('Error al seleccionar todos los productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
         } finally {
@@ -868,6 +904,14 @@ const Productos = () => {
                         )}
                     </button>
                 </div>
+                {infoLoteEtiquetas && (
+                    <p style={{ fontSize: 12, color: '#475569', background: '#f0faf5', border: '1px solid #cdeedb', borderRadius: 6, padding: '6px 10px', margin: '8px 0 0' }}>
+                        Tanda <strong>{infoLoteEtiquetas.lote}</strong> de <strong>{infoLoteEtiquetas.totalLotes}</strong>:{' '}
+                        <strong>{infoLoteEtiquetas.cantidad}</strong> etiqueta(s) seleccionada(s), desde{' '}
+                        <strong>"{infoLoteEtiquetas.desde}"</strong> hasta <strong>"{infoLoteEtiquetas.hasta}"</strong>.
+                        {infoLoteEtiquetas.lote < infoLoteEtiquetas.totalLotes && ' Imprimí esta tanda y volvé a tildar "Todos" para la próxima.'}
+                    </p>
+                )}
                 <div style={styles.filtersContainer}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                         <input
