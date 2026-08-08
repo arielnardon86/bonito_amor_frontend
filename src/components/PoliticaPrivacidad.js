@@ -9,7 +9,7 @@ function PoliticaPrivacidad() {
     <div style={s.page}>
       <div style={s.header}>
         <Link to="/" style={s.logo}>
-          <span style={s.logoText}>Total<span style={{ color: '#5dc87a' }}>Stock</span></span>
+          <img src="/logo-completo.png" alt="Total Stock" style={s.logoImg} />
         </Link>
       </div>
       <div style={s.container}>
@@ -102,7 +102,7 @@ const s = {
   page: { minHeight: '100vh', background: '#f8fafc', fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" },
   header: { padding: '20px 40px', borderBottom: '1px solid #e2e8f0', background: '#fff' },
   logo: { textDecoration: 'none' },
-  logoText: { fontSize: 22, fontWeight: 700, color: '#1a2926' },
+  logoImg: { height: 40, display: 'block' },
   container: { maxWidth: 720, margin: '0 auto', padding: '48px 24px 80px' },
   h1: { fontSize: 28, fontWeight: 800, color: '#1a2926', margin: '0 0 4px' },
   updated: { fontSize: 13, color: '#94a3b8', margin: '0 0 28px' },

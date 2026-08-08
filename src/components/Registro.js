@@ -180,7 +180,7 @@ export default function Registro() {
     <div style={s.page}>
       <div style={s.header}>
         <Link to="/" style={s.logo}>
-          <span style={s.logoText}>Total<span style={{ color: COLORES.verde }}>Stock</span></span>
+          <img src="/logo-completo.png" alt="Total Stock" style={s.logoImg} />
         </Link>
       </div>
 
@@ -283,7 +283,7 @@ const s = {
   page: { minHeight: '100vh', background: '#f8fafc', fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" },
   header: { padding: '20px 40px', borderBottom: '1px solid #e2e8f0', background: '#fff' },
   logo: { textDecoration: 'none' },
-  logoText: { fontSize: 24, fontWeight: 700, color: '#1a2926' },
+  logoImg: { height: 44, display: 'block' },
   container: { maxWidth: 560, margin: '0 auto', padding: '40px 20px 80px' },
   card: { background: '#fff', borderRadius: 16, padding: '36px 44px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' },
   planBadge: { border: '1.5px solid', borderRadius: 10, padding: '14px 18px', marginBottom: 28 },

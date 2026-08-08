@@ -71,7 +71,7 @@ export default function TiendaNubeInstalar() {
   return (
     <div style={s.page}>
       <div style={s.card}>
-        <div style={s.logo}>Total<span style={{ color: '#5dc87a' }}>Stock</span></div>
+        <img src="/logo-completo.png" alt="Total Stock" style={s.logo} />
 
         {estado === 'procesando' && (
           <>
@@ -130,7 +130,7 @@ const s = {
     background: '#fff', borderRadius: 16, padding: '44px 40px', maxWidth: 440, width: '100%',
     textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
   },
-  logo: { fontSize: 22, fontWeight: 700, color: '#1a2926', marginBottom: 24 },
+  logo: { height: 40, display: 'block', margin: '0 auto 24px' },
   icono: { fontSize: 44, marginBottom: 12 },
   titulo: { fontSize: 20, fontWeight: 700, color: '#1a2926', margin: '0 0 10px' },
   texto: { fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 22 },
