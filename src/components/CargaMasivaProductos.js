@@ -65,6 +65,9 @@ const CargaMasivaProductos = () => {
     const [step, setStep] = useState('upload'); // upload | asignar_rubros | preview | resultado
     const [error, setError] = useState(null);
     const [nombreArchivo, setNombreArchivo] = useState('');
+    // Al re-subir un archivo ya importado (ej. para corregir precio/IVA/rubro),
+    // permite no volver a sumar la cantidad de cada fila al stock existente.
+    const [actualizarStock, setActualizarStock] = useState(true);
 
     const [filasParsed, setFilasParsed] = useState([]);
     const [rubrosPorAsignar, setRubrosPorAsignar] = useState([]);
@@ -187,6 +190,7 @@ const CargaMasivaProductos = () => {
         setRubrosPorAsignar([]);
         setPreviewData(null);
         setResultadoFinal(null);
+        setActualizarStock(true);
     };
 
     const descargarPlantilla = () => {
@@ -324,7 +328,10 @@ const CargaMasivaProductos = () => {
         const filasValidas = previewData.resultados.filter((r) => !r.error).length;
         const { isConfirmed } = await Swal.fire({
             title: '¿Confirmar importación?',
-            html: `Se van a crear/actualizar <strong>${filasValidas}</strong> producto(s). Las filas con error no se van a procesar.`,
+            html: `Se van a crear/actualizar <strong>${filasValidas}</strong> producto(s). Las filas con error no se van a procesar.` +
+                (actualizarStock
+                    ? ''
+                    : '<br/><br/><strong>No se va a modificar el stock</strong> de los productos que ya existen (solo precio/IVA/rubro/código de barras).'),
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Sí, importar',
@@ -335,7 +342,7 @@ const CargaMasivaProductos = () => {
         setConfirmando(true);
         try {
             const resp = await axios.post(`${BASE_API_ENDPOINT}/api/productos/carga_masiva/`, {
-                tienda_slug: selectedStoreSlug, modo: 'confirmar', filas: filasParsed,
+                tienda_slug: selectedStoreSlug, modo: 'confirmar', filas: filasParsed, actualizar_stock: actualizarStock,
             }, { headers: { Authorization: `Bearer ${token}` } });
             setResultadoFinal(resp.data);
             setStep('resultado');
@@ -569,6 +576,14 @@ const CargaMasivaProductos = () => {
                                     </>
                                 );
                             })()}
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, fontSize: 14, cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={!actualizarStock}
+                                    onChange={(e) => setActualizarStock(!e.target.checked)}
+                                />
+                                No sumar stock (solo actualizar precio, IVA, rubro y código de barras de productos ya existentes)
+                            </label>
                             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                                 <button onClick={resetear} style={styles.modalCancelButton}>Cancelar</button>
                                 <button
