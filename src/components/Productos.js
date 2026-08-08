@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
@@ -26,6 +27,12 @@ const normalizeApiUrl = (url) => {
 };
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
+
+// Tope de etiquetas que "Seleccionar todos" puede juntar de una sola vez: imprimir
+// arma un nodo DOM + SVG de código de barras por etiqueta (ver EtiquetasImpresion.js),
+// así que un rubro enorme podría repetir el mismo problema de memoria del navegador
+// que ya tuvimos con la vista previa de carga masiva.
+const MAX_ETIQUETAS_SELECCION_MASIVA = 1000;
 
 
 const Productos = () => {
@@ -85,6 +92,7 @@ const Productos = () => {
     const [barcodeLoading, setBarcodeLoading] = useState(false);
 
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
+    const [seleccionandoTodosEtiquetas, setSeleccionandoTodosEtiquetas] = useState(false);
     const [mostrarTalle, setMostrarTalle] = useState(false);
     const [stockBajoFilter, setStockBajoFilter] = useState(false);
     const STOCK_BAJO_THRESHOLD = 5;
@@ -542,6 +550,50 @@ const Productos = () => {
         });
     };
 
+    const handleToggleSeleccionarTodosEtiquetas = async (isChecked) => {
+        if (!isChecked) {
+            setEtiquetasSeleccionadas({});
+            return;
+        }
+        setSeleccionandoTodosEtiquetas(true);
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
+                headers: { Authorization: `Bearer ${token}` },
+                params: {
+                    tienda_slug: selectedStoreSlug,
+                    search: searchTerm,
+                    rubro_id: filtroRubroId || undefined,
+                    page_size: MAX_ETIQUETAS_SELECCION_MASIVA + 1, // +1 para poder detectar "hay más de lo permitido"
+                },
+            });
+            const resultados = response.data.results || [];
+            const ids = [];
+            resultados.forEach(p => {
+                if (p.variantes && p.variantes.length > 0) {
+                    p.variantes.forEach(v => ids.push(v.id));
+                } else {
+                    ids.push(p.id);
+                }
+            });
+            if (ids.length > MAX_ETIQUETAS_SELECCION_MASIVA) {
+                Swal.fire(
+                    'Demasiados productos',
+                    `Este filtro tiene más de ${MAX_ETIQUETAS_SELECCION_MASIVA} etiquetas para imprimir de una sola vez. ` +
+                    `Filtrá por un rubro más específico o buscá un subconjunto antes de seleccionar todos.`,
+                    'warning'
+                );
+                return;
+            }
+            const seleccionadas = {};
+            ids.forEach(id => { seleccionadas[id] = true; });
+            setEtiquetasSeleccionadas(seleccionadas);
+        } catch (err) {
+            setError('Error al seleccionar todos los productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setSeleccionandoTodosEtiquetas(false);
+        }
+    };
+
     const handleImprimirEtiquetas = () => {
         const selectedIds = Object.keys(etiquetasSeleccionadas);
         if (selectedIds.length === 0) {
@@ -897,7 +949,21 @@ const Productos = () => {
                             <table style={styles.table}>
                                 <thead>
                                     <tr>
-                                        <th style={styles.th}>Etiqueta</th>
+                                        <th style={styles.th}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={Object.keys(etiquetasSeleccionadas).length > 0}
+                                                    disabled={seleccionandoTodosEtiquetas}
+                                                    onChange={(e) => handleToggleSeleccionarTodosEtiquetas(e.target.checked)}
+                                                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                                                    title="Seleccionar todos los productos filtrados para imprimir etiquetas"
+                                                />
+                                                <span style={{ fontSize: 10, fontWeight: 400, color: '#94a3b8' }}>
+                                                    {seleccionandoTodosEtiquetas ? '...' : 'Todos'}
+                                                </span>
+                                            </div>
+                                        </th>
                                         <th style={styles.th}>Nombre</th>
                                         {mostrarTalle && <th style={styles.th}>Talle</th>}
                                         <th style={styles.th}>Precio</th>
