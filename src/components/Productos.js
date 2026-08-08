@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import Swal from 'sweetalert2';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
@@ -27,12 +26,6 @@ const normalizeApiUrl = (url) => {
 };
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
-
-// Tope de etiquetas que "Seleccionar todos" puede juntar de una sola vez: imprimir
-// arma un nodo DOM + SVG de código de barras por etiqueta (ver EtiquetasImpresion.js),
-// así que un rubro enorme podría repetir el mismo problema de memoria del navegador
-// que ya tuvimos con la vista previa de carga masiva.
-const MAX_ETIQUETAS_SELECCION_MASIVA = 1000;
 
 
 const Productos = () => {
@@ -92,13 +85,6 @@ const Productos = () => {
     const [barcodeLoading, setBarcodeLoading] = useState(false);
 
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
-    const [seleccionandoTodosEtiquetas, setSeleccionandoTodosEtiquetas] = useState(false);
-    // "Todos" trae de a MAX_ETIQUETAS_SELECCION_MASIVA por tanda (orden alfabético,
-    // igual que el listado). loteEtiquetasActual indica qué tanda trae el próximo
-    // click; infoLoteEtiquetas es lo que se le muestra al cliente para que sepa
-    // desde/hasta qué producto llegó la tanda ya impresa.
-    const [loteEtiquetasActual, setLoteEtiquetasActual] = useState(1);
-    const [infoLoteEtiquetas, setInfoLoteEtiquetas] = useState(null);
     const [mostrarTalle, setMostrarTalle] = useState(false);
     const [stockBajoFilter, setStockBajoFilter] = useState(false);
     const STOCK_BAJO_THRESHOLD = 5;
@@ -185,13 +171,6 @@ const Productos = () => {
             setLoadingProducts(false);
         }
     }, [token, selectedStoreSlug, searchTerm, filtroRubroId]);
-
-    // Un filtro nuevo (rubro o búsqueda) implica volver a arrancar la numeración
-    // de tandas de "Seleccionar todos" desde la primera.
-    useEffect(() => {
-        setLoteEtiquetasActual(1);
-        setInfoLoteEtiquetas(null);
-    }, [filtroRubroId, searchTerm]);
 
     const fetchRubros = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
@@ -563,71 +542,29 @@ const Productos = () => {
         });
     };
 
-    const handleToggleSeleccionarTodosEtiquetas = async (isChecked) => {
+    // Selecciona (o deselecciona) todos los productos ya cargados en pantalla —
+    // respeta el filtro de rubro/búsqueda y el de stock bajo, pero solo la página
+    // actual (10 productos), igual que el resto del listado. Para la página
+    // siguiente: avanzar con "Siguiente" y volver a tildar "Todos" ahí.
+    const handleToggleSeleccionarTodosEtiquetas = (isChecked) => {
         if (!isChecked) {
             setEtiquetasSeleccionadas({});
             return;
         }
-        setSeleccionandoTodosEtiquetas(true);
-        try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
-                headers: { Authorization: `Bearer ${token}` },
-                params: {
-                    tienda_slug: selectedStoreSlug,
-                    search: searchTerm,
-                    rubro_id: filtroRubroId || undefined,
-                    page_size: MAX_ETIQUETAS_SELECCION_MASIVA,
-                    page: loteEtiquetasActual,
-                },
-            });
-            const resultados = response.data.results || [];
-            if (resultados.length === 0) {
-                Swal.fire('Ya está', 'No hay más productos para traer con este filtro. Se reinicia desde el principio.', 'info');
-                setLoteEtiquetasActual(1);
-                setInfoLoteEtiquetas(null);
-                return;
+        const visibles = stockBajoFilter
+            ? productos.filter(p => p.variantes && p.variantes.length > 0
+                ? p.variantes.some(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD)
+                : (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
+            : productos;
+        const seleccionadas = {};
+        visibles.forEach(p => {
+            if (p.variantes && p.variantes.length > 0) {
+                p.variantes.forEach(v => { seleccionadas[v.id] = true; });
+            } else {
+                seleccionadas[p.id] = true;
             }
-
-            const ids = [];
-            const nombresIncluidos = [];
-            resultados.forEach(p => {
-                if (p.variantes && p.variantes.length > 0) {
-                    p.variantes.forEach(v => {
-                        ids.push(v.id);
-                        nombresIncluidos.push(v.talle ? `${p.nombre} - ${v.talle}` : p.nombre);
-                    });
-                } else {
-                    ids.push(p.id);
-                    nombresIncluidos.push(p.nombre);
-                }
-            });
-
-            const totalProductos = response.data.count;
-            const totalLotes = Math.max(1, Math.ceil(totalProductos / MAX_ETIQUETAS_SELECCION_MASIVA));
-            const hayMasTandas = loteEtiquetasActual < totalLotes;
-            const desde = nombresIncluidos[0];
-            const hasta = nombresIncluidos[nombresIncluidos.length - 1];
-
-            const seleccionadas = {};
-            ids.forEach(id => { seleccionadas[id] = true; });
-            setEtiquetasSeleccionadas(seleccionadas);
-            setInfoLoteEtiquetas({ lote: loteEtiquetasActual, totalLotes, desde, hasta, cantidad: ids.length });
-
-            await Swal.fire(
-                totalLotes > 1 ? `Tanda ${loteEtiquetasActual} de ${totalLotes}` : 'Listo',
-                `Se seleccionaron ${ids.length} etiqueta(s), en orden alfabético: desde "${desde}" hasta "${hasta}".` +
-                (hayMasTandas
-                    ? ' Imprimí esta tanda y después volvé a tildar "Todos" para traer la próxima (continúa justo después de la última de esta tanda).'
-                    : ''),
-                'info'
-            );
-
-            setLoteEtiquetasActual(hayMasTandas ? loteEtiquetasActual + 1 : 1);
-        } catch (err) {
-            setError('Error al seleccionar todos los productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
-        } finally {
-            setSeleccionandoTodosEtiquetas(false);
-        }
+        });
+        setEtiquetasSeleccionadas(seleccionadas);
     };
 
     const handleImprimirEtiquetas = () => {
@@ -904,14 +841,6 @@ const Productos = () => {
                         )}
                     </button>
                 </div>
-                {infoLoteEtiquetas && (
-                    <p style={{ fontSize: 12, color: '#475569', background: '#f0faf5', border: '1px solid #cdeedb', borderRadius: 6, padding: '6px 10px', margin: '8px 0 0' }}>
-                        Tanda <strong>{infoLoteEtiquetas.lote}</strong> de <strong>{infoLoteEtiquetas.totalLotes}</strong>:{' '}
-                        <strong>{infoLoteEtiquetas.cantidad}</strong> etiqueta(s) seleccionada(s), desde{' '}
-                        <strong>"{infoLoteEtiquetas.desde}"</strong> hasta <strong>"{infoLoteEtiquetas.hasta}"</strong>.
-                        {infoLoteEtiquetas.lote < infoLoteEtiquetas.totalLotes && ' Imprimí esta tanda y volvé a tildar "Todos" para la próxima.'}
-                    </p>
-                )}
                 <div style={styles.filtersContainer}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                         <input
@@ -998,13 +927,12 @@ const Productos = () => {
                                                 <input
                                                     type="checkbox"
                                                     checked={Object.keys(etiquetasSeleccionadas).length > 0}
-                                                    disabled={seleccionandoTodosEtiquetas}
                                                     onChange={(e) => handleToggleSeleccionarTodosEtiquetas(e.target.checked)}
                                                     style={{ width: 16, height: 16, cursor: 'pointer' }}
-                                                    title="Seleccionar todos los productos filtrados para imprimir etiquetas"
+                                                    title="Seleccionar todos los productos de esta página para imprimir etiquetas"
                                                 />
                                                 <span style={{ fontSize: 10, fontWeight: 400, color: '#94a3b8' }}>
-                                                    {seleccionandoTodosEtiquetas ? '...' : 'Todos'}
+                                                    Pág.
                                                 </span>
                                             </div>
                                         </th>
