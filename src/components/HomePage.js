@@ -222,7 +222,7 @@ export default function HomePage() {
                             </button>
                         </li>
                         <li>
-                            <button onClick={() => navigate('/registro?plan=starter')} style={s.navBtnPrimary} className="nav-btn-primary">
+                            <button onClick={() => scrollTo('precios')} style={s.navBtnPrimary} className="nav-btn-primary">
                                 Probalo gratis →
                             </button>
                         </li>
