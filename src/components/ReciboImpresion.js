@@ -90,8 +90,9 @@ const ReciboImpresion = () => {
                 <div class="receipt">
                     <div class="header">
                         <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${tituloRecibo}</h2>
+                        <p style="font-size: 2mm; font-weight: normal; color: #000; -webkit-font-smoothing: none;">Documento no válido como comprobante fiscal</p>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
-                        ${venta.tienda_direccion ? `<p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Domicilio: ${venta.tienda_direccion}</p>` : ''}
+                        ${venta.tienda_direccion ? `<p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Dirección: ${venta.tienda_direccion}</p>` : ''}
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">ID de Venta: ${codigoNumerico}</p>
                         ${fechaLimitePagoHtml}
