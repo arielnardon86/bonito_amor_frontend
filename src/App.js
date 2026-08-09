@@ -29,6 +29,7 @@ import PoliticaPrivacidad from './components/PoliticaPrivacidad';
 import CierresCaja from './components/CierresCaja';
 import Registro from './components/Registro';
 import SuscripcionResultado from './components/SuscripcionResultado';
+import ManualUso from './components/ManualUso';
 import TiendaNubeInstalar from './components/TiendaNubeInstalar';
 import NuevaContrasena from './components/NuevaContrasena';
 import { useNotifications } from './hooks/useNotifications';
@@ -46,6 +47,7 @@ import {
   faChartLine,
   faMoneyBillWave,
   faCog,
+  faBookOpen,
   faShoppingBag,
   faSignOutAlt,
   faUser,
@@ -329,7 +331,16 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
                 </Link>
               </li>
             )}
-            
+
+            {user && (user.is_staff || user.is_superuser || user.is_supervisor) && (
+              <li onClick={() => setIsOpen(false)}>
+                <Link to="/manual" className={location.pathname === '/manual' ? 'active' : ''}>
+                  <FontAwesomeIcon icon={faBookOpen} className="nav-icon" />
+                  <span className="sidebar-label">Manual de Uso</span>
+                </Link>
+              </li>
+            )}
+
             {user && notificacionesSoportadas() && notificationPermission === 'default' && (
               <li className="sidebar-notifications">
                 <button
@@ -1119,6 +1130,11 @@ const AppContent = () => {
               <Route path="/presupuesto" element={
                 <ProtectedRoute staffOnly={true} supervisorAllowed={true}>
                   <Presupuesto />
+                </ProtectedRoute>
+              } />
+              <Route path="/manual" element={
+                <ProtectedRoute staffOnly={true} supervisorAllowed={true}>
+                  <ManualUso />
                 </ProtectedRoute>
               } />
               <Route path="/recibo" element={<ReciboImpresion />} />
