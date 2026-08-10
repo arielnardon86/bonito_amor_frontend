@@ -31,6 +31,8 @@ export default function IntegracionTiendaNube() {
     const [successMsg,   setSuccessMsg]  = useState('');
 
     const [facturar,    setFacturar]    = useState(true);
+    const [authUrl,      setAuthUrl]      = useState('');
+    const [copiado,       setCopiado]      = useState(false);
 
     // Conexión manual con token
     const [manualToken,   setManualToken]   = useState('');
@@ -73,11 +75,18 @@ export default function IntegracionTiendaNube() {
         } catch { /* ignore */ }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const fetchAuthUrl = useCallback(async (id) => {
+        try {
+            const res = await axios.get(`${BASE}/api/tiendas/${id}/tiendanube/auth-url/`, { headers });
+            setAuthUrl(res.data.auth_url || '');
+        } catch { /* Se muestra el error recién si el usuario intenta conectar */ }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         if (!isAuthenticated || !token) { setLoading(false); return; }
         obtenerTiendaId().then(id => {
             setTiendaId(id);
-            if (id) Promise.all([fetchTienda(id), fetchStatus(id)]).finally(() => setLoading(false));
+            if (id) Promise.all([fetchTienda(id), fetchStatus(id), fetchAuthUrl(id)]).finally(() => setLoading(false));
             else setLoading(false);
         });
     }, [isAuthenticated, token, selectedStoreSlug]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -338,6 +347,30 @@ export default function IntegracionTiendaNube() {
                                 {conectando ? 'Conectando…' : 'Conectar con Tienda Nube'}
                             </button>
 
+                            {authUrl && (
+                                <div style={s.linkBox}>
+                                    <p style={{ ...s.cardDesc, marginBottom: 8 }}>
+                                        Mientras Tienda Nube no homologó la app, todavía no aparece en su tienda de aplicaciones —
+                                        este link es la <strong>única forma de conectar</strong> hoy. Se lo podés pasar directo al
+                                        cliente: tiene que entrar logueado en su cuenta de Tienda Nube y aceptar los permisos para
+                                        terminar la conexión.
+                                    </p>
+                                    <div style={s.linkRow}>
+                                        <input readOnly style={s.linkInput} value={authUrl} onFocus={e => e.target.select()} />
+                                        <button
+                                            style={s.btnSecondary}
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(authUrl);
+                                                setCopiado(true);
+                                                setTimeout(() => setCopiado(false), 2000);
+                                            }}
+                                        >
+                                            {copiado ? '✔ Copiado' : 'Copiar link'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             <div style={s.divider} />
 
                             <div style={s.cardTitle}>Conexión manual (app en desarrollo)</div>
@@ -478,4 +511,7 @@ const s = {
     infoVal:   { fontSize: 13, color: '#111827', fontWeight: 600 },
     link:      { color: '#3b9ede' },
     divider:   { borderTop: '1px solid #f8fafc', margin: '18px 0' },
+    linkBox:   { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 16px', marginTop: 14 },
+    linkRow:   { display: 'flex', gap: 8, flexWrap: 'wrap' },
+    linkInput: { flex: '1 1 260px', padding: '9px 11px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, color: '#475569', background: '#fff' },
 };
