@@ -185,20 +185,25 @@ export default function IntegracionTiendaNube() {
         if (!tiendaId) return;
         const result = await Swal.fire({
             title: '¿Importar productos desde Tienda Nube?',
-            text: 'Se traerán todos los productos de tu tienda online. Los que coincidan por SKU o nombre se vincularán automáticamente; los que no, se crearán como nuevos en Total Stock.',
-            icon: 'info',
+            html: 'Se traerán todos los productos de tu tienda online. Los que coincidan por SKU o nombre se vincularán automáticamente; los que no, se crearán como nuevos en Total Stock.'
+                + '<br><br><strong>¿Traer también el precio?</strong> El precio de Tienda Nube puede ser distinto al de Total Stock a propósito — elegí si querés pisarlo o dejar el local como está (siempre se actualiza el stock).',
+            icon: 'question',
+            showDenyButton: true,
             showCancelButton: true,
             confirmButtonColor: '#3b9ede',
+            denyButtonColor: '#10b981',
             cancelButtonColor: '#475569',
-            confirmButtonText: 'Sí, importar',
+            confirmButtonText: 'Precio y stock',
+            denyButtonText: 'Solo stock',
             cancelButtonText: 'Cancelar',
         });
-        if (!result.isConfirmed) return;
+        if (!result.isConfirmed && !result.isDenied) return;
+        const importarPrecio = result.isConfirmed;
         setImportando(true);
         try {
             const res = await axios.post(
                 `${BASE}/api/tiendas/${tiendaId}/tiendanube/import-products/`,
-                {},
+                { importar_precio: importarPrecio },
                 { headers },
             );
             const { creados, vinculados, actualizados, errores } = res.data;
