@@ -918,7 +918,7 @@ const Productos = () => {
                     <div style={styles.errorMessage}>{error}</div>
                 ) : (
                     <>
-                        <div style={styles.tableResponsive}>
+                        <div className="productos-tabla-wrap" style={styles.tableResponsive}>
                             <table style={styles.table}>
                                 <thead>
                                     <tr>
@@ -936,17 +936,17 @@ const Productos = () => {
                                                 </span>
                                             </div>
                                         </th>
-                                        <th style={styles.th}>Código Interno</th>
+                                        <th style={styles.th}>Cód. Interno</th>
                                         <th style={styles.th}>Nombre</th>
                                         {mostrarTalle && <th style={styles.th}>Talle</th>}
                                         <th style={styles.th}>Precio</th>
-                                        <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>sin IVA</span></th>
-                                        <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>con IVA</span></th>
+                                        <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>s/IVA</span></th>
+                                        <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>c/IVA</span></th>
                                         <th style={styles.th}>IVA</th>
                                         <th style={styles.th}>Rubro</th>
                                         <th style={styles.th}>Margen</th>
-                                        <th style={styles.th}>Stock actual</th>
-                                        <th style={styles.th}>Últ. cambio stock</th>
+                                        <th style={styles.th}>Stock</th>
+                                        <th style={styles.th}>Últ. ingreso</th>
                                         <th style={styles.th}>Acciones</th>
                                     </tr>
                                 </thead>
@@ -979,7 +979,7 @@ const Productos = () => {
                                                     />
                                                 )}
                                             </td>
-                                            <td style={{ ...styles.td, color: '#475569', fontSize: 13 }}>
+                                            <td style={{ ...styles.td, color: '#475569' }}>
                                                 {producto.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
                                             </td>
                                             <td style={styles.td}>
@@ -991,7 +991,12 @@ const Productos = () => {
                                                         {expandido ? '▼' : '▶'}
                                                     </button>
                                                 )}
-                                                {producto.nombre}
+                                                <span
+                                                    title={producto.nombre}
+                                                    style={{ display: 'inline-block', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}
+                                                >
+                                                    {producto.nombre}
+                                                </span>
                                                 {tieneVars && (
                                                     <span style={{ marginLeft: 8, fontSize: 11, color: '#475569', background: '#e2e8f0', borderRadius: 8, padding: '1px 7px' }}>
                                                         {producto.variantes.length} variante{producto.variantes.length !== 1 ? 's' : ''}
@@ -1009,7 +1014,7 @@ const Productos = () => {
                                             </td>
                                             <td style={styles.td}>
                                                 {!tieneVars && producto.rubro_nombre
-                                                    ? producto.rubro_nombre
+                                                    ? <span title={producto.rubro_nombre} style={{ display: 'inline-block', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{producto.rubro_nombre}</span>
                                                     : <span style={{ color: '#94a3b8' }}>—</span>}
                                             </td>
                                             <td style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
@@ -1112,7 +1117,7 @@ const Productos = () => {
                                                             style={{ width: 16, height: 16, cursor: 'pointer' }}
                                                         />
                                                     </td>
-                                                    <td style={{ ...styles.td, color: '#475569', fontSize: 13 }}>
+                                                    <td style={{ ...styles.td, color: '#475569' }}>
                                                         {v.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
                                                     </td>
                                                     <td style={{ ...styles.td, paddingLeft: 28, color: '#475569', fontSize: 13 }}>
@@ -1659,6 +1664,23 @@ const Productos = () => {
 
             <style>
                 {`
+                /* Achica fuente e íconos de la tabla de listado para que las acciones entren
+                   sin scroll horizontal en pantallas de 13" a 100% de zoom. */
+                .productos-tabla-wrap table {
+                    font-size: 11.5px;
+                }
+                .productos-tabla-wrap .icon-btn {
+                    width: 22px;
+                    height: 22px;
+                    font-size: 11px;
+                }
+                .productos-tabla-wrap .icon-btn svg {
+                    width: 11px;
+                    height: 11px;
+                }
+                .productos-tabla-wrap td[style*="white-space: nowrap"] > div {
+                    gap: 4px !important;
+                }
                 @media (max-width: 768px) {
                     [style*="form"] {
                         flex-direction: column;
@@ -1718,8 +1740,8 @@ const styles = {
     errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },
     tableResponsive: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse' },
-    th: { padding: '10px', borderBottom: '2px solid #e2e8f0', textAlign: 'left', backgroundColor: '#f7faf9' },
-    td: { padding: '10px', borderBottom: '1px solid #e2e8f0' },
+    th: { padding: '4px 5px', borderBottom: '2px solid #e2e8f0', textAlign: 'left', backgroundColor: '#f7faf9' },
+    td: { padding: '4px 5px', borderBottom: '1px solid #e2e8f0' },
     etiquetasInput: { width: '50px' },
     editButton: { padding: '5px 10px', backgroundColor: '#f59e0b', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' },
     deleteButton: { padding: '5px 10px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
