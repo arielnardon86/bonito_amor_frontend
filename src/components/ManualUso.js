@@ -44,7 +44,7 @@ const ManualUso = () => {
                     <div className="mu-body">
                         <h3>Qué podés hacer</h3>
                         <ul>
-                            <li><strong>Buscar productos</strong> por nombre, o escaneando/tipeando el código de barras. Con lector de código de barras, el producto se agrega solo al carrito.</li>
+                            <li><strong>Buscar productos</strong> por nombre, código de barras o Código Interno, escaneando o tipeando. Con lector de código de barras, el producto se agrega solo al carrito.</li>
                             <li><strong>Atender varios clientes a la vez</strong>, con pestañas de carrito: podés dejar uno a medias y atender a otro cliente sin perder nada.</li>
                             <li><strong>Editar el carrito</strong>: sumar o restar cantidades, o sacar un producto.</li>
                             <li><strong>Elegir cómo cobra</strong>: efectivo, transferencia, QR, tarjeta (con su plan de cuotas), o <strong>combinar dos o más métodos</strong> en la misma venta.</li>
@@ -223,14 +223,15 @@ const ManualUso = () => {
                     <div className="mu-body">
                         <h3>Qué podés hacer</h3>
                         <ul>
-                            <li><strong>Buscar</strong> por nombre o código de barras, y <strong>crear productos nuevos</strong> — si no tenés código de barras, el sistema te genera uno.</li>
+                            <li><strong>Buscar</strong> por nombre, código de barras o <strong>Código Interno</strong> (el mismo que se usa en la carga masiva), y <strong>crear productos nuevos</strong> — si no tenés código de barras, el sistema te genera uno. El Código Interno de cada producto también se ve en su propia columna en el listado.</li>
                             <li><strong>Productos con variantes</strong> (mismo modelo en distintos talles), agrupados bajo un producto "padre", cada uno con su propio stock y código.</li>
-                            <li><strong>Editar, eliminar o sumar stock</strong> a un producto existente.</li>
+                            <li><strong>Editar, eliminar o sumar stock</strong> a un producto existente — desde el mismo formulario podés corregir su código de barras a mano si hace falta.</li>
                             <li><strong>Transferir stock entre tus tiendas</strong> si administrás más de un local — funciona también para varias variantes de una familia a la vez.</li>
                             <li><strong>Importar productos en lote desde Excel/CSV</strong>, con vista previa antes de confirmar y aviso de filas con error. Podés elegir si sumar stock a los existentes o solo actualizar precio/IVA/rubro sin tocarlo. Archivos de más de 5.000 filas hay que dividirlos.</li>
                             <li><strong>Descargar todo tu catálogo en Excel</strong> (mismo formato que la importación).</li>
                             <li><strong>Filtrar por rubro</strong> y ver productos con <strong>stock bajo</strong>.</li>
                             <li><strong>Imprimir etiquetas con código de barras</strong> — uno, varios, o "Todos" los de la página, en hoja A4 o impresora térmica.</li>
+                            <li><strong>Mostrar en la etiqueta el precio con descuento por pago en efectivo</strong>, destacado en un recuadro debajo del precio de lista. Usa el % que configures en Panel de Administración, pero lo podés tildar/destildar y ajustar antes de cada impresión.</li>
                             <li><strong>Editar en masa por rubro</strong>: IVA o precio de todo un rubro de una vez.</li>
                         </ul>
 
@@ -382,6 +383,9 @@ const ManualUso = () => {
                     <div className="mu-body">
                         <h3>Usuarios</h3>
                         <p>Editá el logo y nombre de tu tienda. Creá usuarios nuevos eligiendo sus permisos (Staff / Supervisor / Administrador / Habilitar cierre de caja), editalos, cambiales la contraseña o eliminalos. Si manejás más de una tienda, podés autorizar a un usuario a operar en varias con el mismo login.</p>
+
+                        <h3>Descuento por pago en efectivo</h3>
+                        <p>Cargá un % de descuento por pago en efectivo para tu tienda. Se usa en Imprimir Etiquetas para mostrar, además del precio de lista, el precio con ese descuento destacado en un recuadro ("Precio con descuento"). Opcionalmente podés tildar que ese precio se redondee a múltiplo de 100 (hacia arriba o hacia abajo), igual que el redondeo del total en Punto de Venta.</p>
 
                         <h3>Medios de pago y aranceles</h3>
                         <p>Configurá qué medios aceptás y el arancel (comisión %) de cada uno según el plan de cuotas — así el sistema calcula tu ganancia real.</p>
