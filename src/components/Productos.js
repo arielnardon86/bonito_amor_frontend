@@ -845,7 +845,7 @@ const Productos = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                         <input
                             type="text"
-                            placeholder="Buscar por nombre o código de barras..."
+                            placeholder="Buscar por nombre, código interno o código de barras..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             style={styles.filterInput}
@@ -936,6 +936,7 @@ const Productos = () => {
                                                 </span>
                                             </div>
                                         </th>
+                                        <th style={styles.th}>Código Interno</th>
                                         <th style={styles.th}>Nombre</th>
                                         {mostrarTalle && <th style={styles.th}>Talle</th>}
                                         <th style={styles.th}>Precio</th>
@@ -977,6 +978,9 @@ const Productos = () => {
                                                         style={{ width: 16, height: 16, cursor: 'pointer' }}
                                                     />
                                                 )}
+                                            </td>
+                                            <td style={{ ...styles.td, color: '#475569', fontSize: 13 }}>
+                                                {producto.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
                                             </td>
                                             <td style={styles.td}>
                                                 {tieneVars && (
@@ -1107,6 +1111,9 @@ const Productos = () => {
                                                             onChange={(e) => handleToggleEtiqueta(v.id, e.target.checked)}
                                                             style={{ width: 16, height: 16, cursor: 'pointer' }}
                                                         />
+                                                    </td>
+                                                    <td style={{ ...styles.td, color: '#475569', fontSize: 13 }}>
+                                                        {v.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
                                                     </td>
                                                     <td style={{ ...styles.td, paddingLeft: 28, color: '#475569', fontSize: 13 }}>
                                                         ↳ {v.talle || '(sin talle)'}
@@ -1275,17 +1282,14 @@ const Productos = () => {
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>ID Variante Tienda Nube (Opcional):</label>
+                            <label style={styles.label}>Código de Barras (Opcional):</label>
                             <input
                                 type="text"
-                                value={editProduct.tn_variant_id || ''}
-                                onChange={(e) => setEditProduct({ ...editProduct, tn_variant_id: e.target.value })}
+                                value={editProduct.codigo_barras || ''}
+                                onChange={(e) => setEditProduct({ ...editProduct, codigo_barras: e.target.value })}
                                 style={styles.modalInput}
-                                placeholder="Ej: 123456789"
+                                placeholder="Auto-generado si se deja vacío"
                             />
-                            <small style={{ color: '#94a3b8', fontSize: 11 }}>
-                                Ingresalo si el producto ya existe en Tienda Nube y querés vincularlo manualmente.
-                            </small>
                         </div>
                         <div style={styles.modalActions}>
                             <button onClick={handleEditProduct} style={styles.modalConfirmButton}>Guardar</button>
