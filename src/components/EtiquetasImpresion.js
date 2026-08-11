@@ -1,20 +1,38 @@
 // BONITO_AMOR/frontend/src/components/EtiquetasImpresion.js
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import JsBarcode from 'jsbarcode';
 import { formatearMonto } from '../utils/formatearMonto';
+import { useAuth } from '../AuthContext';
 
 const TIPO_IMPRESION_STORAGE_KEY = 'etiquetas_tipo_impresora';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const normalizeApiUrl = (url) => {
+    let normalizedUrl = url;
+    if (normalizedUrl.endsWith('/api/') || normalizedUrl.endsWith('/api')) {
+        normalizedUrl = normalizedUrl.replace(/\/api\/?$/, '');
+    }
+    if (normalizedUrl.endsWith('/')) {
+        normalizedUrl = normalizedUrl.slice(0, -1);
+    }
+    return normalizedUrl;
+};
+const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const EtiquetasImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { token, selectedStoreSlug } = useAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const productosParaImprimir = location.state?.productosParaImprimir || [];
     const labelsRef = useRef(null);
     const [tipoImpresion, setTipoImpresion] = useState(
         () => localStorage.getItem(TIPO_IMPRESION_STORAGE_KEY) || 'estandar'
     );
+    const [mostrarDescuento, setMostrarDescuento] = useState(false);
+    const [descuentoInput, setDescuentoInput] = useState('');
 
     const handleTipoImpresionChange = (e) => {
         const valor = e.target.value;
@@ -22,11 +40,32 @@ const EtiquetasImpresion = () => {
         localStorage.setItem(TIPO_IMPRESION_STORAGE_KEY, valor);
     };
 
+    // Trae el % de descuento por efectivo configurado por defecto para la tienda
+    // (Panel de Administración › Datos de la tienda), para no tener que tipearlo
+    // cada vez. Se puede editar/desactivar acá mismo antes de imprimir.
+    useEffect(() => {
+        if (!token || !selectedStoreSlug) return;
+        axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { nombre: selectedStoreSlug },
+        }).then(({ data }) => {
+            const tiendas = data.results || data;
+            const tienda = Array.isArray(tiendas) ? tiendas.find(t => t.nombre === selectedStoreSlug) : tiendas;
+            const pct = tienda?.descuento_efectivo_porcentaje;
+            if (pct !== null && pct !== undefined) {
+                setDescuentoInput(String(pct));
+                setMostrarDescuento(true);
+            }
+        }).catch(() => {});
+    }, [token, selectedStoreSlug]);
+
     useEffect(() => {
         if (productosParaImprimir.length > 0 && labelsRef.current) {
             labelsRef.current.innerHTML = '';
 
             const esTermica = tipoImpresion === 'xprinter_39x20';
+            const pctDescuento = mostrarDescuento ? parseFloat(descuentoInput) : NaN;
+            const aplicarDescuento = !isNaN(pctDescuento) && pctDescuento > 0 && pctDescuento < 100;
 
             const truncate = (str, max) =>
                 str && str.length > max ? str.slice(0, max) + '…' : (str || '');
@@ -43,6 +82,13 @@ const EtiquetasImpresion = () => {
                     ? truncate(producto.variante_detalle, esTermica ? 14 : 20)
                     : '';
 
+                const precioLista = parseFloat(producto.precio) || 0;
+                const precioEfectivo = aplicarDescuento ? precioLista * (1 - pctDescuento / 100) : precioLista;
+                const precioHtml = aplicarDescuento
+                    ? `<p class="price-lista">Precio: ${formatearMonto(precioLista)}</p>
+                       <p class="price price-destacado">${formatearMonto(precioEfectivo)}</p>`
+                    : `<p class="price">${formatearMonto(precioLista)}</p>`;
+
                 for (let i = 0; i < producto.labelQuantity; i++) {
                     const tempDiv = document.createElement('div');
                     tempDiv.className = 'label';
@@ -54,12 +100,12 @@ const EtiquetasImpresion = () => {
                             displayValue: false,
                             fontSize: 8,
                             width: esTermica ? 2 : 3,
-                            height: esTermica ? 28 : 60,
+                            height: esTermica ? (aplicarDescuento ? 22 : 28) : (aplicarDescuento ? 48 : 60),
                             margin: 0,
                         });
                     } catch (e) {
                         console.error('Error generando código de barras:', e);
-                        tempDiv.innerHTML = `<p>Sin código de barras</p><p class="product-name">${nombreMostrado}</p><p class="price">${formatearMonto(producto.precio)}</p>`;
+                        tempDiv.innerHTML = `<p>Sin código de barras</p><p class="product-name">${nombreMostrado}</p>${precioHtml}`;
                         labelsRef.current.appendChild(tempDiv);
                         continue;
                     }
@@ -68,7 +114,7 @@ const EtiquetasImpresion = () => {
                         <p class="product-name">${nombreMostrado}</p>
                         ${detalleMostrado ? `<p class="variant-detail">${detalleMostrado}</p>` : ''}
                         <div class="barcode-wrapper"></div>
-                        <p class="price">${formatearMonto(producto.precio)}</p>
+                        ${precioHtml}
                     `;
                     if (svgElement) {
                         tempDiv.querySelector('.barcode-wrapper').appendChild(svgElement);
@@ -78,7 +124,7 @@ const EtiquetasImpresion = () => {
                 }
             });
         }
-    }, [productosParaImprimir, tipoImpresion]);
+    }, [productosParaImprimir, tipoImpresion, mostrarDescuento, descuentoInput]);
 
     const handlePrint = () => {
         window.print();
@@ -110,6 +156,26 @@ const EtiquetasImpresion = () => {
                     <option value="a4_grilla">Hoja A4 (máx. etiquetas por hoja)</option>
                     <option value="xprinter_39x20">Térmica Xprinter XP-410B (rollo 39x20mm)</option>
                 </select>
+                <label style={mobileStyles.descuentoLabel}>
+                    <input
+                        type="checkbox"
+                        checked={mostrarDescuento}
+                        onChange={(e) => setMostrarDescuento(e.target.checked)}
+                    />
+                    Descuento efectivo
+                </label>
+                {mostrarDescuento && (
+                    <input
+                        type="number"
+                        min="0"
+                        max="99"
+                        step="0.01"
+                        value={descuentoInput}
+                        onChange={(e) => setDescuentoInput(e.target.value)}
+                        placeholder="%"
+                        style={mobileStyles.descuentoInput}
+                    />
+                )}
                 <button onClick={handlePrint} style={mobileStyles.printButton}>Imprimir</button>
             </div>
 
@@ -189,6 +255,20 @@ const EtiquetasImpresion = () => {
                         font-size: 4.4mm;
                         margin-top: 2px;
                     }
+                    .label-container.layout-estandar .label .price-lista {
+                        font-weight: 600;
+                        font-size: 2mm;
+                        color: #333;
+                        text-decoration: line-through;
+                        margin-top: 2px;
+                    }
+                    .label-container.layout-estandar .label .price.price-destacado {
+                        font-size: 3.8mm;
+                        border: 0.3mm solid #000;
+                        border-radius: 0.6mm;
+                        padding: 0.3mm 1.2mm;
+                        margin-top: 0.5mm;
+                    }
 
                     /* Layout "a4": misma etiqueta de 37x37mm que "estandar", pero en grilla a lo
                        ancho de toda la hoja A4 (5 columnas x 7 filas ≈ 35 etiquetas por hoja),
@@ -248,6 +328,20 @@ const EtiquetasImpresion = () => {
                         font-size: 4.4mm;
                         margin-top: 2px;
                     }
+                    .label-container.layout-a4 .label .price-lista {
+                        font-weight: 600;
+                        font-size: 2mm;
+                        color: #333;
+                        text-decoration: line-through;
+                        margin-top: 2px;
+                    }
+                    .label-container.layout-a4 .label .price.price-destacado {
+                        font-size: 3.8mm;
+                        border: 0.3mm solid #000;
+                        border-radius: 0.6mm;
+                        padding: 0.3mm 1.2mm;
+                        margin-top: 0.5mm;
+                    }
 
                     /* Layout "termica": una etiqueta por página, tamaño exacto del rollo de la Xprinter XP-410B (39x20mm) */
                     .label-container.layout-termica {
@@ -302,6 +396,20 @@ const EtiquetasImpresion = () => {
                         font-weight: bold;
                         font-size: 3.9mm;
                         margin-top: 0.3mm;
+                    }
+                    .label-container.layout-termica .label .price-lista {
+                        font-weight: 600;
+                        font-size: 1.5mm;
+                        color: #333;
+                        text-decoration: line-through;
+                        margin-top: 0.3mm;
+                    }
+                    .label-container.layout-termica .label .price.price-destacado {
+                        font-size: 3.2mm;
+                        border: 0.25mm solid #000;
+                        border-radius: 0.5mm;
+                        padding: 0.1mm 0.8mm;
+                        margin-top: 0.2mm;
                     }
 
                     /* Aseguramos que el SVG se ajuste bien al contenedor, en ambos layouts */
@@ -363,6 +471,21 @@ const mobileStyles = {
         backgroundColor: '#f0f0f0'
     },
     printerSelect: {
+        padding: '10px 12px',
+        borderRadius: '5px',
+        border: '1px solid #ccc',
+        fontSize: '14px',
+    },
+    descuentoLabel: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        fontSize: '14px',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+    },
+    descuentoInput: {
+        width: '70px',
         padding: '10px 12px',
         borderRadius: '5px',
         border: '1px solid #ccc',

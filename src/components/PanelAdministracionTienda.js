@@ -127,6 +127,7 @@ const PanelAdministracionTienda = () => {
     const [nombreTiendaInput, setNombreTiendaInput] = useState('');
     const [logoPreview, setLogoPreview] = useState(null);
     const [logoParaGuardar, setLogoParaGuardar] = useState(undefined); // undefined = sin cambios, null = quitar logo
+    const [descuentoEfectivoInput, setDescuentoEfectivoInput] = useState('');
     const [guardandoDatosTienda, setGuardandoDatosTienda] = useState(false);
     const [errorDatosTienda, setErrorDatosTienda] = useState('');
 
@@ -268,6 +269,11 @@ const PanelAdministracionTienda = () => {
                 setNombreTiendaInput(tienda.nombre || '');
                 setLogoPreview(tienda.logo || null);
                 setLogoParaGuardar(undefined);
+                setDescuentoEfectivoInput(
+                    tienda.descuento_efectivo_porcentaje !== null && tienda.descuento_efectivo_porcentaje !== undefined
+                        ? String(tienda.descuento_efectivo_porcentaje)
+                        : ''
+                );
                 setMlArancelesAutomaticos(tienda.ml_aranceles_automaticos !== false);
                 await fetchAfipEstado(tienda.id);
             }
@@ -298,18 +304,26 @@ const PanelAdministracionTienda = () => {
             setErrorDatosTienda('El nombre de la tienda no puede estar vacío.');
             return;
         }
+        if (descuentoEfectivoInput.trim() !== '') {
+            const pct = parseFloat(descuentoEfectivoInput);
+            if (isNaN(pct) || pct < 0 || pct > 100) {
+                setErrorDatosTienda('El % de descuento en efectivo debe ser un número entre 0 y 100.');
+                return;
+            }
+        }
         setGuardandoDatosTienda(true);
         setErrorDatosTienda('');
         const nombreAnterior = selectedStoreSlug;
         const body = { tienda_slug: selectedStoreSlug };
         if (nombreTiendaInput.trim() !== tiendaInfo?.nombre) body.nombre = nombreTiendaInput.trim();
         if (logoParaGuardar !== undefined) body.logo = logoParaGuardar;
+        body.descuento_efectivo_porcentaje = descuentoEfectivoInput.trim() === '' ? null : parseFloat(descuentoEfectivoInput);
 
         try {
             const { data } = await axios.patch(`${BASE_API_ENDPOINT}/api/tienda/actualizar-datos/`, body, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setTiendaInfo(prev => prev ? { ...prev, nombre: data.nombre, logo: data.logo } : prev);
+            setTiendaInfo(prev => prev ? { ...prev, nombre: data.nombre, logo: data.logo, descuento_efectivo_porcentaje: data.descuento_efectivo_porcentaje } : prev);
             setLogoParaGuardar(undefined);
             if (body.nombre && body.nombre !== nombreAnterior) {
                 renombrarTiendaLocal(nombreAnterior, data.nombre);
@@ -1482,6 +1496,26 @@ const PanelAdministracionTienda = () => {
                                     border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
                                 }}
                             />
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginTop: 14, marginBottom: 6 }}>
+                                Descuento por pago en efectivo (%)
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                placeholder="Ej: 15"
+                                value={descuentoEfectivoInput}
+                                onChange={e => setDescuentoEfectivoInput(e.target.value)}
+                                style={{
+                                    width: '100%', maxWidth: 140, padding: '9px 12px', borderRadius: 8,
+                                    border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
+                                }}
+                            />
+                            <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 4, marginBottom: 0, maxWidth: 340 }}>
+                                Si lo completás, en Imprimir Etiquetas vas a poder mostrar el precio de lista
+                                más chico y el precio con este descuento destacado (editable en el momento de imprimir).
+                            </p>
                             {errorDatosTienda && (
                                 <p style={{ color: '#e25252', fontSize: 13, marginTop: 8, marginBottom: 0 }}>{errorDatosTienda}</p>
                             )}
