@@ -128,6 +128,8 @@ const PanelAdministracionTienda = () => {
     const [logoPreview, setLogoPreview] = useState(null);
     const [logoParaGuardar, setLogoParaGuardar] = useState(undefined); // undefined = sin cambios, null = quitar logo
     const [descuentoEfectivoInput, setDescuentoEfectivoInput] = useState('');
+    const [descuentoEfectivoRedondearAbajo, setDescuentoEfectivoRedondearAbajo] = useState(false);
+    const [descuentoEfectivoRedondearArriba, setDescuentoEfectivoRedondearArriba] = useState(false);
     const [guardandoDatosTienda, setGuardandoDatosTienda] = useState(false);
     const [errorDatosTienda, setErrorDatosTienda] = useState('');
 
@@ -274,6 +276,8 @@ const PanelAdministracionTienda = () => {
                         ? String(tienda.descuento_efectivo_porcentaje)
                         : ''
                 );
+                setDescuentoEfectivoRedondearAbajo(tienda.descuento_efectivo_redondeo === 'abajo');
+                setDescuentoEfectivoRedondearArriba(tienda.descuento_efectivo_redondeo === 'arriba');
                 setMlArancelesAutomaticos(tienda.ml_aranceles_automaticos !== false);
                 await fetchAfipEstado(tienda.id);
             }
@@ -318,12 +322,13 @@ const PanelAdministracionTienda = () => {
         if (nombreTiendaInput.trim() !== tiendaInfo?.nombre) body.nombre = nombreTiendaInput.trim();
         if (logoParaGuardar !== undefined) body.logo = logoParaGuardar;
         body.descuento_efectivo_porcentaje = descuentoEfectivoInput.trim() === '' ? null : parseFloat(descuentoEfectivoInput);
+        body.descuento_efectivo_redondeo = descuentoEfectivoRedondearAbajo ? 'abajo' : descuentoEfectivoRedondearArriba ? 'arriba' : '';
 
         try {
             const { data } = await axios.patch(`${BASE_API_ENDPOINT}/api/tienda/actualizar-datos/`, body, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setTiendaInfo(prev => prev ? { ...prev, nombre: data.nombre, logo: data.logo, descuento_efectivo_porcentaje: data.descuento_efectivo_porcentaje } : prev);
+            setTiendaInfo(prev => prev ? { ...prev, nombre: data.nombre, logo: data.logo, descuento_efectivo_porcentaje: data.descuento_efectivo_porcentaje, descuento_efectivo_redondeo: data.descuento_efectivo_redondeo } : prev);
             setLogoParaGuardar(undefined);
             if (body.nombre && body.nombre !== nombreAnterior) {
                 renombrarTiendaLocal(nombreAnterior, data.nombre);
@@ -1516,6 +1521,36 @@ const PanelAdministracionTienda = () => {
                                 Si lo completás, en Imprimir Etiquetas vas a poder mostrar el precio de lista
                                 más chico y el precio con este descuento destacado (editable en el momento de imprimir).
                             </p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                                <input
+                                    type="checkbox"
+                                    id="descEfectivoRedondearAbajo"
+                                    checked={descuentoEfectivoRedondearAbajo}
+                                    onChange={(e) => {
+                                        const v = e.target.checked;
+                                        setDescuentoEfectivoRedondearAbajo(v);
+                                        if (v) setDescuentoEfectivoRedondearArriba(false);
+                                    }}
+                                />
+                                <label htmlFor="descEfectivoRedondearAbajo" style={{ fontSize: 13, color: '#475569', cursor: 'pointer' }}>
+                                    Redondear precio con descuento (múlt. 100 ↓)
+                                </label>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                <input
+                                    type="checkbox"
+                                    id="descEfectivoRedondearArriba"
+                                    checked={descuentoEfectivoRedondearArriba}
+                                    onChange={(e) => {
+                                        const v = e.target.checked;
+                                        setDescuentoEfectivoRedondearArriba(v);
+                                        if (v) setDescuentoEfectivoRedondearAbajo(false);
+                                    }}
+                                />
+                                <label htmlFor="descEfectivoRedondearArriba" style={{ fontSize: 13, color: '#475569', cursor: 'pointer' }}>
+                                    Redondear precio con descuento (múlt. 100 ↑)
+                                </label>
+                            </div>
                             {errorDatosTienda && (
                                 <p style={{ color: '#e25252', fontSize: 13, marginTop: 8, marginBottom: 0 }}>{errorDatosTienda}</p>
                             )}

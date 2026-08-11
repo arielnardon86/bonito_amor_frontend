@@ -33,6 +33,7 @@ const EtiquetasImpresion = () => {
     );
     const [mostrarDescuento, setMostrarDescuento] = useState(false);
     const [descuentoInput, setDescuentoInput] = useState('');
+    const [descuentoRedondeo, setDescuentoRedondeo] = useState(''); // '' | 'abajo' | 'arriba'
 
     const handleTipoImpresionChange = (e) => {
         const valor = e.target.value;
@@ -55,6 +56,9 @@ const EtiquetasImpresion = () => {
             if (pct !== null && pct !== undefined) {
                 setDescuentoInput(String(pct));
                 setMostrarDescuento(true);
+            }
+            if (tienda?.descuento_efectivo_redondeo) {
+                setDescuentoRedondeo(tienda.descuento_efectivo_redondeo);
             }
         }).catch(() => {});
     }, [token, selectedStoreSlug]);
@@ -83,10 +87,18 @@ const EtiquetasImpresion = () => {
                     : '';
 
                 const precioLista = parseFloat(producto.precio) || 0;
-                const precioEfectivo = aplicarDescuento ? precioLista * (1 - pctDescuento / 100) : precioLista;
+                let precioEfectivo = aplicarDescuento ? precioLista * (1 - pctDescuento / 100) : precioLista;
+                if (aplicarDescuento && descuentoRedondeo === 'abajo') {
+                    precioEfectivo = Math.floor(precioEfectivo / 100) * 100;
+                } else if (aplicarDescuento && descuentoRedondeo === 'arriba') {
+                    precioEfectivo = Math.ceil(precioEfectivo / 100) * 100;
+                }
                 const precioHtml = aplicarDescuento
                     ? `<p class="price-lista">Precio: ${formatearMonto(precioLista)}</p>
-                       <p class="price price-destacado">${formatearMonto(precioEfectivo)}</p>`
+                       <div class="price-destacado-box">
+                           <p class="price-destacado-label">Precio con descuento</p>
+                           <p class="price">${formatearMonto(precioEfectivo)}</p>
+                       </div>`
                     : `<p class="price">${formatearMonto(precioLista)}</p>`;
 
                 for (let i = 0; i < producto.labelQuantity; i++) {
@@ -124,7 +136,7 @@ const EtiquetasImpresion = () => {
                 }
             });
         }
-    }, [productosParaImprimir, tipoImpresion, mostrarDescuento, descuentoInput]);
+    }, [productosParaImprimir, tipoImpresion, mostrarDescuento, descuentoInput, descuentoRedondeo]);
 
     const handlePrint = () => {
         window.print();
@@ -259,15 +271,25 @@ const EtiquetasImpresion = () => {
                         font-weight: 600;
                         font-size: 2mm;
                         color: #333;
-                        text-decoration: line-through;
                         margin-top: 2px;
                     }
-                    .label-container.layout-estandar .label .price.price-destacado {
-                        font-size: 3.8mm;
+                    .label-container.layout-estandar .label .price-destacado-box {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
                         border: 0.3mm solid #000;
                         border-radius: 0.6mm;
                         padding: 0.3mm 1.2mm;
                         margin-top: 0.5mm;
+                    }
+                    .label-container.layout-estandar .label .price-destacado-label {
+                        font-weight: 600;
+                        font-size: 1.6mm;
+                        margin: 0;
+                    }
+                    .label-container.layout-estandar .label .price-destacado-box .price {
+                        font-size: 3.8mm;
+                        margin-top: 0;
                     }
 
                     /* Layout "a4": misma etiqueta de 37x37mm que "estandar", pero en grilla a lo
@@ -332,15 +354,25 @@ const EtiquetasImpresion = () => {
                         font-weight: 600;
                         font-size: 2mm;
                         color: #333;
-                        text-decoration: line-through;
                         margin-top: 2px;
                     }
-                    .label-container.layout-a4 .label .price.price-destacado {
-                        font-size: 3.8mm;
+                    .label-container.layout-a4 .label .price-destacado-box {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
                         border: 0.3mm solid #000;
                         border-radius: 0.6mm;
                         padding: 0.3mm 1.2mm;
                         margin-top: 0.5mm;
+                    }
+                    .label-container.layout-a4 .label .price-destacado-label {
+                        font-weight: 600;
+                        font-size: 1.6mm;
+                        margin: 0;
+                    }
+                    .label-container.layout-a4 .label .price-destacado-box .price {
+                        font-size: 3.8mm;
+                        margin-top: 0;
                     }
 
                     /* Layout "termica": una etiqueta por página, tamaño exacto del rollo de la Xprinter XP-410B (39x20mm) */
@@ -401,15 +433,25 @@ const EtiquetasImpresion = () => {
                         font-weight: 600;
                         font-size: 1.5mm;
                         color: #333;
-                        text-decoration: line-through;
                         margin-top: 0.3mm;
                     }
-                    .label-container.layout-termica .label .price.price-destacado {
-                        font-size: 3.2mm;
+                    .label-container.layout-termica .label .price-destacado-box {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
                         border: 0.25mm solid #000;
                         border-radius: 0.5mm;
                         padding: 0.1mm 0.8mm;
                         margin-top: 0.2mm;
+                    }
+                    .label-container.layout-termica .label .price-destacado-label {
+                        font-weight: 600;
+                        font-size: 1.3mm;
+                        margin: 0;
+                    }
+                    .label-container.layout-termica .label .price-destacado-box .price {
+                        font-size: 3.2mm;
+                        margin-top: 0;
                     }
 
                     /* Aseguramos que el SVG se ajuste bien al contenedor, en ambos layouts */
