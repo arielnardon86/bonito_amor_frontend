@@ -353,7 +353,7 @@ const ManualUso = () => {
                         <ul>
                             <li><strong>Navegar por mes</strong> o elegir un rango de fechas, y <strong>filtrar</strong> por vendedor o método de pago.</li>
                             <li>Ver <strong>Total de ventas</strong>, <strong>Total de egresos</strong> y <strong>Rentabilidad</strong> (ventas menos costo de mercadería, egresos y comisiones), comparados contra el mes anterior. Si la rentabilidad da negativa, te avisa.</li>
-                            <li>Ver el <strong>detalle</strong>: costo de mercadería vendida, comisiones, margen en porcentaje con semáforo de color, y valor de tu stock actual.</li>
+                            <li>Ver el <strong>detalle</strong>: costo de mercadería vendida, comisiones, margen en porcentaje con semáforo de color, y valor de tu stock actual a costo.</li>
                             <li><strong>Ranking de productos más vendidos</strong>, <strong>ranking por vendedor</strong>, <strong>ventas por método de pago</strong> y <strong>gráfico de egresos mes a mes</strong>.</li>
                             <li><strong>Descargar el reporte en Excel</strong>, con los filtros aplicados.</li>
                         </ul>

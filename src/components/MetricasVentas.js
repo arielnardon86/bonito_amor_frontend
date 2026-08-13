@@ -295,7 +295,7 @@ const MetricasVentas = () => {
             ['Margen de rentabilidad (%)', fmt(metrics.margen_rentabilidad_periodo)],
             [],
             ['Stock total (unidades)', inventoryMetrics?.total_stock || 0],
-            ['Valor total del stock', fmt(inventoryMetrics?.total_monto_stock_precio)],
+            ['Valor total del stock (a costo)', fmt(inventoryMetrics?.total_monto_stock_costo)],
         ].filter(Boolean);
 
         const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
@@ -607,8 +607,8 @@ const MetricasVentas = () => {
                         <p style={styles.cardValue}>{inventoryMetrics?.total_stock || 0}</p>
                     </div>
                     <div style={styles.card}>
-                        <h3 style={styles.cardTitle}>Valor total del stock</h3>
-                        <p style={{ ...styles.cardValue, fontSize: '1.05rem', wordBreak: 'break-word' }}>{formatearMonto(inventoryMetrics?.total_monto_stock_precio || 0)}</p>
+                        <h3 style={styles.cardTitle}>Valor total del stock <span style={{ fontWeight: 400, fontSize: '0.75em', color: '#94a3b8' }}>(a costo)</span></h3>
+                        <p style={{ ...styles.cardValue, fontSize: '1.05rem', wordBreak: 'break-word' }}>{formatearMonto(inventoryMetrics?.total_monto_stock_costo || 0)}</p>
                     </div>
                 </div>
 
