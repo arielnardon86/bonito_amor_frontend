@@ -19,4 +19,4 @@ Disallow: /etiquetas
 Disallow: /nueva-contrasena
 Disallow: /suscripcion
 
-Sitemap: https://totalstock.com.ar/sitemap.xml
+Sitemap: https://www.totalstock.com.ar/sitemap.xml
