@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import useSeoMeta from '../hooks/useSeoMeta';
+import PricingSection from './marketing/PricingSection';
+import MarketingFooter from './marketing/MarketingFooter';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -495,91 +497,7 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ── PRICING ── */}
-            <section id="precios" style={s.pricingSection}>
-                <div style={s.sectionWrap}>
-                    <span style={s.sectionPill}>Sin permanencia mínima</span>
-                    <h2 style={s.sectionH2}>Planes para cada etapa de tu negocio</h2>
-                    <p style={s.sectionSub}>
-                        Todos incluyen 7 días de prueba gratis. Pagás con Mercado Pago, cancelás cuando quieras.
-                    </p>
-                    <div style={s.pricingGrid}>
-                        {/* STARTER */}
-                        <div style={s.pricingCard} className="pricing-card">
-                            <div style={s.pricingHeader}>
-                                <h3 style={s.planName}>Starter</h3>
-                                <div style={s.priceRow}>
-                                    <span style={s.priceCurrency}>$</span>
-                                    <span style={s.priceNum}>35.000</span>
-                                </div>
-                                <p style={s.pricePer}>por tienda / por mes</p>
-                            </div>
-                            <div style={s.featureList}>
-                                {['Hasta 1.000 productos','2 usuarios','Punto de venta','Gestión de stock','Recibos de compra'].map(f => (
-                                    <div key={f} style={s.featureRow}>
-                                        <FontAwesomeIcon icon={faCheck} style={{ color: C.verde, fontSize: 12, marginTop: 3, flexShrink: 0 }} />
-                                        <span>{f}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <button onClick={() => navigate('/registro?plan=starter')} style={{ ...s.planCta, background: C.verde }} className="plan-cta-green">
-                                Empezar gratis 7 días →
-                            </button>
-                        </div>
-
-                        {/* PRO */}
-                        <div style={s.pricingCardFeatured} className="pricing-card-featured">
-                            <div style={s.popularBadge}>MÁS POPULAR</div>
-                            <div style={s.pricingHeader}>
-                                <h3 style={s.planName}>Pro</h3>
-                                <div style={s.priceRow}>
-                                    <span style={{ ...s.priceCurrency, color: C.pro }}>$</span>
-                                    <span style={s.priceNum}>40.000</span>
-                                </div>
-                                <p style={s.pricePer}>por tienda / por mes</p>
-                            </div>
-                            <div style={s.featureList}>
-                                {['Hasta 2.500 productos','4 usuarios','Punto de venta + stock','Recibos de compra','Factura electrónica ARCA'].map(f => (
-                                    <div key={f} style={s.featureRow}>
-                                        <FontAwesomeIcon icon={faCheck} style={{ color: C.pro, fontSize: 12, marginTop: 3, flexShrink: 0 }} />
-                                        <span>{f}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <button onClick={() => navigate('/registro?plan=pro')} style={{ ...s.planCta, background: C.pro }} className="plan-cta-blue">
-                                Empezar gratis 7 días →
-                            </button>
-                        </div>
-
-                        {/* ADVANCED */}
-                        <div style={s.pricingCardAdvanced} className="pricing-card">
-                            <div style={s.advancedBadge}>COMPLETO</div>
-                            <div style={s.pricingHeader}>
-                                                <h3 style={{ ...s.planName, color: '#1a6a40' }}>Advanced</h3>
-                                <div style={s.priceRow}>
-                                    <span style={{ ...s.priceCurrency, color: C.advanced }}>$</span>
-                                    <span style={{ ...s.priceNum, color: '#1a6a40' }}>60.000</span>
-                                </div>
-                                <p style={s.pricePer}>por tienda / por mes</p>
-                            </div>
-                            <div style={s.featureList}>
-                                {['Productos ilimitados','Usuarios ilimitados','Todo lo del plan Pro','Integración Mercado Libre','Integración Tienda Nube'].map(f => (
-                                    <div key={f} style={s.featureRow}>
-                                        <FontAwesomeIcon icon={faCheck} style={{ color: C.advanced, fontSize: 12, marginTop: 3, flexShrink: 0 }} />
-                                        <span>{f}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <button onClick={() => navigate('/registro?plan=advanced')} style={{ ...s.planCta, background: C.advanced }} className="plan-cta-green">
-                                Empezar gratis 7 días →
-                            </button>
-                        </div>
-                    </div>
-                    <p style={s.pricingNote}>
-                        ✓ Sin permanencia mínima &nbsp;·&nbsp; ✓ Cancelás en cualquier momento &nbsp;·&nbsp; ✓ Pagás con Mercado Pago
-                    </p>
-                </div>
-            </section>
+            <PricingSection />
 
             {/* ── CTA FINAL ── */}
             <section style={s.ctaFinal}>
@@ -599,29 +517,7 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ── FOOTER ── */}
-            <footer style={s.footer}>
-                <div style={s.footerInner}>
-                    <img src="/logo-completo.png" alt="Total Stock" style={s.footerLogo} />
-                    <p style={s.footerText}>© {new Date().getFullYear()} Total Stock · Todos los derechos reservados.</p>
-                    <p style={s.footerSub}>Software de gestión para comercios argentinos.</p>
-                    <p style={{ margin: '14px 0 0', fontSize: '0.85em', color: '#475569' }}>
-                        ¿Tenés dudas o consultas?{' '}
-                        <a href="mailto:info@totalstock.com.ar" style={{ color: '#5dc87a', textDecoration: 'none', fontWeight: 600 }}>
-                            info@totalstock.com.ar
-                        </a>
-                    </p>
-                    <p style={{ margin: '10px 0 0', fontSize: '0.85em' }}>
-                        <Link to="/preguntas-frecuentes" style={{ color: '#475569', textDecoration: 'none' }}>
-                            Preguntas frecuentes
-                        </Link>
-                        {' · '}
-                        <Link to="/privacidad" style={{ color: '#475569', textDecoration: 'none' }}>
-                            Política de privacidad
-                        </Link>
-                    </p>
-                </div>
-            </footer>
+            <MarketingFooter />
 
             {/* ── MODAL LOGIN / RECUPERO ── */}
             {showAccessModal && (
@@ -846,34 +742,12 @@ const s = {
     integDesc: { fontSize: '0.82em', color: 'rgba(255,255,255,0.55)' },
 
     // Pricing
-    pricingSection: { padding: '90px 0', background: '#fff', textAlign: 'center' },
-    pricingGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 28, alignItems: 'stretch' },
-    pricingCard: { background: '#fff', border: '2px solid #e2e8f0', borderRadius: 16, padding: '36px 28px', display: 'flex', flexDirection: 'column', position: 'relative', transition: 'all 0.25s' },
-    pricingCardFeatured: { background: '#fff', border: `3px solid ${C.pro}`, borderRadius: 16, padding: '36px 28px', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: `0 8px 32px rgba(59,130,246,0.15)`, transform: 'scale(1.03)', transition: 'all 0.25s' },
-    pricingCardAdvanced: { background: '#edfaf3', border: `2px solid ${C.advanced}`, borderRadius: 16, padding: '36px 28px', display: 'flex', flexDirection: 'column', position: 'relative', transition: 'all 0.25s' },
-    popularBadge: { position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: C.pro, color: '#fff', borderRadius: 20, padding: '5px 18px', fontSize: 11, fontWeight: 800, letterSpacing: 0.5, whiteSpace: 'nowrap' },
-    advancedBadge: { position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: C.advanced, color: '#fff', borderRadius: 20, padding: '5px 18px', fontSize: 11, fontWeight: 800, letterSpacing: 0.5, whiteSpace: 'nowrap' },
-    pricingHeader: { marginBottom: 24, paddingBottom: 20, borderBottom: '1.5px solid #e2e8f0' },
-    planName: { fontSize: '1.4em', fontWeight: 800, color: C.texto, marginBottom: 12 },
-    priceRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 2 },
-    priceCurrency: { fontSize: '1.4em', fontWeight: 700, color: C.verde, marginTop: 4 },
-    priceNum: { fontSize: '2.8em', fontWeight: 800, color: '#1a2926', lineHeight: 1 },
-    pricePer: { fontSize: 13, color: C.gris, marginTop: 6 },
-    featureList: { flex: 1, marginBottom: 24, textAlign: 'left' },
-    featureRow: { display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 14, fontSize: '0.92em', color: '#475569', lineHeight: 1.5 },
-    planCta: { width: '100%', padding: '13px', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s', marginTop: 'auto' },
-    pricingNote: { marginTop: 32, fontSize: 13, color: C.gris },
 
     // CTA Final
     ctaFinal: { padding: '90px 24px', background: `linear-gradient(135deg, ${C.verdeOsc} 0%, #3ab87a 100%)` },
     ctaFinalBtn: { background: '#fff', color: C.verdeOsc, border: 'none', borderRadius: 10, padding: '17px 40px', fontSize: 17, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' },
 
     // Footer
-    footer: { background: '#0f172a', padding: '50px 24px 36px', textAlign: 'center' },
-    footerInner: { maxWidth: 1200, margin: '0 auto' },
-    footerLogo: { maxWidth: 160, borderRadius: 8, background: 'rgba(255,255,255,0.95)', padding: '8px 12px', marginBottom: 18 },
-    footerText: { color: '#94a3b8', fontSize: '0.9em', marginBottom: 6 },
-    footerSub: { color: '#475569', fontSize: '0.8em', fontStyle: 'italic' },
 
     // Modal
     modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 },
