@@ -19,12 +19,13 @@ const puppeteer = require('puppeteer');
 const BUILD_DIR = path.join(__dirname, '..', 'build');
 const PORT = 45123;
 
+// readySelector: selector presente solo cuando la página terminó de renderizar
+// su contenido real (no un spinner de carga). Usar un elemento que exista
+// siempre en esa página, sin depender de sesión/autenticación.
 const ROUTES = [
-  '/',
+  { path: '/', readySelector: '#inicio' },
+  { path: '/preguntas-frecuentes', readySelector: 'h1' },
 ];
-
-// Selector que confirma que HomePage ya terminó de renderizar (no el spinner de "Cargando...").
-const READY_SELECTOR = '#inicio';
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -64,7 +65,7 @@ function startServer() {
   });
 }
 
-async function prerenderRoute(browser, route) {
+async function prerenderRoute(browser, { path: route, readySelector }) {
   const page = await browser.newPage();
   const url = `http://localhost:${PORT}${route}`;
 
@@ -80,7 +81,7 @@ async function prerenderRoute(browser, route) {
   });
 
   await page.goto(url, { waitUntil: 'networkidle0' });
-  await page.waitForSelector(READY_SELECTOR, { timeout: 10000 });
+  await page.waitForSelector(readySelector, { timeout: 10000 });
 
   const html = await page.content();
   await page.close();

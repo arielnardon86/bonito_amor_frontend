@@ -26,6 +26,7 @@ import ComprasStock from './components/ComprasStock';
 import VentasPage from './components/VentasPage';
 import HomePage from './components/HomePage';
 import PoliticaPrivacidad from './components/PoliticaPrivacidad';
+import PreguntasFrecuentes from './components/PreguntasFrecuentes';
 import CierresCaja from './components/CierresCaja';
 import Registro from './components/Registro';
 import SuscripcionResultado from './components/SuscripcionResultado';
@@ -1092,6 +1093,7 @@ const AppContent = () => {
           <Route path="/login/:storeSlug" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/privacidad" element={<PoliticaPrivacidad />} />
+          <Route path="/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
           <Route path="/tiendanube/instalar" element={<TiendaNubeInstalar />} />
 
           <Route path="/" element={
