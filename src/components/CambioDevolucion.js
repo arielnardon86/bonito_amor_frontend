@@ -530,7 +530,15 @@ const CambioDevolucion = () => {
                 venta_original: ventaOriginal.id,
                 tipo: 'CAMBIO', // Por defecto, el backend puede inferirlo
                 motivo: '', // Vacío por ahora
-                detalles: detalles
+                detalles: detalles,
+                // El backend necesita el descuento/recargo ANTES de decidir si
+                // corresponde nota de crédito o diferencia a pagar -- si no, un
+                // recargo que debería convertir un saldo a favor en diferencia a
+                // cobrar se ignoraba y se emitía una nota de crédito igual.
+                descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
+                descuento_monto: parseFloat(descuentoMonto) || 0,
+                recargo_porcentaje: parseFloat(recargoPorcentaje) || 0,
+                recargo_monto: parseFloat(recargoMonto) || 0,
             };
 
             const response = await axios.post(
