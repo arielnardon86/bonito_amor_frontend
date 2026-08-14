@@ -211,6 +211,13 @@ export default function HomePage() {
                                 >{label}</a>
                             </li>
                         ))}
+                        <li className="nav-link-item">
+                            <Link
+                                to="/preguntas-frecuentes"
+                                style={{ ...s.navLink, color: scrolled ? C.azul : '#fff' }}
+                                className="nav-link"
+                            >Preguntas frecuentes</Link>
+                        </li>
                         <li>
                             <button
                                 onClick={() => setShowAccessModal(true)}
