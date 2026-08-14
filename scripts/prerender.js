@@ -25,6 +25,7 @@ const PORT = 45123;
 const ROUTES = [
   { path: '/', readySelector: '#inicio' },
   { path: '/preguntas-frecuentes', readySelector: 'h1' },
+  { path: '/sistema-para-indumentaria', readySelector: '#inicio' },
 ];
 
 const MIME_TYPES = {

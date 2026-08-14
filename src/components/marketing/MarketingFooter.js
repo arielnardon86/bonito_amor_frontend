@@ -18,6 +18,10 @@ export default function MarketingFooter() {
                     </a>
                 </p>
                 <p style={{ margin: '10px 0 0', fontSize: '0.85em' }}>
+                    <Link to="/sistema-para-indumentaria" style={{ color: '#475569', textDecoration: 'none' }}>
+                        Sistema para tiendas de ropa
+                    </Link>
+                    {' · '}
                     <Link to="/preguntas-frecuentes" style={{ color: '#475569', textDecoration: 'none' }}>
                         Preguntas frecuentes
                     </Link>

@@ -27,6 +27,7 @@ import VentasPage from './components/VentasPage';
 import HomePage from './components/HomePage';
 import PoliticaPrivacidad from './components/PoliticaPrivacidad';
 import PreguntasFrecuentes from './components/PreguntasFrecuentes';
+import SistemaParaIndumentaria from './components/verticals/SistemaParaIndumentaria';
 import CierresCaja from './components/CierresCaja';
 import Registro from './components/Registro';
 import SuscripcionResultado from './components/SuscripcionResultado';
@@ -1094,6 +1095,7 @@ const AppContent = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/privacidad" element={<PoliticaPrivacidad />} />
           <Route path="/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
+          <Route path="/sistema-para-indumentaria" element={<SistemaParaIndumentaria />} />
           <Route path="/tiendanube/instalar" element={<TiendaNubeInstalar />} />
 
           <Route path="/" element={
