@@ -397,6 +397,58 @@ const CambioDevolucion = () => {
             return;
         }
 
+        // Si el precio de catálogo de lo devuelto coincide con el de lo nuevo, pero
+        // igual queda una diferencia (porque la venta original tenía descuento/
+        // recargo, que hoy solo se le aplica al crédito de lo devuelto y no al
+        // producto nuevo), se lo ofrecemos al cajero: es un canje de variante al
+        // mismo precio, no debería cobrarse ni acreditarse nada.
+        if (activeCart && activeCart.items.length > 0 && Math.round(montoDiferencia * 100) !== 0) {
+            const catalogoDevuelto = productosADevolver.reduce((sum, p) => {
+                const detalle = ventaOriginal.detalles?.find(d => d.id === p.detalle_venta_id);
+                const precioCatalogo = parseFloat(detalle?.producto_precio_actual ?? 0);
+                return sum + precioCatalogo * p.cantidad;
+            }, 0);
+            const catalogoNuevo = activeCart.items.reduce(
+                (sum, item) => sum + parseFloat(item.product.precio) * item.quantity, 0
+            );
+
+            if (catalogoDevuelto > 0 && Math.round(catalogoDevuelto * 100) === Math.round(catalogoNuevo * 100)) {
+                const { isConfirmed: confirmaSinDiferencia } = await Swal.fire({
+                    title: 'Cambio sin diferencia',
+                    text: 'Detectamos que este cambio no correspondería cobrar ni acreditar diferencia. ¿Confirmás?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, sin diferencia',
+                    cancelButtonText: 'No, continuar como está',
+                    confirmButtonColor: '#5dc87a',
+                });
+                if (confirmaSinDiferencia) {
+                    // Ajuste necesario para que el nuevo (a precio de catálogo, sin
+                    // tocar) quede igual al crédito ya reconocido por lo devuelto.
+                    const ajuste = montoDevolucion - catalogoNuevo;
+                    setDescuentoPorcentaje('');
+                    setRecargoPorcentaje('');
+                    if (ajuste < 0) {
+                        setDescuentoMonto(Math.abs(ajuste).toFixed(2));
+                        setRecargoMonto('');
+                    } else if (ajuste > 0) {
+                        setRecargoMonto(ajuste.toFixed(2));
+                        setDescuentoMonto('');
+                    } else {
+                        setDescuentoMonto('');
+                        setRecargoMonto('');
+                    }
+                    await Swal.fire({
+                        title: 'Listo',
+                        text: 'Se ajustó automáticamente para que no haya diferencia. Revisá el resumen y confirmá el cambio.',
+                        icon: 'success',
+                    });
+                    return;
+                }
+                // Si no confirma, sigue el flujo normal con la diferencia real.
+            }
+        }
+
         // Si hay productos nuevos, validar método de pago solo si el cliente tiene algo que pagar
         // (montoDiferencia redondeado excluye ruidos de float y descuentos totales)
         if (activeCart && activeCart.items.length > 0 && Math.round(montoDiferencia * 100) / 100 > 0) {
