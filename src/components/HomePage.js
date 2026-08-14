@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import useSeoMeta from '../hooks/useSeoMeta';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -101,6 +102,7 @@ const CAPTURAS = [
 ];
 
 export default function HomePage() {
+    useSeoMeta();
     const { isAuthenticated, selectedStoreSlug, loading, login, error: authError, clearError } = useAuth();
     const navigate = useNavigate();
     const [showAccessModal, setShowAccessModal] = useState(false);
@@ -603,6 +605,10 @@ export default function HomePage() {
                         </a>
                     </p>
                     <p style={{ margin: '10px 0 0', fontSize: '0.85em' }}>
+                        <Link to="/preguntas-frecuentes" style={{ color: '#475569', textDecoration: 'none' }}>
+                            Preguntas frecuentes
+                        </Link>
+                        {' · '}
                         <Link to="/privacidad" style={{ color: '#475569', textDecoration: 'none' }}>
                             Política de privacidad
                         </Link>

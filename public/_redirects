@@ -1,1 +1,6 @@
+# Rutas prerenderizadas: reglas explícitas antes del catch-all, porque Render
+# no resuelve el index.html de una carpeta cuando la URL no tiene barra final.
+# Sumar una línea acá por cada página nueva que se agregue a scripts/prerender.js.
+/preguntas-frecuentes  /preguntas-frecuentes/index.html  200
+
 /*  /index.html  200
