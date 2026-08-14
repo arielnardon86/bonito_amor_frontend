@@ -10,7 +10,7 @@ const PAINS = [
         icon: faTshirt,
         titulo: 'No sabés qué talles te quedan',
         descripcion: 'Vendés un buzo y no sabés si queda el talle M en gris hasta que vas físicamente al perchero.',
-        solucion: 'Stock por talle y color en tiempo real, visible desde la caja.',
+        solucion: 'Stock por variante (talle, color o la combinación de ambos) en tiempo real, visible desde la caja.',
     },
     {
         icon: faSync,
@@ -33,7 +33,7 @@ const PAINS = [
 ];
 
 const FEATURES = [
-    { icon: faTshirt, titulo: 'Variantes por talle y color', desc: 'Cargá un modelo una sola vez y administrá el stock de cada talle y color por separado.' },
+    { icon: faTshirt, titulo: 'Variantes por talle y color', desc: 'Cargá un modelo una sola vez y administrá el stock de cada variante (talle, color o la combinación de ambos) por separado, con precio y código de barras propios.' },
     { icon: faShoppingCart, titulo: 'Punto de venta ágil', desc: 'Cobrá rápido con múltiples métodos de pago y el carrito de cada venta bajo control.' },
     { icon: faExchangeAlt, titulo: 'Cambios y devoluciones', desc: 'Gestioná cambios de talle o color con nota de crédito y ajuste de stock automático.' },
     { icon: faGlobe, titulo: 'Mercado Libre y Tienda Nube', desc: 'Publicá tus prendas y sincronizá stock entre tu local y tus canales online.' },

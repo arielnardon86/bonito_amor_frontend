@@ -28,7 +28,7 @@ const FAQS = [
     },
     {
         q: '¿Puedo controlar stock por talle y color?',
-        a: 'Sí. Total Stock permite manejar productos con variantes (por ejemplo, un mismo modelo en distintos talles y colores) manteniendo el stock de cada combinación por separado.',
+        a: 'Sí. Cada producto puede tener variantes (por talle, color, o la combinación de ambos, por ejemplo "Negro / M"), y cada variante tiene su propio stock, precio y código de barras, independiente del resto. Las variantes se cargan sobre un producto base y se ven en filas expandibles dentro del listado de productos.',
     },
     {
         q: '¿Total Stock factura electrónicamente? ¿Está integrado con ARCA?',
