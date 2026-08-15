@@ -18,15 +18,15 @@ export default function MarketingFooter() {
                     </a>
                 </p>
                 <p style={{ margin: '14px 0 0', fontSize: '0.85em', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px 10px' }}>
-                    <Link to="/sistema-para-indumentaria" style={s.footerLink}>Sistema para tiendas de ropa</Link>
+                    <Link to="/sistema-para-indumentaria/" style={s.footerLink}>Sistema para tiendas de ropa</Link>
                     <span style={s.footerDot}>·</span>
-                    <Link to="/sistema-para-deportes" style={s.footerLink}>Sistema para indumentaria deportiva</Link>
+                    <Link to="/sistema-para-deportes/" style={s.footerLink}>Sistema para indumentaria deportiva</Link>
                     <span style={s.footerDot}>·</span>
-                    <Link to="/sistema-para-ferreterias" style={s.footerLink}>Sistema para ferreterías</Link>
+                    <Link to="/sistema-para-ferreterias/" style={s.footerLink}>Sistema para ferreterías</Link>
                     <span style={s.footerDot}>·</span>
-                    <Link to="/sistema-para-kioscos" style={s.footerLink}>Sistema para kioscos</Link>
+                    <Link to="/sistema-para-kioscos/" style={s.footerLink}>Sistema para kioscos</Link>
                     <span style={s.footerDot}>·</span>
-                    <Link to="/preguntas-frecuentes" style={s.footerLink}>Preguntas frecuentes</Link>
+                    <Link to="/preguntas-frecuentes/" style={s.footerLink}>Preguntas frecuentes</Link>
                     <span style={s.footerDot}>·</span>
                     <Link to="/privacidad" style={s.footerLink}>Política de privacidad</Link>
                 </p>

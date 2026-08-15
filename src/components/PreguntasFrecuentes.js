@@ -82,7 +82,7 @@ export default function PreguntasFrecuentes() {
     useSeoMeta({
         title: 'Preguntas frecuentes sobre Total Stock | Sistema de gestión para comercios',
         description: 'Qué es Total Stock, cuánto cuesta, si factura con ARCA, si se integra con Mercado Libre y Tienda Nube, y qué incluye cada plan.',
-        canonical: 'https://www.totalstock.com.ar/preguntas-frecuentes',
+        canonical: 'https://www.totalstock.com.ar/preguntas-frecuentes/',
     });
 
     return (

@@ -54,7 +54,7 @@ export default function SistemaParaIndumentaria() {
         <VerticalLanding
             metaTitle="Sistema de gestión para tiendas de ropa | Total Stock"
             metaDescription="Sistema de gestión para tiendas de ropa: stock por talle y color, punto de venta, facturación electrónica ARCA y sincronización con Mercado Libre y Tienda Nube."
-            canonical="https://www.totalstock.com.ar/sistema-para-indumentaria"
+            canonical="https://www.totalstock.com.ar/sistema-para-indumentaria/"
             h1="Gestioná tu tienda de ropa sin perder el control del stock"
             heroSub="Controlá stock por talle y color, vendé rápido en el mostrador, facturá con ARCA y sincronizá tu tienda online. Todo en un mismo sistema pensado para indumentaria."
             painsTitle="Los problemas de todos los días en una tienda de ropa"

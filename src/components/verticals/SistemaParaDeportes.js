@@ -51,7 +51,7 @@ export default function SistemaParaDeportes() {
         <VerticalLanding
             metaTitle="Sistema de gestión para indumentaria deportiva | Total Stock"
             metaDescription="Sistema de gestión para negocios de indumentaria deportiva y merchandising: stock por variante, punto de venta, facturación electrónica ARCA y sincronización con Mercado Libre y Tienda Nube."
-            canonical="https://www.totalstock.com.ar/sistema-para-deportes"
+            canonical="https://www.totalstock.com.ar/sistema-para-deportes/"
             h1="Gestioná tu negocio de indumentaria deportiva sin perder ventas por falta de stock"
             heroSub="Controlá stock por talle y modelo, vendé rápido en los picos antes de un partido, facturá con ARCA y sincronizá tu tienda online. Todo en un mismo sistema."
             painsTitle="Los problemas de todos los días en un negocio deportivo"

@@ -50,7 +50,7 @@ export default function SistemaParaFerreterias() {
         <VerticalLanding
             metaTitle="Sistema de gestión para ferreterías | Total Stock"
             metaDescription="Sistema de gestión para ferreterías: búsqueda por código de barras, control de stock con alertas, compras a proveedores, punto de venta y facturación electrónica ARCA."
-            canonical="https://www.totalstock.com.ar/sistema-para-ferreterias"
+            canonical="https://www.totalstock.com.ar/sistema-para-ferreterias/"
             h1="Gestioná tu ferretería sin perder tiempo buscando precio y stock"
             heroSub="Controlá miles de productos con código de barras, vendé rápido en el mostrador, facturá con ARCA y llevá un registro claro de tus compras a proveedores. Todo en un mismo sistema."
             painsTitle="Los problemas de todos los días en una ferretería"

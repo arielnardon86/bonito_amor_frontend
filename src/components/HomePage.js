@@ -215,7 +215,7 @@ export default function HomePage() {
                         ))}
                         <li className="nav-link-item">
                             <Link
-                                to="/preguntas-frecuentes"
+                                to="/preguntas-frecuentes/"
                                 style={{ ...s.navLink, color: scrolled ? C.azul : '#fff' }}
                                 className="nav-link"
                             >Preguntas frecuentes</Link>

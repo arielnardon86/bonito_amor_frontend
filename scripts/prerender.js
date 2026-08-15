@@ -7,8 +7,17 @@
  * Corre como parte de `npm run build` (ver package.json). No toca rutas
  * de la app autenticada: esas ya están bloqueadas en robots.txt.
  *
- * Para agregar una página nueva: sumarla a ROUTES y asegurarse de que
- * su contenido renderice sin depender de sesión/autenticación.
+ * IMPORTANTE sobre las URLs publicadas (sitemap, canonical, links internos):
+ * tienen que llevar barra final ("/preguntas-frecuentes/"), no sin ella.
+ * Render (el hosting) no lee un _redirects estilo Netlify -- solo resuelve
+ * el index.html de una carpeta cuando la URL pedida termina en "/". Sin la
+ * barra, cae al fallback SPA y sirve el contenido de la home. React Router
+ * matchea igual ambas formas del lado del cliente, así que esto no afecta
+ * la navegación una vez que la app ya cargó.
+ *
+ * Para agregar una página nueva: sumarla a ROUTES acá, usar la URL con
+ * barra final en su canonical/sitemap/links, y asegurarse de que su
+ * contenido renderice sin depender de sesión/autenticación.
  */
 
 const fs = require('fs');

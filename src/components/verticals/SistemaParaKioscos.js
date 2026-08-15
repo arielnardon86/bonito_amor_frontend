@@ -46,7 +46,7 @@ export default function SistemaParaKioscos() {
         <VerticalLanding
             metaTitle="Sistema de gestión para kioscos | Total Stock"
             metaDescription="Sistema de gestión para kioscos: punto de venta rápido por código de barras, control de stock con alertas, facturación electrónica ARCA y cierre de caja automático."
-            canonical="https://www.totalstock.com.ar/sistema-para-kioscos"
+            canonical="https://www.totalstock.com.ar/sistema-para-kioscos/"
             h1="Gestioná tu kiosco sin perder tiempo en cada venta"
             heroSub="Cobrá en segundos con código de barras, controlá el stock de cientos de productos chicos y llevá la caja del día sin sorpresas. Todo en un mismo sistema."
             painsTitle="Los problemas de todos los días en un kiosco"

@@ -68,7 +68,7 @@ export default function VerticalLanding({
                             </li>
                         ))}
                         <li>
-                            <Link to="/preguntas-frecuentes" style={{ ...s.navLink, color: scrolled ? C.azul : '#fff' }}>
+                            <Link to="/preguntas-frecuentes/" style={{ ...s.navLink, color: scrolled ? C.azul : '#fff' }}>
                                 Preguntas frecuentes
                             </Link>
                         </li>
