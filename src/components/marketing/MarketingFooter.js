@@ -24,6 +24,8 @@ export default function MarketingFooter() {
                     <span style={s.footerDot}>·</span>
                     <Link to="/sistema-para-ferreterias" style={s.footerLink}>Sistema para ferreterías</Link>
                     <span style={s.footerDot}>·</span>
+                    <Link to="/sistema-para-kioscos" style={s.footerLink}>Sistema para kioscos</Link>
+                    <span style={s.footerDot}>·</span>
                     <Link to="/preguntas-frecuentes" style={s.footerLink}>Preguntas frecuentes</Link>
                     <span style={s.footerDot}>·</span>
                     <Link to="/privacidad" style={s.footerLink}>Política de privacidad</Link>
