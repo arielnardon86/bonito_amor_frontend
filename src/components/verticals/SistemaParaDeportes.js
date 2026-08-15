@@ -36,7 +36,7 @@ const FEATURES = [
     { icon: faTshirt, titulo: 'Variantes por talle y modelo', desc: 'Cargá una camiseta o modelo una sola vez y administrá el stock de cada variante por separado, con precio y código de barras propios.' },
     { icon: faShoppingCart, titulo: 'Punto de venta ágil', desc: 'Cobrá rápido con múltiples métodos de pago, ideal para los picos de venta antes de un partido.' },
     { icon: faExchangeAlt, titulo: 'Cambios y devoluciones', desc: 'Gestioná cambios de talle con nota de crédito y ajuste de stock automático.' },
-    { icon: faGlobe, titulo: 'Mercado Libre y Tienda Nube', desc: 'Publicá camisetas y merchandising, y sincronizá stock entre tu local y tus canales online.' },
+    { icon: faGlobe, titulo: 'Mercado Libre y Tienda Nube', desc: 'Publicá camisetas y merchandising en Tienda Nube, y sincronizá stock automáticamente con Mercado Libre.' },
     { icon: faFileInvoice, titulo: 'Factura electrónica ARCA', desc: 'Emití facturas A, B y C sin salir del sistema.' },
     { icon: faPrint, titulo: 'Etiquetas con código de barras', desc: 'Imprimí etiquetas por variante, compatibles con impresoras térmicas.' },
 ];

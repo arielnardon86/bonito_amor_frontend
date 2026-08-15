@@ -26,6 +26,10 @@ export default function MarketingFooter() {
                     <span style={s.footerDot}>·</span>
                     <Link to="/sistema-para-kioscos/" style={s.footerLink}>Sistema para kioscos</Link>
                     <span style={s.footerDot}>·</span>
+                    <Link to="/integraciones/mercado-libre/" style={s.footerLink}>Integración con Mercado Libre</Link>
+                    <span style={s.footerDot}>·</span>
+                    <Link to="/integraciones/tienda-nube/" style={s.footerLink}>Integración con Tienda Nube</Link>
+                    <span style={s.footerDot}>·</span>
                     <Link to="/preguntas-frecuentes/" style={s.footerLink}>Preguntas frecuentes</Link>
                     <span style={s.footerDot}>·</span>
                     <Link to="/privacidad" style={s.footerLink}>Política de privacidad</Link>

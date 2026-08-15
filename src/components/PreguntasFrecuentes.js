@@ -40,11 +40,11 @@ const FAQS = [
     },
     {
         q: '¿Se integra con Mercado Libre?',
-        a: 'Sí, en el plan Advanced. Total Stock sincroniza publicaciones, importa órdenes y mantiene el stock actualizado entre tu local y Mercado Libre.',
+        a: 'Sí, en el plan Advanced. Total Stock sincroniza el stock y el precio de tus publicaciones existentes en Mercado Libre, e importa tus órdenes de Mercado Libre automáticamente como ventas. No crea publicaciones nuevas: esas se manejan desde Mercado Libre.',
     },
     {
         q: '¿Se integra con Tienda Nube?',
-        a: 'Sí, en el plan Advanced. El catálogo y el stock se sincronizan automáticamente entre tu tienda online en Tienda Nube y tu local.',
+        a: 'Sí, en el plan Advanced. Podés publicar tus productos directamente en Tienda Nube desde Total Stock, y el stock se sincroniza automáticamente entre tu tienda online y tu local.',
     },
     {
         q: '¿Puedo administrar más de una sucursal?',

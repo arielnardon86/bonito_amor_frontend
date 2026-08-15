@@ -71,7 +71,7 @@ const FEATURES = [
     { icon: faFileInvoice,  titulo: 'Factura Electrónica', desc: 'Emití facturas A, B y C integradas con ARCA sin salir del sistema.' },
     { icon: faPrint,        titulo: 'Recibos y Etiquetas', desc: 'Imprimí tickets, recibos y etiquetas compatibles con impresoras térmicas.' },
     { icon: faUsers,        titulo: 'Control de Usuarios', desc: 'Asigná roles con permisos diferenciados: admin, supervisor o cajero.' },
-    { icon: faGlobe,        titulo: 'E-Commerce Integrado', desc: 'Publicá en Mercado Libre y Tienda Nube, importá órdenes y sincronizá stock.' },
+    { icon: faGlobe,        titulo: 'E-Commerce Integrado', desc: 'Publicá productos en Tienda Nube, sincronizá stock con Mercado Libre e importá tus órdenes de ambos canales automáticamente.' },
     { icon: faStore,        titulo: 'Multi-Tienda', desc: 'Administrá varias sucursales desde una sola cuenta.' },
 ];
 
@@ -91,7 +91,7 @@ const CLIENTES = [
 
 const INTEGRACIONES = [
     { nombre: 'ARCA', src: '/integraciones/arca.jpg', desc: 'Factura electrónica oficial' },
-    { nombre: 'Mercado Libre', src: '/integraciones/mercado-libre.png', desc: 'Publicaciones y órdenes' },
+    { nombre: 'Mercado Libre', src: '/integraciones/mercado-libre.png', desc: 'Sincronización de stock y órdenes' },
     { nombre: 'Tienda Nube', src: '/integraciones/tienda-nube.png', desc: 'Sincronización de catálogo' },
     { nombre: 'Mercado Pago', src: '/integraciones/mercado-pago.jpeg', desc: 'Suscripciones y pagos' },
 ];

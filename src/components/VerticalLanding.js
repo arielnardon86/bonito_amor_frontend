@@ -15,12 +15,13 @@ const C = {
 };
 
 /**
- * Template para páginas de vertical (indumentaria, kioscos, ferreterías...).
- * Cada vertical es un componente delgado en src/components/verticals/ que
- * pasa su propio contenido acá adentro; el layout, precios y footer se
- * comparten. Para agregar una vertical nueva: sumar el contenido, la ruta
- * en App.js, la entrada en public/sitemap.xml y public/_redirects, y la
- * ruta en scripts/prerender.js.
+ * Template para páginas de vertical/integración (indumentaria, kioscos,
+ * ferreterías, Mercado Libre...). Cada página es un componente delgado en
+ * src/components/verticals/ o src/components/integraciones/ que pasa su
+ * propio contenido acá adentro; el layout, precios y footer se comparten.
+ * Para agregar una página nueva: sumar el contenido, la ruta en App.js, la
+ * entrada en public/sitemap.xml (con barra final) y la ruta en
+ * scripts/prerender.js.
  */
 export default function VerticalLanding({
     metaTitle,
@@ -34,6 +35,7 @@ export default function VerticalLanding({
     featuresTitle = 'Todo lo que necesitás, en un solo lugar',
     featuresSub,
     features, // [{ icon, titulo, desc }]
+    aclaracion, // { titulo, texto } — para dejar explícito qué NO hace algo, con precisión
     testimoniosTitle = 'Orgullosos de nuestros clientes',
     testimonios, // [{ src, nombre }]
 }) {
@@ -144,6 +146,18 @@ export default function VerticalLanding({
                 </section>
             )}
 
+            {/* ── ACLARACIÓN ── */}
+            {aclaracion && (
+                <section style={s.aclaracionSection}>
+                    <div style={s.sectionWrap}>
+                        <div style={s.aclaracionBox}>
+                            <h3 style={s.aclaracionTitulo}>{aclaracion.titulo}</h3>
+                            <p style={s.aclaracionTexto}>{aclaracion.texto}</p>
+                        </div>
+                    </div>
+                </section>
+            )}
+
             {/* ── TESTIMONIOS ── */}
             {testimonios && testimonios.length > 0 && (
                 <section style={s.clientesSection}>
@@ -224,6 +238,11 @@ const s = {
     featCard: { background: C.grisClaro, borderRadius: 14, padding: '28px 24px' },
     featTitulo: { fontSize: '1.05em', fontWeight: 700, marginBottom: 8, color: C.azul },
     featDesc: { fontSize: '0.92em', color: C.gris, lineHeight: 1.6, margin: 0 },
+
+    aclaracionSection: { padding: '50px 0', background: '#fff' },
+    aclaracionBox: { maxWidth: 760, margin: '0 auto', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 14, padding: '28px 32px' },
+    aclaracionTitulo: { fontSize: '1.05em', fontWeight: 700, color: '#92400e', marginBottom: 8 },
+    aclaracionTexto: { fontSize: '0.95em', color: '#78350f', lineHeight: 1.7, margin: 0 },
 
     clientesSection: { padding: '70px 0', background: C.grisClaro },
     clientesGrid: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 32, marginTop: 32, padding: '0 24px' },

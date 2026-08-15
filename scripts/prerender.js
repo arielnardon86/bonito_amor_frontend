@@ -38,6 +38,8 @@ const ROUTES = [
   { path: '/sistema-para-deportes', readySelector: '#inicio' },
   { path: '/sistema-para-ferreterias', readySelector: '#inicio' },
   { path: '/sistema-para-kioscos', readySelector: '#inicio' },
+  { path: '/integraciones/mercado-libre', readySelector: '#inicio' },
+  { path: '/integraciones/tienda-nube', readySelector: '#inicio' },
 ];
 
 const MIME_TYPES = {

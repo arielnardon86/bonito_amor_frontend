@@ -31,6 +31,8 @@ import SistemaParaIndumentaria from './components/verticals/SistemaParaIndumenta
 import SistemaParaDeportes from './components/verticals/SistemaParaDeportes';
 import SistemaParaFerreterias from './components/verticals/SistemaParaFerreterias';
 import SistemaParaKioscos from './components/verticals/SistemaParaKioscos';
+import IntegracionMercadoLibrePage from './components/integraciones/IntegracionMercadoLibre';
+import IntegracionTiendaNubePage from './components/integraciones/IntegracionTiendaNube';
 import CierresCaja from './components/CierresCaja';
 import Registro from './components/Registro';
 import SuscripcionResultado from './components/SuscripcionResultado';
@@ -1102,6 +1104,8 @@ const AppContent = () => {
           <Route path="/sistema-para-deportes" element={<SistemaParaDeportes />} />
           <Route path="/sistema-para-ferreterias" element={<SistemaParaFerreterias />} />
           <Route path="/sistema-para-kioscos" element={<SistemaParaKioscos />} />
+          <Route path="/integraciones/mercado-libre" element={<IntegracionMercadoLibrePage />} />
+          <Route path="/integraciones/tienda-nube" element={<IntegracionTiendaNubePage />} />
           <Route path="/tiendanube/instalar" element={<TiendaNubeInstalar />} />
 
           <Route path="/" element={
