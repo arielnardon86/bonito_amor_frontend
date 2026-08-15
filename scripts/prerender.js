@@ -27,6 +27,7 @@ const ROUTES = [
   { path: '/preguntas-frecuentes', readySelector: 'h1' },
   { path: '/sistema-para-indumentaria', readySelector: '#inicio' },
   { path: '/sistema-para-deportes', readySelector: '#inicio' },
+  { path: '/sistema-para-ferreterias', readySelector: '#inicio' },
 ];
 
 const MIME_TYPES = {

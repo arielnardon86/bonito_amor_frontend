@@ -26,6 +26,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.totalstock.com.ar/sistema-para-ferreterias</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.totalstock.com.ar/privacidad</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
