@@ -104,7 +104,19 @@ async function prerenderRoute(browser, { path: route, readySelector }) {
   console.log('Prerenderizando páginas públicas...');
 
   const server = await startServer();
-  const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  // --disable-dev-shm-usage: en contenedores de build (como Render) /dev/shm suele venir
+  // con muy poco espacio y Chrome crashea (SIGSEGV) al intentar usarlo; con este flag usa
+  // /tmp en su lugar. --disable-gpu y --no-zygote además bajan el uso de memoria/procesos
+  // en un entorno sin GPU y con recursos acotados.
+  const browser = await puppeteer.launch({
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-zygote',
+    ],
+  });
 
   try {
     for (const route of ROUTES) {
@@ -117,6 +129,10 @@ async function prerenderRoute(browser, { path: route, readySelector }) {
 
   console.log('Listo.');
 })().catch((err) => {
-  console.error('Error en el prerender:', err);
-  process.exit(1);
+  // No usar process.exit(1) acá: si el prerender falla (ej. Chrome crashea en el
+  // entorno de build), no queremos bloquear el deploy entero de la app por una
+  // mejora de SEO. El build de react-scripts ya generó un build/ funcional
+  // (SPA normal, como antes de este pipeline); mejor deployar eso que nada.
+  console.error('Error en el prerender (el deploy sigue igual; las páginas quedan sin prerenderizar):', err);
+  process.exit(0);
 });
