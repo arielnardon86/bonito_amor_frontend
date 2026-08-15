@@ -26,6 +26,7 @@ const ROUTES = [
   { path: '/', readySelector: '#inicio' },
   { path: '/preguntas-frecuentes', readySelector: 'h1' },
   { path: '/sistema-para-indumentaria', readySelector: '#inicio' },
+  { path: '/sistema-para-deportes', readySelector: '#inicio' },
 ];
 
 const MIME_TYPES = {

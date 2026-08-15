@@ -17,18 +17,14 @@ export default function MarketingFooter() {
                         info@totalstock.com.ar
                     </a>
                 </p>
-                <p style={{ margin: '10px 0 0', fontSize: '0.85em' }}>
-                    <Link to="/sistema-para-indumentaria" style={{ color: '#475569', textDecoration: 'none' }}>
-                        Sistema para tiendas de ropa
-                    </Link>
-                    {' · '}
-                    <Link to="/preguntas-frecuentes" style={{ color: '#475569', textDecoration: 'none' }}>
-                        Preguntas frecuentes
-                    </Link>
-                    {' · '}
-                    <Link to="/privacidad" style={{ color: '#475569', textDecoration: 'none' }}>
-                        Política de privacidad
-                    </Link>
+                <p style={{ margin: '14px 0 0', fontSize: '0.85em', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px 10px' }}>
+                    <Link to="/sistema-para-indumentaria" style={s.footerLink}>Sistema para tiendas de ropa</Link>
+                    <span style={s.footerDot}>·</span>
+                    <Link to="/sistema-para-deportes" style={s.footerLink}>Sistema para indumentaria deportiva</Link>
+                    <span style={s.footerDot}>·</span>
+                    <Link to="/preguntas-frecuentes" style={s.footerLink}>Preguntas frecuentes</Link>
+                    <span style={s.footerDot}>·</span>
+                    <Link to="/privacidad" style={s.footerLink}>Política de privacidad</Link>
                 </p>
             </div>
         </footer>
@@ -41,4 +37,6 @@ const s = {
     footerLogo: { maxWidth: 160, borderRadius: 8, background: 'rgba(255,255,255,0.95)', padding: '8px 12px', marginBottom: 18 },
     footerText: { color: '#94a3b8', fontSize: '0.9em', marginBottom: 6 },
     footerSub: { color: '#475569', fontSize: '0.8em', fontStyle: 'italic' },
+    footerLink: { color: '#475569', textDecoration: 'none' },
+    footerDot: { color: '#334155' },
 };
