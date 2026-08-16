@@ -56,14 +56,14 @@ export default function VerticalLanding({
     };
 
     return (
-        <div style={s.page}>
+        <div style={s.page} className="marketing-page">
             {/* ── NAVBAR ── */}
             <nav style={{ ...s.nav, ...(scrolled ? s.navScrolled : {}) }}>
                 <div style={s.navInner}>
                     <Link to="/"><img src="/logo-completo.png" alt="Total Stock" style={s.navLogo} /></Link>
                     <ul style={s.navLinks}>
                         {[['Soluciones', 'soluciones'], ['Características', 'caracteristicas'], ['Precios', 'precios']].map(([label, id]) => (
-                            <li key={id}>
+                            <li key={id} className="nav-link-item">
                                 <a
                                     href={`#${id}`}
                                     onClick={e => { e.preventDefault(); scrollTo(id); }}
@@ -71,7 +71,7 @@ export default function VerticalLanding({
                                 >{label}</a>
                             </li>
                         ))}
-                        <li>
+                        <li className="nav-link-item">
                             <Link to="/preguntas-frecuentes/" style={{ ...s.navLink, color: scrolled ? C.azul : '#fff' }}>
                                 Preguntas frecuentes
                             </Link>

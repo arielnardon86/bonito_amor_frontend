@@ -433,6 +433,16 @@ body {
   box-sizing: border-box;
 }
 
+/* Las páginas de marketing (home, verticales, FAQ) manejan su propio layout
+   de borde a borde con un nav fixed propio; el padding de .container está
+   pensado para la app autenticada y deja un hueco en blanco arriba en mobile
+   detrás del nav transparente. Se anula solo cuando .container envuelve una
+   de estas páginas, sin tocar el resto de la app. */
+.container:has(> .marketing-page) {
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+
 /* ── Section & page typography ──────────────────────────────────────────────── */
 
 /* Page-level header: título grande + subtítulo opcional */
@@ -598,6 +608,11 @@ body {
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   body { font-size: 14px; overflow-x: hidden; }
+
+  /* Navbar de las páginas de marketing (home, verticales, integraciones):
+     sin esto, los links secundarios (Soluciones/Características/Precios/
+     Preguntas frecuentes) se amontonan y se superponen en pantallas chicas. */
+  .nav-link-item { display: none !important; }
 
   .sidebar {
     transform: translateX(-100%);

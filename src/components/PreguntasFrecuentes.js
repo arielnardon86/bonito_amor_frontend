@@ -86,7 +86,7 @@ export default function PreguntasFrecuentes() {
     });
 
     return (
-        <div style={s.page}>
+        <div style={s.page} className="marketing-page">
             <script type="application/ld+json">{JSON.stringify(faqJsonLd)}</script>
 
             <header style={s.header}>

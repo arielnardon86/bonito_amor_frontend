@@ -196,7 +196,7 @@ export default function HomePage() {
     if (isAuthenticated && selectedStoreSlug) return null;
 
     return (
-        <div style={s.page}>
+        <div style={s.page} className="marketing-page">
 
             {/* ── NAVBAR ── */}
             <nav style={{ ...s.nav, ...(scrolled ? s.navScrolled : {}) }} className={scrolled ? 'nav-scrolled' : ''}>
