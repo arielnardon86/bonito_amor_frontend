@@ -40,6 +40,7 @@ const ROUTES = [
   { path: '/sistema-para-kioscos', readySelector: '#inicio' },
   { path: '/integraciones/mercado-libre', readySelector: '#inicio' },
   { path: '/integraciones/tienda-nube', readySelector: '#inicio' },
+  { path: '/facturacion-arca', readySelector: '#inicio' },
 ];
 
 const MIME_TYPES = {

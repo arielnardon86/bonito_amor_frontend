@@ -33,6 +33,7 @@ import SistemaParaFerreterias from './components/verticals/SistemaParaFerreteria
 import SistemaParaKioscos from './components/verticals/SistemaParaKioscos';
 import IntegracionMercadoLibrePage from './components/integraciones/IntegracionMercadoLibre';
 import IntegracionTiendaNubePage from './components/integraciones/IntegracionTiendaNube';
+import FacturacionArca from './components/integraciones/FacturacionArca';
 import CierresCaja from './components/CierresCaja';
 import Registro from './components/Registro';
 import SuscripcionResultado from './components/SuscripcionResultado';
@@ -1106,6 +1107,7 @@ const AppContent = () => {
           <Route path="/sistema-para-kioscos" element={<SistemaParaKioscos />} />
           <Route path="/integraciones/mercado-libre" element={<IntegracionMercadoLibrePage />} />
           <Route path="/integraciones/tienda-nube" element={<IntegracionTiendaNubePage />} />
+          <Route path="/facturacion-arca" element={<FacturacionArca />} />
           <Route path="/tiendanube/instalar" element={<TiendaNubeInstalar />} />
 
           <Route path="/" element={

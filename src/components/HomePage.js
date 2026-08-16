@@ -90,7 +90,7 @@ const CLIENTES = [
 ];
 
 const INTEGRACIONES = [
-    { nombre: 'ARCA', src: '/integraciones/arca.jpg', desc: 'Factura electrónica oficial' },
+    { nombre: 'ARCA', src: '/integraciones/arca.jpg', desc: 'Factura electrónica oficial', href: '/facturacion-arca/' },
     { nombre: 'Mercado Libre', src: '/integraciones/mercado-libre.png', desc: 'Sincronización de stock y órdenes', href: '/integraciones/mercado-libre/' },
     { nombre: 'Tienda Nube', src: '/integraciones/tienda-nube.png', desc: 'Sincronización de catálogo', href: '/integraciones/tienda-nube/' },
     { nombre: 'Mercado Pago', src: '/integraciones/mercado-pago.jpeg', desc: 'Suscripciones y pagos' },

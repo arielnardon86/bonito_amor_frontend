@@ -30,6 +30,8 @@ export default function MarketingFooter() {
                     <span style={s.footerDot}>·</span>
                     <Link to="/integraciones/tienda-nube/" style={s.footerLink}>Integración con Tienda Nube</Link>
                     <span style={s.footerDot}>·</span>
+                    <Link to="/facturacion-arca/" style={s.footerLink}>Facturación ARCA</Link>
+                    <span style={s.footerDot}>·</span>
                     <Link to="/preguntas-frecuentes/" style={s.footerLink}>Preguntas frecuentes</Link>
                     <span style={s.footerDot}>·</span>
                     <Link to="/privacidad" style={s.footerLink}>Política de privacidad</Link>
