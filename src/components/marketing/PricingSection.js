@@ -12,6 +12,8 @@ const C = {
     advanced: '#10b981',
 };
 
+const PLAN_ORDER = ['starter', 'pro', 'advanced'];
+
 const PLANS = [
     {
         id: 'starter',
@@ -46,9 +48,14 @@ const PLANS = [
 /**
  * Sección de precios reutilizada en la home y en las páginas verticales.
  * Fuente única de los planes: cambiar precios/features acá los actualiza en todas partes.
+ *
+ * minPlanId: si se pasa (ej. "advanced"), los planes por debajo de ese nivel
+ * se muestran atenuados con una nota en vez del CTA — para páginas de una
+ * integración/feature que solo está disponible desde cierto plan en adelante.
  */
-export default function PricingSection() {
+export default function PricingSection({ minPlanId, minPlanNote = 'No incluye esta integración' }) {
     const navigate = useNavigate();
+    const minRank = minPlanId ? PLAN_ORDER.indexOf(minPlanId) : -1;
 
     return (
         <section id="precios" style={s.pricingSection}>
@@ -59,40 +66,50 @@ export default function PricingSection() {
                     Todos incluyen 7 días de prueba gratis. Pagás con Mercado Pago, cancelás cuando quieras.
                 </p>
                 <div style={s.pricingGrid}>
-                    {PLANS.map((plan) => (
-                        <div
-                            key={plan.id}
-                            style={plan.destacado ? s.pricingCardFeatured : plan.avanzado ? s.pricingCardAdvanced : s.pricingCard}
-                            className={plan.destacado ? 'pricing-card-featured' : 'pricing-card'}
-                        >
-                            {plan.badge && (
-                                <div style={plan.destacado ? s.popularBadge : s.advancedBadge}>{plan.badge}</div>
-                            )}
-                            <div style={s.pricingHeader}>
-                                <h3 style={{ ...s.planName, ...(plan.avanzado ? { color: '#1a6a40' } : {}) }}>{plan.nombre}</h3>
-                                <div style={s.priceRow}>
-                                    <span style={{ ...s.priceCurrency, color: plan.color }}>$</span>
-                                    <span style={{ ...s.priceNum, ...(plan.avanzado ? { color: '#1a6a40' } : {}) }}>{plan.precio}</span>
-                                </div>
-                                <p style={s.pricePer}>por tienda / por mes</p>
-                            </div>
-                            <div style={s.featureList}>
-                                {plan.features.map((f) => (
-                                    <div key={f} style={s.featureRow}>
-                                        <FontAwesomeIcon icon={faCheck} style={{ color: plan.color, fontSize: 12, marginTop: 3, flexShrink: 0 }} />
-                                        <span>{f}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <button
-                                onClick={() => navigate(`/registro?plan=${plan.id}`)}
-                                style={{ ...s.planCta, background: plan.color }}
-                                className={plan.ctaClass}
+                    {PLANS.map((plan) => {
+                        const dimmed = minRank >= 0 && PLAN_ORDER.indexOf(plan.id) < minRank;
+                        return (
+                            <div
+                                key={plan.id}
+                                style={{
+                                    ...(plan.destacado ? s.pricingCardFeatured : plan.avanzado ? s.pricingCardAdvanced : s.pricingCard),
+                                    ...(dimmed ? s.pricingCardDimmed : {}),
+                                }}
+                                className={plan.destacado ? 'pricing-card-featured' : 'pricing-card'}
                             >
-                                Empezar gratis 7 días →
-                            </button>
-                        </div>
-                    ))}
+                                {plan.badge && (
+                                    <div style={plan.destacado ? s.popularBadge : s.advancedBadge}>{plan.badge}</div>
+                                )}
+                                <div style={s.pricingHeader}>
+                                    <h3 style={{ ...s.planName, ...(plan.avanzado ? { color: '#1a6a40' } : {}) }}>{plan.nombre}</h3>
+                                    <div style={s.priceRow}>
+                                        <span style={{ ...s.priceCurrency, color: plan.color }}>$</span>
+                                        <span style={{ ...s.priceNum, ...(plan.avanzado ? { color: '#1a6a40' } : {}) }}>{plan.precio}</span>
+                                    </div>
+                                    <p style={s.pricePer}>por tienda / por mes</p>
+                                </div>
+                                <div style={s.featureList}>
+                                    {plan.features.map((f) => (
+                                        <div key={f} style={s.featureRow}>
+                                            <FontAwesomeIcon icon={faCheck} style={{ color: plan.color, fontSize: 12, marginTop: 3, flexShrink: 0 }} />
+                                            <span>{f}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                {dimmed ? (
+                                    <div style={s.dimmedNote}>{minPlanNote}</div>
+                                ) : (
+                                    <button
+                                        onClick={() => navigate(`/registro?plan=${plan.id}`)}
+                                        style={{ ...s.planCta, background: plan.color }}
+                                        className={plan.ctaClass}
+                                    >
+                                        Empezar gratis 7 días →
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
                 <p style={s.pricingNote}>
                     ✓ Sin permanencia mínima &nbsp;·&nbsp; ✓ Cancelás en cualquier momento &nbsp;·&nbsp; ✓ Pagás con Mercado Pago
@@ -125,4 +142,6 @@ const s = {
     featureRow: { display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 14, fontSize: '0.92em', color: '#475569', lineHeight: 1.5 },
     planCta: { width: '100%', padding: '13px', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s', marginTop: 'auto' },
     pricingNote: { marginTop: 32, fontSize: 13, color: C.gris },
+    pricingCardDimmed: { opacity: 0.5, filter: 'grayscale(0.6)' },
+    dimmedNote: { width: '100%', padding: '13px', textAlign: 'center', color: C.gris, fontSize: 13, fontWeight: 600, fontStyle: 'italic', marginTop: 'auto', border: '1.5px dashed #cbd5e1', borderRadius: 10 },
 };

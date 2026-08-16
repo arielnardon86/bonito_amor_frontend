@@ -57,6 +57,8 @@ export default function IntegracionMercadoLibre() {
             featuresTitle="Cómo funciona la integración con Mercado Libre"
             features={FEATURES}
             aclaracion={ACLARACION}
+            minPlanId="advanced"
+            minPlanNote="No incluye integración con Mercado Libre"
         />
     );
 }

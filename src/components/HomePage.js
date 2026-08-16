@@ -91,8 +91,8 @@ const CLIENTES = [
 
 const INTEGRACIONES = [
     { nombre: 'ARCA', src: '/integraciones/arca.jpg', desc: 'Factura electrónica oficial' },
-    { nombre: 'Mercado Libre', src: '/integraciones/mercado-libre.png', desc: 'Sincronización de stock y órdenes' },
-    { nombre: 'Tienda Nube', src: '/integraciones/tienda-nube.png', desc: 'Sincronización de catálogo' },
+    { nombre: 'Mercado Libre', src: '/integraciones/mercado-libre.png', desc: 'Sincronización de stock y órdenes', href: '/integraciones/mercado-libre/' },
+    { nombre: 'Tienda Nube', src: '/integraciones/tienda-nube.png', desc: 'Sincronización de catálogo', href: '/integraciones/tienda-nube/' },
     { nombre: 'Mercado Pago', src: '/integraciones/mercado-pago.jpeg', desc: 'Suscripciones y pagos' },
 ];
 
@@ -470,6 +470,9 @@ export default function HomePage() {
                                 </div>
                                 <div style={s.integName}>{ig.nombre}</div>
                                 <div style={s.integDesc}>{ig.desc}</div>
+                                {ig.href && (
+                                    <Link to={ig.href} style={s.integMasInfo}>+ info</Link>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -740,6 +743,7 @@ const s = {
     integImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
     integName: { fontSize: '1em', fontWeight: 700, color: '#fff', marginBottom: 4 },
     integDesc: { fontSize: '0.82em', color: 'rgba(255,255,255,0.55)' },
+    integMasInfo: { display: 'inline-block', marginTop: 10, fontSize: '0.78em', fontWeight: 700, color: C.verde, textDecoration: 'none' },
 
     // Pricing
 

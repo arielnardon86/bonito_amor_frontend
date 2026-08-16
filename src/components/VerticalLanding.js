@@ -38,6 +38,8 @@ export default function VerticalLanding({
     aclaracion, // { titulo, texto } — para dejar explícito qué NO hace algo, con precisión
     testimoniosTitle = 'Orgullosos de nuestros clientes',
     testimonios, // [{ src, nombre }]
+    minPlanId, // pasa a PricingSection: atenúa los planes por debajo de este nivel
+    minPlanNote,
 }) {
     useSeoMeta({ title: metaTitle, description: metaDescription, canonical });
 
@@ -177,7 +179,7 @@ export default function VerticalLanding({
                 </section>
             )}
 
-            <PricingSection />
+            <PricingSection minPlanId={minPlanId} minPlanNote={minPlanNote} />
 
             {/* ── CTA FINAL ── */}
             <section style={s.ctaFinal}>

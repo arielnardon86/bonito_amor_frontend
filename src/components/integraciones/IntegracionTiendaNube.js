@@ -56,6 +56,8 @@ export default function IntegracionTiendaNube() {
             featuresTitle="Cómo funciona la integración con Tienda Nube"
             features={FEATURES}
             aclaracion={ACLARACION}
+            minPlanId="advanced"
+            minPlanNote="No incluye integración con Tienda Nube"
         />
     );
 }
