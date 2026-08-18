@@ -233,12 +233,22 @@ const ManualUso = () => {
                             <li><strong>Imprimir etiquetas con código de barras</strong> — uno, varios, o "Todos" los de la página, en hoja A4 o impresora térmica.</li>
                             <li><strong>Mostrar en la etiqueta el precio con descuento por pago en efectivo</strong>, destacado en un recuadro debajo del precio de lista. Usa el % que configures en Panel de Administración, pero lo podés tildar/destildar y ajustar antes de cada impresión.</li>
                             <li><strong>Editar en masa por rubro</strong>: IVA o precio de todo un rubro de una vez.</li>
+                            <li><strong>Vincular o publicar productos en Tienda Nube</strong> de forma manual y selectiva (solo si tu tienda tiene la integración conectada) — ver el detalle abajo.</li>
                         </ul>
 
                         <h3>Por qué existe cada cosa</h3>
                         <p>La <strong>importación por Excel</strong> evita cargar producto por producto al armar el catálogo. La opción de <strong>"no sumar stock" al reimportar</strong> permite corregir datos sin arriesgarse a duplicar cantidades. La <strong>transferencia entre tiendas</strong> es para negocios con más de una sucursal, que antes tenían que editar el stock a mano en las dos puntas.</p>
 
                         <div className="mu-callout warn">El Supervisor puede sumar stock a productos existentes, pero <b>no</b> puede cambiar precio, costo u otros datos, ni eliminar productos, ni transferir stock entre tiendas — esas acciones son solo del Administrador.</div>
+
+                        <h3>Vincular o publicar en Tienda Nube (manual y selectivo)</h3>
+                        <p>Si preferís armar la ficha del producto directamente en Tienda Nube (fotos, descripción, SEO) en vez de usar la publicación masiva, o si solo querés subir algunos productos puntuales y no todo el catálogo de una vez, tenés estas dos opciones — ambas aparecen <strong>solo si tu tienda tiene Tienda Nube conectado</strong> (Panel de Administración → Tienda Nube):</p>
+                        <ul>
+                            <li><strong>Vincular un producto ya creado en Tienda Nube:</strong> editá el producto en Total Stock, y en la sección "Tienda Nube" del formulario pegá el ID de ese producto (se ve en la URL cuando lo editás en el admin de Tienda Nube) y tocá "Vincular". Desde ese momento el stock se sincroniza solo.</li>
+                            <li><strong>Publicar productos elegidos (crearlos en Tienda Nube):</strong> tildá el checkbox de uno o varios productos en el listado (el mismo que usás para "Imprimir Etiquetas") y tocá "Publicar seleccionados en Tienda Nube" — crea solo esos, sin tocar el resto del catálogo.</li>
+                        </ul>
+                        <div className="mu-callout">Si el producto de Tienda Nube tiene varios talles/colores y en Total Stock lo tenías cargado como un producto suelto (sin variantes), al vincularlo el sistema lo convierte automáticamente en una familia con una variante por cada una de Tienda Nube. El stock de las nuevas variantes arranca en <b>0</b> — hay que redistribuirlo a mano según lo que tengas físicamente de cada una, porque no hay forma de saber cómo se repartía el número que tenías antes.</div>
+                        <div className="mu-callout warn">Si tildás una sola variante de una familia (por ejemplo, solo el talle S) para publicarla, Tienda Nube <b>no permite crear una familia a medias</b>: el sistema va a publicar juntas todas las variantes pendientes de esa misma familia, no solo la que tildaste.</div>
                     </div>
 
                     <div className="mu-meta">
