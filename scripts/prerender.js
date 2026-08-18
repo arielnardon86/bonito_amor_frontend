@@ -7,17 +7,24 @@
  * Corre como parte de `npm run build` (ver package.json). No toca rutas
  * de la app autenticada: esas ya están bloqueadas en robots.txt.
  *
- * IMPORTANTE sobre las URLs publicadas (sitemap, canonical, links internos):
- * tienen que llevar barra final ("/preguntas-frecuentes/"), no sin ella.
- * Render (el hosting) no lee un _redirects estilo Netlify -- solo resuelve
- * el index.html de una carpeta cuando la URL pedida termina en "/". Sin la
- * barra, cae al fallback SPA y sirve el contenido de la home. React Router
- * matchea igual ambas formas del lado del cliente, así que esto no afecta
- * la navegación una vez que la app ya cargó.
+ * IMPORTANTE sobre el routing en Render: Render no lee un _redirects estilo
+ * Netlify, y solo resuelve el index.html de una carpeta cuando la URL pedida
+ * termina en "/" -- sin la barra, cae al fallback SPA y sirve el contenido
+ * de la home. Como no toda referencia externa (links de terceros, IAs,
+ * gente escribiendo la URL a mano) va a usar la barra final, además de
+ * publicar todo con barra final (canonical/sitemap/links internos) hay que
+ * agregar una regla de tipo "Rewrite" por cada página nueva en el Dashboard
+ * de Render (Settings del static site → Redirects/Rewrites):
+ *   source: /ruta-de-la-pagina  →  destination: /ruta-de-la-pagina/index.html
+ * Esa configuración vive en Render, no en este repo -- no alcanza con
+ * agregar la ruta acá. React Router matchea ambas formas (con y sin barra)
+ * del lado del cliente, así que la navegación dentro de la app no se ve
+ * afectada.
  *
  * Para agregar una página nueva: sumarla a ROUTES acá, usar la URL con
- * barra final en su canonical/sitemap/links, y asegurarse de que su
- * contenido renderice sin depender de sesión/autenticación.
+ * barra final en su canonical/sitemap/links, agregar la regla de Rewrite
+ * en Render, y asegurarse de que su contenido renderice sin depender de
+ * sesión/autenticación.
  */
 
 const fs = require('fs');
