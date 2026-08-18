@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
@@ -461,10 +462,17 @@ const Productos = () => {
                 body,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            setEditProduct(prev => ({ ...prev, tn_product_id: data.tn_product_id, tn_variant_id: data.tn_variant_id }));
-            setTnVariantesParaElegir(null);
-            setTnVarianteElegida('');
-            setTnLinkInput('');
+            if (data.familia_creada) {
+                setShowEditModal(false);
+                setEditProduct(null);
+                await Swal.fire('Familia de variantes creada', data.mensaje, 'success');
+            } else {
+                setEditProduct(prev => ({ ...prev, tn_product_id: data.tn_product_id, tn_variant_id: data.tn_variant_id }));
+                setTnVariantesParaElegir(null);
+                setTnVarianteElegida('');
+                setTnLinkInput('');
+                await Swal.fire('Vinculado', data.mensaje, 'success');
+            }
             fetchProductos(currentPageUrl);
         } catch (err) {
             if (err.response?.status === 409 && err.response.data?.requiere_variante) {
@@ -495,6 +503,26 @@ const Productos = () => {
         }
     };
 
+    const handlePublicarSeleccionadosTN = async () => {
+        const idsSeleccionados = Object.keys(etiquetasSeleccionadas);
+        if (idsSeleccionados.length === 0) return;
+        const tiendaId = tiendasAutorizadas.find(t => t.nombre === selectedStoreSlug)?.id;
+        if (!tiendaId) return;
+        setLoadingProducts(true);
+        try {
+            const { data } = await axios.post(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaId}/tiendanube/export-products/`,
+                { producto_ids: idsSeleccionados },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            await Swal.fire('Tienda Nube', data.mensaje, 'success');
+            setEtiquetasSeleccionadas({});
+        } catch (err) {
+            setError('Error al publicar en Tienda Nube: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setLoadingProducts(false);
+        }
+    };
 
     const handleDeleteProduct = async (id) => {
         setLoadingProducts(true);
@@ -896,14 +924,28 @@ const Productos = () => {
             <div style={styles.section}>
                 <div style={styles.tableHeader}>
                     <h2 style={styles.sectionTitle}>Listado</h2>
-                    <button onClick={handleImprimirEtiquetas} style={styles.printButton}>
-                        Imprimir Etiquetas
-                        {Object.keys(etiquetasSeleccionadas).length > 0 && (
-                            <span style={{ marginLeft: 7, background: '#fff', color: '#1a7a3f', borderRadius: 10, padding: '1px 7px', fontSize: 12, fontWeight: 800 }}>
-                                {Object.keys(etiquetasSeleccionadas).length}
-                            </span>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button onClick={handleImprimirEtiquetas} style={styles.printButton}>
+                            Imprimir Etiquetas
+                            {Object.keys(etiquetasSeleccionadas).length > 0 && (
+                                <span style={{ marginLeft: 7, background: '#fff', color: '#1a7a3f', borderRadius: 10, padding: '1px 7px', fontSize: 12, fontWeight: 800 }}>
+                                    {Object.keys(etiquetasSeleccionadas).length}
+                                </span>
+                            )}
+                        </button>
+                        {tnConectado && Object.keys(etiquetasSeleccionadas).length > 0 && (
+                            <button
+                                onClick={handlePublicarSeleccionadosTN}
+                                disabled={loadingProducts}
+                                style={{ ...styles.printButton, backgroundColor: '#3b9ede' }}
+                            >
+                                Publicar seleccionados en Tienda Nube
+                                <span style={{ marginLeft: 7, background: '#fff', color: '#1a7a3f', borderRadius: 10, padding: '1px 7px', fontSize: 12, fontWeight: 800 }}>
+                                    {Object.keys(etiquetasSeleccionadas).length}
+                                </span>
+                            </button>
                         )}
-                    </button>
+                    </div>
                 </div>
                 <div style={styles.filtersContainer}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
@@ -1382,7 +1424,7 @@ const Productos = () => {
                                 ) : (
                                     <>
                                         <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 8px' }}>
-                                            Si ya creaste este producto directamente en Tienda Nube, pegá acá su ID para vincularlo (el stock se sincroniza solo desde ese momento).
+                                            Si ya creaste este producto directamente en Tienda Nube, pegá acá su ID para vincularlo (el stock se sincroniza solo desde ese momento). Si en Tienda Nube tiene varios talles/variantes, se van a crear automáticamente acá también (con stock en 0 para redistribuir a mano).
                                         </p>
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <input
