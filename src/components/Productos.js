@@ -649,13 +649,7 @@ const Productos = () => {
                 : (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
             : productos;
         const seleccionadas = {};
-        visibles.forEach(p => {
-            if (p.variantes && p.variantes.length > 0) {
-                p.variantes.forEach(v => { seleccionadas[v.id] = true; });
-            } else {
-                seleccionadas[p.id] = true;
-            }
-        });
+        visibles.forEach(p => { seleccionadas[p.id] = true; });
         setEtiquetasSeleccionadas(seleccionadas);
     };
 
@@ -673,27 +667,43 @@ const Productos = () => {
     };
 
     const handleConfirmarEtiquetas = () => {
-        const productosParaImprimir = Object.entries(cantidadesModal)
-            .filter(([, cantidad]) => cantidad > 0)
-            .map(([id, cantidad]) => {
-                // Buscar primero en productos raíz, luego en variantes anidadas
-                let producto = productos.find(p => String(p.id) === String(id));
-                if (!producto) {
-                    for (const padre of productos) {
-                        const variante = (padre.variantes || []).find(v => String(v.id) === String(id));
-                        if (variante) {
-                            producto = {
-                                ...variante,
-                                nombre: padre.nombre,
-                                variante_detalle: variante.talle || '',
-                            };
-                            break;
-                        }
-                    }
+        const productosParaImprimir = [];
+        Object.entries(cantidadesModal).forEach(([id, cantidadRaw]) => {
+            const cantidad = parseInt(cantidadRaw, 10);
+            if (!(cantidad > 0)) return;
+
+            const producto = productos.find(p => String(p.id) === String(id));
+            if (producto) {
+                if (producto.variantes && producto.variantes.length > 0) {
+                    // Es un padre con familia de variantes: una etiqueta por cada
+                    // variante, con la cantidad tipeada aplicada a todas por igual.
+                    producto.variantes.forEach(v => {
+                        productosParaImprimir.push({
+                            ...v,
+                            nombre: producto.nombre,
+                            variante_detalle: v.talle || '',
+                            labelQuantity: cantidad,
+                        });
+                    });
+                } else {
+                    productosParaImprimir.push({ ...producto, labelQuantity: cantidad });
                 }
-                return producto ? { ...producto, labelQuantity: parseInt(cantidad, 10) } : null;
-            })
-            .filter(Boolean);
+                return;
+            }
+            // Compatibilidad: por si algún id seleccionado fuera una variante suelta
+            for (const padre of productos) {
+                const variante = (padre.variantes || []).find(v => String(v.id) === String(id));
+                if (variante) {
+                    productosParaImprimir.push({
+                        ...variante,
+                        nombre: padre.nombre,
+                        variante_detalle: variante.talle || '',
+                        labelQuantity: cantidad,
+                    });
+                    break;
+                }
+            }
+        });
         if (productosParaImprimir.length > 0) {
             setShowEtiquetasModal(false);
             navigate('/etiquetas', { state: { productosParaImprimir } });
@@ -1076,14 +1086,13 @@ const Productos = () => {
                                         <React.Fragment key={producto.id}>
                                         <tr style={producto.stock <= STOCK_BAJO_THRESHOLD && !tieneVars ? { background: '#fef9ec' } : tieneVars ? { background: '#f0faf5' } : {}}>
                                             <td style={{ ...styles.td, textAlign: 'center' }}>
-                                                {!tieneVars && (
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={!!etiquetasSeleccionadas[producto.id]}
-                                                        onChange={(e) => handleToggleEtiqueta(producto.id, e.target.checked)}
-                                                        style={{ width: 16, height: 16, cursor: 'pointer' }}
-                                                    />
-                                                )}
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!etiquetasSeleccionadas[producto.id]}
+                                                    onChange={(e) => handleToggleEtiqueta(producto.id, e.target.checked)}
+                                                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                                                    title={tieneVars ? 'Selecciona todas las variantes de esta familia' : undefined}
+                                                />
                                             </td>
                                             <td style={{ ...styles.td, color: '#475569' }}>
                                                 {producto.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
@@ -1215,14 +1224,7 @@ const Productos = () => {
                                             const vMargenColor = vMargen === null ? '#94a3b8' : vMargen >= 30 ? '#1a6a40' : vMargen >= 15 ? '#d97706' : '#e25252';
                                             return (
                                                 <tr key={v.id} style={{ background: '#f8fafc', borderLeft: '2px solid #a8e6c5' }}>
-                                                    <td style={{ ...styles.td, textAlign: 'center' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={!!etiquetasSeleccionadas[v.id]}
-                                                            onChange={(e) => handleToggleEtiqueta(v.id, e.target.checked)}
-                                                            style={{ width: 16, height: 16, cursor: 'pointer' }}
-                                                        />
-                                                    </td>
+                                                    <td style={styles.td}></td>
                                                     <td style={{ ...styles.td, color: '#475569' }}>
                                                         {v.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
                                                     </td>
@@ -1593,11 +1595,15 @@ const Productos = () => {
             {showEtiquetasModal && (
                 <div style={styles.modalOverlay} onClick={() => setShowEtiquetasModal(false)}>
                     <div style={{ ...styles.modalContent, maxWidth: 420 }} onClick={e => e.stopPropagation()}>
-                        <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: '1rem', fontWeight: 700 }}>¿Cuántas etiquetas imprimir?</h3>
+                        <h3 style={{ marginTop: 0, marginBottom: 4, fontSize: '1rem', fontWeight: 700 }}>¿Cuántas etiquetas imprimir?</h3>
+                        <p style={{ marginTop: 0, marginBottom: 16, fontSize: 12.5, color: '#64748b' }}>
+                            Para productos con variantes, la cantidad se aplica a cada variante de la familia.
+                        </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 340, overflowY: 'auto', paddingRight: 4 }}>
                             {Object.keys(cantidadesModal).map(id => {
                                 let producto = productos.find(p => String(p.id) === String(id));
                                 let nombreDisplay = producto?.nombre;
+                                const esFamilia = !!(producto?.variantes && producto.variantes.length > 0);
                                 if (!producto) {
                                     for (const padre of productos) {
                                         const v = (padre.variantes || []).find(v => String(v.id) === String(id));
@@ -1609,6 +1615,11 @@ const Productos = () => {
                                     <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                                         <span style={{ fontSize: 14, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {nombreDisplay}
+                                            {esFamilia && (
+                                                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>
+                                                    {' '}({producto.variantes.length} variantes)
+                                                </span>
+                                            )}
                                         </span>
                                         <input
                                             type="number"
