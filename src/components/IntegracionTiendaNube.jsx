@@ -384,7 +384,7 @@ export default function IntegracionTiendaNube() {
                     <p style={{ ...s.cardDesc, marginBottom: 0 }}>
                         <strong>Publicar</strong>: crea en TN los productos que no están aún.
                         <strong> Importar</strong>: vincula los de TN con los de Total Stock por SKU o nombre.
-                        Para vincular manualmente un producto existente, editalo en Gestión de Productos e ingresá su ID de variante de Tienda Nube.
+                        Para vincular manualmente un producto que ya creaste vos mismo en Tienda Nube, editalo en Gestión de Productos e ingresá su ID de producto de Tienda Nube.
                     </p>
                 </div>
             )}
