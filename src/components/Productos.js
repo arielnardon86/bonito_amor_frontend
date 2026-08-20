@@ -49,6 +49,7 @@ const Productos = () => {
         costo: '',
         stock: '',
         codigo_barras: '',
+        codigo_interno: '',
         iva_porcentaje: '',
         rubro: '',
     });
@@ -385,6 +386,7 @@ const Productos = () => {
                     iva_porcentaje: newProduct.iva_porcentaje === '' ? null : newProduct.iva_porcentaje,
                     rubro: newProduct.rubro || null,
                     codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
+                    codigo_interno: newProduct.codigo_interno.trim() || null,
                     tienda_slug: selectedStoreSlug,
                     talle: null,
                 };
@@ -393,7 +395,7 @@ const Productos = () => {
                 });
             }
 
-            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', iva_porcentaje: '', rubro: '' });
+            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', codigo_interno: '', iva_porcentaje: '', rubro: '' });
             setTieneVariantes(false);
             setVariantesNuevas([{ talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }]);
             setBarcodeNombreSugerido('');
@@ -794,6 +796,19 @@ const Productos = () => {
                                 Nombre auto-completado desde otra sucursal
                             </span>
                         )}
+                    </div>
+                    )}
+                    {!tieneVariantes && (
+                    <div style={{ ...styles.inputGroup, flex: '0 1 130px' }}>
+                        <label style={styles.label}>Código interno (Opcional)</label>
+                        <input
+                            type="text"
+                            maxLength={100}
+                            value={newProduct.codigo_interno}
+                            onChange={(e) => setNewProduct({ ...newProduct, codigo_interno: e.target.value })}
+                            style={styles.input}
+                            placeholder="Ej: A123"
+                        />
                     </div>
                     )}
                     <div style={styles.inputGroup}>
