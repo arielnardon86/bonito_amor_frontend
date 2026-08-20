@@ -32,9 +32,13 @@ const TicketCambioImpresion = () => {
             // Header
             const headerDiv = document.createElement('div');
             headerDiv.className = 'header';
+            // Con logo, el nombre de la tienda pasa a un segundo plano (el logo ya la identifica)
+            const tiendaNombreStyle = venta.tienda_logo
+                ? 'font-size: 2.8mm; font-weight: normal; color: #555;'
+                : 'font-size: 4mm; font-weight: bold; color: #000;';
             headerDiv.innerHTML = `
                 ${venta.tienda_logo ? `<img src="${venta.tienda_logo}" alt="Logo" style="max-width: 25mm; max-height: 15mm; display: block; margin: 0 auto 2mm; object-fit: contain;" />` : ''}
-                <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none; text-align: center; margin: 0;">
+                <h2 style="${tiendaNombreStyle} -webkit-font-smoothing: none; text-align: center; margin: 0;">
                     ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}
                 </h2>
                 <p style="font-size: 3.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none; text-align: center; margin: 5px 0;">

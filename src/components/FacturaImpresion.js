@@ -160,19 +160,26 @@ const FacturaImpresion = () => {
                 }
             }
 
+            const facturaLogo = factura.tienda_logo || venta?.tienda_logo;
+            // Con logo, el nombre de la tienda pasa a un segundo plano (el logo ya la identifica)
+            const tiendaNombreStyle = facturaLogo
+                ? 'font-size: 3mm; font-weight: normal; color: #555;'
+                : 'font-size: 5mm; font-weight: bold; color: #000;';
             facturaRef.current.innerHTML = `
                 <div class="invoice" style="font-family: Arial, sans-serif; max-width: 80mm; margin: 0 auto; padding: 5mm;">
                     <div class="header" style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5mm; margin-bottom: 5mm;">
-                        ${(factura.tienda_logo || venta?.tienda_logo) ? `<img src="${factura.tienda_logo || venta.tienda_logo}" alt="Logo" style="max-width: 25mm; max-height: 15mm; display: block; margin: 0 auto 2mm; object-fit: contain;" />` : ''}
-                        <div style="display:flex;justify-content:center;margin-bottom:2mm;">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 130" width="28mm" style="display:block;">
-                                <circle cx="110" cy="65" r="58" fill="none" stroke="#000" stroke-width="2.5"/>
-                                <circle cx="52" cy="65" r="7" fill="#000"/>
-                                <circle cx="168" cy="65" r="7" fill="#000"/>
-                                <text x="110" y="85" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="52" font-weight="900" fill="#000" letter-spacing="1">ARCA</text>
-                            </svg>
-                        </div>
-                        <h1 style="font-size: 5mm; font-weight: bold; color: #000; margin: 0; -webkit-font-smoothing: none;">${factura.tienda_nombre || 'N/A'}</h1>
+                        ${facturaLogo
+                            ? `<img src="${facturaLogo}" alt="Logo" style="max-width: 25mm; max-height: 15mm; display: block; margin: 0 auto 2mm; object-fit: contain;" />`
+                            : `<div style="display:flex;justify-content:center;margin-bottom:2mm;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 130" width="28mm" style="display:block;">
+                                    <circle cx="110" cy="65" r="58" fill="none" stroke="#000" stroke-width="2.5"/>
+                                    <circle cx="52" cy="65" r="7" fill="#000"/>
+                                    <circle cx="168" cy="65" r="7" fill="#000"/>
+                                    <text x="110" y="85" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="52" font-weight="900" fill="#000" letter-spacing="1">ARCA</text>
+                                </svg>
+                            </div>`
+                        }
+                        <h1 style="${tiendaNombreStyle} margin: 0; -webkit-font-smoothing: none;">${factura.tienda_nombre || 'N/A'}</h1>
                         <p style="font-size: 4mm; font-weight: bold; color: #000; margin: 2mm 0; -webkit-font-smoothing: none;">${tipoFacturaText}</p>
                         ${factura.tienda_cuit ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;">CUIT: ${factura.tienda_cuit}</p>` : ''}
                         ${factura.tienda_direccion ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;">${factura.tienda_direccion}</p>` : ''}
