@@ -1128,6 +1128,7 @@ const PuntoVenta = () => {
                         ...response.data,
                         tienda_nombre: selectedStoreSlug,
                         tienda_direccion: tiendaInfo?.direccion || null,
+                        tienda_logo: tiendaInfo?.logo || null,
                         descuento_porcentaje: datosAjusteParaBackend.descuento_porcentaje,
                         descuento_monto: datosAjusteParaBackend.descuento_monto,
                         recargo_porcentaje: datosAjusteParaBackend.recargo_porcentaje,

@@ -33,6 +33,7 @@ const TicketCambioImpresion = () => {
             const headerDiv = document.createElement('div');
             headerDiv.className = 'header';
             headerDiv.innerHTML = `
+                ${venta.tienda_logo ? `<img src="${venta.tienda_logo}" alt="Logo" style="max-width: 25mm; max-height: 15mm; display: block; margin: 0 auto 2mm; object-fit: contain;" />` : ''}
                 <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none; text-align: center; margin: 0;">
                     ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}
                 </h2>

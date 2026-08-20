@@ -163,6 +163,7 @@ const FacturaImpresion = () => {
             facturaRef.current.innerHTML = `
                 <div class="invoice" style="font-family: Arial, sans-serif; max-width: 80mm; margin: 0 auto; padding: 5mm;">
                     <div class="header" style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5mm; margin-bottom: 5mm;">
+                        ${(factura.tienda_logo || venta?.tienda_logo) ? `<img src="${factura.tienda_logo || venta.tienda_logo}" alt="Logo" style="max-width: 25mm; max-height: 15mm; display: block; margin: 0 auto 2mm; object-fit: contain;" />` : ''}
                         <div style="display:flex;justify-content:center;margin-bottom:2mm;">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 130" width="28mm" style="display:block;">
                                 <circle cx="110" cy="65" r="58" fill="none" stroke="#000" stroke-width="2.5"/>

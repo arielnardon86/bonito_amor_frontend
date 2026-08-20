@@ -677,6 +677,7 @@ const CambioDevolucion = () => {
                     const ventaParaRecibo = {
                         ...ventaResponse.data,
                         tienda_nombre: tiendaOperativaSlug,
+                        tienda_logo: tiendaInfo?.logo || null,
                         descuento_porcentaje: datosAjusteParaBackend.descuento_porcentaje,
                         descuento_monto: datosAjusteParaBackend.descuento_monto,
                         recargo_porcentaje: datosAjusteParaBackend.recargo_porcentaje,

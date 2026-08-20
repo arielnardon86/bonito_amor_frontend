@@ -89,6 +89,7 @@ const ReciboImpresion = () => {
             reciboRef.current.innerHTML = `
                 <div class="receipt">
                     <div class="header">
+                        ${venta.tienda_logo ? `<img src="${venta.tienda_logo}" alt="Logo" style="max-width: 25mm; max-height: 15mm; display: block; margin: 0 auto 2mm; object-fit: contain;" />` : ''}
                         <h2 style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${tituloRecibo}</h2>
                         <p style="font-size: 2.8mm; font-weight: normal; text-align: center; color: #000; -webkit-font-smoothing: none;">Documento no válido como comprobante fiscal</p>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tienda: ${venta.tienda_nombre || venta.tienda_slug || 'N/A'}</p>
