@@ -508,6 +508,18 @@ const Productos = () => {
         if (idsSeleccionados.length === 0) return;
         const tiendaId = tiendasAutorizadas.find(t => t.nombre === selectedStoreSlug)?.id;
         if (!tiendaId) return;
+
+        const confirm = await Swal.fire({
+            title: 'Publicar en Tienda Nube',
+            text: 'Si alguno de los productos seleccionados tiene variantes (talle, color, etc.), se va a publicar la familia completa con todas sus variantes, aunque hayas tildado solo una.',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'Entendido, publicar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#5dc87a',
+        });
+        if (!confirm.isConfirmed) return;
+
         setLoadingProducts(true);
         try {
             const { data } = await axios.post(
@@ -1224,7 +1236,15 @@ const Productos = () => {
                                             const vMargenColor = vMargen === null ? '#94a3b8' : vMargen >= 30 ? '#1a6a40' : vMargen >= 15 ? '#d97706' : '#e25252';
                                             return (
                                                 <tr key={v.id} style={{ background: '#f8fafc', borderLeft: '2px solid #a8e6c5' }}>
-                                                    <td style={styles.td}></td>
+                                                    <td style={{ ...styles.td, textAlign: 'center' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!!etiquetasSeleccionadas[v.id]}
+                                                            onChange={(e) => handleToggleEtiqueta(v.id, e.target.checked)}
+                                                            style={{ width: 16, height: 16, cursor: 'pointer' }}
+                                                            title="Selecciona solo esta variante"
+                                                        />
+                                                    </td>
                                                     <td style={{ ...styles.td, color: '#475569' }}>
                                                         {v.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
                                                     </td>
