@@ -88,9 +88,12 @@ const EtiquetasImpresion = () => {
 
                 const precioLista = parseFloat(producto.precio) || 0;
                 let precioEfectivo = aplicarDescuento ? precioLista * (1 - pctDescuento / 100) : precioLista;
-                if (aplicarDescuento && descuentoRedondeo === 'abajo') {
+                // El redondeo a múltiplo de 100 solo tiene sentido para precios ya en ese
+                // orden de magnitud: en precios chicos (< $100) Math.floor(precio/100)*100
+                // daba $0, y Math.ceil directamente triplicaba/decuplicaba el precio real.
+                if (aplicarDescuento && precioEfectivo >= 100 && descuentoRedondeo === 'abajo') {
                     precioEfectivo = Math.floor(precioEfectivo / 100) * 100;
-                } else if (aplicarDescuento && descuentoRedondeo === 'arriba') {
+                } else if (aplicarDescuento && precioEfectivo >= 100 && descuentoRedondeo === 'arriba') {
                     precioEfectivo = Math.ceil(precioEfectivo / 100) * 100;
                 }
                 const precioHtml = aplicarDescuento
