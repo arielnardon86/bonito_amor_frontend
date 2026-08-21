@@ -276,6 +276,18 @@ export const AuthProvider = ({ children }) => {
         setUser(prev => prev ? { ...prev, ...updates } : prev);
     }, []);
 
+    // Reemplaza el par de tokens guardado (ej. tras update-email, que reemite el JWT
+    // con el claim actualizado). Sin esto, el `user` derivado de decodificar el JWT
+    // queda con el valor viejo hasta el próximo login real, aunque updateUser()
+    // ya haya parchado el estado en memoria — el refresh silencioso solo copia los
+    // claims del token anterior, no los vuelve a leer de la base.
+    const updateTokens = useCallback((newAccess, newRefresh) => {
+        localStorage.setItem('token', newAccess);
+        if (newRefresh) localStorage.setItem('refreshToken', newRefresh);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${newAccess}`;
+        setToken(newAccess);
+    }, []);
+
     // El nombre de la tienda funciona como su identificador (tienda_slug) en toda la
     // app. Cuando un cliente lo cambia desde el panel, hay que reflejarlo acá para que
     // la sesión actual (selectedStoreSlug + tiendasAutorizadas) siga funcionando sin
@@ -307,6 +319,7 @@ export const AuthProvider = ({ children }) => {
         error: authError,
         clearError,
         updateUser,
+        updateTokens,
         renombrarTiendaLocal,
         sessionLocked,
         lockSession,

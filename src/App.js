@@ -434,7 +434,7 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
 };
 
 const AppContent = () => {
-  const { isAuthenticated, loading, selectedStoreSlug, user, token, sessionLocked, unlockSession, logout, tiendasAutorizadas, selectStore, updateUser } = useAuth();
+  const { isAuthenticated, loading, selectedStoreSlug, user, token, sessionLocked, unlockSession, logout, tiendasAutorizadas, selectStore, updateUser, updateTokens } = useAuth();
   const navigate = useNavigate();
   const [mostrarModalCambioInicial, setMostrarModalCambioInicial] = useState(false);
   const [cambioInicialInput, setCambioInicialInput] = useState('');
@@ -490,9 +490,15 @@ const AppContent = () => {
     }
     setGuardandoEmail(true);
     try {
-      await axios.patch(`${BASE_API_URL}/api/auth/update-email/`, { email: emailPendiente.trim().toLowerCase() }, {
+      const { data } = await axios.patch(`${BASE_API_URL}/api/auth/update-email/`, { email: emailPendiente.trim().toLowerCase() }, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      // El backend reemite el JWT con el email actualizado: sin esto, el próximo
+      // reload/refresh silencioso volvía a leer el email viejo del token guardado
+      // y el modal reaparecía aunque el email ya estuviera guardado en la base.
+      if (data?.access) {
+        updateTokens(data.access, data.refresh);
+      }
       updateUser({ email: emailPendiente.trim().toLowerCase() });
       setEmailPendiente('');
     } catch (err) {
