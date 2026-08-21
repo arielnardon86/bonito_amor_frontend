@@ -415,9 +415,22 @@ async function createWidget(data, size) {
 
   const brandRow = w.addStack();
   brandRow.centerAlignContent();
-  const label = brandRow.addText("TOTAL STOCK");
+  if (data.tienda_logo) {
+    try {
+      const base64Logo = data.tienda_logo.replace(/^data:image\\/\\w+;base64,/, "");
+      const logoImage = Image.fromData(Data.fromBase64String(base64Logo));
+      const logoWidget = brandRow.addImage(logoImage);
+      logoWidget.imageSize = new Size(16, 16);
+      logoWidget.cornerRadius = 4;
+      brandRow.addSpacer(6);
+    } catch (e) {
+      // Si el logo no se pudo decodificar, seguimos mostrando solo el nombre.
+    }
+  }
+  const label = brandRow.addText((data.tienda_nombre || "Total Stock").toUpperCase());
   label.font = Font.boldSystemFont(10);
   label.textColor = TEXT_DIM;
+  label.lineLimit = 1;
   brandRow.addSpacer();
   if (size !== "small") {
     const dot = brandRow.addText("●");
