@@ -501,6 +501,16 @@ Script.complete();
         }
     };
 
+    const handleCopiarUrlWidgetAndroid = async () => {
+        if (!tiendaInfo?.widget_token) return;
+        try {
+            await navigator.clipboard.writeText(buildWidgetUrl(tiendaInfo.widget_token));
+            Swal.fire({ title: 'URL copiada', text: 'Pegala como URL del acceso directo en HTTP Shortcuts.', icon: 'success', timer: 2000, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire('Error', 'No se pudo copiar la URL. Probá de nuevo.', 'error');
+        }
+    };
+
     // Guardar configuración básica ARCA (paso 1, y también reutilizado en el paso 5 para el punto de venta)
     const handleGuardarConfigAfip = useCallback(async (siguientePaso = 2) => {
         if (!tiendaInfo?.id) return;
@@ -1729,78 +1739,6 @@ Script.complete();
                         </div>
                     </div>
 
-                    <div style={{
-                        background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12,
-                        padding: '20px 24px', marginBottom: 24,
-                    }}>
-                        <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#1a2926' }}>Widget de ventas (iPhone)</h3>
-                        <p style={{ color: '#94a3b8', fontSize: 12.5, marginTop: 0, marginBottom: 14, maxWidth: 480 }}>
-                            Mostrá el total vendido hoy en la pantalla de inicio de tu iPhone, con la app gratuita
-                            Scriptable. Usa un token de solo lectura, separado de tu login — lo podés regenerar
-                            cuando quieras sin afectar tu cuenta.
-                        </p>
-
-                        {tiendaInfo?.widget_token ? (
-                            <>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                                    <code style={{
-                                        background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6,
-                                        padding: '6px 10px', fontSize: 12.5, color: '#475569',
-                                        maxWidth: 340, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                    }}>
-                                        {mostrarWidgetToken ? tiendaInfo.widget_token : '•'.repeat(28)}
-                                    </code>
-                                    <button
-                                        onClick={() => setMostrarWidgetToken(v => !v)}
-                                        style={{ background: 'none', border: 'none', color: '#3b9ede', fontSize: 12.5, cursor: 'pointer', fontWeight: 600 }}
-                                    >
-                                        {mostrarWidgetToken ? 'Ocultar' : 'Mostrar'}
-                                    </button>
-                                </div>
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                    <button
-                                        onClick={handleCopiarScriptScriptable}
-                                        style={{
-                                            padding: '9px 16px', borderRadius: 8, border: 'none',
-                                            background: '#5dc87a', color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-                                        }}
-                                    >
-                                        Copiar script para Scriptable
-                                    </button>
-                                    <button
-                                        onClick={handleRegenerarWidgetToken}
-                                        disabled={regenerandoWidgetToken}
-                                        style={{
-                                            padding: '9px 16px', borderRadius: 8, border: '1px solid #e2e8f0',
-                                            background: '#fff', color: '#475569', fontSize: 13.5, fontWeight: 600,
-                                            cursor: regenerandoWidgetToken ? 'not-allowed' : 'pointer',
-                                        }}
-                                    >
-                                        {regenerandoWidgetToken ? 'Generando...' : 'Regenerar token'}
-                                    </button>
-                                </div>
-                                <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 12, marginBottom: 0, lineHeight: 1.5, maxWidth: 480 }}>
-                                    1) Instalá <strong>Scriptable</strong> desde la App Store (gratis).{' '}
-                                    2) Abrila, creá un script nuevo y pegá lo que copiaste.{' '}
-                                    3) Desde la pantalla de inicio, agregá un widget y elegí Scriptable → este script.
-                                    iOS decide cada cuánto lo actualiza (no es al instante).
-                                </p>
-                            </>
-                        ) : (
-                            <button
-                                onClick={handleRegenerarWidgetToken}
-                                disabled={regenerandoWidgetToken}
-                                style={{
-                                    padding: '9px 20px', borderRadius: 8, border: 'none',
-                                    background: regenerandoWidgetToken ? '#94a3b8' : '#5dc87a', color: '#fff',
-                                    fontSize: 14, fontWeight: 600, cursor: regenerandoWidgetToken ? 'not-allowed' : 'pointer',
-                                }}
-                            >
-                                {regenerandoWidgetToken ? 'Generando...' : 'Generar token del widget'}
-                            </button>
-                        )}
-                    </div>
-
                     <div style={styles.sectionHeader} className="panel-admin-section-header">
                         <button onClick={() => {
                             setEditingUser(null);
@@ -2055,6 +1993,112 @@ Script.complete();
                     </div>
                         );
                     })()}
+
+                    <div style={{
+                        background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12,
+                        padding: '20px 24px', marginTop: 24,
+                    }}>
+                        <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#1a2926' }}>Widget de ventas en el celular</h3>
+                        <p style={{ color: '#94a3b8', fontSize: 12.5, marginTop: 0, marginBottom: 14, maxWidth: 560 }}>
+                            Mostrá el total vendido hoy en la pantalla de inicio de tu celular (iPhone o Android),
+                            sin abrir Total Stock. Usa un token de solo lectura, separado de tu login — lo podés
+                            regenerar cuando quieras sin afectar tu cuenta.
+                        </p>
+
+                        {tiendaInfo?.widget_token ? (
+                            <>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                                    <code style={{
+                                        background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6,
+                                        padding: '6px 10px', fontSize: 12.5, color: '#475569',
+                                        maxWidth: 340, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                    }}>
+                                        {mostrarWidgetToken ? tiendaInfo.widget_token : '•'.repeat(28)}
+                                    </code>
+                                    <button
+                                        onClick={() => setMostrarWidgetToken(v => !v)}
+                                        style={{ background: 'none', border: 'none', color: '#3b9ede', fontSize: 12.5, cursor: 'pointer', fontWeight: 600 }}
+                                    >
+                                        {mostrarWidgetToken ? 'Ocultar' : 'Mostrar'}
+                                    </button>
+                                    <button
+                                        onClick={handleRegenerarWidgetToken}
+                                        disabled={regenerandoWidgetToken}
+                                        style={{
+                                            padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0',
+                                            background: '#fff', color: '#475569', fontSize: 12.5, fontWeight: 600,
+                                            cursor: regenerandoWidgetToken ? 'not-allowed' : 'pointer',
+                                        }}
+                                    >
+                                        {regenerandoWidgetToken ? 'Generando...' : 'Regenerar token'}
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+                                    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 16px' }}>
+                                        <p style={{ margin: '0 0 10px', fontSize: 13.5, fontWeight: 700, color: '#1a2926' }}>📱 iPhone (Scriptable)</p>
+                                        <button
+                                            onClick={handleCopiarScriptScriptable}
+                                            style={{
+                                                padding: '8px 14px', borderRadius: 8, border: 'none', marginBottom: 10,
+                                                background: '#5dc87a', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                                            }}
+                                        >
+                                            Copiar script para Scriptable
+                                        </button>
+                                        <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#64748b', lineHeight: 1.7 }}>
+                                            <li>Descargá <strong>Scriptable</strong> desde la App Store (gratis).</li>
+                                            <li>Tocá "Copiar script para Scriptable" acá arriba.</li>
+                                            <li>Abrí Scriptable y tocá el "+" para crear un script nuevo.</li>
+                                            <li>Mantené presionado el área de texto → Pegar → "Listo".</li>
+                                            <li>Ponele un nombre, ej. "Ventas Total Stock".</li>
+                                            <li>En la pantalla de inicio, mantené presionado un espacio vacío → "+" → buscá "Scriptable" y elegí el tamaño.</li>
+                                            <li>Tocá el widget agregado → "Editar widget" → elegí ese script.</li>
+                                        </ol>
+                                    </div>
+
+                                    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 16px' }}>
+                                        <p style={{ margin: '0 0 10px', fontSize: 13.5, fontWeight: 700, color: '#1a2926' }}>🤖 Android (HTTP Shortcuts)</p>
+                                        <button
+                                            onClick={handleCopiarUrlWidgetAndroid}
+                                            style={{
+                                                padding: '8px 14px', borderRadius: 8, border: 'none', marginBottom: 10,
+                                                background: '#5dc87a', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                                            }}
+                                        >
+                                            Copiar URL para Android
+                                        </button>
+                                        <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#64748b', lineHeight: 1.7 }}>
+                                            <li>Descargá <strong>HTTP Shortcuts</strong> desde Google Play (gratis).</li>
+                                            <li>Tocá "Copiar URL para Android" acá arriba.</li>
+                                            <li>Abrí la app y tocá el "+" para crear un acceso directo nuevo.</li>
+                                            <li>Pegá la URL en el campo "URL", dejá el método en "GET" y guardá.</li>
+                                            <li>En la pantalla de inicio, mantené presionado un espacio vacío → Widgets → buscá "HTTP Shortcuts".</li>
+                                            <li>Arrastrá el widget y elegí el acceso directo que creaste.</li>
+                                            <li>Desde el ícono de engranaje del widget podés elegir cada cuánto se actualiza.</li>
+                                        </ol>
+                                        <p style={{ margin: '10px 0 0', fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
+                                            A diferencia de Scriptable, HTTP Shortcuts muestra la respuesta tal cual llega
+                                            (no el mismo diseño con logo). Si algún paso no coincide exactamente con tu
+                                            versión de la app, avisame y lo ajustamos.
+                                        </p>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <button
+                                onClick={handleRegenerarWidgetToken}
+                                disabled={regenerandoWidgetToken}
+                                style={{
+                                    padding: '9px 20px', borderRadius: 8, border: 'none',
+                                    background: regenerandoWidgetToken ? '#94a3b8' : '#5dc87a', color: '#fff',
+                                    fontSize: 14, fontWeight: 600, cursor: regenerandoWidgetToken ? 'not-allowed' : 'pointer',
+                                }}
+                            >
+                                {regenerandoWidgetToken ? 'Generando...' : 'Generar token del widget'}
+                            </button>
+                        )}
+                    </div>
                 </div>
             )}
 
