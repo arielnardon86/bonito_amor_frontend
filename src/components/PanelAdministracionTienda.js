@@ -133,6 +133,10 @@ const PanelAdministracionTienda = () => {
     const [guardandoDatosTienda, setGuardandoDatosTienda] = useState(false);
     const [errorDatosTienda, setErrorDatosTienda] = useState('');
 
+    // Widget de ventas del día para iPhone (Scriptable)
+    const [mostrarWidgetToken, setMostrarWidgetToken] = useState(false);
+    const [regenerandoWidgetToken, setRegenerandoWidgetToken] = useState(false);
+
     // Estados para el wizard de facturación ARCA
     const [afipEstado, setAfipEstado] = useState(null); // resultado de facturacion/estado
     const [afipPasoActivo, setAfipPasoActivo] = useState(1);
@@ -337,6 +341,163 @@ const PanelAdministracionTienda = () => {
             setErrorDatosTienda(err.response?.data?.error || 'No se pudieron guardar los cambios. Intentá de nuevo.');
         } finally {
             setGuardandoDatosTienda(false);
+        }
+    };
+
+    const buildWidgetUrl = (widgetToken) => `${BASE_API_ENDPOINT}/api/widget/ventas-hoy/?token=${widgetToken}`;
+
+    const handleRegenerarWidgetToken = async () => {
+        const teniaTokenPrevio = !!tiendaInfo?.widget_token;
+        if (teniaTokenPrevio) {
+            const confirm = await Swal.fire({
+                title: 'Regenerar token del widget',
+                text: 'El widget que ya tengas instalado en el iPhone va a dejar de funcionar hasta que lo actualices con el nuevo token/script.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, regenerar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#e25252',
+            });
+            if (!confirm.isConfirmed) return;
+        }
+        setRegenerandoWidgetToken(true);
+        try {
+            const { data } = await axios.post(`${BASE_API_ENDPOINT}/api/tienda/widget-token/regenerar/`,
+                { tienda_slug: selectedStoreSlug },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setTiendaInfo(prev => prev ? { ...prev, widget_token: data.widget_token } : prev);
+            setMostrarWidgetToken(true);
+            await Swal.fire({
+                title: teniaTokenPrevio ? 'Token regenerado' : 'Token generado',
+                text: 'Copiá el script actualizado y pegalo en Scriptable para que el widget vuelva a funcionar.',
+                icon: 'success',
+            });
+        } catch (err) {
+            Swal.fire('Error', 'No se pudo generar el token. Intentá de nuevo.', 'error');
+        } finally {
+            setRegenerandoWidgetToken(false);
+        }
+    };
+
+    const handleCopiarScriptScriptable = async () => {
+        if (!tiendaInfo?.widget_token) return;
+        const url = buildWidgetUrl(tiendaInfo.widget_token);
+        const script = `// Total Stock — Ventas de hoy
+// Widget generado automáticamente. Agregalo como widget chico o mediano.
+
+const WIDGET_URL = "${url}";
+
+const BG = new Color("#11201a");
+const BG2 = new Color("#16281f");
+const TEXT = Color.white();
+const TEXT_DIM = new Color("#ffffff", 0.6);
+const LIVE_DOT = new Color("#ff5c5c");
+
+function formatMonto(n) {
+  const num = Math.round(parseFloat(n) || 0);
+  return "$" + num.toLocaleString("es-AR");
+}
+
+async function fetchData() {
+  const req = new Request(WIDGET_URL);
+  req.timeoutInterval = 10;
+  return await req.loadJSON();
+}
+
+async function createWidget(data, size) {
+  const w = new ListWidget();
+  const gradient = new LinearGradient();
+  gradient.colors = [BG2, BG];
+  gradient.locations = [0, 1];
+  w.backgroundGradient = gradient;
+  w.setPadding(14, 14, 12, 14);
+
+  const brandRow = w.addStack();
+  brandRow.centerAlignContent();
+  const label = brandRow.addText("TOTAL STOCK");
+  label.font = Font.boldSystemFont(10);
+  label.textColor = TEXT_DIM;
+  brandRow.addSpacer();
+  if (size !== "small") {
+    const dot = brandRow.addText("●");
+    dot.font = Font.systemFont(8);
+    dot.textColor = LIVE_DOT;
+  }
+
+  w.addSpacer(8);
+  const lbl = w.addText("Ventas de hoy");
+  lbl.font = Font.semiboldSystemFont(11);
+  lbl.textColor = TEXT_DIM;
+
+  w.addSpacer(2);
+  const total = w.addText(formatMonto(data.total_ventas_hoy));
+  total.font = Font.boldSystemFont(size === "small" ? 24 : 28);
+  total.textColor = TEXT;
+  total.minimumScaleFactor = 0.6;
+
+  w.addSpacer(4);
+  const hora = new Date(data.actualizado).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  const updated = w.addText("Actualizado " + hora);
+  updated.font = Font.systemFont(9);
+  updated.textColor = TEXT_DIM;
+
+  if (size === "medium") {
+    w.addSpacer(10);
+    const stats = w.addStack();
+    stats.layoutHorizontally();
+    stats.spacing = 8;
+
+    const addStat = (value, statLabel) => {
+      const box = stats.addStack();
+      box.layoutVertically();
+      box.centerAlignContent();
+      box.backgroundColor = new Color("#ffffff", 0.06);
+      box.cornerRadius = 10;
+      box.setPadding(6, 4, 6, 4);
+      const v = box.addText(String(value));
+      v.font = Font.boldSystemFont(13);
+      v.textColor = TEXT;
+      v.centerAlignText();
+      box.addSpacer(1);
+      const l = box.addText(statLabel);
+      l.font = Font.systemFont(8);
+      l.textColor = TEXT_DIM;
+      l.centerAlignText();
+    };
+    addStat(data.cantidad_ventas, "Ventas");
+    addStat(data.unidades_vendidas + " u.", "Unidades");
+    addStat(formatMonto(data.ticket_promedio), "Ticket prom.");
+  }
+
+  return w;
+}
+
+let widget;
+try {
+  const data = await fetchData();
+  const size = config.widgetFamily || "medium";
+  widget = await createWidget(data, size);
+} catch (e) {
+  widget = new ListWidget();
+  widget.backgroundColor = BG;
+  const errText = widget.addText("Error al cargar ventas");
+  errText.textColor = Color.white();
+  errText.font = Font.systemFont(12);
+}
+
+if (config.runsInWidget) {
+  Script.setWidget(widget);
+} else {
+  await widget.presentMedium();
+}
+Script.complete();
+`;
+        try {
+            await navigator.clipboard.writeText(script);
+            Swal.fire({ title: 'Script copiado', text: 'Pegalo en un script nuevo de Scriptable.', icon: 'success', timer: 2000, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire('Error', 'No se pudo copiar el script. Probá de nuevo.', 'error');
         }
     };
 
@@ -1567,6 +1728,79 @@ const PanelAdministracionTienda = () => {
                             </button>
                         </div>
                     </div>
+
+                    <div style={{
+                        background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12,
+                        padding: '20px 24px', marginBottom: 24,
+                    }}>
+                        <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#1a2926' }}>Widget de ventas (iPhone)</h3>
+                        <p style={{ color: '#94a3b8', fontSize: 12.5, marginTop: 0, marginBottom: 14, maxWidth: 480 }}>
+                            Mostrá el total vendido hoy en la pantalla de inicio de tu iPhone, con la app gratuita
+                            Scriptable. Usa un token de solo lectura, separado de tu login — lo podés regenerar
+                            cuando quieras sin afectar tu cuenta.
+                        </p>
+
+                        {tiendaInfo?.widget_token ? (
+                            <>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                                    <code style={{
+                                        background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6,
+                                        padding: '6px 10px', fontSize: 12.5, color: '#475569',
+                                        maxWidth: 340, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                    }}>
+                                        {mostrarWidgetToken ? tiendaInfo.widget_token : '•'.repeat(28)}
+                                    </code>
+                                    <button
+                                        onClick={() => setMostrarWidgetToken(v => !v)}
+                                        style={{ background: 'none', border: 'none', color: '#3b9ede', fontSize: 12.5, cursor: 'pointer', fontWeight: 600 }}
+                                    >
+                                        {mostrarWidgetToken ? 'Ocultar' : 'Mostrar'}
+                                    </button>
+                                </div>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    <button
+                                        onClick={handleCopiarScriptScriptable}
+                                        style={{
+                                            padding: '9px 16px', borderRadius: 8, border: 'none',
+                                            background: '#5dc87a', color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+                                        }}
+                                    >
+                                        Copiar script para Scriptable
+                                    </button>
+                                    <button
+                                        onClick={handleRegenerarWidgetToken}
+                                        disabled={regenerandoWidgetToken}
+                                        style={{
+                                            padding: '9px 16px', borderRadius: 8, border: '1px solid #e2e8f0',
+                                            background: '#fff', color: '#475569', fontSize: 13.5, fontWeight: 600,
+                                            cursor: regenerandoWidgetToken ? 'not-allowed' : 'pointer',
+                                        }}
+                                    >
+                                        {regenerandoWidgetToken ? 'Generando...' : 'Regenerar token'}
+                                    </button>
+                                </div>
+                                <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 12, marginBottom: 0, lineHeight: 1.5, maxWidth: 480 }}>
+                                    1) Instalá <strong>Scriptable</strong> desde la App Store (gratis).{' '}
+                                    2) Abrila, creá un script nuevo y pegá lo que copiaste.{' '}
+                                    3) Desde la pantalla de inicio, agregá un widget y elegí Scriptable → este script.
+                                    iOS decide cada cuánto lo actualiza (no es al instante).
+                                </p>
+                            </>
+                        ) : (
+                            <button
+                                onClick={handleRegenerarWidgetToken}
+                                disabled={regenerandoWidgetToken}
+                                style={{
+                                    padding: '9px 20px', borderRadius: 8, border: 'none',
+                                    background: regenerandoWidgetToken ? '#94a3b8' : '#5dc87a', color: '#fff',
+                                    fontSize: 14, fontWeight: 600, cursor: regenerandoWidgetToken ? 'not-allowed' : 'pointer',
+                                }}
+                            >
+                                {regenerandoWidgetToken ? 'Generando...' : 'Generar token del widget'}
+                            </button>
+                        )}
+                    </div>
+
                     <div style={styles.sectionHeader} className="panel-admin-section-header">
                         <button onClick={() => {
                             setEditingUser(null);
