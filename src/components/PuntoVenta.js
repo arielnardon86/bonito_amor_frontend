@@ -1952,7 +1952,7 @@ const PuntoVenta = () => {
                                                             <img
                                                                 src={item.product.imagen}
                                                                 alt=""
-                                                                style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+                                                                style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', border: '1px solid #e2e8f0', flexShrink: 0 }}
                                                             />
                                                         )}
                                                         <span>{item.product.nombre}</span>

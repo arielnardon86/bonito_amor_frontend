@@ -9,6 +9,7 @@ import { formatearMonto } from '../utils/formatearMonto';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPencil, faTrash, faPlus, faArrowUp, faRightLeft, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import HelpButton from './HelpButton';
+import { resizeLogoToBase64 } from '../utils/resizeLogo';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -52,7 +53,10 @@ const Productos = () => {
         codigo_interno: '',
         iva_porcentaje: '',
         rubro: '',
+        margen: '',
+        imagen: '',
     });
+    const [showNuevoProductoModal, setShowNuevoProductoModal] = useState(false);
 
     // Rubro (categoría opcional, propia de cada tienda)
     const [rubros, setRubros] = useState([]);
@@ -71,9 +75,8 @@ const Productos = () => {
     const [guardandoMasivo, setGuardandoMasivo] = useState(false);
     const [descargandoExcel, setDescargandoExcel] = useState(false);
     const [tieneVariantes, setTieneVariantes] = useState(false);
-    const [variantesNuevas, setVariantesNuevas] = useState([
-        { talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }
-    ]);
+    const VARIANTE_VACIA = { talle: '', precio: '', costo: '', stock: '', codigo_barras: '', margen: '', imagen: '' };
+    const [variantesNuevas, setVariantesNuevas] = useState([{ ...VARIANTE_VACIA }]);
 
     const [editProduct, setEditProduct] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -375,18 +378,22 @@ const Productos = () => {
                         rubro: rubroParaCrear,
                         producto_padre: padre.id,
                         tienda_slug: selectedStoreSlug,
+                        imagen: v.imagen || null,
                     };
                     await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, varianteData, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                 }
             } else {
+                // eslint-disable-next-line no-unused-vars
+                const { margen: _margenSoloParaCalculoLocal, ...restoNewProduct } = newProduct;
                 const productToCreate = {
-                    ...newProduct,
+                    ...restoNewProduct,
                     iva_porcentaje: newProduct.iva_porcentaje === '' ? null : newProduct.iva_porcentaje,
                     rubro: newProduct.rubro || null,
                     codigo_barras: newProduct.codigo_barras || generarCodigoDeBarrasEAN13(),
                     codigo_interno: newProduct.codigo_interno.trim() || null,
+                    imagen: newProduct.imagen || null,
                     tienda_slug: selectedStoreSlug,
                     talle: null,
                 };
@@ -395,14 +402,122 @@ const Productos = () => {
                 });
             }
 
-            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', codigo_interno: '', iva_porcentaje: '', rubro: '' });
+            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', codigo_interno: '', iva_porcentaje: '', rubro: '', margen: '', imagen: '' });
+            setShowNuevoProductoModal(false);
             setTieneVariantes(false);
-            setVariantesNuevas([{ talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }]);
+            setVariantesNuevas([{ ...VARIANTE_VACIA }]);
             setBarcodeNombreSugerido('');
             fetchProductos();
         } catch (err) {
             setError('Error al crear producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
+        }
+    };
+
+    // Margen de ganancia (nuevo producto, sin variantes): al completarlo, calcula el
+    // precio a partir del costo (markup sobre costo). Si se deja vacío, el precio vuelve
+    // a ser editable a mano y se muestra el margen actual (precio vs. costo) informativo.
+    const calcularPrecioDesdeMargen = (costo, margen) => {
+        const costoNum = parseFloat(costo);
+        const margenNum = parseFloat(margen);
+        if (isNaN(costoNum) || isNaN(margenNum) || costoNum <= 0) return null;
+        return (costoNum * (1 + margenNum / 100)).toFixed(2);
+    };
+
+    const handleMargenChangeNuevo = (value) => {
+        setNewProduct(prev => {
+            const next = { ...prev, margen: value };
+            if (value !== '') {
+                const precioCalculado = calcularPrecioDesdeMargen(prev.costo, value);
+                if (precioCalculado !== null) next.precio = precioCalculado;
+            }
+            return next;
+        });
+    };
+
+    const handleCostoChangeNuevo = (value) => {
+        setNewProduct(prev => {
+            const next = { ...prev, costo: value };
+            if (prev.margen !== '') {
+                const precioCalculado = calcularPrecioDesdeMargen(value, prev.margen);
+                if (precioCalculado !== null) next.precio = precioCalculado;
+            }
+            return next;
+        });
+    };
+
+    const handlePrecioChangeNuevo = (value) => {
+        // Editar el precio a mano desactiva el cálculo automático por margen.
+        setNewProduct(prev => ({ ...prev, precio: value, margen: '' }));
+    };
+
+    // Si costo y precio ya están cargados, el margen pasa a ser un dato calculado
+    // (se grisea y muestra el % real) en vez de un input que dispara el cálculo del precio.
+    const margenCalculadoNuevo = (() => {
+        const costoNum = parseFloat(newProduct.costo);
+        const precioNum = parseFloat(newProduct.precio);
+        if (!costoNum || !precioNum || precioNum <= 0) return null;
+        return ((precioNum - costoNum) / precioNum * 100).toFixed(1);
+    })();
+    const margenBloqueadoNuevo = margenCalculadoNuevo !== null;
+
+    const handleImagenNuevoProducto = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            const base64 = await resizeLogoToBase64(file, 300);
+            setNewProduct(prev => ({ ...prev, imagen: base64 }));
+        } catch (err) {
+            setError('No se pudo procesar la imagen. Probá con otro archivo.');
+        }
+        e.target.value = '';
+    };
+
+    // Mismas reglas de margen/costo/precio, pero por fila de variante.
+    const handleVarianteMargenChange = (i, value) => {
+        setVariantesNuevas(prev => prev.map((x, j) => {
+            if (j !== i) return x;
+            const next = { ...x, margen: value };
+            if (value !== '') {
+                const precioCalculado = calcularPrecioDesdeMargen(x.costo, value);
+                if (precioCalculado !== null) next.precio = precioCalculado;
+            }
+            return next;
+        }));
+    };
+
+    const handleVarianteCostoChange = (i, value) => {
+        setVariantesNuevas(prev => prev.map((x, j) => {
+            if (j !== i) return x;
+            const next = { ...x, costo: value };
+            if (x.margen !== '') {
+                const precioCalculado = calcularPrecioDesdeMargen(value, x.margen);
+                if (precioCalculado !== null) next.precio = precioCalculado;
+            }
+            return next;
+        }));
+    };
+
+    const handleVariantePrecioChange = (i, value) => {
+        setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, precio: value, margen: '' } : x));
+    };
+
+    // Misma regla que a nivel producto: si la variante ya tiene costo y precio cargados,
+    // el margen de esa fila pasa a ser de solo lectura (calculado), no un input.
+    const margenCalculadoVariante = (v) => {
+        const costoNum = parseFloat(v.costo);
+        const precioNum = parseFloat(v.precio);
+        if (!costoNum || !precioNum || precioNum <= 0) return null;
+        return ((precioNum - costoNum) / precioNum * 100).toFixed(1);
+    };
+
+    const handleVarianteImagenChange = async (i, file) => {
+        if (!file) return;
+        try {
+            const base64 = await resizeLogoToBase64(file, 300);
+            setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, imagen: base64 } : x));
+        } catch (err) {
+            setError('No se pudo procesar la imagen de la variante. Probá con otro archivo.');
         }
     };
 
@@ -451,6 +566,18 @@ const Productos = () => {
             setError('Error al editar producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
         }
+    };
+
+    const handleEditImagenChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            const base64 = await resizeLogoToBase64(file, 300);
+            setEditProduct(prev => ({ ...prev, imagen: base64 }));
+        } catch (err) {
+            setError('No se pudo procesar la imagen. Probá con otro archivo.');
+        }
+        e.target.value = '';
     };
 
     const handleVincularTN = async (tnVariantIdElegida) => {
@@ -777,187 +904,344 @@ const Productos = () => {
             </div>
             
             <div style={styles.section}>
-                <h2 style={styles.sectionTitle}>Nuevo producto</h2>
-                <form onSubmit={handleCreateProduct} style={styles.form}>
-                    {!tieneVariantes && (
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>
-                            Código de barras {barcodeLoading && <span style={{ fontWeight: 400, fontSize: '0.85em', color: '#888' }}>buscando...</span>}
-                        </label>
-                        <input
-                            type="text"
-                            value={newProduct.codigo_barras}
-                            onChange={handleBarcodeChange}
-                            style={styles.input}
-                            placeholder="Escaneá o ingresá el código de barras"
-                        />
-                        {barcodeNombreSugerido && (
-                            <span style={{ fontSize: '0.82em', color: '#5dc87a', marginTop: 2 }}>
-                                Nombre auto-completado desde otra sucursal
-                            </span>
-                        )}
-                    </div>
-                    )}
-                    {!tieneVariantes && (
-                    <div style={{ ...styles.inputGroup, flex: '0 1 130px' }}>
-                        <label style={styles.label}>Código interno (Opcional)</label>
-                        <input
-                            type="text"
-                            maxLength={100}
-                            value={newProduct.codigo_interno}
-                            onChange={(e) => setNewProduct({ ...newProduct, codigo_interno: e.target.value })}
-                            style={styles.input}
-                            placeholder="Ej: A123"
-                        />
-                    </div>
-                    )}
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Nombre</label>
-                        <input
-                            type="text"
-                            maxLength={35}
-                            value={newProduct.nombre}
-                            onChange={(e) => { setBarcodeNombreSugerido(''); setNewProduct({ ...newProduct, nombre: e.target.value }); }}
-                            style={styles.input}
-                            required
-                        />
-                    </div>
-                    <div style={styles.inputGroup}>
-                        <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Precio</label>
-                        <input
-                            type="number"
-                            value={newProduct.precio}
-                            onChange={(e) => setNewProduct({ ...newProduct, precio: e.target.value })}
-                            style={{ ...styles.input, background: tieneVariantes ? '#f3f4f6' : undefined, color: tieneVariantes ? '#aaa' : undefined, cursor: tieneVariantes ? 'not-allowed' : undefined }}
-                            required={!tieneVariantes}
-                            disabled={tieneVariantes}
-                        />
-                    </div>
-                    <div style={styles.inputGroup}>
-                        <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Costo (Opcional)</label>
-                        <input
-                            type="number"
-                            value={newProduct.costo}
-                            onChange={(e) => setNewProduct({ ...newProduct, costo: e.target.value })}
-                            style={{ ...styles.input, background: tieneVariantes ? '#f3f4f6' : undefined, color: tieneVariantes ? '#aaa' : undefined, cursor: tieneVariantes ? 'not-allowed' : undefined }}
-                            disabled={tieneVariantes}
-                        />
-                    </div>
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>IVA % (Opcional)</label>
-                        <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={newProduct.iva_porcentaje}
-                            onChange={(e) => setNewProduct({ ...newProduct, iva_porcentaje: e.target.value })}
-                            style={styles.input}
-                            placeholder="Ej: 21"
-                        />
-                    </div>
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Rubro (Opcional)</label>
-                        <select
-                            value={newProduct.rubro}
-                            onChange={(e) => {
-                                if (e.target.value === '__nuevo__') { abrirNuevoRubroModal('nuevo_producto'); return; }
-                                setNewProduct({ ...newProduct, rubro: e.target.value });
-                            }}
-                            style={styles.input}
-                        >
-                            <option value="">Sin rubro</option>
-                            {rubros.map(r => (
-                                <option key={r.id} value={r.id}>{r.nombre}</option>
-                            ))}
-                            <option value="__nuevo__">+ Crear nuevo rubro...</option>
-                        </select>
-                    </div>
-                    <div style={styles.inputGroup}>
-                        <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Stock</label>
-                        <input
-                            type="number"
-                            value={newProduct.stock}
-                            onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                            style={{ ...styles.input, background: tieneVariantes ? '#f3f4f6' : undefined, color: tieneVariantes ? '#aaa' : undefined, cursor: tieneVariantes ? 'not-allowed' : undefined }}
-                            required={!tieneVariantes}
-                            disabled={tieneVariantes}
-                        />
-                    </div>
-                    <div style={{ width: '100%', marginTop: 4 }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none', fontSize: 14 }}>
-                            <input
-                                type="checkbox"
-                                checked={tieneVariantes}
-                                onChange={e => {
-                                    setTieneVariantes(e.target.checked);
-                                    if (!e.target.checked) {
-                                        setVariantesNuevas([{ talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }]);
-                                    }
-                                }}
-                            />
-                            <span style={{ fontWeight: 600 }}>¿Tiene variantes? (talle, color, etc.)</span>
-                        </label>
-                    </div>
-                    {tieneVariantes && (
-                        <div style={{ width: '100%', marginTop: 8 }}>
-                            <p style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
-                                Ingresá cada variante. El código de barras se genera automáticamente si lo dejás vacío.
-                            </p>
-                            <div style={{ overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                                    <thead>
-                                        <tr>
-                                            {['Talle / Valor', 'Precio', 'Costo', 'Stock', 'Código de barras', ''].map(h => (
-                                                <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: 600 }}>{h}</th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {variantesNuevas.map((v, i) => (
-                                            <tr key={i}>
-                                                <td style={{ padding: '4px 8px' }}>
-                                                    <input type="text" value={v.talle} placeholder="M, L, 42…" style={{ ...styles.input, width: 80 }}
-                                                        onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, talle: e.target.value } : x))} />
-                                                </td>
-                                                <td style={{ padding: '4px 8px' }}>
-                                                    <input type="number" value={v.precio} placeholder="0" style={{ ...styles.input, width: 90 }}
-                                                        onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, precio: e.target.value } : x))} required />
-                                                </td>
-                                                <td style={{ padding: '4px 8px' }}>
-                                                    <input type="number" value={v.costo} placeholder="Opcional" style={{ ...styles.input, width: 90 }}
-                                                        onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, costo: e.target.value } : x))} />
-                                                </td>
-                                                <td style={{ padding: '4px 8px' }}>
-                                                    <input type="number" value={v.stock} placeholder="0" style={{ ...styles.input, width: 70 }}
-                                                        onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, stock: e.target.value } : x))} />
-                                                </td>
-                                                <td style={{ padding: '4px 8px' }}>
-                                                    <input type="text" value={v.codigo_barras} placeholder="Auto" style={{ ...styles.input, width: 120 }}
-                                                        onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, codigo_barras: e.target.value } : x))} />
-                                                </td>
-                                                <td style={{ padding: '4px 8px' }}>
-                                                    {variantesNuevas.length > 1 && (
-                                                        <button type="button" onClick={() => setVariantesNuevas(prev => prev.filter((_, j) => j !== i))}
-                                                            style={{ background: 'none', border: 'none', color: '#e25252', cursor: 'pointer', fontSize: 16 }}>✕</button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <button type="button" onClick={() => setVariantesNuevas(prev => [...prev, { talle: '', precio: '', costo: '', stock: '', codigo_barras: '' }])}
-                                style={{ marginTop: 8, padding: '5px 12px', background: '#e8f5ec', color: '#1a7a3f', border: '1px solid #b7dfc7', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
-                                + Agregar variante
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <h2 style={{ ...styles.sectionTitle, margin: 0 }}>Nuevo producto</h2>
+                    <button
+                        type="button"
+                        onClick={() => setShowNuevoProductoModal(true)}
+                        title="Agregar producto"
+                        style={{
+                            width: 34, height: 34, borderRadius: '50%', border: 'none',
+                            background: '#5dc87a', color: '#fff', fontSize: 20, fontWeight: 700,
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 2px 8px rgba(93,200,122,0.35)', lineHeight: 1, padding: 0, flexShrink: 0,
+                        }}
+                    >
+                        +
+                    </button>
+                </div>
+            </div>
+
+            {showNuevoProductoModal && (
+                <div style={styles.modalOverlay} onClick={() => setShowNuevoProductoModal(false)}>
+                    <div style={{ ...styles.modalContent, maxWidth: 780, textAlign: 'left', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                            <h3 style={{ margin: 0 }}>Nuevo producto</h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowNuevoProductoModal(false)}
+                                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8', lineHeight: 1, padding: 4 }}
+                                aria-label="Cerrar"
+                            >
+                                ✕
                             </button>
                         </div>
-                    )}
-                    <button type="submit" style={styles.submitButton} disabled={loadingProducts}>
-                        {loadingProducts ? 'Creando...' : 'Crear Producto'}
-                    </button>
-                </form>
-            </div>
-            
+                        <form onSubmit={handleCreateProduct}>
+                            <div style={styles.inputGroupModal}>
+                                <label style={styles.label}>Nombre</label>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <input
+                                        type="text"
+                                        maxLength={35}
+                                        value={newProduct.nombre}
+                                        onChange={(e) => { setBarcodeNombreSugerido(''); setNewProduct({ ...newProduct, nombre: e.target.value }); }}
+                                        style={{ ...styles.modalInput, flex: 1 }}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const nuevoValor = !tieneVariantes;
+                                            setTieneVariantes(nuevoValor);
+                                            if (!nuevoValor) setVariantesNuevas([{ ...VARIANTE_VACIA }]);
+                                        }}
+                                        style={{
+                                            padding: '0 16px', borderRadius: 8, whiteSpace: 'nowrap',
+                                            border: '1.5px solid ' + (tieneVariantes ? '#5dc87a' : '#e2e8f0'),
+                                            background: tieneVariantes ? '#e8f5ec' : '#fff',
+                                            color: tieneVariantes ? '#1a7a3f' : '#475569',
+                                            fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                                        }}
+                                    >
+                                        {tieneVariantes ? '✓ Variantes' : 'Variantes'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+                            {!tieneVariantes && (
+                                <div style={styles.inputGroupModal}>
+                                    <label style={styles.label}>
+                                        Código de barras <span style={styles.opcionalTag}>(Opcional)</span> {barcodeLoading && <span style={{ fontWeight: 400, fontSize: '0.85em', color: '#888' }}>buscando...</span>}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newProduct.codigo_barras}
+                                        onChange={handleBarcodeChange}
+                                        style={styles.modalInput}
+                                        placeholder="Escaneá o ingresá el código de barras"
+                                    />
+                                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>
+                                        Si lo dejás vacío, se genera uno automáticamente.
+                                    </p>
+                                    {barcodeNombreSugerido && (
+                                        <span style={{ fontSize: '0.82em', color: '#5dc87a' }}>
+                                            Nombre auto-completado desde otra sucursal
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
+                            {!tieneVariantes && (
+                                <div style={styles.inputGroupModal}>
+                                    <label style={styles.label}>Código interno <span style={styles.opcionalTag}>(Opcional)</span></label>
+                                    <input
+                                        type="text"
+                                        maxLength={100}
+                                        value={newProduct.codigo_interno}
+                                        onChange={(e) => setNewProduct({ ...newProduct, codigo_interno: e.target.value })}
+                                        style={styles.modalInput}
+                                        placeholder="Ej: A123"
+                                    />
+                                </div>
+                            )}
+
+                            <div style={styles.inputGroupModal}>
+                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Precio</label>
+                                <input
+                                    type="number"
+                                    value={newProduct.precio}
+                                    onChange={(e) => handlePrecioChangeNuevo(e.target.value)}
+                                    style={{ ...styles.modalInput, background: tieneVariantes ? '#f3f4f6' : undefined, color: tieneVariantes ? '#aaa' : undefined, cursor: tieneVariantes ? 'not-allowed' : undefined }}
+                                    required={!tieneVariantes}
+                                    disabled={tieneVariantes}
+                                />
+                            </div>
+
+                            <div style={styles.inputGroupModal}>
+                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Costo <span style={styles.opcionalTag}>(Opcional)</span></label>
+                                <input
+                                    type="number"
+                                    value={newProduct.costo}
+                                    onChange={(e) => handleCostoChangeNuevo(e.target.value)}
+                                    style={{ ...styles.modalInput, background: tieneVariantes ? '#f3f4f6' : undefined, color: tieneVariantes ? '#aaa' : undefined, cursor: tieneVariantes ? 'not-allowed' : undefined }}
+                                    disabled={tieneVariantes}
+                                />
+                            </div>
+
+                            <div style={styles.inputGroupModal}>
+                                <label style={styles.label}>IVA % <span style={styles.opcionalTag}>(Opcional)</span></label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={newProduct.iva_porcentaje}
+                                    onChange={(e) => setNewProduct({ ...newProduct, iva_porcentaje: e.target.value })}
+                                    style={styles.modalInput}
+                                    placeholder="Ej: 21"
+                                />
+                            </div>
+
+                            <div style={styles.inputGroupModal}>
+                                <label style={styles.label}>Rubro <span style={styles.opcionalTag}>(Opcional)</span></label>
+                                <select
+                                    value={newProduct.rubro}
+                                    onChange={(e) => {
+                                        if (e.target.value === '__nuevo__') { abrirNuevoRubroModal('nuevo_producto'); return; }
+                                        setNewProduct({ ...newProduct, rubro: e.target.value });
+                                    }}
+                                    style={styles.modalInput}
+                                >
+                                    <option value="">Sin rubro</option>
+                                    {rubros.map(r => (
+                                        <option key={r.id} value={r.id}>{r.nombre}</option>
+                                    ))}
+                                    <option value="__nuevo__">+ Crear nuevo rubro...</option>
+                                </select>
+                            </div>
+
+                            <div style={styles.inputGroupModal}>
+                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Stock</label>
+                                <input
+                                    type="number"
+                                    value={newProduct.stock}
+                                    onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                                    style={{ ...styles.modalInput, background: tieneVariantes ? '#f3f4f6' : undefined, color: tieneVariantes ? '#aaa' : undefined, cursor: tieneVariantes ? 'not-allowed' : undefined }}
+                                    required={!tieneVariantes}
+                                    disabled={tieneVariantes}
+                                />
+                            </div>
+
+                            {!tieneVariantes && (
+                                <div style={styles.inputGroupModal}>
+                                    <label style={styles.label}>
+                                        Margen de ganancia <span style={styles.opcionalTag}>(Opcional, % sobre costo)</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={margenBloqueadoNuevo ? margenCalculadoNuevo : newProduct.margen}
+                                        onChange={(e) => handleMargenChangeNuevo(e.target.value)}
+                                        style={{
+                                            ...styles.modalInput,
+                                            background: margenBloqueadoNuevo ? '#f3f4f6' : undefined,
+                                            color: margenBloqueadoNuevo ? '#aaa' : undefined,
+                                            cursor: margenBloqueadoNuevo ? 'not-allowed' : undefined,
+                                        }}
+                                        placeholder="Ej: 40"
+                                        disabled={margenBloqueadoNuevo}
+                                    />
+                                    {margenBloqueadoNuevo ? (
+                                        <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>
+                                            Calculado a partir de costo y precio.
+                                        </p>
+                                    ) : newProduct.margen !== '' ? (
+                                        <p style={{ fontSize: 12, color: '#1a7a3f', margin: '4px 0 0' }}>
+                                            El precio se calcula automáticamente a partir del costo.
+                                        </p>
+                                    ) : (
+                                        <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>
+                                            Completalo para calcular el precio a partir del costo.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                            </div>
+
+                            {!tieneVariantes && (
+                                <div style={styles.inputGroupModal}>
+                                    <label style={styles.label}>Imagen <span style={styles.opcionalTag}>(Opcional)</span></label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        {newProduct.imagen && (
+                                            <img
+                                                src={newProduct.imagen}
+                                                alt=""
+                                                style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: '1px solid #e2e8f0', flexShrink: 0 }}
+                                            />
+                                        )}
+                                        <label style={{
+                                            padding: '8px 14px', background: '#f1f5f9', border: '1px solid #e2e8f0',
+                                            borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#475569',
+                                        }}>
+                                            {newProduct.imagen ? 'Cambiar foto' : 'Subir foto'}
+                                            <input type="file" accept="image/*" capture="environment" onChange={handleImagenNuevoProducto} style={{ display: 'none' }} />
+                                        </label>
+                                        {newProduct.imagen && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewProduct(prev => ({ ...prev, imagen: '' }))}
+                                                style={{ background: 'none', border: 'none', color: '#e25252', fontSize: 12, cursor: 'pointer' }}
+                                            >
+                                                Quitar
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '6px 0 0' }}>
+                                        Se muestra en el listado de productos y en el carrito de Punto de Venta.
+                                    </p>
+                                </div>
+                            )}
+
+                            {tieneVariantes && (
+                                <div style={{ width: '100%', marginTop: 8 }}>
+                                    <p style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
+                                        Ingresá cada variante. El código de barras se genera automáticamente si lo dejás vacío.
+                                        El margen calcula el precio de esa variante a partir de su costo.
+                                    </p>
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                            <thead>
+                                                <tr>
+                                                    {['Foto', 'Talle / Valor', 'Precio', 'Costo', 'Margen %', 'Stock', 'Código de barras', ''].map(h => (
+                                                        <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: 600 }}>{h}</th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {variantesNuevas.map((v, i) => (
+                                                    <tr key={i}>
+                                                        <td style={{ padding: '4px 8px' }}>
+                                                            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 6, background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', overflow: 'hidden' }}>
+                                                                {v.imagen
+                                                                    ? <img src={v.imagen} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                    : <span style={{ fontSize: 14, color: '#94a3b8' }}>📷</span>
+                                                                }
+                                                                <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+                                                                    onChange={e => handleVarianteImagenChange(i, e.target.files?.[0])} />
+                                                            </label>
+                                                        </td>
+                                                        <td style={{ padding: '4px 8px' }}>
+                                                            <input type="text" value={v.talle} placeholder="M, L, 42…" style={{ ...styles.input, width: 80 }}
+                                                                onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, talle: e.target.value } : x))} />
+                                                        </td>
+                                                        <td style={{ padding: '4px 8px' }}>
+                                                            <input type="number" value={v.precio} placeholder="0" style={{ ...styles.input, width: 90 }}
+                                                                onChange={e => handleVariantePrecioChange(i, e.target.value)} required />
+                                                        </td>
+                                                        <td style={{ padding: '4px 8px' }}>
+                                                            <input type="number" value={v.costo} placeholder="Opcional" style={{ ...styles.input, width: 90 }}
+                                                                onChange={e => handleVarianteCostoChange(i, e.target.value)} />
+                                                        </td>
+                                                        <td style={{ padding: '4px 8px' }}>
+                                                            {(() => {
+                                                                const vMargenCalc = margenCalculadoVariante(v);
+                                                                const vMargenBloqueado = vMargenCalc !== null;
+                                                                return (
+                                                                    <input
+                                                                        type="number" step="0.01"
+                                                                        value={vMargenBloqueado ? vMargenCalc : v.margen}
+                                                                        placeholder="Ej: 40"
+                                                                        style={{
+                                                                            ...styles.input, width: 80,
+                                                                            background: vMargenBloqueado ? '#f3f4f6' : undefined,
+                                                                            color: vMargenBloqueado ? '#aaa' : undefined,
+                                                                            cursor: vMargenBloqueado ? 'not-allowed' : undefined,
+                                                                        }}
+                                                                        disabled={vMargenBloqueado}
+                                                                        title={vMargenBloqueado ? 'Calculado a partir de costo y precio' : 'Calcula el precio de esta variante a partir de su costo'}
+                                                                        onChange={e => handleVarianteMargenChange(i, e.target.value)}
+                                                                    />
+                                                                );
+                                                            })()}
+                                                        </td>
+                                                        <td style={{ padding: '4px 8px' }}>
+                                                            <input type="number" value={v.stock} placeholder="0" style={{ ...styles.input, width: 70 }}
+                                                                onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, stock: e.target.value } : x))} />
+                                                        </td>
+                                                        <td style={{ padding: '4px 8px' }}>
+                                                            <input type="text" value={v.codigo_barras} placeholder="Auto" style={{ ...styles.input, width: 120 }}
+                                                                onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, codigo_barras: e.target.value } : x))} />
+                                                        </td>
+                                                        <td style={{ padding: '4px 8px' }}>
+                                                            {variantesNuevas.length > 1 && (
+                                                                <button type="button" onClick={() => setVariantesNuevas(prev => prev.filter((_, j) => j !== i))}
+                                                                    style={{ background: 'none', border: 'none', color: '#e25252', cursor: 'pointer', fontSize: 16 }}>✕</button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button type="button" onClick={() => setVariantesNuevas(prev => [...prev, { ...VARIANTE_VACIA }])}
+                                        style={{ marginTop: 8, padding: '5px 12px', background: '#e8f5ec', color: '#1a7a3f', border: '1px solid #b7dfc7', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
+                                        + Agregar variante
+                                    </button>
+                                </div>
+                            )}
+
+                            {error && (
+                                <p style={{ color: '#e25252', fontSize: 13, marginTop: 12 }}>{error}</p>
+                            )}
+
+                            <button type="submit" style={{ ...styles.submitButton, width: '100%', marginTop: 16, alignSelf: 'stretch' }} disabled={loadingProducts}>
+                                {loadingProducts ? 'Creando...' : 'Crear Producto'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             <div style={styles.section}>
                 <div style={styles.tableHeader}>
                     <h2 style={styles.sectionTitle}>Listado</h2>
@@ -1079,6 +1363,7 @@ const Productos = () => {
                                                 </span>
                                             </div>
                                         </th>
+                                        <th style={styles.th}>Foto</th>
                                         <th style={styles.th}>Cód. Interno</th>
                                         <th style={styles.th}>Nombre</th>
                                         {mostrarTalle && <th style={styles.th}>Talle</th>}
@@ -1120,6 +1405,11 @@ const Productos = () => {
                                                     style={{ width: 16, height: 16, cursor: 'pointer' }}
                                                     title={tieneVars ? 'Selecciona todas las variantes de esta familia' : undefined}
                                                 />
+                                            </td>
+                                            <td style={{ ...styles.td, textAlign: 'center' }}>
+                                                {producto.imagen
+                                                    ? <img src={producto.imagen} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', border: '1px solid #e2e8f0' }} />
+                                                    : <span style={{ color: '#c0ccc9' }}>—</span>}
                                             </td>
                                             <td style={{ ...styles.td, color: '#475569' }}>
                                                 {producto.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
@@ -1246,7 +1536,7 @@ const Productos = () => {
                                         {/* Filas de variantes expandidas */}
                                         {tieneVars && expandido && producto.variantes.map(v => {
                                             const vPrecio = parseFloat(v.precio) || 0;
-                                            const vCosto = parseFloat(producto.costo) || 0;
+                                            const vCosto = parseFloat(v.costo ?? producto.costo) || 0;
                                             const vMargen = vPrecio > 0 && vCosto > 0 ? ((vPrecio - vCosto) / vPrecio * 100) : null;
                                             const vMargenColor = vMargen === null ? '#94a3b8' : vMargen >= 30 ? '#1a6a40' : vMargen >= 15 ? '#d97706' : '#e25252';
                                             return (
@@ -1259,6 +1549,11 @@ const Productos = () => {
                                                             style={{ width: 16, height: 16, cursor: 'pointer' }}
                                                             title="Selecciona solo esta variante"
                                                         />
+                                                    </td>
+                                                    <td style={{ ...styles.td, textAlign: 'center' }}>
+                                                        {v.imagen
+                                                            ? <img src={v.imagen} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', border: '1px solid #e2e8f0' }} />
+                                                            : <span style={{ color: '#c0ccc9' }}>—</span>}
                                                     </td>
                                                     <td style={{ ...styles.td, color: '#475569' }}>
                                                         {v.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
@@ -1404,7 +1699,7 @@ const Productos = () => {
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>Rubro (Opcional):</label>
+                            <label style={styles.label}>Rubro <span style={styles.opcionalTag}>(Opcional)</span>:</label>
                             <select
                                 value={editProduct.rubro || ''}
                                 onChange={(e) => {
@@ -1421,7 +1716,7 @@ const Productos = () => {
                             </select>
                         </div>
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>Talle (Opcional):</label>
+                            <label style={styles.label}>Talle <span style={styles.opcionalTag}>(Opcional)</span>:</label>
                             <input
                                 type="text"
                                 value={editProduct.talle || ''}
@@ -1431,7 +1726,7 @@ const Productos = () => {
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>Código de Barras (Opcional):</label>
+                            <label style={styles.label}>Código de Barras <span style={styles.opcionalTag}>(Opcional)</span>:</label>
                             <input
                                 type="text"
                                 value={editProduct.codigo_barras || ''}
@@ -1439,6 +1734,34 @@ const Productos = () => {
                                 style={styles.modalInput}
                                 placeholder="Auto-generado si se deja vacío"
                             />
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Imagen <span style={styles.opcionalTag}>(Opcional)</span>:</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                {editProduct.imagen && (
+                                    <img
+                                        src={editProduct.imagen}
+                                        alt=""
+                                        style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: '1px solid #e2e8f0', flexShrink: 0 }}
+                                    />
+                                )}
+                                <label style={{
+                                    padding: '8px 14px', background: '#f1f5f9', border: '1px solid #e2e8f0',
+                                    borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#475569',
+                                }}>
+                                    {editProduct.imagen ? 'Cambiar foto' : 'Subir foto'}
+                                    <input type="file" accept="image/*" capture="environment" onChange={handleEditImagenChange} style={{ display: 'none' }} />
+                                </label>
+                                {editProduct.imagen && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditProduct(prev => ({ ...prev, imagen: '' }))}
+                                        style={{ background: 'none', border: 'none', color: '#e25252', fontSize: 12, cursor: 'pointer' }}
+                                    >
+                                        Quitar
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {tnConectado && (
@@ -1702,7 +2025,11 @@ const Productos = () => {
                             { key: 'codigo_barras', label: 'Código de barras (opcional)', placeholder: 'Auto-generado', type: 'text' },
                         ].map(({ key, label, placeholder, type }) => (
                             <div key={key} style={styles.inputGroupModal}>
-                                <label style={{ ...styles.label, textAlign: 'left', display: 'block' }}>{label}:</label>
+                                <label style={{ ...styles.label, textAlign: 'left', display: 'block' }}>
+                                    {label.replace(' (opcional)', '')}
+                                    {label.includes('(opcional)') && <span style={styles.opcionalTag}> (opcional)</span>}
+                                    :
+                                </label>
                                 <input
                                     type={type}
                                     value={nuevaVariante[key]}
@@ -1954,6 +2281,7 @@ const styles = {
     form: { display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-end' },
     inputGroup: { flex: '1 1 200px', display: 'flex', flexDirection: 'column' },
     label: { marginBottom: '5px', fontWeight: 'bold' },
+    opcionalTag: { fontSize: 12, fontWeight: 400, color: '#94a3b8' },
     input: { padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' },
     submitButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', alignSelf: 'flex-end' },
     tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
