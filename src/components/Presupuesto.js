@@ -627,9 +627,9 @@ const Presupuesto = () => {
                                     />
                                     <span style={styles.ajusteSeparador}>o %</span>
                                     <input
-                                        type="number" min="0" style={styles.ajusteInput}
+                                        type="number" min="0" max="100" style={styles.ajusteInput}
                                         value={recargoPorcentaje}
-                                        onChange={(e) => { setRecargoPorcentaje(Math.max(0, parseFloat(e.target.value) || 0)); setRecargoMonto(''); setDescuentoMonto(''); setDescuentoPorcentaje(''); }}
+                                        onChange={(e) => { setRecargoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0))); setRecargoMonto(''); setDescuentoMonto(''); setDescuentoPorcentaje(''); }}
                                     />
                                 </div>
                                 <div style={styles.ajusteGrupo}>

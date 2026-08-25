@@ -1246,13 +1246,14 @@ const CambioDevolucion = () => {
                                             id="recargoPorcentaje"
                                             value={recargoPorcentaje}
                                             onChange={(e) => {
-                                                setRecargoPorcentaje(Math.max(0, parseFloat(e.target.value) || 0));
-                                                setRecargoMonto('');       
-                                                setDescuentoMonto('');     
+                                                setRecargoPorcentaje(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)));
+                                                setRecargoMonto('');
+                                                setDescuentoMonto('');
                                                 setDescuentoPorcentaje('');
                                             }}
                                             style={styles.ajusteInput}
                                             min="0"
+                                            max="100"
                                         />
                                     </div>
                                     
