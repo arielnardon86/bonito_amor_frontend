@@ -1946,7 +1946,18 @@ const PuntoVenta = () => {
                                     <tbody>
                                         {activeCart.items.map((item) => (
                                             <tr key={item.product.id} style={styles.tableRow}>
-                                                <td style={styles.td}>{item.product.nombre}</td>
+                                                <td style={styles.td}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        {item.product.imagen && (
+                                                            <img
+                                                                src={item.product.imagen}
+                                                                alt=""
+                                                                style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+                                                            />
+                                                        )}
+                                                        <span>{item.product.nombre}</span>
+                                                    </div>
+                                                </td>
                                                 <td style={styles.td}>
                                                     <div style={styles.quantityControl} className="quantity-control">
                                                         <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton} aria-label={`Reducir cantidad de ${item.product.nombre}`}>−</button>
@@ -2125,11 +2136,12 @@ const PuntoVenta = () => {
                                     id="recargoMonto"
                                     value={recargoMonto}
                                     onChange={(e) => {
-                                        setRecargoMonto(Math.max(0, parseFloat(e.target.value) || 0));
+                                        setRecargoMonto(Math.max(0, Math.min(9999999, parseFloat(e.target.value) || 0)));
                                         setRecargoPorcentaje(''); setDescuentoMonto(''); setDescuentoPorcentaje('');
                                     }}
                                     style={styles.ajusteInput}
                                     min="0"
+                                    max="9999999"
                                 />
                                 <span style={styles.ajusteSeparador}>o %</span>
                                 <input
@@ -2151,11 +2163,12 @@ const PuntoVenta = () => {
                                     id="descuentoMonto"
                                     value={descuentoMonto}
                                     onChange={(e) => {
-                                        setDescuentoMonto(Math.max(0, parseFloat(e.target.value) || 0));
+                                        setDescuentoMonto(Math.max(0, Math.min(9999999, parseFloat(e.target.value) || 0)));
                                         setDescuentoPorcentaje(''); setRecargoMonto(''); setRecargoPorcentaje('');
                                     }}
                                     style={styles.ajusteInput}
                                     min="0"
+                                    max="9999999"
                                 />
                                 <span style={styles.ajusteSeparador}>o %</span>
                                 <input

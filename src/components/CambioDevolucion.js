@@ -1230,13 +1230,14 @@ const CambioDevolucion = () => {
                                             id="recargoMonto"
                                             value={recargoMonto}
                                             onChange={(e) => {
-                                                setRecargoMonto(Math.max(0, parseFloat(e.target.value) || 0));
-                                                setRecargoPorcentaje(''); 
-                                                setDescuentoMonto('');    
+                                                setRecargoMonto(Math.max(0, Math.min(9999999, parseFloat(e.target.value) || 0)));
+                                                setRecargoPorcentaje('');
+                                                setDescuentoMonto('');
                                                 setDescuentoPorcentaje('');
                                             }}
                                             style={styles.ajusteInput}
                                             min="0"
+                                            max="9999999"
                                         />
                                         <span style={styles.ajusteSeparador}>O</span>
                                         <label htmlFor="recargoPorcentaje" style={styles.ajusteLabel}>%:</label>
@@ -1262,13 +1263,14 @@ const CambioDevolucion = () => {
                                             id="descuentoMonto"
                                             value={descuentoMonto}
                                             onChange={(e) => {
-                                                setDescuentoMonto(Math.max(0, parseFloat(e.target.value) || 0));
-                                                setDescuentoPorcentaje(''); 
-                                                setRecargoMonto('');       
-                                                setRecargoPorcentaje('');  
+                                                setDescuentoMonto(Math.max(0, Math.min(9999999, parseFloat(e.target.value) || 0)));
+                                                setDescuentoPorcentaje('');
+                                                setRecargoMonto('');
+                                                setRecargoPorcentaje('');
                                             }}
                                             style={styles.ajusteInput}
                                             min="0"
+                                            max="9999999"
                                         />
                                         <span style={styles.ajusteSeparador}>O</span>
                                         <label htmlFor="descuentoPorcentaje" style={styles.ajusteLabel}>%:</label>

@@ -621,9 +621,9 @@ const Presupuesto = () => {
                                 <div style={styles.ajusteGrupo}>
                                     <label style={styles.ajusteLabel}>Recargo $</label>
                                     <input
-                                        type="number" min="0" style={styles.ajusteInput}
+                                        type="number" min="0" max="9999999" style={styles.ajusteInput}
                                         value={recargoMonto}
-                                        onChange={(e) => { setRecargoMonto(Math.max(0, parseFloat(e.target.value) || 0)); setRecargoPorcentaje(''); setDescuentoMonto(''); setDescuentoPorcentaje(''); }}
+                                        onChange={(e) => { setRecargoMonto(Math.max(0, Math.min(9999999, parseFloat(e.target.value) || 0))); setRecargoPorcentaje(''); setDescuentoMonto(''); setDescuentoPorcentaje(''); }}
                                     />
                                     <span style={styles.ajusteSeparador}>o %</span>
                                     <input
@@ -635,9 +635,9 @@ const Presupuesto = () => {
                                 <div style={styles.ajusteGrupo}>
                                     <label style={styles.ajusteLabel}>Descuento $</label>
                                     <input
-                                        type="number" min="0" style={styles.ajusteInput}
+                                        type="number" min="0" max="9999999" style={styles.ajusteInput}
                                         value={descuentoMonto}
-                                        onChange={(e) => { setDescuentoMonto(Math.max(0, parseFloat(e.target.value) || 0)); setDescuentoPorcentaje(''); setRecargoMonto(''); setRecargoPorcentaje(''); }}
+                                        onChange={(e) => { setDescuentoMonto(Math.max(0, Math.min(9999999, parseFloat(e.target.value) || 0))); setDescuentoPorcentaje(''); setRecargoMonto(''); setRecargoPorcentaje(''); }}
                                     />
                                     <span style={styles.ajusteSeparador}>o %</span>
                                     <input
