@@ -1658,7 +1658,7 @@ const Productos = () => {
             {/* Modal para editar producto */}
             {showEditModal && editProduct && (
                 <div style={styles.modalOverlay}>
-                    <div style={styles.modalContent}>
+                    <div style={{ ...styles.modalContent, maxHeight: '90vh', overflowY: 'auto' }}>
                         <h3>Editar Producto</h3>
                         <div style={styles.inputGroupModal}>
                             <label style={styles.label}>Nombre:</label>
