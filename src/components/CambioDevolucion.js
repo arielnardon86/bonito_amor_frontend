@@ -633,8 +633,11 @@ const CambioDevolucion = () => {
                     // Express the adjustment relative to the raw difference (new items total
                     // minus devolution credit) so the backend can apply it correctly:
                     // total = rawDiff ± adjustment  (rawDiff = activeCart.total - montoDevolucion)
+                    // Redondeado a centavos: la resta de floats puede dar p.ej. 23.61999999999989
+                    // en vez de 23.62, y ese valor "sucio" excede los 10 dígitos totales que
+                    // acepta el Decimal del backend, aunque el monto real sea chico.
                     const rawDiff = activeCart.total - montoDevolucion;
-                    const ajusteSobreDiferencia = montoDiferencia - rawDiff;
+                    const ajusteSobreDiferencia = Math.round((montoDiferencia - rawDiff) * 100) / 100;
                     datosAjusteParaBackend = {
                         descuento_porcentaje: 0,
                         descuento_monto: ajusteSobreDiferencia < 0 ? Math.abs(ajusteSobreDiferencia) : 0,

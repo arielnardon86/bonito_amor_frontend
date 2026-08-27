@@ -985,7 +985,10 @@ const PuntoVenta = () => {
         if (redondearMonto || redondearMontoArriba) {
             // Si hay redondeo (abajo o arriba), calculamos el ajuste total (negativo o positivo)
             // y lo enviamos como UN solo campo (monto) al backend.
-            const ajusteTotalEfectivo = finalTotal - subtotalCrudo;
+            // Redondeado a centavos: la resta de floats puede dar p.ej. 23.61999999999989
+            // en vez de 23.62, y ese valor "sucio" tiene más de 10 dígitos totales para
+            // Decimal(max_digits=10) del backend, aunque el monto real sea chico.
+            const ajusteTotalEfectivo = Math.round((finalTotal - subtotalCrudo) * 100) / 100;
 
             datosAjusteParaBackend = { // Reseteamos
                 descuento_porcentaje: 0,
