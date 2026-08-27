@@ -1784,13 +1784,21 @@ const Productos = () => {
                                 ) : (
                                     <>
                                         <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 8px' }}>
-                                            Si ya creaste este producto directamente en Tienda Nube, pegá acá su ID para vincularlo (el stock se sincroniza solo desde ese momento). Si en Tienda Nube tiene varios talles/variantes, se van a crear automáticamente acá también (con stock en 0 para redistribuir a mano).
+                                            Si ya creaste este producto directamente en Tienda Nube, pegá acá su ID para vincularlo (el stock se sincroniza solo desde ese momento). Si en Tienda Nube tiene varios talles/variantes: cuando este producto todavía no tiene variantes cargadas acá, se crean automáticamente (con stock en 0 para redistribuir a mano); si este producto ya es una variante de una familia local, te vamos a pedir que elijas cuál talle de Tienda Nube le corresponde — repetí este paso en cada variante local, con el mismo ID de producto.
                                         </p>
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <input
                                                 type="text"
                                                 value={tnLinkInput}
-                                                onChange={(e) => setTnLinkInput(e.target.value)}
+                                                onChange={(e) => {
+                                                    setTnLinkInput(e.target.value);
+                                                    // Si ya había un desplegable de variantes de un ID anterior,
+                                                    // se descarta: si no, al corregir el ID y confirmar, se manda
+                                                    // el tn_variant_id viejo contra el producto nuevo y tira
+                                                    // "la variante no pertenece a ese producto".
+                                                    setTnVariantesParaElegir(null);
+                                                    setTnVarianteElegida('');
+                                                }}
                                                 placeholder="ID de producto en Tienda Nube"
                                                 style={{ ...styles.modalInput, flex: 1 }}
                                             />
