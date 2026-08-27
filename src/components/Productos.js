@@ -880,6 +880,7 @@ const Productos = () => {
                             'Los Supervisores pueden agregar productos pero no editarlos ni eliminarlos',
                             'Solo los Administradores pueden editar precio, stock o eliminar productos',
                             'Importá productos en lote desde Excel/CSV con "Importar productos"',
+                            'Subí la foto o el PDF de una factura de compra con "Importación IA" para crear productos o reponer stock automáticamente',
                             'Descargá todo tu catálogo con "Descargar Excel" (mismo formato que la plantilla de importación, sirve para llevarlo a otra tienda)',
                         ]}
                     />
@@ -899,6 +900,13 @@ const Productos = () => {
                         style={{ padding: '8px 16px', backgroundColor: '#3b9ede', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
                     >
                         Importar productos
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/productos/importacion-ia')}
+                        style={{ padding: '8px 16px', backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                        Importación IA
                     </button>
                 </div>
             </div>
