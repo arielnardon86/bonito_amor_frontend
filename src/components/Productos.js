@@ -90,7 +90,7 @@ const Productos = () => {
     const [productToDelete, setProductToDelete] = useState(null);
     const [expandedVariants, setExpandedVariants] = useState({});
     const [showAddVarianteModal, setShowAddVarianteModal] = useState(false);
-    const [nuevaVariante, setNuevaVariante] = useState({ talle: '', precio: '', stock: '', codigo_barras: '' });
+    const [convirtiendoAFamilia, setConvirtiendoAFamilia] = useState(false);
 
     const [barcodeNombreSugerido, setBarcodeNombreSugerido] = useState('');
     const [barcodeLoading, setBarcodeLoading] = useState(false);
@@ -521,29 +521,57 @@ const Productos = () => {
         }
     };
 
-    const handleAddVarianteAPadre = async () => {
+    const handleAgregarVariantesLote = async () => {
         if (!editProduct) return;
+        const variantesConDatos = variantesNuevas.filter(v => v.talle || v.precio || v.stock);
+        const sinTalle = variantesConDatos.filter(v => !v.talle);
+        if (sinTalle.length > 0) {
+            setError('Todas las variantes deben tener un valor de talle/color/tamaño.');
+            return;
+        }
+        if (variantesConDatos.length === 0) {
+            setError('Agregá al menos una variante con talle y precio.');
+            return;
+        }
         setLoadingProducts(true);
         setError(null);
         try {
-            const varianteData = {
-                nombre: editProduct.nombre,
-                precio: nuevaVariante.precio,
-                costo: editProduct.costo || null,
-                stock: nuevaVariante.stock || 0,
-                codigo_barras: nuevaVariante.codigo_barras || generarCodigoDeBarrasEAN13(),
-                talle: nuevaVariante.talle || null,
-                producto_padre: editProduct.id,
-                tienda_slug: selectedStoreSlug,
-            };
-            await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, varianteData, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            for (const v of variantesNuevas) {
+                if (!v.talle) continue; // variantes sin talle se saltean siempre
+                const varianteData = {
+                    nombre: editProduct.nombre,
+                    precio: v.precio,
+                    costo: v.costo || null,
+                    stock: v.stock || 0,
+                    codigo_barras: v.codigo_barras || generarCodigoDeBarrasEAN13(),
+                    talle: v.talle || null,
+                    iva_porcentaje: editProduct.iva_porcentaje ?? null,
+                    rubro: editProduct.rubro || null,
+                    producto_padre: editProduct.id,
+                    tienda_slug: selectedStoreSlug,
+                    imagen: v.imagen || null,
+                };
+                await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, varianteData, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            }
+
+            if (convirtiendoAFamilia) {
+                // El producto suelto pasa a ser el padre/contenedor de la familia: su
+                // stock y talle propios quedan obsoletos (ahora viven en cada variante).
+                // Sin este reset quedarían "flotando" en el padre, contando doble junto
+                // con el stock de la variante recién creada.
+                await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProduct.id}/`, { stock: 0, talle: null }, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            }
+
             setShowAddVarianteModal(false);
-            setNuevaVariante({ talle: '', precio: '', stock: '', codigo_barras: '' });
+            setConvirtiendoAFamilia(false);
+            setVariantesNuevas([{ ...VARIANTE_VACIA }]);
             fetchProductos(currentPageUrl);
         } catch (err) {
-            setError('Error al agregar variante: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            setError('Error al agregar variantes: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
         }
     };
@@ -1493,7 +1521,7 @@ const Productos = () => {
                                                     </button>
                                                     <button
                                                         className="icon-btn"
-                                                        onClick={() => { setEditProduct({ ...producto }); setShowAddVarianteModal(true); }}
+                                                        onClick={() => { setEditProduct({ ...producto }); setConvirtiendoAFamilia(!tieneVars); setVariantesNuevas([{ ...VARIANTE_VACIA }]); setShowAddVarianteModal(true); }}
                                                         style={{ color: 'white', backgroundColor: '#5dc87a' }}
                                                         data-tooltip={tieneVars ? 'Agregar variante' : 'Convertir en producto con variantes'}
                                                     >
@@ -1855,7 +1883,12 @@ const Productos = () => {
                             <button onClick={handleEditProduct} style={styles.modalConfirmButton}>Guardar</button>
                             <button
                                 type="button"
-                                onClick={() => { setShowEditModal(false); setShowAddVarianteModal(true); }}
+                                onClick={() => {
+                                    setShowEditModal(false);
+                                    setConvirtiendoAFamilia(!(editProduct.variantes && editProduct.variantes.length > 0));
+                                    setVariantesNuevas([{ ...VARIANTE_VACIA }]);
+                                    setShowAddVarianteModal(true);
+                                }}
                                 style={{ padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                             >
                                 + Variante
@@ -2032,35 +2065,111 @@ const Productos = () => {
             {/* Modal agregar variante a un padre existente */}
             {showAddVarianteModal && editProduct && (
                 <div style={styles.modalOverlay} onClick={() => setShowAddVarianteModal(false)}>
-                    <div style={{ ...styles.modalContent, maxWidth: 420 }} onClick={e => e.stopPropagation()}>
-                        <h3 style={{ marginTop: 0 }}>Agregar variante a "{editProduct.nombre}"</h3>
-                        {[
-                            { key: 'talle', label: 'Talle / Valor', placeholder: 'M, L, XL, 42…', type: 'text' },
-                            { key: 'precio', label: 'Precio', placeholder: '0', type: 'number' },
-                            { key: 'stock', label: 'Stock inicial', placeholder: '0', type: 'number' },
-                            { key: 'codigo_barras', label: 'Código de barras (opcional)', placeholder: 'Auto-generado', type: 'text' },
-                        ].map(({ key, label, placeholder, type }) => (
-                            <div key={key} style={styles.inputGroupModal}>
-                                <label style={{ ...styles.label, textAlign: 'left', display: 'block' }}>
-                                    {label.replace(' (opcional)', '')}
-                                    {label.includes('(opcional)') && <span style={styles.opcionalTag}> (opcional)</span>}
-                                    :
-                                </label>
-                                <input
-                                    type={type}
-                                    value={nuevaVariante[key]}
-                                    onChange={e => setNuevaVariante(prev => ({ ...prev, [key]: e.target.value }))}
-                                    placeholder={placeholder}
-                                    style={styles.modalInput}
-                                />
-                            </div>
-                        ))}
+                    <div style={{ ...styles.modalContent, maxWidth: 720 }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ marginTop: 0 }}>
+                            {convirtiendoAFamilia
+                                ? `Convertir "${editProduct.nombre}" en producto con variantes`
+                                : `Agregar variantes a "${editProduct.nombre}"`}
+                        </h3>
+                        <p style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
+                            Cargá todas las variantes que necesites y se crean juntas de una sola vez.
+                            El código de barras se genera automáticamente si lo dejás vacío. El margen
+                            calcula el precio de esa variante a partir de su costo.
+                        </p>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                <thead>
+                                    <tr>
+                                        {['Foto', 'Talle / Valor', 'Precio', 'Costo', 'Margen %', 'Stock', 'Código de barras', ''].map(h => (
+                                            <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: 600 }}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {variantesNuevas.map((v, i) => (
+                                        <tr key={i}>
+                                            <td style={{ padding: '4px 8px' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 6, background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', overflow: 'hidden' }}>
+                                                    {v.imagen
+                                                        ? <img src={v.imagen} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                        : <span style={{ fontSize: 14, color: '#94a3b8' }}>📷</span>
+                                                    }
+                                                    <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+                                                        onChange={e => handleVarianteImagenChange(i, e.target.files?.[0])} />
+                                                </label>
+                                            </td>
+                                            <td style={{ padding: '4px 8px' }}>
+                                                <input type="text" value={v.talle} placeholder="M, L, 42…" style={{ ...styles.input, width: 80 }}
+                                                    onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, talle: e.target.value } : x))} />
+                                            </td>
+                                            <td style={{ padding: '4px 8px' }}>
+                                                <input type="number" value={v.precio} placeholder="0" style={{ ...styles.input, width: 90 }}
+                                                    onChange={e => handleVariantePrecioChange(i, e.target.value)} required />
+                                            </td>
+                                            <td style={{ padding: '4px 8px' }}>
+                                                <input type="number" value={v.costo} placeholder="Opcional" style={{ ...styles.input, width: 90 }}
+                                                    onChange={e => handleVarianteCostoChange(i, e.target.value)} />
+                                            </td>
+                                            <td style={{ padding: '4px 8px' }}>
+                                                {(() => {
+                                                    const vMargenCalc = margenCalculadoVariante(v);
+                                                    const vMargenBloqueado = vMargenCalc !== null;
+                                                    return (
+                                                        <input
+                                                            type="number" step="0.01"
+                                                            value={vMargenBloqueado ? vMargenCalc : v.margen}
+                                                            placeholder="Ej: 40"
+                                                            style={{
+                                                                ...styles.input, width: 80,
+                                                                background: vMargenBloqueado ? '#f3f4f6' : undefined,
+                                                                color: vMargenBloqueado ? '#aaa' : undefined,
+                                                                cursor: vMargenBloqueado ? 'not-allowed' : undefined,
+                                                            }}
+                                                            disabled={vMargenBloqueado}
+                                                            title={vMargenBloqueado ? 'Calculado a partir de costo y precio' : 'Calcula el precio de esta variante a partir de su costo'}
+                                                            onChange={e => handleVarianteMargenChange(i, e.target.value)}
+                                                        />
+                                                    );
+                                                })()}
+                                            </td>
+                                            <td style={{ padding: '4px 8px' }}>
+                                                <input type="number" value={v.stock} placeholder="0" style={{ ...styles.input, width: 70 }}
+                                                    onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, stock: e.target.value } : x))} />
+                                            </td>
+                                            <td style={{ padding: '4px 8px' }}>
+                                                <input type="text" value={v.codigo_barras} placeholder="Auto" style={{ ...styles.input, width: 120 }}
+                                                    onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, codigo_barras: e.target.value } : x))} />
+                                            </td>
+                                            <td style={{ padding: '4px 8px' }}>
+                                                {variantesNuevas.length > 1 && (
+                                                    <button type="button" onClick={() => setVariantesNuevas(prev => prev.filter((_, j) => j !== i))}
+                                                        style={{ background: 'none', border: 'none', color: '#e25252', cursor: 'pointer', fontSize: 16 }}>✕</button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <button type="button" onClick={() => setVariantesNuevas(prev => [...prev, { ...VARIANTE_VACIA }])}
+                            style={{ marginTop: 8, padding: '5px 12px', background: '#e8f5ec', color: '#1a7a3f', border: '1px solid #b7dfc7', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
+                            + Agregar variante
+                        </button>
+
+                        {error && (
+                            <p style={{ color: '#e25252', fontSize: 13, marginTop: 12 }}>{error}</p>
+                        )}
+
                         <div style={styles.modalActions}>
-                            <button onClick={handleAddVarianteAPadre} style={styles.modalConfirmButton} disabled={loadingProducts}>
-                                {loadingProducts ? 'Guardando…' : 'Agregar variante'}
+                            <button onClick={handleAgregarVariantesLote} style={styles.modalConfirmButton} disabled={loadingProducts}>
+                                {loadingProducts ? 'Guardando…' : 'Crear variantes'}
                             </button>
-                            <button onClick={() => { setShowAddVarianteModal(false); setNuevaVariante({ talle: '', precio: '', stock: '', codigo_barras: '' }); }}
-                                style={styles.modalCancelButton}>Cancelar</button>
+                            <button
+                                onClick={() => { setShowAddVarianteModal(false); setConvirtiendoAFamilia(false); setVariantesNuevas([{ ...VARIANTE_VACIA }]); setError(null); }}
+                                style={styles.modalCancelButton}
+                            >
+                                Cancelar
+                            </button>
                         </div>
                     </div>
                 </div>
