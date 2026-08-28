@@ -963,7 +963,7 @@ const Productos = () => {
 
             {showNuevoProductoModal && (
                 <div style={styles.modalOverlay} onClick={() => setShowNuevoProductoModal(false)}>
-                    <div style={{ ...styles.modalContent, maxWidth: 780, textAlign: 'left', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ ...styles.modalContent, width: '95%', maxWidth: 1040, textAlign: 'left', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                             <h3 style={{ margin: 0 }}>Nuevo producto</h3>
                             <button
@@ -1528,7 +1528,7 @@ const Productos = () => {
                                                     </button>
                                                     <button
                                                         className="icon-btn"
-                                                        onClick={() => { setEditProduct({ ...producto }); setConvirtiendoAFamilia(!tieneVars); setVariantesNuevas([{ ...VARIANTE_VACIA }]); setShowAddVarianteModal(true); }}
+                                                        onClick={() => { setEditProduct({ ...producto }); setConvirtiendoAFamilia(!tieneVars); setVariantesNuevas([{ ...VARIANTE_VACIA, precio: producto.precio ?? '', costo: producto.costo ?? '' }]); setShowAddVarianteModal(true); }}
                                                         style={{ color: 'white', backgroundColor: '#5dc87a' }}
                                                         data-tooltip={tieneVars ? 'Agregar variante' : 'Convertir en producto con variantes'}
                                                     >
@@ -1916,7 +1916,7 @@ const Productos = () => {
                                 onClick={() => {
                                     setShowEditModal(false);
                                     setConvirtiendoAFamilia(!(editProduct.variantes && editProduct.variantes.length > 0));
-                                    setVariantesNuevas([{ ...VARIANTE_VACIA }]);
+                                    setVariantesNuevas([{ ...VARIANTE_VACIA, precio: editProduct.precio ?? '', costo: editProduct.costo ?? '' }]);
                                     setShowAddVarianteModal(true);
                                 }}
                                 style={{ padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
@@ -2095,7 +2095,7 @@ const Productos = () => {
             {/* Modal agregar variante a un padre existente */}
             {showAddVarianteModal && editProduct && (
                 <div style={styles.modalOverlay} onClick={() => setShowAddVarianteModal(false)}>
-                    <div style={{ ...styles.modalContent, maxWidth: 720 }} onClick={e => e.stopPropagation()}>
+                    <div style={{ ...styles.modalContent, width: '95%', maxWidth: 1040, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                         <h3 style={{ marginTop: 0 }}>
                             {convirtiendoAFamilia
                                 ? `Convertir "${editProduct.nombre}" en producto con variantes`
@@ -2185,7 +2185,7 @@ const Productos = () => {
                                 </tbody>
                             </table>
                         </div>
-                        <button type="button" onClick={() => setVariantesNuevas(prev => [...prev, { ...VARIANTE_VACIA }])}
+                        <button type="button" onClick={() => setVariantesNuevas(prev => [...prev, { ...VARIANTE_VACIA, precio: editProduct.precio ?? '', costo: editProduct.costo ?? '' }])}
                             style={{ marginTop: 8, padding: '5px 12px', background: '#e8f5ec', color: '#1a7a3f', border: '1px solid #b7dfc7', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
                             + Agregar variante
                         </button>
