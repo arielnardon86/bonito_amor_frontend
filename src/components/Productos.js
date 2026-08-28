@@ -1638,6 +1638,19 @@ const Productos = () => {
                                                                 <FontAwesomeIcon icon={faPencil} />
                                                             </button>
                                                         )}
+                                                        {user.is_superuser && (
+                                                            <button
+                                                                className="icon-btn"
+                                                                onClick={() => {
+                                                                    setProductToDelete({ ...v, nombre: `${producto.nombre} · T: ${v.talle || ''}` });
+                                                                    setShowDeleteModal(true);
+                                                                }}
+                                                                style={{ color: 'white', backgroundColor: '#e25252' }}
+                                                                data-tooltip="Eliminar variante"
+                                                            >
+                                                                <FontAwesomeIcon icon={faTrash} />
+                                                            </button>
+                                                        )}
                                                         {user.is_supervisor && !user.is_superuser && (
                                                             <button
                                                                 className="icon-btn"
