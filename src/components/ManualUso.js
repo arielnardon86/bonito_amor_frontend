@@ -224,7 +224,7 @@ const ManualUso = () => {
                         <h3>Qué podés hacer</h3>
                         <ul>
                             <li><strong>Buscar</strong> por nombre, código de barras o <strong>Código Interno</strong> (el mismo que se usa en la carga masiva), y <strong>crear productos nuevos</strong> — si no tenés código de barras, el sistema te genera uno. El Código Interno de cada producto también se ve en su propia columna en el listado.</li>
-                            <li><strong>Productos con variantes</strong> (mismo modelo en distintos talles), agrupados bajo un producto "padre", cada uno con su propio stock y código.</li>
+                            <li><strong>Productos con variantes</strong> (mismo modelo en distintos talles, colores, u otro valor que uses en tu rubro), agrupados bajo un producto "padre", cada uno con su propio stock y código. Además del talle, cada variante admite un <strong>segundo valor opcional</strong> (por ejemplo color) para distinguir variantes que comparten el mismo talle.</li>
                             <li><strong>Editar, eliminar o sumar stock</strong> a un producto existente — desde el mismo formulario podés corregir su código de barras a mano si hace falta.</li>
                             <li><strong>Transferir stock entre tus tiendas</strong> si administrás más de un local — funciona también para varias variantes de una familia a la vez.</li>
                             <li><strong>Importar productos en lote desde Excel/CSV</strong>, con vista previa antes de confirmar y aviso de filas con error. Podés elegir si sumar stock a los existentes o solo actualizar precio/IVA/rubro sin tocarlo. Archivos de más de 5.000 filas hay que dividirlos.</li>

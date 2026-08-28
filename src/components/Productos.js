@@ -75,7 +75,8 @@ const Productos = () => {
     const [guardandoMasivo, setGuardandoMasivo] = useState(false);
     const [descargandoExcel, setDescargandoExcel] = useState(false);
     const [tieneVariantes, setTieneVariantes] = useState(false);
-    const VARIANTE_VACIA = { talle: '', precio: '', costo: '', stock: '', codigo_barras: '', margen: '', imagen: '' };
+    const VARIANTE_VACIA = { talle: '', variante2: '', precio: '', costo: '', stock: '', codigo_barras: '', margen: '', imagen: '' };
+    const detalleVariante = v => [v.talle, v.variante2].filter(Boolean).join(' · ');
     const [variantesNuevas, setVariantesNuevas] = useState([{ ...VARIANTE_VACIA }]);
 
     const [editProduct, setEditProduct] = useState(null);
@@ -374,6 +375,7 @@ const Productos = () => {
                         stock: v.stock || 0,
                         codigo_barras: v.codigo_barras || generarCodigoDeBarrasEAN13(),
                         talle: v.talle || null,
+                        variante2: v.variante2 || null,
                         iva_porcentaje: ivaParaCrear,
                         rubro: rubroParaCrear,
                         producto_padre: padre.id,
@@ -545,6 +547,7 @@ const Productos = () => {
                     stock: v.stock || 0,
                     codigo_barras: v.codigo_barras || generarCodigoDeBarrasEAN13(),
                     talle: v.talle || null,
+                    variante2: v.variante2 || null,
                     iva_porcentaje: editProduct.iva_porcentaje ?? null,
                     rubro: editProduct.rubro || null,
                     producto_padre: editProduct.id,
@@ -561,7 +564,7 @@ const Productos = () => {
                 // stock y talle propios quedan obsoletos (ahora viven en cada variante).
                 // Sin este reset quedarían "flotando" en el padre, contando doble junto
                 // con el stock de la variante recién creada.
-                await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProduct.id}/`, { stock: 0, talle: null }, {
+                await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProduct.id}/`, { stock: 0, talle: null, variante2: null }, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
             }
@@ -850,7 +853,7 @@ const Productos = () => {
                         productosParaImprimir.push({
                             ...v,
                             nombre: producto.nombre,
-                            variante_detalle: v.talle || '',
+                            variante_detalle: detalleVariante(v),
                             labelQuantity: cantidad,
                         });
                     });
@@ -866,7 +869,7 @@ const Productos = () => {
                     productosParaImprimir.push({
                         ...variante,
                         nombre: padre.nombre,
-                        variante_detalle: variante.talle || '',
+                        variante_detalle: detalleVariante(variante),
                         labelQuantity: cantidad,
                     });
                     break;
@@ -1188,7 +1191,7 @@ const Productos = () => {
                                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                             <thead>
                                                 <tr>
-                                                    {['Foto', 'Talle / Valor', 'Precio', 'Costo', 'Margen %', 'Stock', 'Código de barras', ''].map(h => (
+                                                    {['Foto', 'Talle / Valor', 'Variante 2 (opcional)', 'Precio', 'Costo', 'Margen %', 'Stock', 'Código de barras', ''].map(h => (
                                                         <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                                                     ))}
                                                 </tr>
@@ -1209,6 +1212,10 @@ const Productos = () => {
                                                         <td style={{ padding: '4px 8px' }}>
                                                             <input type="text" value={v.talle} placeholder="M, L, 42…" style={{ ...styles.input, width: 80 }}
                                                                 onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, talle: e.target.value } : x))} />
+                                                        </td>
+                                                        <td style={{ padding: '4px 8px' }}>
+                                                            <input type="text" value={v.variante2} placeholder="Color, material…" style={{ ...styles.input, width: 100 }}
+                                                                onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, variante2: e.target.value } : x))} />
                                                         </td>
                                                         <td style={{ padding: '4px 8px' }}>
                                                             <input type="number" value={v.precio} placeholder="0" style={{ ...styles.input, width: 90 }}
@@ -1363,7 +1370,7 @@ const Productos = () => {
                             </button>
                         ) : null;
                     })()}
-                    {productos.some(p => p.talle && String(p.talle).trim() !== '') && (
+                    {productos.some(p => (p.talle && String(p.talle).trim() !== '') || (p.variante2 && String(p.variante2).trim() !== '')) && (
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginLeft: '12px' }}>
                             <input
                                 type="checkbox"
@@ -1471,7 +1478,7 @@ const Productos = () => {
                                                     </span>
                                                 )}
                                             </td>
-                                            {mostrarTalle && <td style={styles.td}>{producto.talle || (tieneVars ? '—' : '-')}</td>}
+                                            {mostrarTalle && <td style={styles.td}>{detalleVariante(producto) || (tieneVars ? '—' : '-')}</td>}
                                             <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.precio)}</td>
                                             <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.costo || 0)}</td>
                                             <td style={styles.td}>{tieneVars ? '—' : formatearMonto(costoConIva)}</td>
@@ -1595,9 +1602,9 @@ const Productos = () => {
                                                         {v.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
                                                     </td>
                                                     <td style={{ ...styles.td, paddingLeft: 28, color: '#475569', fontSize: 13 }}>
-                                                        ↳ {v.talle || '(sin talle)'}
+                                                        ↳ {detalleVariante(v) || '(sin talle)'}
                                                     </td>
-                                                    {mostrarTalle && <td style={styles.td}>{v.talle || '-'}</td>}
+                                                    {mostrarTalle && <td style={styles.td}>{detalleVariante(v) || '-'}</td>}
                                                     <td style={styles.td}>{formatearMonto(v.precio)}</td>
                                                     <td style={styles.td}>—</td>
                                                     <td style={styles.td}>—</td>
@@ -1642,7 +1649,7 @@ const Productos = () => {
                                                             <button
                                                                 className="icon-btn"
                                                                 onClick={() => {
-                                                                    setProductToDelete({ ...v, nombre: `${producto.nombre} · T: ${v.talle || ''}` });
+                                                                    setProductToDelete({ ...v, nombre: `${producto.nombre}${detalleVariante(v) ? ` · ${detalleVariante(v)}` : ''}` });
                                                                     setShowDeleteModal(true);
                                                                 }}
                                                                 style={{ color: 'white', backgroundColor: '#e25252' }}
@@ -1654,7 +1661,7 @@ const Productos = () => {
                                                         {user.is_supervisor && !user.is_superuser && (
                                                             <button
                                                                 className="icon-btn"
-                                                                onClick={() => { setProductoParaStock({ ...v, nombre: `${producto.nombre} · T: ${v.talle || ''}` }); setCantidadAGregar(''); setShowAgregarStockModal(true); }}
+                                                                onClick={() => { setProductoParaStock({ ...v, nombre: `${producto.nombre}${detalleVariante(v) ? ` · ${detalleVariante(v)}` : ''}` }); setCantidadAGregar(''); setShowAgregarStockModal(true); }}
                                                                 style={{ color: 'white', backgroundColor: '#3b82f6' }}
                                                                 data-tooltip="Agregar stock"
                                                             >
@@ -1664,7 +1671,7 @@ const Productos = () => {
                                                         {(user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 && (
                                                             <button
                                                                 className="icon-btn"
-                                                                onClick={() => { setProductoParaTransferir({ ...v, nombre: `${producto.nombre} · T: ${v.talle || ''}` }); setTiendaDestinoTransferir(''); setCantidadTransferir(''); setShowTransferirStockModal(true); }}
+                                                                onClick={() => { setProductoParaTransferir({ ...v, nombre: `${producto.nombre}${detalleVariante(v) ? ` · ${detalleVariante(v)}` : ''}` }); setTiendaDestinoTransferir(''); setCantidadTransferir(''); setShowTransferirStockModal(true); }}
                                                                 style={{ color: 'white', backgroundColor: '#7c3aed' }}
                                                                 data-tooltip="Transferir stock a otra tienda"
                                                             >
@@ -1772,6 +1779,16 @@ const Productos = () => {
                                 onChange={(e) => setEditProduct({ ...editProduct, talle: e.target.value })}
                                 style={styles.modalInput}
                                 placeholder="Ej: M, L, XL, 42, etc."
+                            />
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Variante 2 <span style={styles.opcionalTag}>(Opcional)</span>:</label>
+                            <input
+                                type="text"
+                                value={editProduct.variante2 || ''}
+                                onChange={(e) => setEditProduct({ ...editProduct, variante2: e.target.value })}
+                                style={styles.modalInput}
+                                placeholder="Ej: color, material, etc."
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
@@ -2093,7 +2110,7 @@ const Productos = () => {
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                 <thead>
                                     <tr>
-                                        {['Foto', 'Talle / Valor', 'Precio', 'Costo', 'Margen %', 'Stock', 'Código de barras', ''].map(h => (
+                                        {['Foto', 'Talle / Valor', 'Variante 2 (opcional)', 'Precio', 'Costo', 'Margen %', 'Stock', 'Código de barras', ''].map(h => (
                                             <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                                         ))}
                                     </tr>
@@ -2114,6 +2131,10 @@ const Productos = () => {
                                             <td style={{ padding: '4px 8px' }}>
                                                 <input type="text" value={v.talle} placeholder="M, L, 42…" style={{ ...styles.input, width: 80 }}
                                                     onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, talle: e.target.value } : x))} />
+                                            </td>
+                                            <td style={{ padding: '4px 8px' }}>
+                                                <input type="text" value={v.variante2} placeholder="Color, material…" style={{ ...styles.input, width: 100 }}
+                                                    onChange={e => setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, variante2: e.target.value } : x))} />
                                             </td>
                                             <td style={{ padding: '4px 8px' }}>
                                                 <input type="number" value={v.precio} placeholder="0" style={{ ...styles.input, width: 90 }}
@@ -2309,7 +2330,7 @@ const Productos = () => {
                         <table style={{ width: '100%', borderCollapse: 'collapse', margin: '12px 0' }}>
                             <thead>
                                 <tr>
-                                    <th style={{ textAlign: 'left', fontSize: 12, color: '#94a3b8', padding: '4px 6px' }}>Talle</th>
+                                    <th style={{ textAlign: 'left', fontSize: 12, color: '#94a3b8', padding: '4px 6px' }}>Variante</th>
                                     <th style={{ textAlign: 'left', fontSize: 12, color: '#94a3b8', padding: '4px 6px' }}>Stock</th>
                                     <th style={{ textAlign: 'left', fontSize: 12, color: '#94a3b8', padding: '4px 6px' }}>Cantidad</th>
                                 </tr>
@@ -2317,7 +2338,7 @@ const Productos = () => {
                             <tbody>
                                 {familiaParaTransferir.variantes.map(v => (
                                     <tr key={v.id}>
-                                        <td style={{ padding: '4px 6px', fontSize: 13 }}>{v.talle || '(sin talle)'}</td>
+                                        <td style={{ padding: '4px 6px', fontSize: 13 }}>{detalleVariante(v) || '(sin talle)'}</td>
                                         <td style={{ padding: '4px 6px', fontSize: 13 }}>{v.stock}</td>
                                         <td style={{ padding: '4px 6px' }}>
                                             <input

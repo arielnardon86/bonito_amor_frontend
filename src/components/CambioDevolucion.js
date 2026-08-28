@@ -1143,7 +1143,7 @@ const CambioDevolucion = () => {
                                         {productos.map(producto => (
                                             <tr key={producto.id} style={styles.tableRow}>
                                                 <td style={styles.td}>{producto.nombre}</td>
-                                                <td style={styles.td}>{producto.talle}</td>
+                                                <td style={styles.td}>{[producto.talle, producto.variante2].filter(Boolean).join(' · ')}</td>
                                                 <td style={styles.td}>{formatearMonto(producto.precio)}</td>
                                                 <td style={styles.td}>{producto.stock}</td>
                                                 <td style={styles.td}>
@@ -1165,7 +1165,7 @@ const CambioDevolucion = () => {
                         {productoSeleccionado && (
                             <div style={styles.foundProductCard}>
                                 <p style={styles.foundProductText}>
-                                    <strong>Producto:</strong> {productoSeleccionado.nombre} ({productoSeleccionado.talle}) - {formatearMonto(productoSeleccionado.precio)}
+                                    <strong>Producto:</strong> {productoSeleccionado.nombre} ({[productoSeleccionado.talle, productoSeleccionado.variante2].filter(Boolean).join(' · ')}) - {formatearMonto(productoSeleccionado.precio)}
                                 </p>
                                 <p style={styles.foundProductText}>
                                     Stock Disponible: {productoSeleccionado.stock}
@@ -1202,7 +1202,7 @@ const CambioDevolucion = () => {
                                             {activeCart.items.map((item) => (
                                                 <tr key={item.product.id} style={styles.tableRow}>
                                                     <td style={styles.td}>{item.product.nombre}</td>
-                                                    <td style={styles.td}>{item.product.talle}</td>
+                                                    <td style={styles.td}>{[item.product.talle, item.product.variante2].filter(Boolean).join(' · ')}</td>
                                                     <td style={styles.td}>
                                                         <div style={styles.quantityControl}>
                                                             <button onClick={() => decrementProductQuantity(activeCartId, item.product.id)} style={styles.quantityButton}>-</button>

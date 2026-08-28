@@ -2397,7 +2397,7 @@ const PuntoVenta = () => {
                                 <thead>
                                     <tr style={styles.tableHeaderRow}>
                                         <th style={styles.th}>Nombre</th>
-                                        {mostrarTalle && <th style={styles.th}>Talle</th>}
+                                        {mostrarTalle && <th style={styles.th}>Variante</th>}
                                         <th style={styles.th}>Precio</th>
                                         <th style={styles.th}>Stock</th>
                                         <th style={styles.th}>Acción</th>
@@ -2420,7 +2420,7 @@ const PuntoVenta = () => {
                                                     {product.nombre}
                                                     {product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#e25252', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '1px 5px' }}>SIN STOCK</span>}
                                                 </td>
-                                                {mostrarTalle && <td style={styles.td}>{product.talle || '-'}</td>}
+                                                {mostrarTalle && <td style={styles.td}>{[product.talle, product.variante2].filter(Boolean).join(' · ') || '-'}</td>}
                                                 <td style={styles.td}>{formatearMonto(product.precio)}</td>
                                                 <td style={styles.td}>{product.stock}</td>
                                                 <td style={styles.td}>
