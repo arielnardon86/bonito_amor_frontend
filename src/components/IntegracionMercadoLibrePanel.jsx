@@ -176,8 +176,8 @@ export default function IntegracionMercadoLibrePanel() {
 
     const handleActualizarExistentes = async () => {
         const result = await Swal.fire({
-            title: '¿Actualizar precio y stock de productos existentes?',
-            text: 'Se actualizarán el precio y el stock en Mercado Libre para todos los productos que ya están publicados. Esta acción sobreescribe los valores actuales en ML.',
+            title: '¿Traer precio y stock desde Mercado Libre?',
+            text: 'Se actualizará en Total Stock el precio y el stock de todos los productos ya vinculados, con los valores que tengan ahora mismo en Mercado Libre. Esta acción sobreescribe esos valores en Total Stock (no modifica nada en Mercado Libre).',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#3b9ede',
@@ -373,7 +373,7 @@ export default function IntegracionMercadoLibrePanel() {
                             ↓ Importar productos desde ML
                         </button>
                         <button style={s.btnSecondary} onClick={handleActualizarExistentes} disabled={sincronizando}>
-                            ↻ Actualizar precio/stock de existentes
+                            ↓ Traer precio/stock desde ML (existentes)
                         </button>
                     </div>
                     <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
