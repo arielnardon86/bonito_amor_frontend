@@ -538,6 +538,43 @@ const Productos = () => {
         setLoadingProducts(true);
         setError(null);
         try {
+            let padreId = editProduct.id;
+
+            if (convirtiendoAFamilia) {
+                if (editProduct.ml_item_id) {
+                    // El producto suelto ya está vinculado a Mercado Libre (stock que
+                    // sincroniza solo): no puede pasar a ser el padre/contenedor vacío,
+                    // porque el vínculo (ml_item_id, stock Full/ML) quedaría colgado en
+                    // una fila que ya no representa nada vendible. Se crea un padre nuevo
+                    // y el producto original pasa a ser la primera variante, conservando
+                    // intacto su ml_item_id y su stock (se sigue sincronizando solo).
+                    const { data: nuevoPadre } = await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, {
+                        nombre: editProduct.nombre,
+                        precio: editProduct.precio,
+                        costo: editProduct.costo || null,
+                        stock: 0,
+                        iva_porcentaje: editProduct.iva_porcentaje ?? null,
+                        rubro: editProduct.rubro || null,
+                        tienda_slug: selectedStoreSlug,
+                    }, { headers: { 'Authorization': `Bearer ${token}` } });
+                    padreId = nuevoPadre.id;
+
+                    await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProduct.id}/`, {
+                        producto_padre: padreId,
+                        talle: editProduct.ml_stock_full ? 'Full' : (editProduct.talle || null),
+                    }, { headers: { 'Authorization': `Bearer ${token}` } });
+                } else {
+                    // Caso normal (sin vínculo con ML): el producto suelto pasa a ser el
+                    // padre/contenedor de la familia. Su stock y talle propios quedan
+                    // obsoletos (ahora viven en cada variante) -- sin este reset
+                    // quedarían "flotando" en el padre, contando doble junto con el
+                    // stock de la variante recién creada.
+                    await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProduct.id}/`, { stock: 0, talle: null, variante2: null }, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                }
+            }
+
             for (const v of variantesNuevas) {
                 if (!v.talle) continue; // variantes sin talle se saltean siempre
                 const varianteData = {
@@ -550,21 +587,11 @@ const Productos = () => {
                     variante2: v.variante2 || null,
                     iva_porcentaje: editProduct.iva_porcentaje ?? null,
                     rubro: editProduct.rubro || null,
-                    producto_padre: editProduct.id,
+                    producto_padre: padreId,
                     tienda_slug: selectedStoreSlug,
                     imagen: v.imagen || null,
                 };
                 await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, varianteData, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-            }
-
-            if (convirtiendoAFamilia) {
-                // El producto suelto pasa a ser el padre/contenedor de la familia: su
-                // stock y talle propios quedan obsoletos (ahora viven en cada variante).
-                // Sin este reset quedarían "flotando" en el padre, contando doble junto
-                // con el stock de la variante recién creada.
-                await axios.patch(`${BASE_API_ENDPOINT}/api/productos/${editProduct.id}/`, { stock: 0, talle: null, variante2: null }, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
             }
