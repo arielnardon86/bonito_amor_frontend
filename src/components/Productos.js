@@ -1477,6 +1477,14 @@ const Productos = () => {
                                                         {producto.variantes.length} variante{producto.variantes.length !== 1 ? 's' : ''}
                                                     </span>
                                                 )}
+                                                {producto.ml_stock_full && (
+                                                    <span
+                                                        title="Stock Full: lo repone y despacha Mercado Libre, no depende de tu depósito"
+                                                        style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 8, padding: '1px 7px' }}
+                                                    >
+                                                        FULL
+                                                    </span>
+                                                )}
                                             </td>
                                             {mostrarTalle && <td style={styles.td}>{detalleVariante(producto) || (tieneVars ? '—' : '-')}</td>}
                                             <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.precio)}</td>
@@ -1603,6 +1611,14 @@ const Productos = () => {
                                                     </td>
                                                     <td style={{ ...styles.td, paddingLeft: 28, color: '#475569', fontSize: 13 }}>
                                                         ↳ {detalleVariante(v) || '(sin talle)'}
+                                                        {v.ml_stock_full && (
+                                                            <span
+                                                                title="Stock Full: lo repone y despacha Mercado Libre, no depende de tu depósito"
+                                                                style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 8, padding: '1px 7px' }}
+                                                            >
+                                                                FULL
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     {mostrarTalle && <td style={styles.td}>{detalleVariante(v) || '-'}</td>}
                                                     <td style={styles.td}>{formatearMonto(v.precio)}</td>
