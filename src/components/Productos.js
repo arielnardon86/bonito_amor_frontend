@@ -525,6 +525,12 @@ const Productos = () => {
 
     const handleAgregarVariantesLote = async () => {
         if (!editProduct) return;
+        if (editProduct.producto_padre_id) {
+            // Una variante ya es hija de una familia -- no puede convertirse en
+            // padre de otra familia anidada (el modelo no soporta ese nivel).
+            setError('Esta variante ya pertenece a una familia; agregá la nueva variante desde el producto padre.');
+            return;
+        }
         const variantesConDatos = variantesNuevas.filter(v => v.talle || v.precio || v.stock);
         const sinTalle = variantesConDatos.filter(v => !v.talle);
         if (sinTalle.length > 0) {
@@ -1954,18 +1960,20 @@ const Productos = () => {
 
                         <div style={styles.modalActions}>
                             <button onClick={handleEditProduct} style={styles.modalConfirmButton}>Guardar</button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowEditModal(false);
-                                    setConvirtiendoAFamilia(!(editProduct.variantes && editProduct.variantes.length > 0));
-                                    setVariantesNuevas([{ ...VARIANTE_VACIA, precio: editProduct.precio ?? '', costo: editProduct.costo ?? '' }]);
-                                    setShowAddVarianteModal(true);
-                                }}
-                                style={{ padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                            >
-                                + Variante
-                            </button>
+                            {!editProduct.producto_padre_id && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowEditModal(false);
+                                        setConvirtiendoAFamilia(!(editProduct.variantes && editProduct.variantes.length > 0));
+                                        setVariantesNuevas([{ ...VARIANTE_VACIA, precio: editProduct.precio ?? '', costo: editProduct.costo ?? '' }]);
+                                        setShowAddVarianteModal(true);
+                                    }}
+                                    style={{ padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                    + Variante
+                                </button>
+                            )}
                             <button onClick={() => setShowEditModal(false)} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
