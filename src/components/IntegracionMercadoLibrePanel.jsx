@@ -38,7 +38,8 @@ export default function IntegracionMercadoLibrePanel() {
     const [clientSecret,setClientSecret]= useState('');
     const [facturar,    setFacturar]    = useState(true);
 
-    // Aranceles ML por producto (4 costos fijos opcionales)
+    // Aranceles ML por producto (costo de envío fijo + impuestos %; el cargo por
+    // vender no se configura acá, se calcula solo desde el webhook real de ML)
     const [mlArancelesAutomaticos, setMlArancelesAutomaticos] = useState(true);
     const [guardandoModoML,        setGuardandoModoML]        = useState(false);
     const [arancelesML,            setArancelesML]            = useState([]);
@@ -46,10 +47,7 @@ export default function IntegracionMercadoLibrePanel() {
     const [showArancelMLForm,      setShowArancelMLForm]      = useState(false);
     const [showEditArancelMLModal, setShowEditArancelMLModal] = useState(false);
     const [editArancelMLData,      setEditArancelMLData]      = useState(null);
-    const arancelMLFormVacio = {
-        producto: '', cargo_por_vender: '0.00', costo_por_unidad_vendida: '0.00',
-        costo_envio: '0.00', impuestos_estimados: '0.00',
-    };
+    const arancelMLFormVacio = { producto: '', costo_envio: '0.00', impuestos_porcentaje: '0.00' };
     const [arancelMLForm, setArancelMLForm] = useState(arancelMLFormVacio);
 
     const headers = { Authorization: `Bearer ${token}` };
@@ -313,10 +311,8 @@ export default function IntegracionMercadoLibrePanel() {
         try {
             await axios.post(`${BASE}/api/aranceles-ml/`, {
                 producto: arancelMLForm.producto,
-                cargo_por_vender: parseFloat(arancelMLForm.cargo_por_vender) || 0,
-                costo_por_unidad_vendida: parseFloat(arancelMLForm.costo_por_unidad_vendida) || 0,
                 costo_envio: parseFloat(arancelMLForm.costo_envio) || 0,
-                impuestos_estimados: parseFloat(arancelMLForm.impuestos_estimados) || 0,
+                impuestos_porcentaje: parseFloat(arancelMLForm.impuestos_porcentaje) || 0,
                 tienda: selectedStoreSlug,
             }, { headers });
             showSuccess('Arancel de Mercado Libre creado.');
@@ -336,10 +332,8 @@ export default function IntegracionMercadoLibrePanel() {
         setEditArancelMLData({
             id: arancel.id,
             producto: productoId,
-            cargo_por_vender: aTexto(arancel.cargo_por_vender),
-            costo_por_unidad_vendida: aTexto(arancel.costo_por_unidad_vendida),
             costo_envio: aTexto(arancel.costo_envio),
-            impuestos_estimados: aTexto(arancel.impuestos_estimados),
+            impuestos_porcentaje: aTexto(arancel.impuestos_porcentaje),
         });
         setShowEditArancelMLModal(true);
     };
@@ -348,10 +342,8 @@ export default function IntegracionMercadoLibrePanel() {
         try {
             await axios.patch(`${BASE}/api/aranceles-ml/${editArancelMLData.id}/`, {
                 producto: editArancelMLData.producto,
-                cargo_por_vender: parseFloat(editArancelMLData.cargo_por_vender) || 0,
-                costo_por_unidad_vendida: parseFloat(editArancelMLData.costo_por_unidad_vendida) || 0,
                 costo_envio: parseFloat(editArancelMLData.costo_envio) || 0,
-                impuestos_estimados: parseFloat(editArancelMLData.impuestos_estimados) || 0,
+                impuestos_porcentaje: parseFloat(editArancelMLData.impuestos_porcentaje) || 0,
                 tienda: selectedStoreSlug,
             }, { headers });
             showSuccess('Arancel de Mercado Libre actualizado.');
@@ -659,24 +651,18 @@ export default function IntegracionMercadoLibrePanel() {
                                     <p style={s.guiaDesc}>No hay productos disponibles. Primero añadí productos a la tienda.</p>
                                 )}
 
-                                <label style={s.lbl}>Cargo por vender (por unidad)</label>
-                                <input type="number" name="cargo_por_vender" value={arancelMLForm.cargo_por_vender}
-                                       onChange={handleArancelMLFormChange} min="0" step="0.01" style={s.inp} />
-
-                                <label style={s.lbl}>Costo por unidad vendida</label>
-                                <input type="number" name="costo_por_unidad_vendida" value={arancelMLForm.costo_por_unidad_vendida}
-                                       onChange={handleArancelMLFormChange} min="0" step="0.01" style={s.inp} />
-
                                 <label style={s.lbl}>Costo por envío (por unidad)</label>
                                 <input type="number" name="costo_envio" value={arancelMLForm.costo_envio}
                                        onChange={handleArancelMLFormChange} min="0" step="0.01" style={s.inp} />
 
-                                <label style={s.lbl}>Impuestos estimados (por unidad)</label>
-                                <input type="number" name="impuestos_estimados" value={arancelMLForm.impuestos_estimados}
-                                       onChange={handleArancelMLFormChange} min="0" step="0.01" style={s.inp} />
+                                <label style={s.lbl}>Impuestos (%)</label>
+                                <input type="number" name="impuestos_porcentaje" value={arancelMLForm.impuestos_porcentaje}
+                                       onChange={handleArancelMLFormChange} min="0" max="100" step="0.01" style={s.inp} />
 
                                 <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 12px' }}>
-                                    Los 4 valores son fijos (no porcentuales) y opcionales — dejá en 0 el que no aplique.
+                                    Los dos valores son opcionales — dejá en 0 el que no aplique. El cargo por vender (comisión)
+                                    no se configura acá: se calcula solo con el dato real de cada venta, y se ve en la card
+                                    "Cargos por ventas Mercado Libre" de Métricas.
                                 </p>
 
                                 <div style={{ display: 'flex', gap: 8 }}>
@@ -691,8 +677,6 @@ export default function IntegracionMercadoLibrePanel() {
                                 <thead>
                                     <tr>
                                         <th style={s.th}>Producto</th>
-                                        <th style={s.th}>Cargo</th>
-                                        <th style={s.th}>Costo/u</th>
                                         <th style={s.th}>Envío</th>
                                         <th style={s.th}>Impuestos</th>
                                         <th style={s.th}></th>
@@ -700,15 +684,13 @@ export default function IntegracionMercadoLibrePanel() {
                                 </thead>
                                 <tbody>
                                     {arancelesML.length === 0 ? (
-                                        <tr><td colSpan="6" style={s.td}>No hay aranceles configurados.</td></tr>
+                                        <tr><td colSpan="4" style={s.td}>No hay aranceles configurados.</td></tr>
                                     ) : (
                                         arancelesML.map(a => (
                                             <tr key={a.id}>
                                                 <td style={s.td}>{a.producto_nombre || a.producto?.nombre || '-'}</td>
-                                                <td style={s.td}>${parseFloat(a.cargo_por_vender || 0).toFixed(2)}</td>
-                                                <td style={s.td}>${parseFloat(a.costo_por_unidad_vendida || 0).toFixed(2)}</td>
                                                 <td style={s.td}>${parseFloat(a.costo_envio || 0).toFixed(2)}</td>
-                                                <td style={s.td}>${parseFloat(a.impuestos_estimados || 0).toFixed(2)}</td>
+                                                <td style={s.td}>{parseFloat(a.impuestos_porcentaje || 0).toFixed(2)}%</td>
                                                 <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
                                                     <button type="button" style={s.btnIcono} onClick={() => handleEditArancelML(a)} title="Editar">✏️</button>
                                                     <button type="button" style={s.btnIcono} onClick={() => handleDeleteArancelML(a.id)} title="Eliminar">🗑️</button>
@@ -729,25 +711,15 @@ export default function IntegracionMercadoLibrePanel() {
                     <div style={{ ...s.card, maxWidth: 420, width: '100%', margin: 0 }}>
                         <div style={s.cardTitle}>Editar arancel Mercado Libre</div>
 
-                        <label style={s.lbl}>Cargo por vender (por unidad)</label>
-                        <input type="number" value={editArancelMLData.cargo_por_vender}
-                               onChange={e => setEditArancelMLData({ ...editArancelMLData, cargo_por_vender: e.target.value })}
-                               min="0" step="0.01" style={s.inp} />
-
-                        <label style={s.lbl}>Costo por unidad vendida</label>
-                        <input type="number" value={editArancelMLData.costo_por_unidad_vendida}
-                               onChange={e => setEditArancelMLData({ ...editArancelMLData, costo_por_unidad_vendida: e.target.value })}
-                               min="0" step="0.01" style={s.inp} />
-
                         <label style={s.lbl}>Costo por envío (por unidad)</label>
                         <input type="number" value={editArancelMLData.costo_envio}
                                onChange={e => setEditArancelMLData({ ...editArancelMLData, costo_envio: e.target.value })}
                                min="0" step="0.01" style={s.inp} />
 
-                        <label style={s.lbl}>Impuestos estimados (por unidad)</label>
-                        <input type="number" value={editArancelMLData.impuestos_estimados}
-                               onChange={e => setEditArancelMLData({ ...editArancelMLData, impuestos_estimados: e.target.value })}
-                               min="0" step="0.01" style={s.inp} />
+                        <label style={s.lbl}>Impuestos (%)</label>
+                        <input type="number" value={editArancelMLData.impuestos_porcentaje}
+                               onChange={e => setEditArancelMLData({ ...editArancelMLData, impuestos_porcentaje: e.target.value })}
+                               min="0" max="100" step="0.01" style={s.inp} />
 
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button style={s.btnPrimary} onClick={handleUpdateArancelML}>Guardar</button>

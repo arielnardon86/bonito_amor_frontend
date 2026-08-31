@@ -290,6 +290,7 @@ const MetricasVentas = () => {
             ['Rentabilidad bruta', fmt(metrics.rentabilidad_bruta_periodo)],
             ['Costo productos vendidos', fmt(metrics.total_costo_vendido_periodo)],
             ['Aranceles (manual)', fmt(metrics.total_arancel_ventas) + fmt(metrics.total_costo_envio_ml)],
+            metrics.tienda_tiene_ml ? ['Cargos por ventas Mercado Libre', fmt(metrics.total_ml_sale_fee)] : null,
             metrics.tienda_tiene_ml ? ['Descuentos Mercado Libre', fmt(metrics.total_ml_descuentos)] : null,
             metrics.tienda_tiene_ml ? ['Impuestos Mercado Libre', fmt(metrics.total_ml_impuestos)] : null,
             ['Margen de rentabilidad (%)', fmt(metrics.margen_rentabilidad_periodo)],
@@ -571,6 +572,15 @@ const MetricasVentas = () => {
                             </p>
                         )}
                     </div>
+                    {metrics?.tienda_tiene_ml && (
+                        <div style={styles.card}>
+                            <h3 style={styles.cardTitle}>Cargos por ventas Mercado Libre</h3>
+                            <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_sale_fee || 0))}</p>
+                            <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 6 }}>
+                                Comisión real que cobró ML en cada venta (dato exacto, no estimado).
+                            </p>
+                        </div>
+                    )}
                     {metrics?.tienda_tiene_ml && metrics?.ml_aranceles_automaticos !== false && (
                         <div style={styles.card}>
                             <h3 style={styles.cardTitle}>Descuentos Mercado Libre</h3>
