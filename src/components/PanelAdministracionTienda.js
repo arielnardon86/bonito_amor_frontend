@@ -198,7 +198,7 @@ const PanelAdministracionTienda = () => {
         tienda: selectedStoreSlug || ''
     });
     
-    // Estados para aranceles Mercado Libre (por producto: arancel % + costo envío)
+    // Estados para aranceles Mercado Libre (por producto: 4 costos fijos opcionales)
     const [arancelesML, setArancelesML] = useState([]);
     const [productosML, setProductosML] = useState([]);
     const [mlArancelesAutomaticos, setMlArancelesAutomaticos] = useState(true);
@@ -206,12 +206,15 @@ const PanelAdministracionTienda = () => {
     const [showArancelMLForm, setShowArancelMLForm] = useState(false);
     const [showEditArancelMLModal, setShowEditArancelMLModal] = useState(false);
     const [editArancelMLData, setEditArancelMLData] = useState(null);
-    const [arancelMLForm, setArancelMLForm] = useState({
+    const arancelMLFormVacio = {
         producto: '',
-        arancel_porcentaje: '0.00',
+        cargo_por_vender: '0.00',
+        costo_por_unidad_vendida: '0.00',
         costo_envio: '0.00',
+        impuestos_estimados: '0.00',
         tienda: selectedStoreSlug || ''
-    });
+    };
+    const [arancelMLForm, setArancelMLForm] = useState(arancelMLFormVacio);
 
     // Estados para Mi Plan
     const [planInfo, setPlanInfo] = useState(null);
@@ -1330,30 +1333,27 @@ Script.complete();
 
     const handleCreateArancelML = async (e) => {
         e.preventDefault();
-        
+
         try {
             await axios.post(`${BASE_API_ENDPOINT}/api/aranceles-ml/`, {
                 producto: arancelMLForm.producto,
-                arancel_porcentaje: parseFloat(arancelMLForm.arancel_porcentaje) || 0,
+                cargo_por_vender: parseFloat(arancelMLForm.cargo_por_vender) || 0,
+                costo_por_unidad_vendida: parseFloat(arancelMLForm.costo_por_unidad_vendida) || 0,
                 costo_envio: parseFloat(arancelMLForm.costo_envio) || 0,
+                impuestos_estimados: parseFloat(arancelMLForm.impuestos_estimados) || 0,
                 tienda: selectedStoreSlug
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
             Swal.fire({
                 icon: 'success',
                 title: 'Éxito',
                 text: 'Arancel de Mercado Libre creado correctamente.'
             });
-            
+
             setShowArancelMLForm(false);
-            setArancelMLForm({
-                producto: '',
-                arancel_porcentaje: '0.00',
-                costo_envio: '0.00',
-                tienda: selectedStoreSlug
-            });
+            setArancelMLForm({ ...arancelMLFormVacio, tienda: selectedStoreSlug });
             fetchArancelesML();
         } catch (err) {
             console.error('Error al crear arancel ML:', err);
@@ -1369,12 +1369,15 @@ Script.complete();
         const productoId = typeof arancel.producto === 'object' && arancel.producto !== null
             ? arancel.producto.id
             : arancel.producto;
-        
+
+        const aTexto = (v) => v != null ? v.toString() : '0.00';
         setEditArancelMLData({
             id: arancel.id,
             producto: productoId,
-            arancel_porcentaje: arancel.arancel_porcentaje != null ? arancel.arancel_porcentaje.toString() : '0.00',
-            costo_envio: arancel.costo_envio != null ? arancel.costo_envio.toString() : '0.00'
+            cargo_por_vender: aTexto(arancel.cargo_por_vender),
+            costo_por_unidad_vendida: aTexto(arancel.costo_por_unidad_vendida),
+            costo_envio: aTexto(arancel.costo_envio),
+            impuestos_estimados: aTexto(arancel.impuestos_estimados)
         });
         setShowEditArancelMLModal(true);
     };
@@ -1383,8 +1386,10 @@ Script.complete();
         try {
             await axios.patch(`${BASE_API_ENDPOINT}/api/aranceles-ml/${editArancelMLData.id}/`, {
                 producto: editArancelMLData.producto,
-                arancel_porcentaje: parseFloat(editArancelMLData.arancel_porcentaje) || 0,
+                cargo_por_vender: parseFloat(editArancelMLData.cargo_por_vender) || 0,
+                costo_por_unidad_vendida: parseFloat(editArancelMLData.costo_por_unidad_vendida) || 0,
                 costo_envio: parseFloat(editArancelMLData.costo_envio) || 0,
+                impuestos_estimados: parseFloat(editArancelMLData.impuestos_estimados) || 0,
                 tienda: selectedStoreSlug
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -2830,12 +2835,7 @@ Script.complete();
                     <div style={styles.sectionHeader}>
                         <h2>Aranceles Mercado Libre por Producto</h2>
                         <button onClick={() => {
-                            setArancelMLForm({
-                                producto: '',
-                                arancel_porcentaje: '0.00',
-                                costo_envio: '0.00',
-                                tienda: selectedStoreSlug
-                            });
+                            setArancelMLForm({ ...arancelMLFormVacio, tienda: selectedStoreSlug });
                             setShowArancelMLForm(true);
                         }} style={styles.addButton} className="panel-admin-add-button">
                             + Nuevo Arancel ML
@@ -2873,21 +2873,31 @@ Script.complete();
                                         )}
                                     </div>
                                     <div style={styles.formGroup}>
-                                        <label>Arancel (%) *</label>
+                                        <label>Cargo por vender (por unidad)</label>
                                         <input
                                             type="number"
-                                            name="arancel_porcentaje"
-                                            value={arancelMLForm.arancel_porcentaje}
+                                            name="cargo_por_vender"
+                                            value={arancelMLForm.cargo_por_vender}
                                             onChange={handleArancelMLFormChange}
-                                            required
                                             min="0"
-                                            max="100"
                                             step="0.01"
                                             style={styles.input}
                                         />
                                     </div>
                                     <div style={styles.formGroup}>
-                                        <label>Costo de envío (por unidad)</label>
+                                        <label>Costo por unidad vendida</label>
+                                        <input
+                                            type="number"
+                                            name="costo_por_unidad_vendida"
+                                            value={arancelMLForm.costo_por_unidad_vendida}
+                                            onChange={handleArancelMLFormChange}
+                                            min="0"
+                                            step="0.01"
+                                            style={styles.input}
+                                        />
+                                    </div>
+                                    <div style={styles.formGroup}>
+                                        <label>Costo por envío (por unidad)</label>
                                         <input
                                             type="number"
                                             name="costo_envio"
@@ -2898,7 +2908,22 @@ Script.complete();
                                             style={styles.input}
                                         />
                                     </div>
+                                    <div style={styles.formGroup}>
+                                        <label>Impuestos estimados (por unidad)</label>
+                                        <input
+                                            type="number"
+                                            name="impuestos_estimados"
+                                            value={arancelMLForm.impuestos_estimados}
+                                            onChange={handleArancelMLFormChange}
+                                            min="0"
+                                            step="0.01"
+                                            style={styles.input}
+                                        />
+                                    </div>
                                 </div>
+                                <p style={{ fontSize: '0.85em', color: '#94a3b8', marginTop: 4 }}>
+                                    Los 4 valores son fijos (no porcentuales) y opcionales — dejá en 0 el que no aplique.
+                                </p>
                                 <div style={styles.formActions} className="panel-admin-form-actions">
                                     <button type="submit" style={styles.saveButton}>
                                         Crear
@@ -2921,10 +2946,10 @@ Script.complete();
                     <div style={styles.infoBox}>
                         <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Información</h3>
                         <p style={{ marginBottom: '10px' }}>
-                            Configura arancel (%) y costo de envío por unidad para cada producto. Las ventas con medio de pago "Mercado Libre" descontarán estos valores en las métricas.
+                            Configurá hasta 4 costos fijos (no porcentuales) por producto: cargo por vender, costo por unidad vendida, costo de envío e impuestos estimados. Las ventas con medio de pago "Mercado Libre" descontarán estos valores en las métricas.
                         </p>
                         <p style={{ marginBottom: '10px', fontSize: '0.9em', color: '#94a3b8' }}>
-                            Cada producto puede tener un arancel distinto según su categoría en ML. El costo de envío se aplica por unidad vendida.
+                            Todos son opcionales: el que se deje en 0 simplemente no descuenta nada por ese concepto. Se aplican por unidad vendida.
                         </p>
                     </div>
 
@@ -2934,22 +2959,26 @@ Script.complete();
                             <thead>
                                 <tr>
                                     <th style={styles.th}>Producto</th>
-                                    <th style={styles.th}>Arancel (%)</th>
+                                    <th style={styles.th}>Cargo por vender</th>
+                                    <th style={styles.th}>Costo/u vendida</th>
                                     <th style={styles.th}>Costo envío/u</th>
+                                    <th style={styles.th}>Impuestos est.</th>
                                     <th style={styles.th}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {arancelesML.length === 0 ? (
                                     <tr>
-                                        <td colSpan="4" style={styles.td}>No hay aranceles de Mercado Libre configurados</td>
+                                        <td colSpan="6" style={styles.td}>No hay aranceles de Mercado Libre configurados</td>
                                     </tr>
                                 ) : (
                                     arancelesML.map(arancel => (
                                         <tr key={arancel.id}>
                                             <td style={styles.td}>{arancel.producto_nombre || arancel.producto?.nombre || '-'}</td>
-                                            <td style={styles.td}>{parseFloat(arancel.arancel_porcentaje || 0).toFixed(2)}%</td>
+                                            <td style={styles.td}>{formatearMonto(parseFloat(arancel.cargo_por_vender || 0))}</td>
+                                            <td style={styles.td}>{formatearMonto(parseFloat(arancel.costo_por_unidad_vendida || 0))}</td>
                                             <td style={styles.td}>{formatearMonto(parseFloat(arancel.costo_envio || 0))}</td>
+                                            <td style={styles.td}>{formatearMonto(parseFloat(arancel.impuestos_estimados || 0))}</td>
                                             <td style={styles.td}>
                                                 <div style={styles.actionButtons} className="panel-admin-action-buttons">
                                                     <button
@@ -3281,24 +3310,44 @@ Script.complete();
                             </select>
                         </div>
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>Arancel (%) *</label>
+                            <label style={styles.label}>Cargo por vender (por unidad)</label>
                             <input
                                 type="number"
-                                value={editArancelMLData.arancel_porcentaje}
-                                onChange={(e) => setEditArancelMLData({ ...editArancelMLData, arancel_porcentaje: e.target.value })}
+                                value={editArancelMLData.cargo_por_vender}
+                                onChange={(e) => setEditArancelMLData({ ...editArancelMLData, cargo_por_vender: e.target.value })}
                                 style={styles.modalInput}
-                                required
                                 min="0"
-                                max="100"
                                 step="0.01"
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>Costo de envío (por unidad)</label>
+                            <label style={styles.label}>Costo por unidad vendida</label>
+                            <input
+                                type="number"
+                                value={editArancelMLData.costo_por_unidad_vendida}
+                                onChange={(e) => setEditArancelMLData({ ...editArancelMLData, costo_por_unidad_vendida: e.target.value })}
+                                style={styles.modalInput}
+                                min="0"
+                                step="0.01"
+                            />
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Costo por envío (por unidad)</label>
                             <input
                                 type="number"
                                 value={editArancelMLData.costo_envio}
                                 onChange={(e) => setEditArancelMLData({ ...editArancelMLData, costo_envio: e.target.value })}
+                                style={styles.modalInput}
+                                min="0"
+                                step="0.01"
+                            />
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Impuestos estimados (por unidad)</label>
+                            <input
+                                type="number"
+                                value={editArancelMLData.impuestos_estimados}
+                                onChange={(e) => setEditArancelMLData({ ...editArancelMLData, impuestos_estimados: e.target.value })}
                                 style={styles.modalInput}
                                 min="0"
                                 step="0.01"

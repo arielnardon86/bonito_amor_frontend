@@ -663,7 +663,7 @@ const PuntoVenta = () => {
         return arancelTotal;
     }, [arancelSeleccionadoId, arancelesTienda, calculateFinalTotal]);
 
-    // Cálculo de arancel + costo envío Mercado Libre (por producto)
+    // Cálculo de arancel + costo envío Mercado Libre (por producto, 4 costos fijos/u)
     const calculateArancelEnvioML = useCallback(() => {
         if (!activeCart || activeCart.items.length === 0 || !arancelesML.length) return { arancel: 0, envio: 0 };
         const mapProducto = (id) => arancelesML.find(a => (a.producto?.id ?? a.producto) === id);
@@ -672,8 +672,10 @@ const PuntoVenta = () => {
         activeCart.items.forEach(item => {
             const conf = mapProducto(item.product.id);
             if (!conf) return;
-            const subtotalItem = item.quantity * parseFloat(item.product.precio);
-            arancelTotal += subtotalItem * (parseFloat(conf.arancel_porcentaje || 0) / 100);
+            const costoFijoUnidad = parseFloat(conf.cargo_por_vender || 0)
+                + parseFloat(conf.costo_por_unidad_vendida || 0)
+                + parseFloat(conf.impuestos_estimados || 0);
+            arancelTotal += costoFijoUnidad * item.quantity;
             envioTotal += (parseFloat(conf.costo_envio || 0)) * item.quantity;
         });
         return { arancel: arancelTotal, envio: envioTotal };
