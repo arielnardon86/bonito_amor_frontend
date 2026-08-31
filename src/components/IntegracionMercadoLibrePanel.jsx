@@ -14,6 +14,9 @@ const normalizeApiUrl = (url) => {
 
 const BASE = normalizeApiUrl(process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
+// Redirect URI de OAuth: fija, no lleva el ID de la tienda (compartida por todas).
+const URL_CALLBACK_ML = 'https://bonito-amor-backend.onrender.com/api/tiendas/mercadolibre/callback/';
+
 export default function IntegracionMercadoLibrePanel() {
     const { token, isAuthenticated, selectedStoreSlug, stores } = useAuth();
 
@@ -28,6 +31,7 @@ export default function IntegracionMercadoLibrePanel() {
     const [error,         setError]         = useState(null);
     const [successMsg,    setSuccessMsg]    = useState('');
     const [mostrarImport, setMostrarImport] = useState(false);
+    const [mostrarGuiaApp, setMostrarGuiaApp] = useState(false);
 
     // Campos de configuración
     const [appId,       setAppId]       = useState('');
@@ -38,6 +42,15 @@ export default function IntegracionMercadoLibrePanel() {
 
     const showSuccess = (msg) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 5000); };
     const showError   = (msg) => { setError(msg);      setTimeout(() => setError(null),    6000); };
+
+    const copiar = async (texto, etiqueta) => {
+        try {
+            await navigator.clipboard.writeText(texto);
+            showSuccess(`${etiqueta} copiada al portapapeles.`);
+        } catch {
+            showError('No se pudo copiar. Copiala manualmente.');
+        }
+    };
 
     // ── Obtener ID de tienda ──────────────────────────────────────────────────
     const obtenerTiendaId = useCallback(async () => {
@@ -243,6 +256,7 @@ export default function IntegracionMercadoLibrePanel() {
 
     const conectado    = mlStatus?.authenticated === true || mlStatus?.connected === true;
     const tieneConfig  = mlStatus?.has_app_id && mlStatus?.has_client_secret;
+    const urlWebhook   = `${BASE}/api/tiendas/${tiendaId}/mercadolibre/webhook/`;
 
     return (
         <div style={s.root}>
@@ -279,6 +293,66 @@ export default function IntegracionMercadoLibrePanel() {
                         developers.mercadolibre.com.ar
                     </a>.
                 </p>
+
+                <button
+                    type="button"
+                    style={{ ...s.btnSecondary, marginBottom: 14 }}
+                    onClick={() => setMostrarGuiaApp(v => !v)}
+                >
+                    {mostrarGuiaApp ? '▾ Ocultar guía de configuración de la app' : '▸ Ver guía: cómo configurar la app en Mercado Libre'}
+                </button>
+
+                {mostrarGuiaApp && (
+                    <div style={s.guia}>
+                        <div style={s.guiaItem}>
+                            <div style={s.guiaLabel}>Redirect URIs</div>
+                            <p style={s.guiaDesc}>Es fija, igual para todas las tiendas (no lleva ningún ID). Pegala tal cual:</p>
+                            <div style={s.guiaUrlRow}>
+                                <code style={s.guiaUrl}>{URL_CALLBACK_ML}</code>
+                                <button type="button" style={s.btnCopiar} onClick={() => copiar(URL_CALLBACK_ML, 'Redirect URI')}>Copiar</button>
+                            </div>
+                        </div>
+
+                        <div style={s.guiaItem}>
+                            <div style={s.guiaLabel}>Flujos OAuth</div>
+                            <p style={s.guiaDesc}>Authorization Code y Refresh Token. Client Credentials no se usa, pero no molesta si queda tildado.</p>
+                        </div>
+
+                        <div style={s.guiaItem}>
+                            <div style={s.guiaLabel}>Negocios</div>
+                            <p style={s.guiaDesc}>Tildá "Mercado Libre".</p>
+                        </div>
+
+                        <div style={s.guiaItem}>
+                            <div style={s.guiaLabel}>Permisos</div>
+                            <p style={s.guiaDesc}>
+                                Usuarios, Publicación y sincronización, Facturación de una venta, Venta y envíos
+                                (los mismos que ya usan las demás tiendas conectadas).
+                            </p>
+                        </div>
+
+                        <div style={s.guiaItem}>
+                            <div style={s.guiaLabel}>Tópicos de notificaciones</div>
+                            <p style={s.guiaDesc}>
+                                En el grupo "Orders": tildá <strong>Orders_v2</strong> y <strong>Orders Feedback</strong>.
+                                Si aparecen también los grupos "Shipments" y "Payments", tildalos igual — Total Stock también
+                                procesa esos avisos.
+                            </p>
+                        </div>
+
+                        <div style={s.guiaItem}>
+                            <div style={s.guiaLabel}>Notificaciones — callbacks URL</div>
+                            <p style={s.guiaDesc}>
+                                Esta sí es específica de esta tienda (incluye su ID). Pegala tal cual en el campo
+                                "Notificaciones callbacks URL":
+                            </p>
+                            <div style={s.guiaUrlRow}>
+                                <code style={s.guiaUrl}>{urlWebhook}</code>
+                                <button type="button" style={s.btnCopiar} onClick={() => copiar(urlWebhook, 'URL de webhook')}>Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <label style={s.lbl}>App ID (Client ID) *</label>
                 <input
@@ -431,6 +505,17 @@ const s = {
     infoLabel:   { fontSize: 13, color: '#475569', minWidth: 120 },
     infoVal:     { fontSize: 13, color: '#111827', fontWeight: 600 },
     link:        { color: '#3b9ede' },
+    guia:        { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10,
+                   padding: '14px 16px', marginBottom: 16 },
+    guiaItem:    { marginBottom: 14 },
+    guiaLabel:   { fontWeight: 700, fontSize: 13, color: '#111827', marginBottom: 4 },
+    guiaDesc:    { fontSize: 12.5, color: '#475569', lineHeight: 1.5, margin: '0 0 6px' },
+    guiaUrlRow:  { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
+    guiaUrl:     { flex: '1 1 260px', background: '#fff', border: '1px solid #d1d5db',
+                   borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#111827',
+                   wordBreak: 'break-all' },
+    btnCopiar:   { padding: '6px 12px', background: '#3b9ede', color: '#fff', border: 'none',
+                   borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12, flexShrink: 0 },
     overlay:     { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                    zIndex: 1000, padding: 20 },
