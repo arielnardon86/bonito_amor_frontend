@@ -289,8 +289,8 @@ const MetricasVentas = () => {
             ['Total de egresos', fmt(metrics.total_compras_periodo)],
             ['Rentabilidad bruta', fmt(metrics.rentabilidad_bruta_periodo)],
             ['Costo productos vendidos', fmt(metrics.total_costo_vendido_periodo)],
-            ['Aranceles (manual)', fmt(metrics.total_arancel_ventas) + fmt(metrics.total_costo_envio_ml)],
-            metrics.tienda_tiene_ml ? ['Cargos por ventas Mercado Libre', fmt(metrics.total_ml_sale_fee)] : null,
+            ['Aranceles (medios de pago)', fmt(metrics.total_arancel_ventas)],
+            metrics.tienda_tiene_ml ? ['Cargos por ventas Mercado Libre', fmt(metrics.total_ml_cargos)] : null,
             metrics.tienda_tiene_ml ? ['Descuentos Mercado Libre', fmt(metrics.total_ml_descuentos)] : null,
             metrics.tienda_tiene_ml ? ['Impuestos Mercado Libre', fmt(metrics.total_ml_impuestos)] : null,
             ['Margen de rentabilidad (%)', fmt(metrics.margen_rentabilidad_periodo)],
@@ -563,22 +563,27 @@ const MetricasVentas = () => {
                     </div>
                     <div style={styles.card}>
                         <h3 style={styles.cardTitle}>Aranceles</h3>
-                        <p style={styles.cardValue}>{formatearMonto((parseFloat(metrics?.total_arancel_ventas || 0) + parseFloat(metrics?.total_costo_envio_ml || 0)))}</p>
-                        {metrics?.tienda_tiene_ml && (
-                            <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 6 }}>
-                                {metrics?.ml_aranceles_automaticos !== false
-                                    ? 'Aranceles de métodos de pago (no ML)'
-                                    : 'Incluye aranceles ML configurados manualmente'}
-                            </p>
-                        )}
+                        <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_arancel_ventas || 0))}</p>
+                        <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 6 }}>
+                            Aranceles de medios de pago (tarjetas, cuotas, etc.) — no incluye Mercado Libre.
+                        </p>
                     </div>
                     {metrics?.tienda_tiene_ml && (
                         <div style={styles.card}>
                             <h3 style={styles.cardTitle}>Cargos por ventas Mercado Libre</h3>
-                            <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_sale_fee || 0))}</p>
-                            <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 6 }}>
-                                Comisión real que cobró ML en cada venta (dato exacto, no estimado).
-                            </p>
+                            <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_cargos || 0))}</p>
+                            <div style={{ marginTop: 10, borderTop: '1px solid #e2e8f0', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {[
+                                    ['Comisión ML (cargo por venta, real)', metrics?.total_ml_sale_fee],
+                                    ['Costo de envío (configurado por producto)', metrics?.total_costo_envio_ml],
+                                    ['Impuestos (configurados por producto)', metrics?.total_arancel_ml_manual],
+                                ].map(([label, val]) => (
+                                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#475569' }}>
+                                        <span>{label}</span>
+                                        <span style={{ fontWeight: 600 }}>{formatearMonto(parseFloat(val || 0))}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                     {metrics?.tienda_tiene_ml && metrics?.ml_aranceles_automaticos !== false && (
