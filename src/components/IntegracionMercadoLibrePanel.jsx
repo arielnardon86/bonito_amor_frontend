@@ -38,6 +38,20 @@ export default function IntegracionMercadoLibrePanel() {
     const [clientSecret,setClientSecret]= useState('');
     const [facturar,    setFacturar]    = useState(true);
 
+    // Aranceles ML por producto (4 costos fijos opcionales)
+    const [mlArancelesAutomaticos, setMlArancelesAutomaticos] = useState(true);
+    const [guardandoModoML,        setGuardandoModoML]        = useState(false);
+    const [arancelesML,            setArancelesML]            = useState([]);
+    const [productosML,            setProductosML]            = useState([]);
+    const [showArancelMLForm,      setShowArancelMLForm]      = useState(false);
+    const [showEditArancelMLModal, setShowEditArancelMLModal] = useState(false);
+    const [editArancelMLData,      setEditArancelMLData]      = useState(null);
+    const arancelMLFormVacio = {
+        producto: '', cargo_por_vender: '0.00', costo_por_unidad_vendida: '0.00',
+        costo_envio: '0.00', impuestos_estimados: '0.00',
+    };
+    const [arancelMLForm, setArancelMLForm] = useState(arancelMLFormVacio);
+
     const headers = { Authorization: `Bearer ${token}` };
 
     const showSuccess = (msg) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 5000); };
@@ -74,6 +88,7 @@ export default function IntegracionMercadoLibrePanel() {
             setTienda(res.data);
             setAppId(res.data.ml_app_id || '');
             setFacturar(res.data.ml_facturar_ventas !== false);
+            setMlArancelesAutomaticos(res.data.ml_aranceles_automaticos !== false);
         } catch { /* ignore */ }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -86,12 +101,37 @@ export default function IntegracionMercadoLibrePanel() {
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const fetchArancelesML = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const res = await axios.get(`${BASE}/api/aranceles-ml/?tienda_slug=${selectedStoreSlug}`, { headers });
+            setArancelesML(res.data.results || res.data);
+        } catch { setArancelesML([]); }
+    }, [token, selectedStoreSlug]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const fetchProductosML = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            let productos = [];
+            let nextUrl = `${BASE}/api/productos/?tienda_slug=${selectedStoreSlug}`;
+            while (nextUrl) {
+                const res = await axios.get(nextUrl, { headers });
+                const pagina = res.data.results || res.data;
+                productos = productos.concat(Array.isArray(pagina) ? pagina : []);
+                nextUrl = res.data.next || null;
+            }
+            setProductosML(productos);
+        } catch { setProductosML([]); }
+    }, [token, selectedStoreSlug]); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         if (!isAuthenticated || !token) { setLoading(false); return; }
         obtenerTiendaId().then(id => {
             setTiendaId(id);
-            if (id) Promise.all([fetchTienda(id), fetchStatus(id)]).finally(() => setLoading(false));
-            else setLoading(false);
+            if (id) {
+                Promise.all([fetchTienda(id), fetchStatus(id), fetchArancelesML(), fetchProductosML()])
+                    .finally(() => setLoading(false));
+            } else setLoading(false);
         });
     }, [isAuthenticated, token, selectedStoreSlug]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -247,6 +287,100 @@ export default function IntegracionMercadoLibrePanel() {
             await fetchTienda(tiendaId);
         } catch (e) {
             showError(e.response?.data?.error || 'Error al actualizar configuración.');
+        }
+    };
+
+    // ── Aranceles ML por producto ────────────────────────────────────────────
+    const handleGuardarModoArancelesML = async (nuevoValor) => {
+        if (!tiendaId) return;
+        setGuardandoModoML(true);
+        try {
+            await axios.patch(`${BASE}/api/tiendas/${tiendaId}/`, { ml_aranceles_automaticos: nuevoValor }, { headers });
+            setMlArancelesAutomaticos(nuevoValor);
+            showSuccess('Modo de cálculo guardado.');
+        } catch (e) {
+            showError(e.response?.data?.detail || 'No se pudo guardar el modo.');
+        } finally { setGuardandoModoML(false); }
+    };
+
+    const handleArancelMLFormChange = (e) => {
+        const { name, value } = e.target;
+        setArancelMLForm(f => ({ ...f, [name]: value }));
+    };
+
+    const handleCreateArancelML = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post(`${BASE}/api/aranceles-ml/`, {
+                producto: arancelMLForm.producto,
+                cargo_por_vender: parseFloat(arancelMLForm.cargo_por_vender) || 0,
+                costo_por_unidad_vendida: parseFloat(arancelMLForm.costo_por_unidad_vendida) || 0,
+                costo_envio: parseFloat(arancelMLForm.costo_envio) || 0,
+                impuestos_estimados: parseFloat(arancelMLForm.impuestos_estimados) || 0,
+                tienda: selectedStoreSlug,
+            }, { headers });
+            showSuccess('Arancel de Mercado Libre creado.');
+            setShowArancelMLForm(false);
+            setArancelMLForm(arancelMLFormVacio);
+            fetchArancelesML();
+        } catch (err) {
+            const data = err.response?.data;
+            showError(data?.detail || data?.non_field_errors?.[0] || (typeof data === 'object' ? Object.values(data).flat().join(' ') : 'Error al crear el arancel.'));
+        }
+    };
+
+    const handleEditArancelML = (arancel) => {
+        const productoId = typeof arancel.producto === 'object' && arancel.producto !== null
+            ? arancel.producto.id : arancel.producto;
+        const aTexto = (v) => v != null ? v.toString() : '0.00';
+        setEditArancelMLData({
+            id: arancel.id,
+            producto: productoId,
+            cargo_por_vender: aTexto(arancel.cargo_por_vender),
+            costo_por_unidad_vendida: aTexto(arancel.costo_por_unidad_vendida),
+            costo_envio: aTexto(arancel.costo_envio),
+            impuestos_estimados: aTexto(arancel.impuestos_estimados),
+        });
+        setShowEditArancelMLModal(true);
+    };
+
+    const handleUpdateArancelML = async () => {
+        try {
+            await axios.patch(`${BASE}/api/aranceles-ml/${editArancelMLData.id}/`, {
+                producto: editArancelMLData.producto,
+                cargo_por_vender: parseFloat(editArancelMLData.cargo_por_vender) || 0,
+                costo_por_unidad_vendida: parseFloat(editArancelMLData.costo_por_unidad_vendida) || 0,
+                costo_envio: parseFloat(editArancelMLData.costo_envio) || 0,
+                impuestos_estimados: parseFloat(editArancelMLData.impuestos_estimados) || 0,
+                tienda: selectedStoreSlug,
+            }, { headers });
+            showSuccess('Arancel de Mercado Libre actualizado.');
+            setShowEditArancelMLModal(false);
+            setEditArancelMLData(null);
+            fetchArancelesML();
+        } catch (err) {
+            showError(err.response?.data?.detail || 'Error al actualizar el arancel.');
+        }
+    };
+
+    const handleDeleteArancelML = async (arancelId) => {
+        const result = await Swal.fire({
+            title: '¿Eliminar este arancel?',
+            text: 'Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e25252',
+            cancelButtonColor: '#475569',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await axios.delete(`${BASE}/api/aranceles-ml/${arancelId}/`, { headers });
+            showSuccess('Arancel eliminado.');
+            fetchArancelesML();
+        } catch (err) {
+            showError(err.response?.data?.detail || 'Error al eliminar el arancel.');
         }
     };
 
@@ -456,6 +590,173 @@ export default function IntegracionMercadoLibrePanel() {
                 </div>
             )}
 
+            {/* Paso 4 — Aranceles Mercado Libre */}
+            <div style={s.card}>
+                <div style={s.cardTitle}>Paso 4 — Aranceles Mercado Libre</div>
+                <p style={s.cardDesc}>
+                    Elegí cómo se estiman los descuentos de ML para la card "Aranceles" de Métricas.
+                </p>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <button
+                        type="button"
+                        onClick={() => !mlArancelesAutomaticos && handleGuardarModoArancelesML(true)}
+                        disabled={guardandoModoML || mlArancelesAutomaticos}
+                        style={mlArancelesAutomaticos
+                            ? { ...s.btnSecondary, background: '#3b9ede', color: '#fff', borderColor: '#3b9ede' }
+                            : s.btnSecondary}
+                    >
+                        ⚡ Automático (vía notificaciones ML)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => mlArancelesAutomaticos && handleGuardarModoArancelesML(false)}
+                        disabled={guardandoModoML || !mlArancelesAutomaticos}
+                        style={!mlArancelesAutomaticos
+                            ? { ...s.btnSecondary, background: '#3b9ede', color: '#fff', borderColor: '#3b9ede' }
+                            : s.btnSecondary}
+                    >
+                        ✏️ Manual (aranceles por producto)
+                    </button>
+                </div>
+                <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 14px' }}>
+                    {mlArancelesAutomaticos
+                        ? 'Los cargos de ML (comisión, envío, impuestos) se obtienen automáticamente de las notificaciones.'
+                        : 'Los aranceles se calculan según la configuración manual por producto de abajo.'}
+                </p>
+
+                {!mlArancelesAutomaticos && (
+                    <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                            <span style={{ fontWeight: 700, fontSize: 13, color: '#111827' }}>Aranceles configurados</span>
+                            <button
+                                type="button"
+                                style={s.btnPrimary}
+                                onClick={() => { setArancelMLForm(arancelMLFormVacio); setShowArancelMLForm(true); }}
+                            >
+                                + Nuevo arancel
+                            </button>
+                        </div>
+
+                        {showArancelMLForm && (
+                            <form onSubmit={handleCreateArancelML} style={s.guia}>
+                                <label style={s.lbl}>Producto *</label>
+                                <select
+                                    name="producto"
+                                    value={arancelMLForm.producto}
+                                    onChange={handleArancelMLFormChange}
+                                    required
+                                    style={s.inp}
+                                >
+                                    <option value="">Seleccionar producto...</option>
+                                    {productosML
+                                        .filter(p => !arancelesML.some(a => (a.producto?.id ?? a.producto) === p.id))
+                                        .map(p => (
+                                            <option key={p.id} value={p.id}>{p.nombre} {p.codigo ? `(${p.codigo})` : ''}</option>
+                                        ))}
+                                </select>
+                                {productosML.length === 0 && (
+                                    <p style={s.guiaDesc}>No hay productos disponibles. Primero añadí productos a la tienda.</p>
+                                )}
+
+                                <label style={s.lbl}>Cargo por vender (por unidad)</label>
+                                <input type="number" name="cargo_por_vender" value={arancelMLForm.cargo_por_vender}
+                                       onChange={handleArancelMLFormChange} min="0" step="0.01" style={s.inp} />
+
+                                <label style={s.lbl}>Costo por unidad vendida</label>
+                                <input type="number" name="costo_por_unidad_vendida" value={arancelMLForm.costo_por_unidad_vendida}
+                                       onChange={handleArancelMLFormChange} min="0" step="0.01" style={s.inp} />
+
+                                <label style={s.lbl}>Costo por envío (por unidad)</label>
+                                <input type="number" name="costo_envio" value={arancelMLForm.costo_envio}
+                                       onChange={handleArancelMLFormChange} min="0" step="0.01" style={s.inp} />
+
+                                <label style={s.lbl}>Impuestos estimados (por unidad)</label>
+                                <input type="number" name="impuestos_estimados" value={arancelMLForm.impuestos_estimados}
+                                       onChange={handleArancelMLFormChange} min="0" step="0.01" style={s.inp} />
+
+                                <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 12px' }}>
+                                    Los 4 valores son fijos (no porcentuales) y opcionales — dejá en 0 el que no aplique.
+                                </p>
+
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button type="submit" style={s.btnPrimary}>Crear</button>
+                                    <button type="button" style={s.btnSecondary} onClick={() => setShowArancelMLForm(false)}>Cancelar</button>
+                                </div>
+                            </form>
+                        )}
+
+                        <div style={s.tablaWrap}>
+                            <table style={s.tabla}>
+                                <thead>
+                                    <tr>
+                                        <th style={s.th}>Producto</th>
+                                        <th style={s.th}>Cargo</th>
+                                        <th style={s.th}>Costo/u</th>
+                                        <th style={s.th}>Envío</th>
+                                        <th style={s.th}>Impuestos</th>
+                                        <th style={s.th}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {arancelesML.length === 0 ? (
+                                        <tr><td colSpan="6" style={s.td}>No hay aranceles configurados.</td></tr>
+                                    ) : (
+                                        arancelesML.map(a => (
+                                            <tr key={a.id}>
+                                                <td style={s.td}>{a.producto_nombre || a.producto?.nombre || '-'}</td>
+                                                <td style={s.td}>${parseFloat(a.cargo_por_vender || 0).toFixed(2)}</td>
+                                                <td style={s.td}>${parseFloat(a.costo_por_unidad_vendida || 0).toFixed(2)}</td>
+                                                <td style={s.td}>${parseFloat(a.costo_envio || 0).toFixed(2)}</td>
+                                                <td style={s.td}>${parseFloat(a.impuestos_estimados || 0).toFixed(2)}</td>
+                                                <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
+                                                    <button type="button" style={s.btnIcono} onClick={() => handleEditArancelML(a)} title="Editar">✏️</button>
+                                                    <button type="button" style={s.btnIcono} onClick={() => handleDeleteArancelML(a.id)} title="Eliminar">🗑️</button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* Modal editar arancel ML */}
+            {showEditArancelMLModal && editArancelMLData && (
+                <div style={s.overlay}>
+                    <div style={{ ...s.card, maxWidth: 420, width: '100%', margin: 0 }}>
+                        <div style={s.cardTitle}>Editar arancel Mercado Libre</div>
+
+                        <label style={s.lbl}>Cargo por vender (por unidad)</label>
+                        <input type="number" value={editArancelMLData.cargo_por_vender}
+                               onChange={e => setEditArancelMLData({ ...editArancelMLData, cargo_por_vender: e.target.value })}
+                               min="0" step="0.01" style={s.inp} />
+
+                        <label style={s.lbl}>Costo por unidad vendida</label>
+                        <input type="number" value={editArancelMLData.costo_por_unidad_vendida}
+                               onChange={e => setEditArancelMLData({ ...editArancelMLData, costo_por_unidad_vendida: e.target.value })}
+                               min="0" step="0.01" style={s.inp} />
+
+                        <label style={s.lbl}>Costo por envío (por unidad)</label>
+                        <input type="number" value={editArancelMLData.costo_envio}
+                               onChange={e => setEditArancelMLData({ ...editArancelMLData, costo_envio: e.target.value })}
+                               min="0" step="0.01" style={s.inp} />
+
+                        <label style={s.lbl}>Impuestos estimados (por unidad)</label>
+                        <input type="number" value={editArancelMLData.impuestos_estimados}
+                               onChange={e => setEditArancelMLData({ ...editArancelMLData, impuestos_estimados: e.target.value })}
+                               min="0" step="0.01" style={s.inp} />
+
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button style={s.btnPrimary} onClick={handleUpdateArancelML}>Guardar</button>
+                            <button style={s.btnSecondary} onClick={() => { setShowEditArancelMLModal(false); setEditArancelMLData(null); }}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal importar */}
             {mostrarImport && (
                 <div style={s.overlay}>
@@ -521,4 +822,10 @@ const s = {
                    zIndex: 1000, padding: 20 },
     modalWrap:   { background: '#fff', borderRadius: 16, maxWidth: 900, width: '100%',
                    maxHeight: '90vh', overflow: 'auto' },
+    tablaWrap:   { overflowX: 'auto', marginTop: 4 },
+    tabla:       { width: '100%', borderCollapse: 'collapse', fontSize: 12.5 },
+    th:          { textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid #e2e8f0',
+                   color: '#475569', fontWeight: 700, whiteSpace: 'nowrap' },
+    td:          { padding: '8px 10px', borderBottom: '1px solid #f1f5f9', color: '#111827' },
+    btnIcono:    { background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 6px' },
 };
