@@ -53,6 +53,8 @@ const MetricasVentas = () => {
     const [sellers, setSellers] = useState([]);
     const [paymentMethods, setPaymentMethods] = useState([]);
 
+    const [mostrarTodosProductos, setMostrarTodosProductos] = useState(false);
+
 
     const fetchMetrics = useCallback(async () => {
         if (!token || !selectedStoreSlug) {
@@ -669,6 +671,13 @@ const MetricasVentas = () => {
                         })() : (
                             <p style={styles.noDataMessage}>No hay datos de productos vendidos para este período.</p>
                         )}
+                        {metrics?.productos_mas_vendidos?.length > 10 && (
+                            <div style={{ textAlign: 'center', marginTop: 10 }}>
+                                <button onClick={() => setMostrarTodosProductos(true)} style={styles.verMasLink}>
+                                    Ver más
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Ventas por vendedor – leaderboard */}
@@ -786,6 +795,54 @@ const MetricasVentas = () => {
                 </div>
 
             </div>
+
+            {/* Modal: todos los productos vendidos */}
+            {mostrarTodosProductos && (
+                <div style={styles.modalOverlay} onClick={() => setMostrarTodosProductos(false)}>
+                    <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setMostrarTodosProductos(false)}
+                            style={styles.modalCloseButton}
+                            aria-label="Cerrar"
+                        >
+                            ✕
+                        </button>
+                        <h3 style={{ ...styles.tableTitle, marginBottom: 14 }}>Todos los productos vendidos</h3>
+                        <div style={styles.modalScroll}>
+                            {(() => {
+                                const todos = metrics?.productos_mas_vendidos || [];
+                                const maxQty = Math.max(...todos.map(p => p.cantidad_total), 1);
+                                return todos.map((p, i) => (
+                                    <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid #e2e8f0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                            <span style={{ fontSize: 16, flexShrink: 0, width: 24, textAlign: 'center' }}>
+                                                {i < medals.length ? medals[i] : <span style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700 }}>#{i + 1}</span>}
+                                            </span>
+                                            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#1a2926', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {p.producto__nombre || 'Sin nombre'}
+                                                {p.producto__talle && p.producto__talle !== 'UNICO'
+                                                    ? <span style={{ color: '#94a3b8', fontWeight: 400 }}> · T: {p.producto__talle}</span>
+                                                    : ''}
+                                            </span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0, gap: 2 }}>
+                                                <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2926' }}>{p.cantidad_total}</span>
+                                                {metrics?.tienda_tiene_ml && parseInt(p.cantidad_pagados_ml) > 0 && (
+                                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#1a6a40', background: '#edfaf3', borderRadius: 6, padding: '1px 5px' }}>
+                                                        {parseInt(p.cantidad_pagados_ml)} entregados
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div style={{ marginLeft: 32, height: 5, backgroundColor: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                                            <div style={{ height: '100%', width: `${(p.cantidad_total / maxQty) * 100}%`, background: 'linear-gradient(90deg, #5dc87a, #38a080)', borderRadius: 3 }} />
+                                        </div>
+                                    </div>
+                                ));
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
@@ -797,6 +854,27 @@ const styles = {
         width: '100%',
         maxWidth: '100%',
         color: '#1a2926',
+    },
+    verMasLink: {
+        background: 'none', border: 'none', color: '#3b9ede', fontWeight: 600,
+        fontSize: 13, cursor: 'pointer', padding: '4px 8px',
+    },
+    modalOverlay: {
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+        justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20,
+    },
+    modalContent: {
+        position: 'relative', backgroundColor: 'white', padding: '24px',
+        borderRadius: 10, width: '90%', maxWidth: 520,
+        boxShadow: '0 10px 30px rgba(0,0,0,0.10)',
+    },
+    modalCloseButton: {
+        position: 'absolute', top: 14, right: 14, background: 'none', border: 'none',
+        fontSize: 18, color: '#94a3b8', cursor: 'pointer', lineHeight: 1, padding: 4,
+    },
+    modalScroll: {
+        maxHeight: '65vh', overflowY: 'auto', paddingRight: 6,
     },
     pageTitle: {
         color: '#1a2926',
