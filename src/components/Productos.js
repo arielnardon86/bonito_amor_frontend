@@ -1621,6 +1621,9 @@ const Productos = () => {
                                         {tieneVars && expandido && producto.variantes.map(v => {
                                             const vPrecio = parseFloat(v.precio) || 0;
                                             const vCosto = parseFloat(v.costo ?? producto.costo) || 0;
+                                            // IVA y Rubro no son campos por variante: se heredan del producto padre.
+                                            const vIvaPct = parseFloat(producto.iva_porcentaje) || 0;
+                                            const vCostoConIva = vCosto * (1 + vIvaPct / 100);
                                             const vMargen = vPrecio > 0 && vCosto > 0 ? ((vPrecio - vCosto) / vPrecio * 100) : null;
                                             const vMargenColor = vMargen === null ? '#94a3b8' : vMargen >= 30 ? '#1a6a40' : vMargen >= 15 ? '#d97706' : '#e25252';
                                             return (
@@ -1655,10 +1658,18 @@ const Productos = () => {
                                                     </td>
                                                     {mostrarTalle && <td style={styles.td}>{detalleVariante(v) || '-'}</td>}
                                                     <td style={styles.td}>{formatearMonto(v.precio)}</td>
-                                                    <td style={styles.td}>—</td>
-                                                    <td style={styles.td}>—</td>
-                                                    <td style={styles.td}>—</td>
-                                                    <td style={styles.td}>—</td>
+                                                    <td style={styles.td}>{formatearMonto(vCosto)}</td>
+                                                    <td style={styles.td}>{formatearMonto(vCostoConIva)}</td>
+                                                    <td style={styles.td}>
+                                                        {producto.iva_porcentaje !== null && producto.iva_porcentaje !== undefined
+                                                            ? <>{parseFloat(producto.iva_porcentaje)}<span style={{ color: '#94a3b8', fontSize: '0.75em' }}>%</span></>
+                                                            : <span style={{ color: '#94a3b8' }}>—</span>}
+                                                    </td>
+                                                    <td style={styles.td}>
+                                                        {producto.rubro_nombre
+                                                            ? <span title={producto.rubro_nombre} style={{ display: 'inline-block', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{producto.rubro_nombre}</span>
+                                                            : <span style={{ color: '#94a3b8' }}>—</span>}
+                                                    </td>
                                                     <td style={{ ...styles.td, fontWeight: 700, color: vMargenColor }}>
                                                         {vMargen !== null ? `${vMargen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                                     </td>
