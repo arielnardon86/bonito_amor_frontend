@@ -572,14 +572,11 @@ const MetricasVentas = () => {
                         <div style={styles.card}>
                             <h3 style={styles.cardTitle}>Cargos por ventas Mercado Libre</h3>
                             <p style={styles.cardValue}>{formatearMonto(parseFloat(metrics?.total_ml_cargos || 0))}</p>
-                            <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 6 }}>
-                                Envío e impuestos usan el dato real de ML cuando ya llegó; si no, el estimado configurado por producto.
-                            </p>
                             <div style={{ marginTop: 10, borderTop: '1px solid #e2e8f0', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 {[
                                     ['Comisión ML (cargo por venta, real)', metrics?.total_ml_sale_fee],
-                                    ['Envío (real o estimado)', metrics?.total_ml_envio_efectivo],
-                                    ['Impuestos (real o estimado)', metrics?.total_ml_impuestos_efectivo],
+                                    ['Costo de envío (configurado por producto)', metrics?.total_costo_envio_ml],
+                                    ['Impuestos (configurados por producto)', metrics?.total_arancel_ml_manual],
                                 ].map(([label, val]) => (
                                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#475569' }}>
                                         <span>{label}</span>
