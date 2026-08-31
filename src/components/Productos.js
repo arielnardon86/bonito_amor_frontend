@@ -53,6 +53,7 @@ const Productos = () => {
         codigo_interno: '',
         iva_porcentaje: '',
         rubro: '',
+        proveedor: '',
         margen: '',
         imagen: '',
     });
@@ -66,6 +67,13 @@ const Productos = () => {
     const [nuevoRubroIva, setNuevoRubroIva] = useState('');
     const [guardandoNuevoRubro, setGuardandoNuevoRubro] = useState(false);
     const [rubroModalDestino, setRubroModalDestino] = useState('nuevo_producto'); // 'nuevo_producto' | 'edicion' | 'masivo'
+
+    // Proveedor (opcional, propio de cada tienda)
+    const [proveedores, setProveedores] = useState([]);
+    const [showNuevoProveedorModal, setShowNuevoProveedorModal] = useState(false);
+    const [nuevoProveedorNombre, setNuevoProveedorNombre] = useState('');
+    const [guardandoNuevoProveedor, setGuardandoNuevoProveedor] = useState(false);
+    const [proveedorModalDestino, setProveedorModalDestino] = useState('nuevo_producto'); // 'nuevo_producto' | 'edicion'
 
     // Edición en masa por rubro
     const [showEditarMasivoModal, setShowEditarMasivoModal] = useState(false);
@@ -199,6 +207,21 @@ const Productos = () => {
 
     useEffect(() => { fetchRubros(); }, [fetchRubros]);
 
+    const fetchProveedores = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/proveedores/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug },
+            });
+            setProveedores(response.data.results || response.data || []);
+        } catch (err) {
+            console.error('Error al cargar proveedores:', err);
+        }
+    }, [token, selectedStoreSlug]);
+
+    useEffect(() => { fetchProveedores(); }, [fetchProveedores]);
+
     // Consulta si la tienda actual tiene Tienda Nube conectado, para mostrar (o no) la
     // opción de vincular manualmente un producto en el modal de edición.
     useEffect(() => {
@@ -250,6 +273,38 @@ const Productos = () => {
         setNuevoRubroNombre('');
         setNuevoRubroIva('');
         setShowNuevoRubroModal(true);
+    };
+
+    const crearProveedorRapido = async () => {
+        if (!nuevoProveedorNombre.trim()) {
+            setError('Ingresá un nombre de proveedor.');
+            return;
+        }
+        setGuardandoNuevoProveedor(true);
+        setError(null);
+        try {
+            const { data: proveedorCreado } = await axios.post(`${BASE_API_ENDPOINT}/api/proveedores/`, {
+                tienda_slug: selectedStoreSlug, nombre_razon_social: nuevoProveedorNombre.trim(),
+            }, { headers: { 'Authorization': `Bearer ${token}` } });
+            await fetchProveedores();
+            if (proveedorModalDestino === 'edicion') {
+                setEditProduct(prev => prev ? { ...prev, proveedor: proveedorCreado.id } : prev);
+            } else {
+                setNewProduct(prev => ({ ...prev, proveedor: proveedorCreado.id }));
+            }
+            setShowNuevoProveedorModal(false);
+            setNuevoProveedorNombre('');
+        } catch (err) {
+            setError('Error al crear el proveedor: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setGuardandoNuevoProveedor(false);
+        }
+    };
+
+    const abrirNuevoProveedorModal = (destino) => {
+        setProveedorModalDestino(destino);
+        setNuevoProveedorNombre('');
+        setShowNuevoProveedorModal(true);
     };
 
     const handleEditarMasivo = async () => {
@@ -345,10 +400,11 @@ const Productos = () => {
                     return;
                 }
 
-                // IVA y Rubro son propiedades del producto que no varían por talle/variante:
+                // IVA, Rubro y Proveedor son propiedades del producto que no varían por talle/variante:
                 // se cargan una sola vez en el formulario y se aplican al padre y a todas las variantes.
                 const ivaParaCrear = newProduct.iva_porcentaje === '' ? null : newProduct.iva_porcentaje;
                 const rubroParaCrear = newProduct.rubro || null;
+                const proveedorParaCrear = newProduct.proveedor || null;
 
                 // Crear producto padre (contenedor) luego variantes
                 const padreData = {
@@ -360,6 +416,7 @@ const Productos = () => {
                     talle: null,
                     iva_porcentaje: ivaParaCrear,
                     rubro: rubroParaCrear,
+                    proveedor: proveedorParaCrear,
                     tienda_slug: selectedStoreSlug,
                 };
                 const { data: padre } = await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, padreData, {
@@ -378,6 +435,7 @@ const Productos = () => {
                         variante2: v.variante2 || null,
                         iva_porcentaje: ivaParaCrear,
                         rubro: rubroParaCrear,
+                        proveedor: proveedorParaCrear,
                         producto_padre: padre.id,
                         tienda_slug: selectedStoreSlug,
                         imagen: v.imagen || null,
@@ -404,7 +462,7 @@ const Productos = () => {
                 });
             }
 
-            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', codigo_interno: '', iva_porcentaje: '', rubro: '', margen: '', imagen: '' });
+            setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', codigo_interno: '', iva_porcentaje: '', rubro: '', proveedor: '', margen: '', imagen: '' });
             setShowNuevoProductoModal(false);
             setTieneVariantes(false);
             setVariantesNuevas([{ ...VARIANTE_VACIA }]);
@@ -1133,6 +1191,24 @@ const Productos = () => {
                             </div>
 
                             <div style={styles.inputGroupModal}>
+                                <label style={styles.label}>Proveedor <span style={styles.opcionalTag}>(Opcional)</span></label>
+                                <select
+                                    value={newProduct.proveedor}
+                                    onChange={(e) => {
+                                        if (e.target.value === '__nuevo__') { abrirNuevoProveedorModal('nuevo_producto'); return; }
+                                        setNewProduct({ ...newProduct, proveedor: e.target.value });
+                                    }}
+                                    style={styles.modalInput}
+                                >
+                                    <option value="">Sin proveedor</option>
+                                    {proveedores.map(p => (
+                                        <option key={p.id} value={p.id}>{p.nombre_razon_social}</option>
+                                    ))}
+                                    <option value="__nuevo__">+ Crear nuevo proveedor...</option>
+                                </select>
+                            </div>
+
+                            <div style={styles.inputGroupModal}>
                                 <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Stock</label>
                                 <input
                                     type="number"
@@ -1832,6 +1908,23 @@ const Productos = () => {
                             </select>
                         </div>
                         <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Proveedor <span style={styles.opcionalTag}>(Opcional)</span>:</label>
+                            <select
+                                value={editProduct.proveedor || ''}
+                                onChange={(e) => {
+                                    if (e.target.value === '__nuevo__') { abrirNuevoProveedorModal('edicion'); return; }
+                                    setEditProduct({ ...editProduct, proveedor: e.target.value || null });
+                                }}
+                                style={styles.modalInput}
+                            >
+                                <option value="">Sin proveedor</option>
+                                {proveedores.map(p => (
+                                    <option key={p.id} value={p.id}>{p.nombre_razon_social}</option>
+                                ))}
+                                <option value="__nuevo__">+ Crear nuevo proveedor...</option>
+                            </select>
+                        </div>
+                        <div style={styles.inputGroupModal}>
                             <label style={styles.label}>Talle <span style={styles.opcionalTag}>(Opcional)</span>:</label>
                             <input
                                 type="text"
@@ -2024,6 +2117,33 @@ const Productos = () => {
                                 {guardandoNuevoRubro ? 'Creando...' : 'Crear'}
                             </button>
                             <button onClick={() => setShowNuevoRubroModal(false)} style={styles.modalCancelButton}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showNuevoProveedorModal && (
+                <div style={styles.modalOverlay} onClick={() => setShowNuevoProveedorModal(false)}>
+                    <div style={{ ...styles.modalContent, maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ marginTop: 0 }}>Nuevo proveedor</h3>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Nombre / Razón Social:</label>
+                            <input
+                                type="text"
+                                value={nuevoProveedorNombre}
+                                onChange={(e) => setNuevoProveedorNombre(e.target.value)}
+                                style={styles.modalInput}
+                                placeholder="Ej: Distribuidora del Sur"
+                            />
+                        </div>
+                        <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 12px' }}>
+                            El resto de los datos (CUIT, teléfono, etc.) se pueden completar después desde "Proveedores".
+                        </p>
+                        <div style={styles.modalActions}>
+                            <button onClick={crearProveedorRapido} disabled={guardandoNuevoProveedor} style={styles.modalConfirmButton}>
+                                {guardandoNuevoProveedor ? 'Creando...' : 'Crear'}
+                            </button>
+                            <button onClick={() => setShowNuevoProveedorModal(false)} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
                 </div>

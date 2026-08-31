@@ -17,6 +17,7 @@ import TicketCambioImpresion from './components/TicketCambioImpresion';
 import CambioDevolucion from './components/CambioDevolucion';
 import PanelAdministracionTienda from './components/PanelAdministracionTienda';
 import Clientes from './components/Clientes';
+import Proveedores from './components/Proveedores';
 import Presupuesto from './components/Presupuesto';
 import CargaMasivaProductos from './components/CargaMasivaProductos';
 import ImportacionIA from './components/ImportacionIA';
@@ -71,6 +72,7 @@ import {
   faFileInvoiceDollar,
   faChevronLeft,
   faChevronRight,
+  faIndustry,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Soporte de notificaciones push (gesto de usuario requerido en móvil)
@@ -294,6 +296,15 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
                 <Link to="/productos" className={location.pathname === '/productos' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faBox} className="nav-icon" />
                   <span className="sidebar-label">Gestión de Productos</span>
+                </Link>
+              </li>
+            )}
+
+            {user && (user.is_superuser || user.is_supervisor) && (
+              <li onClick={() => setIsOpen(false)}>
+                <Link to="/proveedores" className={location.pathname === '/proveedores' ? 'active' : ''}>
+                  <FontAwesomeIcon icon={faIndustry} className="nav-icon" />
+                  <span className="sidebar-label">Proveedores</span>
                 </Link>
               </li>
             )}
@@ -1187,6 +1198,11 @@ const AppContent = () => {
               <Route path="/productos/importacion-ia" element={
                 <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
                   <ImportacionIA />
+                </ProtectedRoute>
+              } />
+              <Route path="/proveedores" element={
+                <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
+                  <Proveedores />
                 </ProtectedRoute>
               } />
               <Route path="/etiquetas" element={<EtiquetasImpresion />} />
