@@ -7,6 +7,9 @@ import { resizeLogoToBase64 } from '../utils/resizeLogo';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
+// Mismas reglas que el validador de username de Django (sin espacios ni acentos/ñ).
+const USERNAME_REGEX = /^[a-zA-Z0-9_.@+-]+$/;
+
 const COLORES = {
   verde:    '#5dc87a',
   verdeOsc: '#3ab87a',
@@ -100,6 +103,7 @@ export default function Registro() {
     if (!form.nombre_tienda.trim()) e.nombre_tienda = 'El nombre de la tienda es obligatorio.';
     if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Email inválido.';
     if (!form.username.trim() || form.username.length < 3) e.username = 'El usuario debe tener al menos 3 caracteres.';
+    else if (!USERNAME_REGEX.test(form.username)) e.username = 'El usuario no puede tener espacios ni acentos. Usá solo letras, números, punto, guion, guion bajo, @ o +.';
     if (form.cuit.replace(/\D/g, '').length !== 11) e.cuit = 'El CUIT/CUIL debe tener 11 dígitos.';
     if (!form.mp_payer_email.trim() || !/\S+@\S+\.\S+/.test(form.mp_payer_email)) e.mp_payer_email = 'Email inválido.';
     if (!form.password || form.password.length < 6) e.password = 'La contraseña debe tener al menos 6 caracteres.';
@@ -155,7 +159,7 @@ export default function Registro() {
 
   const plan = PLAN_INFO[planSeleccionado];
 
-  const campo = (name, label, icon, type = 'text', placeholder = '') => (
+  const campo = (name, label, icon, type = 'text', placeholder = '', ayuda = '', sanitize = null) => (
     <div style={s.campoWrap}>
       <label style={s.label}>{label}</label>
       <div style={s.inputWrap}>
@@ -166,15 +170,20 @@ export default function Registro() {
           placeholder={placeholder || label}
           value={form[name]}
           onChange={e => {
-            setForm(f => ({ ...f, [name]: e.target.value }));
+            const valor = sanitize ? sanitize(e.target.value) : e.target.value;
+            setForm(f => ({ ...f, [name]: valor }));
             if (errores[name]) setErrores(er => ({ ...er, [name]: '' }));
           }}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
         />
       </div>
-      {errores[name] && <span style={s.errorMsg}>{errores[name]}</span>}
+      {errores[name] ? <span style={s.errorMsg}>{errores[name]}</span> : (ayuda && <span style={{ ...s.ayudaCampo, marginTop: 4, marginBottom: 0, display: 'block' }}>{ayuda}</span>)}
     </div>
   );
+
+  // Sin espacios ni caracteres inválidos: los descarta a medida que se escriben,
+  // para que nunca llegue a existir un usuario con "juan perez" en la base.
+  const sanitizarUsername = (v) => v.replace(/[^a-zA-Z0-9_.@+-]/g, '');
 
   return (
     <div style={s.page}>
@@ -239,7 +248,7 @@ export default function Registro() {
           </div>
 
           {campo('email', 'Email', faEnvelope, 'email', 'tu@email.com')}
-          {campo('username', 'Usuario', faUser, 'text', 'Ej: maria_ropa')}
+          {campo('username', 'Usuario', faUser, 'text', 'Ej: maria_ropa', 'Sin espacios ni acentos: solo letras, números, punto, guion o guion bajo.', sanitizarUsername)}
           {campo('cuit', 'CUIT/CUIL de la tienda', faIdCard, 'text', 'Ej: 20-12345678-9')}
           {cuitDuplicado && (
             <div style={{ ...s.avisoTiendaNube, marginTop: -8 }}>

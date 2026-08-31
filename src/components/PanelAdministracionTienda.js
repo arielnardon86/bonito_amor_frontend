@@ -796,9 +796,13 @@ Script.complete();
 
     const handleUserFormChange = (e) => {
         const { name, value, type, checked } = e.target;
+        // El username de Django no admite espacios ni acentos: los descartamos
+        // a medida que se escriben en vez de dejar que el usuario los tipee y
+        // recién se entere del error al guardar.
+        const valorFinal = name === 'username' ? value.replace(/[^a-zA-Z0-9_.@+-]/g, '') : value;
         setUserForm({
             ...userForm,
-            [name]: type === 'checkbox' ? checked : value
+            [name]: type === 'checkbox' ? checked : valorFinal
         });
     };
 
@@ -1789,6 +1793,9 @@ Script.complete();
                                             required
                                             style={styles.input}
                                         />
+                                        <small style={{ color: '#94a3b8' }}>
+                                            Sin espacios ni acentos: solo letras, números, punto, guion o guion bajo.
+                                        </small>
                                     </div>
                                     <div style={styles.formGroup}>
                                         <label>Email</label>
