@@ -392,9 +392,9 @@ const PuntoVenta = () => {
                 es_financiero: m.es_financiero
             })));
             setMetodosPago(methods);
-            const efectivo = methods.find(m => m.nombre === 'Efectivo');
-            setMetodoPagoSeleccionado(efectivo ? efectivo.nombre : (methods.length > 0 ? methods[0].nombre : ''));
-            return methods; 
+            // No preseleccionar ningún método: el cajero tiene que elegirlo a propósito
+            // en cada venta (evita que quede "Efectivo" puesto por defecto sin querer).
+            return methods;
 
         } catch (err) {
             console.error("Error al cargar métodos de pago:", err.response ? err.response.data : err.message);
@@ -1152,7 +1152,7 @@ const PuntoVenta = () => {
                     };
 
                     finalizeCart(activeCartId);
-                    setMetodoPagoSeleccionado(metodosPago.find(m => m.nombre === 'Efectivo')?.nombre || (metodosPago.length > 0 ? metodosPago[0].nombre : ''));
+                    setMetodoPagoSeleccionado('');
                     setArancelSeleccionadoId('');
                     setClienteSeleccionadoCC(null);
                     setBusquedaClienteCC('');
