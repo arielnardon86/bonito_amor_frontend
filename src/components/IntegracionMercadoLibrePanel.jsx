@@ -3,6 +3,7 @@ import { useAuth } from '../AuthContext';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import ImportarProductosSeleccionadosML from './ImportarProductosSeleccionadosML';
+import CalculoManualRentabilidadML from './CalculoManualRentabilidadML';
 
 const normalizeApiUrl = (url) => {
     if (!url) return 'http://localhost:8000';
@@ -31,6 +32,7 @@ export default function IntegracionMercadoLibrePanel() {
     const [error,         setError]         = useState(null);
     const [successMsg,    setSuccessMsg]    = useState('');
     const [mostrarImport, setMostrarImport] = useState(false);
+    const [mostrarRentabilidadManual, setMostrarRentabilidadManual] = useState(false);
     const [mostrarGuiaApp, setMostrarGuiaApp] = useState(false);
 
     // Campos de configuración
@@ -408,6 +410,19 @@ export default function IntegracionMercadoLibrePanel() {
             {error      && <div style={s.alertErr}>{error}</div>}
             {successMsg && <div style={s.alertOk}>{successMsg}</div>}
 
+            {/* Cálculo manual de rentabilidad (a partir del Excel de Ventas de ML) */}
+            <div style={s.card}>
+                <div style={s.cardTitle}>Cálculo manual de rentabilidad</div>
+                <p style={s.cardDesc}>
+                    Subí el Excel de "Ventas" que descargás de Mercado Libre y calculá la ganancia neta de un
+                    período: el costo de cada producto se completa solo desde Gestión de Productos, y los
+                    gastos se toman de Registro de Egresos.
+                </p>
+                <button type="button" style={s.btnSecondary} onClick={() => setMostrarRentabilidadManual(true)}>
+                    Calcular rentabilidad
+                </button>
+            </div>
+
             {/* Paso 1 — Credenciales */}
             <div style={s.card}>
                 <div style={s.cardTitle}>Paso 1 — Credenciales de la aplicación</div>
@@ -725,6 +740,15 @@ export default function IntegracionMercadoLibrePanel() {
                             <button style={s.btnPrimary} onClick={handleUpdateArancelML}>Guardar</button>
                             <button style={s.btnSecondary} onClick={() => { setShowEditArancelMLModal(false); setEditArancelMLData(null); }}>Cancelar</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal cálculo manual de rentabilidad */}
+            {mostrarRentabilidadManual && (
+                <div style={s.overlay}>
+                    <div style={{ ...s.modalWrap, maxWidth: 1200 }}>
+                        <CalculoManualRentabilidadML onClose={() => setMostrarRentabilidadManual(false)} />
                     </div>
                 </div>
             )}
