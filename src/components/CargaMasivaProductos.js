@@ -89,21 +89,37 @@ const CargaMasivaProductos = () => {
     const [nuevoRubroIva, setNuevoRubroIva] = useState('');
     const [guardandoNuevoRubro, setGuardandoNuevoRubro] = useState(false);
 
+    // La API de rubros pagina de a 10 (PAGE_SIZE default de DRF): si se lee solo
+    // resp.data.results, una tienda con más de 10 rubros deja los siguientes
+    // invisibles acá -- y como esta lista es la que se usa para chequear duplicados
+    // antes de crear uno nuevo, terminaba intentando recrear un rubro que ya
+    // existía (pero no se veía) y fallando con "deben formar un conjunto único".
+    const fetchTodosLosRubros = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return [];
+        let todos = [];
+        let nextUrl = `${BASE_API_ENDPOINT}/api/rubros/`;
+        let params = { tienda_slug: selectedStoreSlug };
+        while (nextUrl) {
+            const resp = await axios.get(nextUrl, { headers: { Authorization: `Bearer ${token}` }, params });
+            const pagina = resp.data.results || resp.data || [];
+            todos = todos.concat(Array.isArray(pagina) ? pagina : []);
+            nextUrl = resp.data.next || null;
+            params = undefined; // la URL de "next" ya trae los query params incluidos
+        }
+        return todos;
+    }, [token, selectedStoreSlug]);
+
     const fetchRubros = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
         setLoadingRubros(true);
         try {
-            const resp = await axios.get(`${BASE_API_ENDPOINT}/api/rubros/`, {
-                headers: { Authorization: `Bearer ${token}` },
-                params: { tienda_slug: selectedStoreSlug },
-            });
-            setRubros(resp.data.results || resp.data || []);
+            setRubros(await fetchTodosLosRubros());
         } catch (err) {
             // silencioso: no bloquea la pantalla de carga si falla
         } finally {
             setLoadingRubros(false);
         }
-    }, [token, selectedStoreSlug]);
+    }, [token, selectedStoreSlug, fetchTodosLosRubros]);
 
     useEffect(() => { fetchRubros(); }, [fetchRubros]);
 
@@ -230,11 +246,7 @@ const CargaMasivaProductos = () => {
             return;
         }
         try {
-            const resp = await axios.get(`${BASE_API_ENDPOINT}/api/rubros/`, {
-                headers: { Authorization: `Bearer ${token}` },
-                params: { tienda_slug: selectedStoreSlug },
-            });
-            const existentes = resp.data.results || resp.data || [];
+            const existentes = await fetchTodosLosRubros();
             const existentesLower = new Set(existentes.map((r) => r.nombre.trim().toLowerCase()));
             const faltantes = [...rubrosEnArchivo].filter((r) => !existentesLower.has(r.toLowerCase()));
             if (faltantes.length > 0) {

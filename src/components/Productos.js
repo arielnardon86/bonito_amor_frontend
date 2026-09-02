@@ -192,33 +192,44 @@ const Productos = () => {
         }
     }, [token, selectedStoreSlug, searchTerm, filtroRubroId]);
 
+    // Ambas listas se usan para chequear duplicados antes de crear uno nuevo (el
+    // desplegable "+ Crear nuevo...") y para poblar los <select>: si la API pagina
+    // (10 por página por defecto) y solo se lee response.data.results, cualquier
+    // rubro/proveedor más allá de la primera página queda invisible pero sigue
+    // existiendo -- provocando un error de "ya existe" al intentar recrearlo.
+    const fetchTodasLasPaginas = useCallback(async (url, params) => {
+        let todos = [];
+        let nextUrl = url;
+        let queryParams = params;
+        while (nextUrl) {
+            const response = await axios.get(nextUrl, { headers: { 'Authorization': `Bearer ${token}` }, params: queryParams });
+            const pagina = response.data.results || response.data || [];
+            todos = todos.concat(Array.isArray(pagina) ? pagina : []);
+            nextUrl = response.data.next || null;
+            queryParams = undefined; // "next" ya trae los query params incluidos
+        }
+        return todos;
+    }, [token]);
+
     const fetchRubros = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
         try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/rubros/`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { tienda_slug: selectedStoreSlug },
-            });
-            setRubros(response.data.results || response.data || []);
+            setRubros(await fetchTodasLasPaginas(`${BASE_API_ENDPOINT}/api/rubros/`, { tienda_slug: selectedStoreSlug }));
         } catch (err) {
             console.error('Error al cargar rubros:', err);
         }
-    }, [token, selectedStoreSlug]);
+    }, [token, selectedStoreSlug, fetchTodasLasPaginas]);
 
     useEffect(() => { fetchRubros(); }, [fetchRubros]);
 
     const fetchProveedores = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
         try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/proveedores/`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { tienda_slug: selectedStoreSlug },
-            });
-            setProveedores(response.data.results || response.data || []);
+            setProveedores(await fetchTodasLasPaginas(`${BASE_API_ENDPOINT}/api/proveedores/`, { tienda_slug: selectedStoreSlug }));
         } catch (err) {
             console.error('Error al cargar proveedores:', err);
         }
-    }, [token, selectedStoreSlug]);
+    }, [token, selectedStoreSlug, fetchTodasLasPaginas]);
 
     useEffect(() => { fetchProveedores(); }, [fetchProveedores]);
 
