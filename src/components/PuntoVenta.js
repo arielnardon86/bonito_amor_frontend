@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
-import { useSales } from './SalesContext';
+import { useSales, calcularSubtotalItem } from './SalesContext';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
 import HelpButton from './HelpButton';
@@ -48,6 +48,7 @@ const PuntoVenta = () => {
         addProductToCart,
         removeProductFromCart,
         decrementProductQuantity,
+        setProductQuantityInCart,
         finalizeCart,
         deleteCart
     } = useSales();
@@ -620,7 +621,7 @@ const PuntoVenta = () => {
     // --- FUNCIÓN HELPER (Calcula total CON ajustes de usuario, SIN redondeo) ---
     const calculateTotalSinRedondeo = useCallback(() => {
         if (!activeCart) return 0;
-        let subtotal = activeCart.items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.product.precio)), 0);
+        let subtotal = activeCart.items.reduce((sum, item) => sum + calcularSubtotalItem(item), 0);
         let finalTotal = subtotal;
 
         if (parseFloat(recargoMonto) > 0) { 
@@ -673,8 +674,7 @@ const PuntoVenta = () => {
         activeCart.items.forEach(item => {
             const conf = mapProducto(item.product.id);
             if (!conf) return;
-            const subtotalItem = item.quantity * parseFloat(item.product.precio);
-            arancelTotal += subtotalItem * (parseFloat(conf.impuestos_porcentaje || 0) / 100);
+            arancelTotal += calcularSubtotalItem(item) * (parseFloat(conf.impuestos_porcentaje || 0) / 100);
             envioTotal += (parseFloat(conf.costo_envio || 0)) * item.quantity;
         });
         return { arancel: arancelTotal, envio: envioTotal };
@@ -686,25 +686,53 @@ const PuntoVenta = () => {
             showCustomAlert('Por favor, selecciona o crea un carrito antes de añadir productos.', 'info');
             return;
         }
-        if (product.stock === 0) {
-            showCustomAlert('Este producto no tiene stock disponible.', 'error');
-            return;
-        }
         if (quantity <= 0) {
-            showCustomAlert('La cantidad debe ser mayor que cero.', 'error');
+            showCustomAlert(product.se_vende_por_peso ? 'Ingresá un peso mayor a 0.' : 'La cantidad debe ser mayor que cero.', 'error');
             return;
         }
-        const currentItemInCart = activeCart.items.find(item => item.product.id === product.id);
-        const currentQuantityInCart = currentItemInCart ? currentItemInCart.quantity : 0;
-        if (currentQuantityInCart + quantity > product.stock) {
-            showCustomAlert(`No hay suficiente stock. Disponible: ${product.stock}, en carrito: ${currentQuantityInCart}.`, 'error');
-            return;
+        // Los productos "por peso" no llevan stock (se pesa lo que haya físicamente).
+        if (!product.se_vende_por_peso) {
+            if (product.stock === 0) {
+                showCustomAlert('Este producto no tiene stock disponible.', 'error');
+                return;
+            }
+            const currentItemInCart = activeCart.items.find(item => item.product.id === product.id);
+            const currentQuantityInCart = currentItemInCart ? currentItemInCart.quantity : 0;
+            if (currentQuantityInCart + quantity > product.stock) {
+                showCustomAlert(`No hay suficiente stock. Disponible: ${product.stock}, en carrito: ${currentQuantityInCart}.`, 'error');
+                return;
+            }
         }
         addProductToCart(product, quantity);
         setBusquedaProducto('');
         setProductoSeleccionado(null);
         showCustomAlert('Producto añadido al carrito.', 'success');
-    }, [activeCart, addProductToCart]); 
+    }, [activeCart, addProductToCart]);
+
+    // Productos "por peso": antes de agregarlos hay que pedir el peso en gramos
+    // (no tiene sentido un botón "+1" ni asumir quantity=1 para algo que se pesa).
+    const [productoPesoPendiente, setProductoPesoPendiente] = useState(null);
+    const [gramosIngresados, setGramosIngresados] = useState('');
+
+    const agregarProductoAlCarrito = useCallback((product, quantity = 1) => {
+        if (product.se_vende_por_peso) {
+            setProductoPesoPendiente(product);
+            setGramosIngresados('');
+            return;
+        }
+        handleAddProductoEnVenta(product, quantity);
+    }, [handleAddProductoEnVenta]);
+
+    const confirmarPesoYAgregar = () => {
+        const gramos = parseInt(gramosIngresados, 10);
+        if (!gramos || gramos <= 0) {
+            showCustomAlert('Ingresá un peso en gramos mayor a 0.', 'error');
+            return;
+        }
+        handleAddProductoEnVenta(productoPesoPendiente, gramos);
+        setProductoPesoPendiente(null);
+        setGramosIngresados('');
+    };
 
 
     // FUNCIÓN 6: Búsqueda de Producto por Código de Barras (NO SE TOCA)
@@ -738,14 +766,14 @@ const PuntoVenta = () => {
             const productoEncontrado = response.data;
             setProductoSeleccionado(productoEncontrado);
             if (productoEncontrado) {
-                handleAddProductoEnVenta(productoEncontrado, 1);
+                agregarProductoAlCarrito(productoEncontrado, 1);
             }
         } catch (err) {
             console.error("Error al buscar producto:", err.response ? err.response.data : err.message);
             setProductoSeleccionado(null);
             showCustomAlert('Producto no encontrado o error en la búsqueda.', 'error');
         }
-    }, [busquedaProducto, selectedStoreSlug, token, handleAddProductoEnVenta]); 
+    }, [busquedaProducto, selectedStoreSlug, token, agregarProductoAlCarrito]); 
 
     // FUNCIÓN 7: Decrementar Cantidad
     const handleDecrementQuantity = useCallback((productId) => {
@@ -1099,7 +1127,12 @@ const PuntoVenta = () => {
                         detalles: activeCart.items.map(item => ({
                             producto: item.product.id,
                             cantidad: item.quantity,
-                            precio_unitario: parseFloat(item.product.precio),
+                            // "Por peso": el backend recalcula precio_unitario como precio/kg ÷ 1000
+                            // de todas formas (nunca confía en esto para ese caso), pero se manda
+                            // ya coherente para que un eventual preview no muestre otro número.
+                            precio_unitario: item.product.se_vende_por_peso
+                                ? parseFloat(item.product.precio) / 1000
+                                : parseFloat(item.product.precio),
                         })),
                     };
                     if (arancelMLParaBackend !== undefined) {
@@ -1947,18 +1980,21 @@ const PuntoVenta = () => {
                     </div>
                 </div>
 
-                {productoSeleccionado && (
+                {productoSeleccionado && !productoPesoPendiente && (
                     <div style={styles.foundProductCard} className="found-product-card">
                         <p style={styles.foundProductText}>
-                            <strong>{productoSeleccionado.nombre}</strong> — {formatearMonto(productoSeleccionado.precio)} · Stock: {productoSeleccionado.stock}
+                            <strong>{productoSeleccionado.nombre}</strong> — {formatearMonto(productoSeleccionado.precio)}
+                            {productoSeleccionado.se_vende_por_peso ? ' /kg' : ` · Stock: ${productoSeleccionado.stock}`}
                         </p>
                         <div style={styles.productActions} className="product-actions">
                             <button
-                                onClick={() => handleAddProductoEnVenta(productoSeleccionado, 1)}
-                                disabled={productoSeleccionado.stock === 0}
-                                style={productoSeleccionado.stock === 0 ? styles.disabledButton : styles.addProductButton}
+                                onClick={() => agregarProductoAlCarrito(productoSeleccionado, 1)}
+                                disabled={!productoSeleccionado.se_vende_por_peso && productoSeleccionado.stock === 0}
+                                style={(!productoSeleccionado.se_vende_por_peso && productoSeleccionado.stock === 0) ? styles.disabledButton : styles.addProductButton}
                             >
-                                {productoSeleccionado.stock === 0 ? 'Sin stock' : 'Añadir 1 Ud.'}
+                                {productoSeleccionado.se_vende_por_peso
+                                    ? 'Cargar peso'
+                                    : (productoSeleccionado.stock === 0 ? 'Sin stock' : 'Añadir 1 Ud.')}
                             </button>
                         </div>
                     </div>
@@ -1994,19 +2030,36 @@ const PuntoVenta = () => {
                                                     </div>
                                                 </td>
                                                 <td style={styles.td}>
-                                                    <div style={styles.quantityControl} className="quantity-control">
-                                                        <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton} aria-label={`Reducir cantidad de ${item.product.nombre}`}>−</button>
-                                                        <span style={styles.quantityText}>{item.quantity}</span>
-                                                        <button
-                                                            onClick={() => handleAddProductoEnVenta(item.product, 1)}
-                                                            disabled={item.quantity >= item.product.stock}
-                                                            style={{ ...styles.quantityButton, opacity: item.quantity >= item.product.stock ? 0.4 : 1, cursor: item.quantity >= item.product.stock ? 'not-allowed' : 'pointer' }}
-                                                            aria-label={`Aumentar cantidad de ${item.product.nombre}`}
-                                                        >+</button>
-                                                    </div>
+                                                    {item.product.se_vende_por_peso ? (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                value={item.quantity}
+                                                                onChange={(e) => {
+                                                                    const gramos = parseInt(e.target.value, 10);
+                                                                    setProductQuantityInCart(activeCartId, item.product.id, isNaN(gramos) ? 0 : gramos);
+                                                                }}
+                                                                style={{ ...styles.quantityText, width: 70, textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 2px' }}
+                                                                aria-label={`Gramos de ${item.product.nombre}`}
+                                                            />
+                                                            <span style={{ fontSize: 12, color: '#94a3b8' }}>g</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div style={styles.quantityControl} className="quantity-control">
+                                                            <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton} aria-label={`Reducir cantidad de ${item.product.nombre}`}>−</button>
+                                                            <span style={styles.quantityText}>{item.quantity}</span>
+                                                            <button
+                                                                onClick={() => handleAddProductoEnVenta(item.product, 1)}
+                                                                disabled={item.quantity >= item.product.stock}
+                                                                style={{ ...styles.quantityButton, opacity: item.quantity >= item.product.stock ? 0.4 : 1, cursor: item.quantity >= item.product.stock ? 'not-allowed' : 'pointer' }}
+                                                                aria-label={`Aumentar cantidad de ${item.product.nombre}`}
+                                                            >+</button>
+                                                        </div>
+                                                    )}
                                                 </td>
-                                                <td style={styles.td}>{formatearMonto(item.product.precio)}</td>
-                                                <td style={styles.td}>{formatearMonto(item.quantity * parseFloat(item.product.precio))}</td>
+                                                <td style={styles.td}>{formatearMonto(item.product.precio)}{item.product.se_vende_por_peso ? ' /kg' : ''}</td>
+                                                <td style={styles.td}>{formatearMonto(calcularSubtotalItem(item))}</td>
                                                 <td style={styles.td}>
                                                     <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} style={styles.removeButton}>
                                                         Quitar
@@ -2448,21 +2501,21 @@ const PuntoVenta = () => {
                                             }
                                             return [product];
                                         }).map(product => (
-                                            <tr key={product.id} style={{ ...styles.tableRow, ...(product.stock === 0 ? { opacity: 0.5, background: '#f8fafc' } : {}) }}>
+                                            <tr key={product.id} style={{ ...styles.tableRow, ...(!product.se_vende_por_peso && product.stock === 0 ? { opacity: 0.5, background: '#f8fafc' } : {}) }}>
                                                 <td style={styles.td}>
                                                     {product.nombre}
-                                                    {product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#e25252', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '1px 5px' }}>SIN STOCK</span>}
+                                                    {!product.se_vende_por_peso && product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#e25252', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '1px 5px' }}>SIN STOCK</span>}
                                                 </td>
                                                 {mostrarTalle && <td style={styles.td}>{[product.talle, product.variante2].filter(Boolean).join(' · ') || '-'}</td>}
-                                                <td style={styles.td}>{formatearMonto(product.precio)}</td>
-                                                <td style={styles.td}>{product.stock}</td>
+                                                <td style={styles.td}>{formatearMonto(product.precio)}{product.se_vende_por_peso ? ' /kg' : ''}</td>
+                                                <td style={styles.td}>{product.se_vende_por_peso ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Por peso</span> : product.stock}</td>
                                                 <td style={styles.td}>
                                                     <button
-                                                        onClick={() => handleAddProductoEnVenta(product, 1)}
-                                                        disabled={product.stock === 0}
-                                                        style={product.stock === 0 ? styles.disabledButton : styles.addButton}
+                                                        onClick={() => agregarProductoAlCarrito(product, 1)}
+                                                        disabled={!product.se_vende_por_peso && product.stock === 0}
+                                                        style={(!product.se_vende_por_peso && product.stock === 0) ? styles.disabledButton : styles.addButton}
                                                     >
-                                                        {product.stock === 0 ? 'Sin Stock' : 'Añadir'}
+                                                        {product.se_vende_por_peso ? 'Cargar peso' : (product.stock === 0 ? 'Sin Stock' : 'Añadir')}
                                                     </button>
                                                 </td>
                                             </tr>
@@ -2506,6 +2559,39 @@ const PuntoVenta = () => {
                         <div style={styles.modalActions}>
                             <button onClick={confirmAction} style={styles.modalConfirmButton}>Sí</button>
                             <button onClick={() => setShowConfirmModal(false)} style={styles.modalCancelButton}>No</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- CARGAR PESO (producto "por peso") --- */}
+            {productoPesoPendiente && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3 style={{ marginTop: 0 }}>⚖️ {productoPesoPendiente.nombre}</h3>
+                        <p style={styles.modalMessage}>
+                            {formatearMonto(productoPesoPendiente.precio)} /kg
+                        </p>
+                        <div style={styles.inputGroup}>
+                            <input
+                                type="number"
+                                min="1"
+                                autoFocus
+                                placeholder="Peso en gramos"
+                                value={gramosIngresados}
+                                onChange={(e) => setGramosIngresados(e.target.value)}
+                                onKeyPress={(e) => { if (e.key === 'Enter') confirmarPesoYAgregar(); }}
+                                style={styles.inputField}
+                            />
+                        </div>
+                        {gramosIngresados && !isNaN(parseInt(gramosIngresados, 10)) && (
+                            <p style={{ fontSize: 13, color: '#475569', marginTop: -6, marginBottom: 12 }}>
+                                Total: <strong>{formatearMonto((parseFloat(productoPesoPendiente.precio) / 1000) * parseInt(gramosIngresados, 10))}</strong>
+                            </p>
+                        )}
+                        <div style={styles.modalActions}>
+                            <button onClick={confirmarPesoYAgregar} style={styles.modalConfirmButton}>Agregar</button>
+                            <button onClick={() => { setProductoPesoPendiente(null); setGramosIngresados(''); }} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
                 </div>

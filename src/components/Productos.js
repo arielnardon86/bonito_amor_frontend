@@ -83,6 +83,9 @@ const Productos = () => {
     const [guardandoMasivo, setGuardandoMasivo] = useState(false);
     const [descargandoExcel, setDescargandoExcel] = useState(false);
     const [tieneVariantes, setTieneVariantes] = useState(false);
+    // Cobro por peso: precio/costo pasan a ser por Kg, no se lleva stock, y en el
+    // Punto de Venta se carga el peso en gramos. Excluyente con Variantes.
+    const [sePorPeso, setSePorPeso] = useState(false);
     const VARIANTE_VACIA = { talle: '', variante2: '', precio: '', costo: '', stock: '', codigo_barras: '', margen: '', imagen: '' };
     const detalleVariante = v => [v.talle, v.variante2].filter(Boolean).join(' · ');
     const [variantesNuevas, setVariantesNuevas] = useState([{ ...VARIANTE_VACIA }]);
@@ -467,6 +470,8 @@ const Productos = () => {
                     imagen: newProduct.imagen || null,
                     tienda_slug: selectedStoreSlug,
                     talle: null,
+                    se_vende_por_peso: sePorPeso,
+                    stock: sePorPeso ? 0 : newProduct.stock,
                 };
                 await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productToCreate, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -476,6 +481,7 @@ const Productos = () => {
             setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', codigo_interno: '', iva_porcentaje: '', rubro: '', proveedor: '', margen: '', imagen: '' });
             setShowNuevoProductoModal(false);
             setTieneVariantes(false);
+            setSePorPeso(false);
             setVariantesNuevas([{ ...VARIANTE_VACIA }]);
             setBarcodeNombreSugerido('');
             fetchProductos();
@@ -920,7 +926,7 @@ const Productos = () => {
         const visibles = stockBajoFilter
             ? productos.filter(p => p.variantes && p.variantes.length > 0
                 ? p.variantes.some(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD)
-                : (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
+                : !p.se_vende_por_peso && (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
             : productos;
         const seleccionadas = {};
         visibles.forEach(p => { seleccionadas[p.id] = true; });
@@ -1094,6 +1100,7 @@ const Productos = () => {
                                         onClick={() => {
                                             const nuevoValor = !tieneVariantes;
                                             setTieneVariantes(nuevoValor);
+                                            if (nuevoValor) setSePorPeso(false);
                                             if (!nuevoValor) setVariantesNuevas([{ ...VARIANTE_VACIA }]);
                                         }}
                                         style={{
@@ -1105,6 +1112,23 @@ const Productos = () => {
                                         }}
                                     >
                                         {tieneVariantes ? '✓ Variantes' : 'Variantes'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const nuevoValor = !sePorPeso;
+                                            setSePorPeso(nuevoValor);
+                                            if (nuevoValor) setTieneVariantes(false);
+                                        }}
+                                        style={{
+                                            padding: '0 16px', borderRadius: 8, whiteSpace: 'nowrap',
+                                            border: '1.5px solid ' + (sePorPeso ? '#5dc87a' : '#e2e8f0'),
+                                            background: sePorPeso ? '#e8f5ec' : '#fff',
+                                            color: sePorPeso ? '#1a7a3f' : '#475569',
+                                            fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                                        }}
+                                    >
+                                        {sePorPeso ? '✓ Por peso' : 'Por peso'}
                                     </button>
                                 </div>
                             </div>
@@ -1148,7 +1172,7 @@ const Productos = () => {
                             )}
 
                             <div style={styles.inputGroupModal}>
-                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Precio</label>
+                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>{sePorPeso ? 'Precio por Kg' : 'Precio'}</label>
                                 <input
                                     type="number"
                                     value={newProduct.precio}
@@ -1157,10 +1181,11 @@ const Productos = () => {
                                     required={!tieneVariantes}
                                     disabled={tieneVariantes}
                                 />
+                                {sePorPeso && <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>En el Punto de Venta se va a cargar el peso en gramos y se calcula solo.</p>}
                             </div>
 
                             <div style={styles.inputGroupModal}>
-                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Costo <span style={styles.opcionalTag}>(Opcional)</span></label>
+                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>{sePorPeso ? 'Costo por Kg' : 'Costo'} <span style={styles.opcionalTag}>(Opcional)</span></label>
                                 <input
                                     type="number"
                                     value={newProduct.costo}
@@ -1220,14 +1245,15 @@ const Productos = () => {
                             </div>
 
                             <div style={styles.inputGroupModal}>
-                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>Stock</label>
+                                <label style={{ ...styles.label, color: (tieneVariantes || sePorPeso) ? '#aaa' : undefined }}>Stock</label>
                                 <input
                                     type="number"
-                                    value={newProduct.stock}
+                                    value={sePorPeso ? '' : newProduct.stock}
                                     onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                                    style={{ ...styles.modalInput, background: tieneVariantes ? '#f3f4f6' : undefined, color: tieneVariantes ? '#aaa' : undefined, cursor: tieneVariantes ? 'not-allowed' : undefined }}
-                                    required={!tieneVariantes}
-                                    disabled={tieneVariantes}
+                                    style={{ ...styles.modalInput, background: (tieneVariantes || sePorPeso) ? '#f3f4f6' : undefined, color: (tieneVariantes || sePorPeso) ? '#aaa' : undefined, cursor: (tieneVariantes || sePorPeso) ? 'not-allowed' : undefined }}
+                                    placeholder={sePorPeso ? 'No aplica (se vende por peso)' : undefined}
+                                    required={!tieneVariantes && !sePorPeso}
+                                    disabled={tieneVariantes || sePorPeso}
                                 />
                             </div>
 
@@ -1471,6 +1497,7 @@ const Productos = () => {
                             if (p.variantes && p.variantes.length > 0) {
                                 return acc + p.variantes.filter(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD).length;
                             }
+                            if (p.se_vende_por_peso) return acc;
                             return acc + ((p.stock || 0) <= STOCK_BAJO_THRESHOLD ? 1 : 0);
                         }, 0);
                         return stockBajoCount > 0 ? (
@@ -1545,7 +1572,7 @@ const Productos = () => {
                                     {(stockBajoFilter
                                         ? productos.filter(p => p.variantes && p.variantes.length > 0
                                             ? p.variantes.some(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD)
-                                            : (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
+                                            : !p.se_vende_por_peso && (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
                                         : productos
                                     ).map(producto => {
                                         const precio = parseFloat(producto.precio) || 0;
@@ -1559,7 +1586,7 @@ const Productos = () => {
                                         const expandido = !!expandedVariants[producto.id];
                                         return (
                                         <React.Fragment key={producto.id}>
-                                        <tr style={producto.stock <= STOCK_BAJO_THRESHOLD && !tieneVars ? { background: '#fef9ec' } : tieneVars ? { background: '#f0faf5' } : {}}>
+                                        <tr style={(!tieneVars && !producto.se_vende_por_peso && producto.stock <= STOCK_BAJO_THRESHOLD) ? { background: '#fef9ec' } : tieneVars ? { background: '#f0faf5' } : {}}>
                                             <td style={{ ...styles.td, textAlign: 'center' }}>
                                                 <input
                                                     type="checkbox"
@@ -1597,6 +1624,11 @@ const Productos = () => {
                                                         {producto.variantes.length} variante{producto.variantes.length !== 1 ? 's' : ''}
                                                     </span>
                                                 )}
+                                                {producto.se_vende_por_peso && (
+                                                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', borderRadius: 8, padding: '1px 7px' }}>
+                                                        POR PESO
+                                                    </span>
+                                                )}
                                                 {producto.ml_stock_full && (
                                                     <span
                                                         title="Stock Full: lo repone y despacha Mercado Libre, no depende de tu depósito"
@@ -1623,12 +1655,14 @@ const Productos = () => {
                                             <td style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
                                                 {tieneVars ? '—' : margen !== null ? `${margen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                             </td>
-                                            <td style={{ ...styles.td, color: (!tieneVars && producto.stock <= STOCK_BAJO_THRESHOLD) ? '#e25252' : undefined, fontWeight: (!tieneVars && producto.stock <= STOCK_BAJO_THRESHOLD) ? 700 : undefined }}>
+                                            <td style={{ ...styles.td, color: (!tieneVars && !producto.se_vende_por_peso && producto.stock <= STOCK_BAJO_THRESHOLD) ? '#e25252' : undefined, fontWeight: (!tieneVars && !producto.se_vende_por_peso && producto.stock <= STOCK_BAJO_THRESHOLD) ? 700 : undefined }}>
                                                 {tieneVars
                                                     ? <span style={{ color: '#475569', fontSize: 12 }}>
                                                         {producto.variantes.reduce((s, v) => s + (v.stock || 0), 0)} total
                                                       </span>
-                                                    : <>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</>
+                                                    : producto.se_vende_por_peso
+                                                        ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Por peso</span>
+                                                        : <>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</>
                                                 }
                                             </td>
                                             <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
@@ -1874,7 +1908,21 @@ const Productos = () => {
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>Precio:</label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={!!editProduct.se_vende_por_peso}
+                                    onChange={(e) => setEditProduct({
+                                        ...editProduct,
+                                        se_vende_por_peso: e.target.checked,
+                                        stock: e.target.checked ? 0 : editProduct.stock,
+                                    })}
+                                />
+                                Se vende por peso (precio por Kg, sin stock)
+                            </label>
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>{editProduct.se_vende_por_peso ? 'Precio por Kg:' : 'Precio:'}</label>
                             <input
                                 type="number"
                                 value={editProduct.precio}
@@ -1884,7 +1932,7 @@ const Productos = () => {
                         </div>
                         {/* NUEVO CAMPO EN EL MODAL */}
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>Costo:</label>
+                            <label style={styles.label}>{editProduct.se_vende_por_peso ? 'Costo por Kg:' : 'Costo:'}</label>
                             <input
                                 type="number"
                                 value={editProduct.costo || ''}
@@ -1893,12 +1941,14 @@ const Productos = () => {
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>Stock:</label>
+                            <label style={{ ...styles.label, color: editProduct.se_vende_por_peso ? '#aaa' : undefined }}>Stock:</label>
                             <input
                                 type="number"
-                                value={editProduct.stock}
+                                value={editProduct.se_vende_por_peso ? '' : editProduct.stock}
                                 onChange={(e) => setEditProduct({ ...editProduct, stock: e.target.value })}
-                                style={styles.modalInput}
+                                style={{ ...styles.modalInput, background: editProduct.se_vende_por_peso ? '#f3f4f6' : undefined, cursor: editProduct.se_vende_por_peso ? 'not-allowed' : undefined }}
+                                placeholder={editProduct.se_vende_por_peso ? 'No aplica (se vende por peso)' : undefined}
+                                disabled={editProduct.se_vende_por_peso}
                             />
                         </div>
                         <div style={styles.inputGroupModal}>

@@ -4,6 +4,17 @@ import { v4 as uuidv4 } from 'uuid';
 
 const SalesContext = createContext();
 
+// Productos "por peso": 'precio' es por KILOGRAMO y 'quantity' del ítem del
+// carrito son los GRAMOS cargados -- el subtotal es precio/1000 * gramos, no
+// precio * quantity directo como el resto de los productos.
+export const calcularSubtotalItem = (item) => {
+  const precio = parseFloat(item.product.precio) || 0;
+  if (item.product.se_vende_por_peso) {
+    return (precio / 1000) * item.quantity;
+  }
+  return precio * item.quantity;
+};
+
 export const useSales = () => {
   const context = useContext(SalesContext);
   if (!context) {
@@ -95,7 +106,7 @@ export const SalesProvider = ({ children }) => {
         }
         
         // Recalculate total based on the numerical price
-        updatedTotal = updatedItems.reduce((sum, item) => sum + (parseFloat(item.product.precio) * item.quantity), 0);
+        updatedTotal = updatedItems.reduce((sum, item) => sum + calcularSubtotalItem(item), 0);
 
         return { ...cart, items: updatedItems, total: updatedTotal };
       }
@@ -140,11 +151,37 @@ export const SalesProvider = ({ children }) => {
           updatedItems = cart.items.filter(item => item.product.id !== productId);
         }
         
-        updatedTotal = updatedItems.reduce((sum, item) => sum + (parseFloat(item.product.precio) * item.quantity), 0);
+        updatedTotal = updatedItems.reduce((sum, item) => sum + calcularSubtotalItem(item), 0);
 
         return { ...cart, items: updatedItems, total: updatedTotal };
       }
       return cart;
+    }));
+  };
+
+  // Setea la cantidad de un ítem directamente (en vez de sumar/restar de a 1) --
+  // lo usan los productos "por peso", donde se tipea el peso en gramos en vez de
+  // usar el stepper +/-.
+  const setProductQuantityInCart = (cartId, productId, newQuantity) => {
+    if (!cartId) return;
+
+    setCarts(prevCarts => prevCarts.map(cart => {
+      if (cart.id !== cartId) return cart;
+
+      const existingItemIndex = cart.items.findIndex(item => item.product.id === productId);
+      if (existingItemIndex === -1) return cart;
+
+      if (newQuantity <= 0) {
+        const updatedItems = cart.items.filter(item => item.product.id !== productId);
+        const updatedTotal = updatedItems.reduce((sum, item) => sum + calcularSubtotalItem(item), 0);
+        return { ...cart, items: updatedItems, total: updatedTotal };
+      }
+
+      const updatedItems = cart.items.map((item, index) =>
+        index === existingItemIndex ? { ...item, quantity: newQuantity } : item
+      );
+      const updatedTotal = updatedItems.reduce((sum, item) => sum + calcularSubtotalItem(item), 0);
+      return { ...cart, items: updatedItems, total: updatedTotal };
     }));
   };
 
@@ -181,6 +218,7 @@ export const SalesProvider = ({ children }) => {
     addProductToCart,
     removeProductFromCart,
     decrementProductQuantity,
+    setProductQuantityInCart,
     finalizeCart,
     deleteCart,
   };
