@@ -1347,6 +1347,37 @@ const PuntoVenta = () => {
         });
     };
 
+    // ── Atajo de teclado: Ctrl+Enter procesa la venta sin tocar el botón ────
+    // Se usa Ctrl+Enter (no un Enter solo) a propósito: los lectores de código de
+    // barras mandan un Enter automático después de cada escaneo, y un atajo con
+    // Enter solo podría procesar una venta por accidente con un doble escaneo.
+    const [mostrarTipAtajoVenta, setMostrarTipAtajoVenta] = useState(false);
+    useEffect(() => {
+        try {
+            if (!localStorage.getItem('pv_tip_ctrl_enter_visto')) {
+                setMostrarTipAtajoVenta(true);
+            }
+        } catch { /* localStorage no disponible: no mostrar el tip */ }
+    }, []);
+
+    const cerrarTipAtajoVenta = () => {
+        setMostrarTipAtajoVenta(false);
+        try { localStorage.setItem('pv_tip_ctrl_enter_visto', '1'); } catch { /* ignore */ }
+    };
+
+    useEffect(() => {
+        const handleKeyDownProcesarVenta = (e) => {
+            if (!(e.ctrlKey || e.metaKey) || e.key !== 'Enter') return;
+            if (procesandoVenta) return;
+            if (!activeCart || activeCart.items.length === 0) return;
+            if (showConfirmModal || showNewCartModal || mostrarModalCierre || mostrarModalAbrirCaja || mostrarModalEgresos) return;
+            e.preventDefault();
+            handleProcesarVenta();
+        };
+        window.addEventListener('keydown', handleKeyDownProcesarVenta);
+        return () => window.removeEventListener('keydown', handleKeyDownProcesarVenta);
+    }, [procesandoVenta, activeCart, showConfirmModal, showNewCartModal, mostrarModalCierre, mostrarModalAbrirCaja, mostrarModalEgresos, handleProcesarVenta]);
+
     const handleCreateNewCartWithAlias = () => {
         if (newCartAliasInput.trim() === '') {
             showCustomAlert('El alias de la venta no puede estar vacío.', 'error');
@@ -2224,6 +2255,7 @@ const PuntoVenta = () => {
                         >
                             {procesandoVenta ? 'Procesando...' : 'Procesar venta'}
                         </button>
+                        <p style={styles.atajoHint}>Atajo: Ctrl + Enter</p>
                     </>
                 ) : (
                     <p style={styles.noDataMessage}>Carrito vacío. Escaneá un código de barras en el campo superior, o buscá el producto por nombre en el panel de abajo y presioná "Añadir".</p>
@@ -2479,6 +2511,24 @@ const PuntoVenta = () => {
                 </div>
             )}
 
+            {/* --- TIP: ATAJO CTRL+ENTER (una sola vez) --- */}
+            {mostrarTipAtajoVenta && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3 style={{ marginTop: 0 }}>⌨️ Nuevo atajo de teclado</h3>
+                        <p style={styles.modalMessage}>
+                            Ahora podés procesar la venta con <strong>Ctrl + Enter</strong>, sin hacer click en el botón.
+                        </p>
+                        <p style={{ ...styles.modalMessage, fontSize: 13, color: '#94a3b8' }}>
+                            Funciona con el carrito cargado, desde cualquier parte de la pantalla.
+                        </p>
+                        <div style={styles.modalActions}>
+                            <button onClick={cerrarTipAtajoVenta} style={styles.modalConfirmButton}>Entendido</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* --- ALERTA CUSTOM --- */}
             {showAlertMessage && (
                 <div style={{ ...styles.alertBox, backgroundColor: alertType === 'error' ? '#e25252' : (alertType === 'info' ? '#3b9ede' : '#5dc87a'), display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -2711,6 +2761,7 @@ const styles = {
 
     finalTotalVenta: { textAlign: 'right', fontSize: '1.5em', color: '#5dc87a', fontWeight: 700, margin: '8px 0' },
     processSaleButton: { display: 'block', width: '100%', padding: '15px', background: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', marginTop: '20px', fontSize: '1.1em', fontWeight: 700, transition: 'background 0.15s ease' },
+    atajoHint: { textAlign: 'center', fontSize: 12, color: '#94a3b8', marginTop: 8, marginBottom: 0 },
     addButton: { padding: '7px 14px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9em' },
     noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#94a3b8' },
     paginationContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', gap: '10px' },
