@@ -1,13 +1,27 @@
 // BONITO_AMOR/frontend/src/components/ReciboImpresion.js
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import Swal from 'sweetalert2';
+import { useAuth } from '../AuthContext';
 import { formatearMonto } from '../utils/formatearMonto';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const normalizeApiUrl = (url) => {
+    let u = url;
+    if (u.endsWith('/api/') || u.endsWith('/api')) u = u.replace(/\/api\/?$/, '');
+    if (u.endsWith('/')) u = u.slice(0, -1);
+    return u;
+};
+const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const ReciboImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { token } = useAuth();
     const { venta, fromCambioDevolucion } = location.state || {};
     const reciboRef = useRef(null);
+    const [enviandoEmail, setEnviandoEmail] = useState(false);
 
     useEffect(() => {
         const detalles = venta?.detalles;
@@ -182,6 +196,35 @@ const ReciboImpresion = () => {
         navigate('/ticket-cambio', { state: { venta } });
     };
 
+    const enviarPorEmail = async () => {
+        if (!venta || !venta.id) {
+            Swal.fire('Error', 'No se encontró información de la venta.', 'error');
+            return;
+        }
+        const { value: email } = await Swal.fire({
+            title: 'Enviar recibo por mail',
+            input: 'email',
+            inputLabel: 'Email de destino',
+            inputValue: venta.cliente_email || '',
+            showCancelButton: true,
+            confirmButtonText: 'Enviar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!email) return;
+        setEnviandoEmail(true);
+        try {
+            await axios.post(`${BASE_API_ENDPOINT}/api/ventas/${venta.id}/enviar-recibo-email/`, { email }, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            Swal.fire('¡Enviado!', `El recibo se envió a ${email}.`, 'success');
+        } catch (err) {
+            const msg = err.response?.data?.error || err.message;
+            Swal.fire('Error', msg, 'error');
+        } finally {
+            setEnviandoEmail(false);
+        }
+    };
+
     if (!venta) {
         return (
             <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>
@@ -196,6 +239,9 @@ const ReciboImpresion = () => {
             <div className="no-print-controls">
                 <button onClick={handleGoBack}>Volver</button>
                 <button onClick={handlePrint}>Imprimir Recibo</button>
+                <button onClick={enviarPorEmail} disabled={enviandoEmail} style={{ backgroundColor: '#3b9ede', color: 'white' }}>
+                    {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}
+                </button>
                 {!(venta?.metodo_pago === 'Nota de Crédito' || venta?.metodo_pago_nombre === 'Nota de Crédito') && (
                     <button onClick={handleTicketCambio} style={{ backgroundColor: '#17a2b8', color: 'white' }}>Ticket de cambio</button>
                 )}

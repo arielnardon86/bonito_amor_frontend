@@ -1163,6 +1163,10 @@ const PuntoVenta = () => {
 
                     const ventaParaRecibo = {
                         ...response.data,
+                        // Para poder prellenar el mail al enviar el recibo/factura por correo:
+                        // clienteSeleccionadoCC se resetea unas líneas más abajo, así que hay que
+                        // capturarlo acá antes de que se pierda.
+                        cliente_email: clienteSeleccionadoCC?.email || '',
                         tienda_nombre: selectedStoreSlug,
                         tienda_direccion: tiendaInfo?.direccion || null,
                         tienda_logo: tiendaInfo?.logo || null,

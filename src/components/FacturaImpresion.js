@@ -1,15 +1,28 @@
 // BONITO_AMOR/frontend/src/components/FacturaImpresion.js
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import Swal from 'sweetalert2';
 import QRCode from 'qrcode';
+import { useAuth } from '../AuthContext';
 import { formatearMonto } from '../utils/formatearMonto';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const normalizeApiUrl = (url) => {
+    let u = url;
+    if (u.endsWith('/api/') || u.endsWith('/api')) u = u.replace(/\/api\/?$/, '');
+    if (u.endsWith('/')) u = u.slice(0, -1);
+    return u;
+};
+const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const FacturaImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { token } = useAuth();
     const { factura, venta, skipReciboPrompt } = location.state || {};
     const facturaRef = useRef(null);
+    const [enviandoEmail, setEnviandoEmail] = useState(false);
 
     // Tipo de comprobante → código numérico ARCA
     const TIPO_CMP_CODIGO = { 'A': 1, 'B': 6, 'C': 11 };
@@ -279,6 +292,35 @@ const FacturaImpresion = () => {
 
     const handleGoBack = () => navigate('/punto-venta');
 
+    const enviarPorEmail = async () => {
+        if (!factura || !factura.id) {
+            Swal.fire('Error', 'No se encontró información de la factura.', 'error');
+            return;
+        }
+        const { value: email } = await Swal.fire({
+            title: 'Enviar factura por mail',
+            input: 'email',
+            inputLabel: 'Email de destino',
+            inputValue: venta?.cliente_email || '',
+            showCancelButton: true,
+            confirmButtonText: 'Enviar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!email) return;
+        setEnviandoEmail(true);
+        try {
+            await axios.post(`${BASE_API_ENDPOINT}/api/facturas/${factura.id}/enviar-email/`, { email }, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            Swal.fire('¡Enviado!', `La factura se envió a ${email}.`, 'success');
+        } catch (err) {
+            const msg = err.response?.data?.error || err.message;
+            Swal.fire('Error', msg, 'error');
+        } finally {
+            setEnviandoEmail(false);
+        }
+    };
+
     const handleTicketCambio = () => {
         if (!venta?.id) {
             Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró información de la venta' });
@@ -295,6 +337,13 @@ const FacturaImpresion = () => {
                     style={{ padding: '10px 20px', fontSize: '16px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
                 >
                     Imprimir Factura
+                </button>
+                <button
+                    onClick={enviarPorEmail}
+                    disabled={enviandoEmail}
+                    style={{ padding: '10px 20px', fontSize: '16px', backgroundColor: '#3b9ede', color: 'white', border: 'none', borderRadius: '5px', cursor: enviandoEmail ? 'not-allowed' : 'pointer' }}
+                >
+                    {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}
                 </button>
                 <button
                     onClick={handleTicketCambio}
