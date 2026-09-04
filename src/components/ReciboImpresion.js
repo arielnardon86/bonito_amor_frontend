@@ -156,6 +156,9 @@ const ReciboImpresion = () => {
                                     // Si el método de pago es "Nota de Crédito" y no hay producto, mostrar "Nota de Crédito"
                                     if ((venta.metodo_pago === 'Nota de Crédito' || venta.metodo_pago_nombre === 'Nota de Crédito') && (!item.producto_nombre && !item.product?.nombre)) {
                                         nombre = 'Nota de Crédito';
+                                    } else {
+                                        const variante = [item.producto_talle, item.producto_variante2].filter(Boolean).join(', ');
+                                        if (variante) nombre += ` (${variante})`;
                                     }
                                     const cantidad = item.cantidad || item.quantity;
                                     const precio = item.precio_unitario || item.product?.precio;

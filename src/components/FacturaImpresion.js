@@ -252,7 +252,9 @@ const FacturaImpresion = () => {
                             <tbody>
                                 ${detalles.length > 0 ? detalles.map(item => {
                                     if (item.anulado_individualmente) return '';
-                                    const nombre = item.producto?.nombre || item.producto_nombre || 'Producto eliminado';
+                                    let nombre = item.producto?.nombre || item.producto_nombre || 'Producto eliminado';
+                                    const variante = [item.producto_talle, item.producto_variante2].filter(Boolean).join(', ');
+                                    if (variante) nombre += ` (${variante})`;
                                     const cantidad = item.cantidad || 0;
                                     const precio = item.precio_unitario || 0;
                                     const subtotal = cantidad * parseFloat(precio);

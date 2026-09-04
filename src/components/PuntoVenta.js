@@ -1184,6 +1184,8 @@ const PuntoVenta = () => {
                         arancel_aplicado_porcentaje: arancelInfo?.arancel_porcentaje || null,
                         detalles: activeCart.items.map(item => ({
                             producto_nombre: item.product.nombre,
+                            producto_talle: item.product.talle,
+                            producto_variante2: item.product.variante2,
                             cantidad: item.quantity,
                             precio_unitario: parseFloat(item.product.precio)
                         }))

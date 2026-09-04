@@ -862,6 +862,9 @@ const VentasPage = () => {
                                                                     } else {
                                                                         productoNombre = 'Producto sin nombre';
                                                                     }
+                                                                } else {
+                                                                    const variante = [detalle.producto_talle, detalle.producto_variante2].filter(Boolean).join(', ');
+                                                                    if (variante) productoNombre += ` (${variante})`;
                                                                 }
 
                                                                 return (
