@@ -66,7 +66,13 @@ const Productos = () => {
     const [nuevoRubroNombre, setNuevoRubroNombre] = useState('');
     const [nuevoRubroIva, setNuevoRubroIva] = useState('');
     const [guardandoNuevoRubro, setGuardandoNuevoRubro] = useState(false);
-    const [rubroModalDestino, setRubroModalDestino] = useState('nuevo_producto'); // 'nuevo_producto' | 'edicion' | 'masivo'
+    const [rubroModalDestino, setRubroModalDestino] = useState('nuevo_producto'); // 'nuevo_producto' | 'edicion' | 'masivo' | 'gestion'
+
+    // Gestión de rubros (ver/editar IVA/eliminar/crear), accesible desde "Rubros"
+    const [showGestionRubrosModal, setShowGestionRubrosModal] = useState(false);
+    const [rubroEditando, setRubroEditando] = useState(null);
+    const [valorEditadoIva, setValorEditadoIva] = useState('');
+    const [guardandoEdicionRubro, setGuardandoEdicionRubro] = useState(false);
 
     // Proveedor (opcional, propio de cada tienda)
     const [proveedores, setProveedores] = useState([]);
@@ -269,9 +275,9 @@ const Productos = () => {
                 setEditProduct(prev => prev ? { ...prev, rubro: rubroCreado.id } : prev);
             } else if (rubroModalDestino === 'masivo') {
                 setRubroMasivoId(rubroCreado.id);
-            } else {
+            } else if (rubroModalDestino === 'nuevo_producto') {
                 setNewProduct(prev => ({ ...prev, rubro: rubroCreado.id }));
-            }
+            } // 'gestion': no hay producto al que asignárselo, solo refrescar la lista
             setShowNuevoRubroModal(false);
             setNuevoRubroNombre('');
             setNuevoRubroIva('');
@@ -287,6 +293,54 @@ const Productos = () => {
         setNuevoRubroNombre('');
         setNuevoRubroIva('');
         setShowNuevoRubroModal(true);
+    };
+
+    // ── Gestión de rubros (ver/editar IVA/eliminar) ──────────────────────────
+    const empezarEdicionRubro = (rubro) => {
+        setRubroEditando(rubro.id);
+        setValorEditadoIva(String(rubro.iva_porcentaje));
+    };
+
+    const guardarEdicionRubro = async (rubroId) => {
+        const iva = parseFloat(valorEditadoIva);
+        if (isNaN(iva) || iva < 0 || iva > 100) {
+            setError('El IVA del rubro debe ser un número entre 0 y 100.');
+            return;
+        }
+        setGuardandoEdicionRubro(true);
+        try {
+            await axios.patch(`${BASE_API_ENDPOINT}/api/rubros/${rubroId}/`, { iva_porcentaje: iva }, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            setRubroEditando(null);
+            fetchRubros();
+        } catch (err) {
+            setError('No se pudo actualizar el IVA del rubro.');
+        } finally {
+            setGuardandoEdicionRubro(false);
+        }
+    };
+
+    const eliminarRubro = (rubro) => {
+        Swal.fire({
+            title: '¿Eliminar rubro?',
+            html: `Se eliminará <strong>${rubro.nombre}</strong>. Los productos que ya lo tenían asignado quedan sin rubro (no se borran ni se modifican).`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#e25252',
+        }).then(async (result) => {
+            if (!result.isConfirmed) return;
+            try {
+                await axios.delete(`${BASE_API_ENDPOINT}/api/rubros/${rubro.id}/`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                fetchRubros();
+            } catch (err) {
+                Swal.fire('Error', 'No se pudo eliminar el rubro.', 'error');
+            }
+        });
     };
 
     const crearProveedorRapido = async () => {
@@ -1018,27 +1072,35 @@ const Productos = () => {
                             'Seleccioná uno o varios productos y hacé clic en "Imprimir Etiquetas" para generar etiquetas con código de barras',
                             'Los Supervisores pueden agregar productos pero no editarlos ni eliminarlos',
                             'Solo los Administradores pueden editar precio, stock o eliminar productos',
-                            'Importá productos en lote desde Excel/CSV con "Importar productos"',
+                            'Gestioná tus rubros (ver, editar el % de IVA, crear o eliminar) con el botón "Rubros"',
+                            'Importá productos en lote desde Excel/CSV con "Importación masiva"',
                             'Subí la foto o el PDF de una factura de compra con "Importación IA" para crear productos o reponer stock automáticamente',
-                            'Descargá todo tu catálogo con "Descargar Excel" (mismo formato que la plantilla de importación, sirve para llevarlo a otra tienda)',
+                            'Descargá todo tu catálogo con "Exportar mis productos" (mismo formato que la plantilla de importación, sirve para llevarlo a otra tienda)',
                         ]}
                     />
                 </div>
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <button
+                        type="button"
+                        onClick={() => setShowGestionRubrosModal(true)}
+                        style={{ padding: '8px 16px', backgroundColor: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                        Rubros
+                    </button>
                     <button
                         type="button"
                         onClick={handleDescargarExcel}
                         disabled={descargandoExcel}
                         style={{ padding: '8px 16px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: descargandoExcel ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                     >
-                        {descargandoExcel ? 'Descargando...' : 'Descargar Excel'}
+                        {descargandoExcel ? 'Descargando...' : 'Exportar mis productos'}
                     </button>
                     <button
                         type="button"
                         onClick={() => navigate('/productos/carga-masiva')}
                         style={{ padding: '8px 16px', backgroundColor: '#3b9ede', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
                     >
-                        Importar productos
+                        Importación masiva
                     </button>
                     <button
                         type="button"
@@ -2146,6 +2208,68 @@ const Productos = () => {
             )}
 
             {/* Modal de creación rápida de rubro */}
+            {showGestionRubrosModal && (
+                <div style={styles.modalOverlay} onClick={() => setShowGestionRubrosModal(false)}>
+                    <div style={{ ...styles.modalContent, maxWidth: 480, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ marginTop: 0 }}>Rubros</h3>
+                        <p style={{ color: '#94a3b8', fontSize: 13, marginTop: 0 }}>
+                            Se usan para asignarle un % de IVA a tus productos (y para resolverlo automático en la Importación masiva cuando el archivo no trae un IVA explícito por fila).
+                        </p>
+                        {rubros.length === 0 ? (
+                            <p style={{ color: '#94a3b8', fontStyle: 'italic' }}>Todavía no hay rubros guardados.</p>
+                        ) : (
+                            <div style={styles.tableResponsive}>
+                                <table style={styles.table}>
+                                    <thead>
+                                        <tr>
+                                            <th style={styles.th}>Rubro</th>
+                                            <th style={styles.th}>IVA %</th>
+                                            <th style={styles.th}></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {rubros.map((r) => (
+                                            <tr key={r.id}>
+                                                <td style={styles.td}>{r.nombre}</td>
+                                                <td style={styles.td}>
+                                                    {rubroEditando === r.id ? (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <input
+                                                                type="number" min="0" max="100" step="0.01" autoFocus
+                                                                value={valorEditadoIva}
+                                                                onChange={(e) => setValorEditadoIva(e.target.value)}
+                                                                onKeyDown={(e) => { if (e.key === 'Enter') guardarEdicionRubro(r.id); if (e.key === 'Escape') setRubroEditando(null); }}
+                                                                style={{ ...styles.modalInput, width: 80 }}
+                                                            />
+                                                            <button onClick={() => guardarEdicionRubro(r.id)} disabled={guardandoEdicionRubro} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }} title="Guardar">✓</button>
+                                                            <button onClick={() => setRubroEditando(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }} title="Cancelar">✕</button>
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <span>{r.iva_porcentaje}%</span>
+                                                            <button onClick={() => empezarEdicionRubro(r)} style={{ background: 'none', border: 'none', cursor: 'pointer' }} title="Editar IVA">✏️</button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td style={styles.td}>
+                                                    <button onClick={() => eliminarRubro(r)} style={{ background: 'none', border: 'none', cursor: 'pointer' }} title="Eliminar rubro">🗑️</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                            <button onClick={() => abrirNuevoRubroModal('gestion')} style={styles.modalConfirmButton}>
+                                + Nuevo rubro
+                            </button>
+                            <button onClick={() => setShowGestionRubrosModal(false)} style={styles.modalCancelButton}>Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showNuevoRubroModal && (
                 <div style={styles.modalOverlay} onClick={() => setShowNuevoRubroModal(false)}>
                     <div style={{ ...styles.modalContent, maxWidth: 380 }} onClick={e => e.stopPropagation()}>
