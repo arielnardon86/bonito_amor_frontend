@@ -5,6 +5,10 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { useAuth } from '../AuthContext';
 import { formatearMonto } from '../utils/formatearMonto';
+import { esDispositivoMovil } from '../utils/esDispositivoMovil';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import WhatsappIcon from './icons/WhatsappIcon';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 const normalizeApiUrl = (url) => {
@@ -67,6 +71,7 @@ const Presupuesto = () => {
     const [listaPrevUrl, setListaPrevUrl] = useState(null);
 
     const [enviandoEmail, setEnviandoEmail] = useState(false);
+    const [compartiendo, setCompartiendo] = useState(false);
 
     // ── Carga de productos ──────────────────────────────────────────────────
     const fetchProductos = useCallback(async (searchQuery = '') => {
@@ -396,6 +401,48 @@ const Presupuesto = () => {
             Swal.fire('Error', msg, 'error');
         } finally {
             setEnviandoEmail(false);
+        }
+    };
+
+    const compartirPorWhatsapp = async () => {
+        setCompartiendo(true);
+        try {
+            const resp = await axios.get(`${BASE_API_ENDPOINT}/api/presupuestos/${presupuestoActivo.id}/pdf/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                responseType: 'blob',
+            });
+            const filename = `presupuesto_${presupuestoActivo.id}.pdf`;
+            const mensaje = `Hola! Te comparto el presupuesto Nº ${presupuestoActivo.id} de ${presupuestoActivo.tienda_nombre || 'la tienda'}.`;
+
+            // Celular/tablet: el selector nativo de apps ya adjunta el PDF real.
+            let file = null;
+            try { file = new File([resp.data], filename, { type: 'application/pdf' }); } catch { /* File no disponible */ }
+            if (file && esDispositivoMovil() && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], text: mensaje });
+                return;
+            }
+
+            // Compu (o navegador sin soporte para compartir archivos): descargar el
+            // PDF y abrir WhatsApp con el mensaje ya armado -- falta adjuntarlo a mano
+            // en el chat que se abre (no hay forma de adjuntar un archivo por link).
+            const url = URL.createObjectURL(resp.data);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+
+            const telefonoLimpio = (presupuestoActivo.cliente_telefono || '').replace(/\D/g, '');
+            const destino = telefonoLimpio.length >= 10 ? telefonoLimpio : '';
+            const textoWa = `${mensaje} Te descargamos el PDF: adjuntalo en este chat.`;
+            window.open(`https://wa.me/${destino}?text=${encodeURIComponent(textoWa)}`, '_blank');
+        } catch (err) {
+            if (err?.name === 'AbortError') return; // el usuario cerró el selector nativo sin elegir nada
+            Swal.fire('Error', 'No se pudo compartir el presupuesto.', 'error');
+        } finally {
+            setCompartiendo(false);
         }
     };
 
@@ -786,8 +833,13 @@ const Presupuesto = () => {
 
                     <div style={styles.accionesRow}>
                         <button onClick={verPdf} style={styles.secondaryButton}>Ver / Imprimir PDF</button>
-                        <button onClick={enviarPorEmail} disabled={enviandoEmail} style={styles.secondaryButton}>
+                        <button onClick={enviarPorEmail} disabled={enviandoEmail} style={{ ...styles.secondaryButton, ...styles.btnIconGap, backgroundColor: '#3b9ede', color: 'white' }}>
+                            <FontAwesomeIcon icon={faEnvelope} />
                             {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}
+                        </button>
+                        <button onClick={compartirPorWhatsapp} disabled={compartiendo} style={{ ...styles.secondaryButton, ...styles.btnIconGap, backgroundColor: '#25D366', color: 'white' }}>
+                            <WhatsappIcon />
+                            {compartiendo ? 'Preparando...' : 'Compartir por WhatsApp'}
                         </button>
                         {presupuestoActivo.estado === 'PENDIENTE' && (
                             <>
@@ -829,6 +881,7 @@ const styles = {
     inputField: { padding: '8px', border: '1px solid #e2e8f0', borderRadius: '10px', boxSizing: 'border-box', flex: 1, width: '100%' },
     primaryButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 },
     secondaryButton: { padding: '10px 15px', backgroundColor: '#94a3b8', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 },
+    btnIconGap: { display: 'inline-flex', alignItems: 'center', gap: 8 },
     dangerButton: { padding: '10px 15px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 },
     addButton: { padding: '7px 14px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9em' },
     removeButton: { padding: '6px 12px', backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9em' },

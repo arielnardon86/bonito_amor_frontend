@@ -6,6 +6,10 @@ import Swal from 'sweetalert2';
 import QRCode from 'qrcode';
 import { useAuth } from '../AuthContext';
 import { formatearMonto } from '../utils/formatearMonto';
+import { esDispositivoMovil } from '../utils/esDispositivoMovil';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import WhatsappIcon from './icons/WhatsappIcon';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 const normalizeApiUrl = (url) => {
@@ -15,6 +19,26 @@ const normalizeApiUrl = (url) => {
     return u;
 };
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
+
+const btnBase = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '10px 20px',
+    fontSize: 15,
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+};
+const styles = {
+    btnPrint: { ...btnBase, backgroundColor: '#007bff', color: 'white' },
+    btnNeutralDark: { ...btnBase, backgroundColor: '#6c757d', color: 'white' },
+    btnMail: { ...btnBase, backgroundColor: '#3b9ede', color: 'white' },
+    btnWhatsapp: { ...btnBase, backgroundColor: '#25D366', color: 'white' },
+    btnTicket: { ...btnBase, backgroundColor: '#17a2b8', color: 'white' },
+    btnDisabled: { opacity: 0.65, cursor: 'not-allowed' },
+};
 
 const FacturaImpresion = () => {
     const location = useLocation();
@@ -340,7 +364,7 @@ const FacturaImpresion = () => {
             // Celular/tablet: el selector nativo de apps ya adjunta el PDF real.
             let file = null;
             try { file = new File([resp.data], filename, { type: 'application/pdf' }); } catch { /* File no disponible */ }
-            if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+            if (file && esDispositivoMovil() && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({ files: [file], text: mensaje });
                 return;
             }
@@ -379,37 +403,22 @@ const FacturaImpresion = () => {
 
     return (
         <div style={{ padding: '20px' }}>
-            <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                <button
-                    onClick={handlePrint}
-                    style={{ padding: '10px 20px', fontSize: '16px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-                >
+            <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+                <button onClick={handlePrint} style={styles.btnPrint}>
                     Imprimir Factura
                 </button>
-                <button
-                    onClick={enviarPorEmail}
-                    disabled={enviandoEmail}
-                    style={{ padding: '10px 20px', fontSize: '16px', backgroundColor: '#3b9ede', color: 'white', border: 'none', borderRadius: '5px', cursor: enviandoEmail ? 'not-allowed' : 'pointer' }}
-                >
+                <button onClick={enviarPorEmail} disabled={enviandoEmail} style={{ ...styles.btnMail, ...(enviandoEmail ? styles.btnDisabled : {}) }}>
+                    <FontAwesomeIcon icon={faEnvelope} />
                     {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}
                 </button>
-                <button
-                    onClick={compartirPorWhatsapp}
-                    disabled={compartiendo}
-                    style={{ padding: '10px 20px', fontSize: '16px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '5px', cursor: compartiendo ? 'not-allowed' : 'pointer' }}
-                >
+                <button onClick={compartirPorWhatsapp} disabled={compartiendo} style={{ ...styles.btnWhatsapp, ...(compartiendo ? styles.btnDisabled : {}) }}>
+                    <WhatsappIcon />
                     {compartiendo ? 'Preparando...' : 'Compartir por WhatsApp'}
                 </button>
-                <button
-                    onClick={handleTicketCambio}
-                    style={{ padding: '10px 20px', fontSize: '16px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-                >
+                <button onClick={handleTicketCambio} style={styles.btnTicket}>
                     Ticket de cambio
                 </button>
-                <button
-                    onClick={handleGoBack}
-                    style={{ padding: '10px 20px', fontSize: '16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-                >
+                <button onClick={handleGoBack} style={styles.btnNeutralDark}>
                     Volver
                 </button>
             </div>

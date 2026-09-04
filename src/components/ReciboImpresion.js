@@ -5,6 +5,10 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { useAuth } from '../AuthContext';
 import { formatearMonto } from '../utils/formatearMonto';
+import { esDispositivoMovil } from '../utils/esDispositivoMovil';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import WhatsappIcon from './icons/WhatsappIcon';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 const normalizeApiUrl = (url) => {
@@ -14,6 +18,26 @@ const normalizeApiUrl = (url) => {
     return u;
 };
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
+
+const btnBase = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '10px 18px',
+    fontSize: 14,
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+};
+const styles = {
+    btnNeutral: { ...btnBase, backgroundColor: '#e5e7eb', color: '#374151' },
+    btnNeutralDark: { ...btnBase, backgroundColor: '#6c757d', color: 'white' },
+    btnMail: { ...btnBase, backgroundColor: '#3b9ede', color: 'white' },
+    btnWhatsapp: { ...btnBase, backgroundColor: '#25D366', color: 'white' },
+    btnTicket: { ...btnBase, backgroundColor: '#17a2b8', color: 'white' },
+    btnDisabled: { opacity: 0.65, cursor: 'not-allowed' },
+};
 
 const ReciboImpresion = () => {
     const location = useLocation();
@@ -243,7 +267,7 @@ const ReciboImpresion = () => {
             // Celular/tablet: el selector nativo de apps ya adjunta el PDF real.
             let file = null;
             try { file = new File([resp.data], filename, { type: 'application/pdf' }); } catch { /* File no disponible */ }
-            if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+            if (file && esDispositivoMovil() && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({ files: [file], text: mensaje });
                 return;
             }
@@ -284,16 +308,18 @@ const ReciboImpresion = () => {
     return (
         <div className="receipt-page-container">
             <div className="no-print-controls">
-                <button onClick={handleGoBack}>Volver</button>
-                <button onClick={handlePrint}>Imprimir Recibo</button>
-                <button onClick={enviarPorEmail} disabled={enviandoEmail} style={{ backgroundColor: '#3b9ede', color: 'white' }}>
+                <button onClick={handleGoBack} style={styles.btnNeutral}>Volver</button>
+                <button onClick={handlePrint} style={styles.btnNeutralDark}>Imprimir Recibo</button>
+                <button onClick={enviarPorEmail} disabled={enviandoEmail} style={{ ...styles.btnMail, ...(enviandoEmail ? styles.btnDisabled : {}) }}>
+                    <FontAwesomeIcon icon={faEnvelope} />
                     {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}
                 </button>
-                <button onClick={compartirPorWhatsapp} disabled={compartiendo} style={{ backgroundColor: '#25D366', color: 'white' }}>
+                <button onClick={compartirPorWhatsapp} disabled={compartiendo} style={{ ...styles.btnWhatsapp, ...(compartiendo ? styles.btnDisabled : {}) }}>
+                    <WhatsappIcon />
                     {compartiendo ? 'Preparando...' : 'Compartir por WhatsApp'}
                 </button>
                 {!(venta?.metodo_pago === 'Nota de Crédito' || venta?.metodo_pago_nombre === 'Nota de Crédito') && (
-                    <button onClick={handleTicketCambio} style={{ backgroundColor: '#17a2b8', color: 'white' }}>Ticket de cambio</button>
+                    <button onClick={handleTicketCambio} style={styles.btnTicket}>Ticket de cambio</button>
                 )}
             </div>
             <div className="receipt-printable-area" ref={reciboRef}>
@@ -314,18 +340,12 @@ const ReciboImpresion = () => {
                         padding: 20px;
                         font-family: Arial, sans-serif;
                     }
-                    .no-print-controls button {
-                        padding: 10px 20px;
-                        cursor: pointer;
-                        border: 1px solid #ccc;
-                        border-radius: 5px;
-                        background-color: #f0f0f0;
-                        margin: 0 5px;
-                    }
-                    .no-print-controls button:last-child {
-                        background-color: #5dc87a;
-                        color: white;
-                        border: none;
+                    .no-print-controls {
+                        display: flex;
+                        flex-wrap: wrap;
+                        justify-content: center;
+                        gap: 10px;
+                        margin-bottom: 20px;
                     }
                     .receipt-printable-area {
                         width: 72mm;
