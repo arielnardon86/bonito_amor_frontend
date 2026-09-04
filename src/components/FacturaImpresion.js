@@ -23,6 +23,7 @@ const FacturaImpresion = () => {
     const { factura, venta, skipReciboPrompt } = location.state || {};
     const facturaRef = useRef(null);
     const [enviandoEmail, setEnviandoEmail] = useState(false);
+    const [compartiendo, setCompartiendo] = useState(false);
 
     // Tipo de comprobante → código numérico ARCA
     const TIPO_CMP_CODIGO = { 'A': 1, 'B': 6, 'C': 11 };
@@ -321,6 +322,53 @@ const FacturaImpresion = () => {
         }
     };
 
+    const compartirPorWhatsapp = async () => {
+        if (!factura || !factura.id) {
+            Swal.fire('Error', 'No se encontró información de la factura.', 'error');
+            return;
+        }
+        setCompartiendo(true);
+        try {
+            const resp = await axios.get(`${BASE_API_ENDPOINT}/api/facturas/${factura.id}/pdf/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                responseType: 'blob',
+            });
+            const numeroStr = `${String(factura.punto_venta || 0).padStart(4, '0')}-${String(factura.numero_comprobante || 0).padStart(8, '0')}`;
+            const filename = `factura_${numeroStr}.pdf`;
+            const mensaje = `Hola! Te comparto la Factura ${factura.tipo_comprobante} ${numeroStr} de ${factura.tienda_nombre || 'la tienda'}.`;
+
+            // Celular/tablet: el selector nativo de apps ya adjunta el PDF real.
+            let file = null;
+            try { file = new File([resp.data], filename, { type: 'application/pdf' }); } catch { /* File no disponible */ }
+            if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], text: mensaje });
+                return;
+            }
+
+            // Compu (o navegador sin soporte para compartir archivos): descargar el
+            // PDF y abrir WhatsApp con el mensaje ya armado -- falta adjuntarlo a mano
+            // en el chat que se abre (no hay forma de adjuntar un archivo por link).
+            const url = URL.createObjectURL(resp.data);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+
+            const telefonoLimpio = (venta?.cliente_telefono || '').replace(/\D/g, '');
+            const destino = telefonoLimpio.length >= 10 ? telefonoLimpio : '';
+            const textoWa = `${mensaje} Te descargamos el PDF: adjuntalo en este chat.`;
+            window.open(`https://wa.me/${destino}?text=${encodeURIComponent(textoWa)}`, '_blank');
+        } catch (err) {
+            if (err?.name === 'AbortError') return; // el usuario cerró el selector nativo sin elegir nada
+            Swal.fire('Error', 'No se pudo compartir la factura.', 'error');
+        } finally {
+            setCompartiendo(false);
+        }
+    };
+
     const handleTicketCambio = () => {
         if (!venta?.id) {
             Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró información de la venta' });
@@ -344,6 +392,13 @@ const FacturaImpresion = () => {
                     style={{ padding: '10px 20px', fontSize: '16px', backgroundColor: '#3b9ede', color: 'white', border: 'none', borderRadius: '5px', cursor: enviandoEmail ? 'not-allowed' : 'pointer' }}
                 >
                     {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}
+                </button>
+                <button
+                    onClick={compartirPorWhatsapp}
+                    disabled={compartiendo}
+                    style={{ padding: '10px 20px', fontSize: '16px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '5px', cursor: compartiendo ? 'not-allowed' : 'pointer' }}
+                >
+                    {compartiendo ? 'Preparando...' : 'Compartir por WhatsApp'}
                 </button>
                 <button
                     onClick={handleTicketCambio}

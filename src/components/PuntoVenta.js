@@ -1167,6 +1167,7 @@ const PuntoVenta = () => {
                         // clienteSeleccionadoCC se resetea unas líneas más abajo, así que hay que
                         // capturarlo acá antes de que se pierda.
                         cliente_email: clienteSeleccionadoCC?.email || '',
+                        cliente_telefono: clienteSeleccionadoCC?.telefono || '',
                         tienda_nombre: selectedStoreSlug,
                         tienda_direccion: tiendaInfo?.direccion || null,
                         tienda_logo: tiendaInfo?.logo || null,
