@@ -52,7 +52,7 @@ const ManualUso = () => {
                             <li><strong>Asociar cualquier venta a un cliente</strong>, para que le quede en su historial.</li>
                             <li><strong>Aplicar descuento o recargo</strong>, en pesos o porcentaje.</li>
                             <li><strong>Redondear el total</strong> hacia arriba o abajo.</li>
-                            <li><strong>Emitir factura electrónica o recibo</strong> al cerrar la venta.</li>
+                            <li><strong>Emitir factura electrónica o recibo</strong> al cerrar la venta, y <strong>compartirlo por WhatsApp o mail</strong> directo desde la pantalla del comprobante, sin tener que descargarlo aparte.</li>
                             <li><strong>Abrir y cerrar tu caja</strong> al empezar y terminar el turno (si tenés el permiso): anotás el efectivo inicial, registrás gastos/retiros/ingresos durante el turno, y al cerrar contás el efectivo real — el sistema te dice si coincide con lo esperado.</li>
                         </ul>
 
@@ -180,7 +180,7 @@ const ManualUso = () => {
                         <h3>Qué podés hacer</h3>
                         <ul>
                             <li><strong>Armar un presupuesto</strong>: cliente obligatorio, productos, y opcionalmente descuento/recargo, medio de pago sugerido, vigencia y notas.</li>
-                            <li><strong>Ver/imprimir el PDF</strong> (con la leyenda de que no tiene validez fiscal) o <strong>enviarlo por mail</strong> al cliente.</li>
+                            <li><strong>Ver/imprimir el PDF</strong> (con la leyenda de que no tiene validez fiscal), o <strong>compartirlo por WhatsApp o mail</strong> al cliente.</li>
                             <li><strong>Buscar</strong> presupuestos por número, cliente o fecha, y <strong>editarlos</strong> mientras estén "Pendientes".</li>
                             <li><strong>Convertirlo en venta</strong>: "Generar carrito de venta" te lleva a Punto de Venta con todo precargado, listo para cobrar.</li>
                         </ul>
@@ -193,7 +193,7 @@ const ManualUso = () => {
                             <li>"Nuevo presupuesto" → elegir cliente → agregar productos.</li>
                             <li>Opcional: descuento/recargo, medio sugerido, vigencia, notas.</li>
                             <li>"Generar Presupuesto".</li>
-                            <li>"Ver/Imprimir PDF" o "Enviar por mail".</li>
+                            <li>"Ver/Imprimir PDF", "Enviar por mail" o "Compartir por WhatsApp".</li>
                             <li>Cuando confirma la compra: "Generar carrito de venta" y cobrar en Punto de Venta.</li>
                         </ol>
                     </div>
@@ -233,6 +233,7 @@ const ManualUso = () => {
                             <li><strong>Imprimir etiquetas con código de barras</strong> — uno, varios, o "Todos" los de la página, en hoja A4 o impresora térmica.</li>
                             <li><strong>Mostrar en la etiqueta el precio con descuento por pago en efectivo</strong>, destacado en un recuadro debajo del precio de lista. Usa el % que configures en Panel de Administración, pero lo podés tildar/destildar y ajustar antes de cada impresión.</li>
                             <li><strong>Editar en masa por rubro</strong>: IVA o precio de todo un rubro de una vez.</li>
+                            <li><strong>Vender por peso</strong>: tildá "Se vende por peso (precio por Kg, sin stock)" para fiambres, carnes u otros productos a granel — el precio y costo se cargan por kilogramo, no se lleva stock (no aplica: se pesa lo que haya físicamente), y en Punto de Venta se carga el peso en gramos en vez de una cantidad de unidades.</li>
                             <li><strong>Vincular o publicar productos en Tienda Nube</strong> de forma manual y selectiva (solo si tu tienda tiene la integración conectada) — ver el detalle abajo.</li>
                         </ul>
 
@@ -409,6 +410,11 @@ const ManualUso = () => {
 
                         <h3>Tienda Nube y Mercado Libre</h3>
                         <p>Conectá tu tienda online o tu cuenta de Mercado Libre, sincronizá productos y stock en ambos sentidos, y activá la facturación automática de esas ventas. <span className="mu-pill advanced inline">Requiere Advanced</span></p>
+                        <p>Además, podés cargar los <strong>aranceles de cada integración</strong> para que Métricas refleje tu ganancia real y no solo el total facturado:</p>
+                        <ul>
+                            <li><strong>Mercado Libre:</strong> costo de envío (por unidad) e impuestos (%) estimados, configurables por producto. El cargo por vender (la comisión) no hace falta cargarlo — se toma automático del dato real que manda Mercado Libre en cada venta.</li>
+                            <li><strong>Tienda Nube:</strong> tasa, IVA y CPT (%) de cada medio de pago (gateway) que tengas activado — los ves en tu propio panel de Tienda Nube, en "Medios de pago". A diferencia de Mercado Libre, Tienda Nube no informa el cargo real cobrado en cada venta, así que acá la carga siempre es manual. Si un medio de pago cobra distinto según débito o crédito (por ejemplo MODO), podés cargar una fila para cada uno.</li>
+                        </ul>
 
                         <h3>Mi Plan</h3>
                         <p>Vé tu plan actual, su estado y cuánto uso llevás de productos/usuarios. <strong>Mejorá tu plan</strong> en el momento (te redirige a Mercado Pago si hace falta pagar), o <strong>dá de baja</strong> tu suscripción — tus datos se conservan 30 días antes de eliminarse definitivamente.</p>
