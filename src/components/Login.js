@@ -156,7 +156,7 @@ function Login() {
             type="text"
             name="username"
             autoComplete="username"
-            placeholder="Nombre de usuario"
+            placeholder="Nombre de usuario o email"
             value={username}
             onChange={e => setUsername(e.target.value)}
             required
