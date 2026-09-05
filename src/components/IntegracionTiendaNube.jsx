@@ -32,6 +32,15 @@ export default function IntegracionTiendaNube() {
 
     const [facturar,    setFacturar]    = useState(false);
 
+    // Aranceles Tienda Nube (tasa + IVA + CPT por gateway; a diferencia de ML acá
+    // no hay modo "automático" -- TN no informa el cargo real en el webhook)
+    const [arancelesTN,            setArancelesTN]            = useState([]);
+    const [showArancelTNForm,      setShowArancelTNForm]      = useState(false);
+    const [showEditArancelTNModal, setShowEditArancelTNModal] = useState(false);
+    const [editArancelTNData,      setEditArancelTNData]      = useState(null);
+    const arancelTNFormVacio = { gateway: '', gateway_nombre: '', criterio: '', tasa_porcentaje: '0.00', iva_porcentaje: '21.00', cpt_porcentaje: '0.00' };
+    const [arancelTNForm, setArancelTNForm] = useState(arancelTNFormVacio);
+
     const headers = { Authorization: `Bearer ${token}` };
 
     const showSuccess = (msg) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 5000); };
@@ -68,11 +77,19 @@ export default function IntegracionTiendaNube() {
         } catch { /* ignore */ }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const fetchArancelesTN = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const res = await axios.get(`${BASE}/api/aranceles-tn/?tienda_slug=${selectedStoreSlug}`, { headers });
+            setArancelesTN(res.data.results || res.data);
+        } catch { setArancelesTN([]); }
+    }, [token, selectedStoreSlug]); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         if (!isAuthenticated || !token) { setLoading(false); return; }
         obtenerTiendaId().then(id => {
             setTiendaId(id);
-            if (id) Promise.all([fetchTienda(id), fetchStatus(id)]).finally(() => setLoading(false));
+            if (id) Promise.all([fetchTienda(id), fetchStatus(id), fetchArancelesTN()]).finally(() => setLoading(false));
             else setLoading(false);
         });
     }, [isAuthenticated, token, selectedStoreSlug]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -228,6 +245,89 @@ export default function IntegracionTiendaNube() {
         } catch (e) {
             showError(e.response?.data?.error || 'Error al desconectar.');
         } finally { setDesconectando(false); }
+    };
+
+    // ── Aranceles Tienda Nube (tasa + IVA + CPT por gateway) ──────────────────
+    const handleArancelTNFormChange = (e) => {
+        const { name, value } = e.target;
+        setArancelTNForm(f => ({ ...f, [name]: value }));
+    };
+
+    const handleCreateArancelTN = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post(`${BASE}/api/aranceles-tn/`, {
+                gateway: arancelTNForm.gateway,
+                gateway_nombre: arancelTNForm.gateway_nombre,
+                criterio: arancelTNForm.criterio,
+                tasa_porcentaje: parseFloat(arancelTNForm.tasa_porcentaje) || 0,
+                iva_porcentaje: parseFloat(arancelTNForm.iva_porcentaje) || 0,
+                cpt_porcentaje: parseFloat(arancelTNForm.cpt_porcentaje) || 0,
+                tienda: selectedStoreSlug,
+            }, { headers });
+            showSuccess('Arancel de Tienda Nube creado.');
+            setShowArancelTNForm(false);
+            setArancelTNForm(arancelTNFormVacio);
+            fetchArancelesTN();
+        } catch (err) {
+            const data = err.response?.data;
+            showError(data?.detail || data?.non_field_errors?.[0] || (typeof data === 'object' ? Object.values(data).flat().join(' ') : 'Error al crear el arancel.'));
+        }
+    };
+
+    const handleEditArancelTN = (arancel) => {
+        const aTexto = (v) => v != null ? v.toString() : '0.00';
+        setEditArancelTNData({
+            id: arancel.id,
+            gateway: arancel.gateway,
+            gateway_nombre: arancel.gateway_nombre || '',
+            criterio: arancel.criterio || '',
+            tasa_porcentaje: aTexto(arancel.tasa_porcentaje),
+            iva_porcentaje: aTexto(arancel.iva_porcentaje),
+            cpt_porcentaje: aTexto(arancel.cpt_porcentaje),
+        });
+        setShowEditArancelTNModal(true);
+    };
+
+    const handleUpdateArancelTN = async () => {
+        try {
+            await axios.patch(`${BASE}/api/aranceles-tn/${editArancelTNData.id}/`, {
+                gateway: editArancelTNData.gateway,
+                gateway_nombre: editArancelTNData.gateway_nombre,
+                criterio: editArancelTNData.criterio,
+                tasa_porcentaje: parseFloat(editArancelTNData.tasa_porcentaje) || 0,
+                iva_porcentaje: parseFloat(editArancelTNData.iva_porcentaje) || 0,
+                cpt_porcentaje: parseFloat(editArancelTNData.cpt_porcentaje) || 0,
+                tienda: selectedStoreSlug,
+            }, { headers });
+            showSuccess('Arancel de Tienda Nube actualizado.');
+            setShowEditArancelTNModal(false);
+            setEditArancelTNData(null);
+            fetchArancelesTN();
+        } catch (err) {
+            showError(err.response?.data?.detail || 'Error al actualizar el arancel.');
+        }
+    };
+
+    const handleDeleteArancelTN = async (arancelId) => {
+        const result = await Swal.fire({
+            title: '¿Eliminar este arancel?',
+            text: 'Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e25252',
+            cancelButtonColor: '#475569',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await axios.delete(`${BASE}/api/aranceles-tn/${arancelId}/`, { headers });
+            showSuccess('Arancel eliminado.');
+            fetchArancelesTN();
+        } catch (err) {
+            showError(err.response?.data?.detail || 'Error al eliminar el arancel.');
+        }
     };
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -388,6 +488,149 @@ export default function IntegracionTiendaNube() {
                     </p>
                 </div>
             )}
+
+            {/* Paso 4 — Aranceles Tienda Nube */}
+            {conectado && (
+                <div style={s.card}>
+                    <div style={s.cardTitle}>Paso 4 — Aranceles Tienda Nube</div>
+                    <p style={s.cardDesc}>
+                        Cargá acá la tasa, el IVA y el CPT de cada medio de pago (los ves en tu panel de Tienda Nube,
+                        en "Medios de pago"). A diferencia de Mercado Libre, Tienda Nube no informa el cargo real
+                        cobrado en cada venta, así que esta estimación siempre es manual.
+                    </p>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: '#111827' }}>Aranceles configurados</span>
+                        <button
+                            type="button"
+                            style={s.btnPrimary}
+                            onClick={() => { setArancelTNForm(arancelTNFormVacio); setShowArancelTNForm(true); }}
+                        >
+                            + Nuevo arancel
+                        </button>
+                    </div>
+
+                    {showArancelTNForm && (
+                        <form onSubmit={handleCreateArancelTN} style={{ marginBottom: 16 }}>
+                            <label style={s.lbl}>Gateway (tal cual lo manda Tienda Nube, ej: gocuotas, mercadopago, modo) *</label>
+                            <input
+                                type="text" name="gateway" value={arancelTNForm.gateway}
+                                onChange={handleArancelTNFormChange} required style={s.inp}
+                                placeholder="gocuotas"
+                            />
+
+                            <label style={s.lbl}>Nombre para mostrar</label>
+                            <input
+                                type="text" name="gateway_nombre" value={arancelTNForm.gateway_nombre}
+                                onChange={handleArancelTNFormChange} style={s.inp}
+                                placeholder="GOcuotas"
+                            />
+
+                            <label style={s.lbl}>Se aplica a</label>
+                            <select name="criterio" value={arancelTNForm.criterio} onChange={handleArancelTNFormChange} style={s.inp}>
+                                <option value="">Todos los medios</option>
+                                <option value="DEBITO">Solo tarjeta de débito</option>
+                                <option value="CREDITO">Solo tarjeta de crédito</option>
+                            </select>
+                            <p style={{ ...s.cardDesc, marginTop: -8 }}>
+                                Dejá "Todos los medios" salvo que este gateway cobre distinto según débito/crédito (ej. MODO) —
+                                en ese caso cargá una fila para cada uno.
+                            </p>
+
+                            <label style={s.lbl}>Tasa (%)</label>
+                            <input type="number" name="tasa_porcentaje" value={arancelTNForm.tasa_porcentaje}
+                                   onChange={handleArancelTNFormChange} min="0" max="100" step="0.01" style={s.inp} />
+
+                            <label style={s.lbl}>IVA (%)</label>
+                            <input type="number" name="iva_porcentaje" value={arancelTNForm.iva_porcentaje}
+                                   onChange={handleArancelTNFormChange} min="0" max="100" step="0.01" style={s.inp} />
+
+                            <label style={s.lbl}>CPT (%) — costo por cobrar el dinero antes</label>
+                            <input type="number" name="cpt_porcentaje" value={arancelTNForm.cpt_porcentaje}
+                                   onChange={handleArancelTNFormChange} min="0" max="100" step="0.01" style={s.inp} />
+
+                            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                <button type="submit" style={s.btnPrimary}>Crear</button>
+                                <button type="button" style={s.btnSecondary} onClick={() => setShowArancelTNForm(false)}>Cancelar</button>
+                            </div>
+                        </form>
+                    )}
+
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                                <tr>
+                                    <th style={s.th}>Gateway</th>
+                                    <th style={s.th}>Se aplica a</th>
+                                    <th style={s.th}>Tasa</th>
+                                    <th style={s.th}>IVA</th>
+                                    <th style={s.th}>CPT</th>
+                                    <th style={s.th}></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {arancelesTN.length === 0 ? (
+                                    <tr><td colSpan="6" style={s.td}>No hay aranceles configurados.</td></tr>
+                                ) : (
+                                    arancelesTN.map(a => (
+                                        <tr key={a.id}>
+                                            <td style={s.td}>{a.gateway_nombre || a.gateway}</td>
+                                            <td style={s.td}>{a.criterio_display || 'Todos los medios'}</td>
+                                            <td style={s.td}>{parseFloat(a.tasa_porcentaje || 0).toFixed(2)}%</td>
+                                            <td style={s.td}>{parseFloat(a.iva_porcentaje || 0).toFixed(2)}%</td>
+                                            <td style={s.td}>{parseFloat(a.cpt_porcentaje || 0).toFixed(2)}%</td>
+                                            <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
+                                                <button type="button" style={s.btnIcono} onClick={() => handleEditArancelTN(a)} title="Editar">✏️</button>
+                                                <button type="button" style={s.btnIcono} onClick={() => handleDeleteArancelTN(a.id)} title="Eliminar">🗑️</button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal editar arancel Tienda Nube */}
+            {showEditArancelTNModal && editArancelTNData && (
+                <div style={s.overlay}>
+                    <div style={{ ...s.card, maxWidth: 420, width: '100%', margin: 0 }}>
+                        <div style={s.cardTitle}>Editar arancel Tienda Nube</div>
+
+                        <label style={s.lbl}>Se aplica a</label>
+                        <select
+                            value={editArancelTNData.criterio}
+                            onChange={e => setEditArancelTNData({ ...editArancelTNData, criterio: e.target.value })}
+                            style={s.inp}
+                        >
+                            <option value="">Todos los medios</option>
+                            <option value="DEBITO">Solo tarjeta de débito</option>
+                            <option value="CREDITO">Solo tarjeta de crédito</option>
+                        </select>
+
+                        <label style={s.lbl}>Tasa (%)</label>
+                        <input type="number" value={editArancelTNData.tasa_porcentaje}
+                               onChange={e => setEditArancelTNData({ ...editArancelTNData, tasa_porcentaje: e.target.value })}
+                               min="0" max="100" step="0.01" style={s.inp} />
+
+                        <label style={s.lbl}>IVA (%)</label>
+                        <input type="number" value={editArancelTNData.iva_porcentaje}
+                               onChange={e => setEditArancelTNData({ ...editArancelTNData, iva_porcentaje: e.target.value })}
+                               min="0" max="100" step="0.01" style={s.inp} />
+
+                        <label style={s.lbl}>CPT (%)</label>
+                        <input type="number" value={editArancelTNData.cpt_porcentaje}
+                               onChange={e => setEditArancelTNData({ ...editArancelTNData, cpt_porcentaje: e.target.value })}
+                               min="0" max="100" step="0.01" style={s.inp} />
+
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <button style={s.btnPrimary} onClick={handleUpdateArancelTN}>Guardar</button>
+                            <button style={s.btnSecondary} onClick={() => { setShowEditArancelTNModal(false); setEditArancelTNData(null); }}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -420,4 +663,12 @@ const s = {
     infoRow:   { display: 'flex', gap: 10, marginBottom: 6, alignItems: 'center' },
     infoLabel: { fontSize: 13, color: '#475569', minWidth: 120 },
     infoVal:   { fontSize: 13, color: '#111827', fontWeight: 600 },
+    inp:       { width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 8,
+                 fontSize: 14, marginBottom: 12, boxSizing: 'border-box' },
+    th:        { textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid #e2e8f0',
+                 color: '#475569', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' },
+    td:        { padding: '8px 10px', borderBottom: '1px solid #f1f5f9', color: '#111827' },
+    btnIcono:  { background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: '2px 6px' },
+    overlay:   { position: 'fixed', inset: 0, background: 'rgba(15,23,42,.5)', display: 'flex',
+                 alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
 };
