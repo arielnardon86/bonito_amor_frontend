@@ -574,10 +574,12 @@ export default function IntegracionTiendaNube() {
                                 <option value="">Todos los medios</option>
                                 <option value="DEBITO">Solo tarjeta de débito</option>
                                 <option value="CREDITO">Solo tarjeta de crédito</option>
+                                <option value="TRANSFERENCIA">Transferencia bancaria</option>
+                                <option value="BILLETERA">Billetera virtual</option>
                             </select>
                             <p style={{ ...s.cardDesc, marginTop: -8 }}>
-                                Dejá "Todos los medios" salvo que este gateway cobre distinto según débito/crédito (ej. MODO) —
-                                en ese caso cargá una fila para cada uno.
+                                Dejá "Todos los medios" salvo que este gateway cobre distinto según el medio de pago (ej. MODO,
+                                que cobra distinto en débito y crédito) — en ese caso cargá una fila para cada uno.
                             </p>
 
                             <label style={s.lbl}>Tasa (%)</label>
@@ -650,6 +652,8 @@ export default function IntegracionTiendaNube() {
                             <option value="">Todos los medios</option>
                             <option value="DEBITO">Solo tarjeta de débito</option>
                             <option value="CREDITO">Solo tarjeta de crédito</option>
+                            <option value="TRANSFERENCIA">Transferencia bancaria</option>
+                            <option value="BILLETERA">Billetera virtual</option>
                         </select>
 
                         <label style={s.lbl}>Tasa (%)</label>
