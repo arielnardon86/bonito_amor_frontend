@@ -586,6 +586,14 @@ export default function IntegracionTiendaNube() {
                                 Dejá "Todos los medios" salvo que este gateway cobre distinto según el medio de pago (ej. MODO,
                                 que cobra distinto en débito y crédito) — en ese caso cargá una fila para cada uno.
                             </p>
+                            <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.5, color: '#92400e', marginBottom: 14 }}>
+                                ⚠️ <strong>Importante sobre "Transferencia bancaria" y "Billetera virtual":</strong> solo sirven
+                                si el gateway que elegiste arriba realmente manda ese dato — <strong>Pago Nube no lo hace así</strong>.
+                                Cuando alguien paga por transferencia a través de Pago Nube, Tienda Nube <strong>no</strong> lo
+                                reporta como "Pago Nube + Transferencia": lo manda como un medio de pago aparte, sin gateway fijo.
+                                Para ese caso <strong>no uses este criterio</strong> — elegí <strong>"Otro"</strong> en "Medio de
+                                pago" (arriba) y escribí <code>transferencia</code>.
+                            </div>
 
                             <label style={s.lbl}>Tasa (%)</label>
                             <input type="number" name="tasa_porcentaje" value={arancelTNForm.tasa_porcentaje}
