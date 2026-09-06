@@ -13,6 +13,24 @@ const normalizeApiUrl = (url) => {
 
 const BASE = normalizeApiUrl(process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
+// Medios de pago conocidos de Tienda Nube -- 'value' es el slug canónico que
+// también normaliza el backend (ver GATEWAY_TN_ALIASES en views.py) para las
+// dos variantes que a veces manda Tienda Nube para un mismo procesador
+// (ej. 'mercadopago'/'mercado_pago', 'decidir'/'payway'), así que da lo mismo
+// cuál de las dos llegue en la orden real.
+const GATEWAYS_TN = [
+    { value: 'gocuotas', label: 'GOcuotas' },
+    { value: 'pagonube', label: 'Pago Nube (nativo de Tiendanube)' },
+    { value: 'mercadopago', label: 'Mercado Pago' },
+    { value: 'decidir', label: 'Payway / Decidir' },
+    { value: 'ualabis', label: 'Ualá Bis' },
+    { value: 'getnet', label: 'Getnet' },
+    { value: 'mobbex', label: 'Mobbex' },
+    { value: 'nave', label: 'Nave (Galicia)' },
+    { value: 'modo', label: 'MODO' },
+    { value: '__otro__', label: 'Otro (especificar)' },
+];
+
 export default function IntegracionTiendaNube() {
     const { token, isAuthenticated, selectedStoreSlug, stores } = useAuth();
 
@@ -40,6 +58,7 @@ export default function IntegracionTiendaNube() {
     const [editArancelTNData,      setEditArancelTNData]      = useState(null);
     const arancelTNFormVacio = { gateway: '', gateway_nombre: '', criterio: '', tasa_porcentaje: '0.00', iva_porcentaje: '21.00', cpt_porcentaje: '0.00' };
     const [arancelTNForm, setArancelTNForm] = useState(arancelTNFormVacio);
+    const [selKeyGatewayTN, setSelKeyGatewayTN] = useState('');
 
     const headers = { Authorization: `Bearer ${token}` };
 
@@ -504,7 +523,7 @@ export default function IntegracionTiendaNube() {
                         <button
                             type="button"
                             style={s.btnPrimary}
-                            onClick={() => { setArancelTNForm(arancelTNFormVacio); setShowArancelTNForm(true); }}
+                            onClick={() => { setArancelTNForm(arancelTNFormVacio); setSelKeyGatewayTN(''); setShowArancelTNForm(true); }}
                         >
                             + Nuevo arancel
                         </button>
@@ -512,19 +531,43 @@ export default function IntegracionTiendaNube() {
 
                     {showArancelTNForm && (
                         <form onSubmit={handleCreateArancelTN} style={{ marginBottom: 16 }}>
-                            <label style={s.lbl}>Gateway (tal cual lo manda Tienda Nube, ej: gocuotas, mercadopago, modo) *</label>
-                            <input
-                                type="text" name="gateway" value={arancelTNForm.gateway}
-                                onChange={handleArancelTNFormChange} required style={s.inp}
-                                placeholder="gocuotas"
-                            />
+                            <label style={s.lbl}>Medio de pago *</label>
+                            <select
+                                value={selKeyGatewayTN}
+                                onChange={(e) => {
+                                    const key = e.target.value;
+                                    setSelKeyGatewayTN(key);
+                                    const conocido = GATEWAYS_TN.find(g => g.value === key);
+                                    if (key === '__otro__') {
+                                        setArancelTNForm(f => ({ ...f, gateway: '', gateway_nombre: '' }));
+                                    } else if (conocido) {
+                                        setArancelTNForm(f => ({ ...f, gateway: conocido.value, gateway_nombre: conocido.label }));
+                                    }
+                                }}
+                                required
+                                style={s.inp}
+                            >
+                                <option value="" disabled>Seleccionar medio de pago...</option>
+                                {GATEWAYS_TN.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
+                            </select>
 
-                            <label style={s.lbl}>Nombre para mostrar</label>
-                            <input
-                                type="text" name="gateway_nombre" value={arancelTNForm.gateway_nombre}
-                                onChange={handleArancelTNFormChange} style={s.inp}
-                                placeholder="GOcuotas"
-                            />
+                            {selKeyGatewayTN === '__otro__' && (
+                                <>
+                                    <label style={s.lbl}>Gateway (tal cual lo manda Tienda Nube)</label>
+                                    <input
+                                        type="text" name="gateway" value={arancelTNForm.gateway}
+                                        onChange={handleArancelTNFormChange} required style={s.inp}
+                                        placeholder="slug del medio de pago"
+                                    />
+
+                                    <label style={s.lbl}>Nombre para mostrar</label>
+                                    <input
+                                        type="text" name="gateway_nombre" value={arancelTNForm.gateway_nombre}
+                                        onChange={handleArancelTNFormChange} style={s.inp}
+                                        placeholder="Nombre del medio de pago"
+                                    />
+                                </>
+                            )}
 
                             <label style={s.lbl}>Se aplica a</label>
                             <select name="criterio" value={arancelTNForm.criterio} onChange={handleArancelTNFormChange} style={s.inp}>
