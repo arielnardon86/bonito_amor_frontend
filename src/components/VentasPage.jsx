@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
@@ -31,7 +32,7 @@ const normalizeApiUrl = (url) => {
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
 const VentasPage = () => {
-    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug } = useAuth();
+    const { user, token, isAuthenticated, loading: authLoading, selectedStoreSlug, stores } = useAuth();
     const navigate = useNavigate();
 
     const today = new Date();
@@ -360,6 +361,87 @@ const VentasPage = () => {
         }
     };
 
+    // Facturar una venta que salió "solo recibo" -- reusa el mismo endpoint que ya
+    // usa Punto de Venta justo después de cobrar (emitir_factura no exige que la
+    // venta sea reciente: solo que no esté anulada ni ya facturada).
+    const handleFacturarVenta = async (venta) => {
+        if (!token) {
+            showCustomAlert("Error de autenticación. Por favor, reinicia sesión.", 'error');
+            return;
+        }
+
+        const tiendaActual = stores.find(s => s.nombre === selectedStoreSlug);
+        const esMonotributista = tiendaActual?.condicion_iva_emisor === 'MT';
+
+        const { value: formValues } = await Swal.fire({
+            title: 'Datos del Cliente para Factura',
+            html: `
+                <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="${(venta.cliente_nombre || 'Consumidor Final').replace(/"/g, '&quot;')}" required>
+                <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" type="text" value="${venta.cliente_cuit || ''}">
+                <p style="margin: -8px 0 8px; font-size: 12px; color: #94a3b8;">Ingresalo solo con números, sin guiones ni puntos (ej: 20123456789)</p>
+                <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)" value="${(venta.cliente_domicilio || '').replace(/"/g, '&quot;')}">
+                ${esMonotributista ? '' : `
+                <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #d9d9d9; border-radius: 0.1875em; font-size: 1.125em;">
+                    <option value="CF" selected>Consumidor Final</option>
+                    <option value="RI">Responsable Inscripto</option>
+                    <option value="EX">Exento</option>
+                    <option value="MT">Monotributo</option>
+                    <option value="NR">No Responsable</option>
+                </select>
+                `}
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Emitir Factura',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const nombre = document.getElementById('cliente_nombre').value;
+                const cuit = document.getElementById('cliente_cuit').value;
+                const domicilio = document.getElementById('cliente_domicilio').value;
+                const condicionIva = esMonotributista
+                    ? 'CF'
+                    : document.getElementById('cliente_condicion_iva').value;
+
+                if (!nombre || nombre.trim() === '') {
+                    Swal.showValidationMessage('El nombre del cliente es requerido');
+                    return false;
+                }
+
+                return {
+                    cliente_nombre: nombre.trim(),
+                    cliente_cuit: cuit.trim() || null,
+                    cliente_domicilio: domicilio.trim() || null,
+                    cliente_condicion_iva: condicionIva,
+                };
+            },
+        });
+
+        if (!formValues) return;
+
+        try {
+            const facturaResponse = await axios.post(
+                `${BASE_API_ENDPOINT}/api/ventas/${venta.id}/emitir_factura/`,
+                { venta_id: venta.id, ...formValues },
+                { headers: { 'Authorization': `Bearer ${token}` } },
+            );
+            await fetchVentas();
+            const factura = facturaResponse.data.factura || facturaResponse.data;
+            const irAVerla = await Swal.fire({
+                title: 'Factura emitida con éxito',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Ver factura',
+                cancelButtonText: 'Quedarme en el listado',
+            });
+            if (irAVerla.isConfirmed) {
+                navigate('/factura', { state: { factura, venta } });
+            }
+        } catch (err) {
+            showCustomAlert('Error al emitir factura: ' + (err.response?.data?.error || (err.response ? JSON.stringify(err.response.data) : err.message)), 'error');
+            console.error('Error emitiendo factura:', err.response || err.message);
+        }
+    };
+
     const applyFilters = () => {
         const ventaId = barcodeInputRef.current
             ? barcodeInputRef.current.value.replace(/-/g, '')
@@ -489,6 +571,8 @@ const VentasPage = () => {
     }
 
     const isStaffOnly = user.is_staff && !user.is_superuser && !user.is_supervisor;
+    const tiendaActualInfo = stores.find(s => s.nombre === selectedStoreSlug);
+    const tiendaTieneFacturacion = !!tiendaActualInfo && tiendaActualInfo.tipo_facturacion && tiendaActualInfo.tipo_facturacion !== 'NINGUNA';
 
     if (!selectedStoreSlug) {
         return (
@@ -728,6 +812,16 @@ const VentasPage = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faFileInvoiceDollar} />
                                                 </button>
+                                                {tiendaTieneFacturacion && !isStaffOnly && !venta.anulada && !(venta.tiene_factura || venta.facturada) && !venta.es_nota_credito && !venta.es_diferencia_pendiente && (
+                                                    <button
+                                                        className="icon-btn"
+                                                        onClick={() => handleFacturarVenta(venta)}
+                                                        style={{ color: 'white', backgroundColor: '#f59e0b' }}
+                                                        data-tooltip="Facturar venta"
+                                                    >
+                                                        <FontAwesomeIcon icon={faFileInvoiceDollar} />
+                                                    </button>
+                                                )}
                                                 <button
                                                     className="icon-btn"
                                                     onClick={() => handleReimprimirRecibo(venta)}

@@ -100,6 +100,7 @@ const ManualUso = () => {
                             <li><strong>Ver el detalle</strong> de productos, precios y descuentos de cada venta.</li>
                             <li><strong>Reimprimir el recibo</strong> de cualquier venta, en cualquier momento.</li>
                             <li><strong>Ver la factura electrónica</strong>, si la venta tiene una asociada.</li>
+                            <li><strong>Facturar una venta que salió "solo recibo"</strong>: si te olvidaste de facturarla en el momento (o el cliente la pidió después), no hace falta anularla y cargarla de nuevo — el botón naranja de facturar aparece en cualquier venta sin factura, no anulada, y pide los datos del cliente igual que en Punto de Venta.</li>
                             <li><strong>Anular una venta completa</strong> (devuelve el stock de todo lo vendido) o <strong>anular solo un producto</strong> dentro de una venta.</li>
                             <li><strong>Iniciar un Cambio o Devolución</strong> sobre una venta cerrada.</li>
                             <li><strong>Descargar el listado filtrado en Excel</strong>, con resumen y detalle.</li>
