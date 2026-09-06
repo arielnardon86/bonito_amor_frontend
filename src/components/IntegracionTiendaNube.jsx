@@ -559,6 +559,11 @@ export default function IntegracionTiendaNube() {
                                         onChange={handleArancelTNFormChange} required style={s.inp}
                                         placeholder="slug del medio de pago"
                                     />
+                                    <p style={{ ...s.cardDesc, marginTop: -8 }}>
+                                        ¿Es un medio de pago <strong>manual</strong> (transferencia, efectivo, depósito) que vos
+                                        mismo creaste en Tienda Nube? Esos no tienen un slug fijo — escribí acá, en minúscula, el
+                                        mismo nombre que le pusiste allá (por ejemplo <code>transferencia</code>).
+                                    </p>
 
                                     <label style={s.lbl}>Nombre para mostrar</label>
                                     <input
