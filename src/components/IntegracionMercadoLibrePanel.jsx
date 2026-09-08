@@ -15,6 +15,20 @@ const normalizeApiUrl = (url) => {
 
 const BASE = normalizeApiUrl(process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
+// Un producto de ML con variantes son en realidad varias publicaciones (varios
+// Producto locales, uno por ml_item_id) agrupadas bajo el mismo nombre -- sin
+// mostrar talle/variante2/ml_item_id el desplegable y la tabla de aranceles
+// las muestran todas idénticas, imposibles de distinguir entre sí.
+const etiquetaProductoML = (p) => {
+    const variante = [p?.talle, p?.variante2].filter(Boolean).join(' · ');
+    const esPadre = !p?.producto_padre && Array.isArray(p?.variantes) && p.variantes.length > 0;
+    let etiqueta = p?.nombre || '';
+    if (variante) etiqueta += ` — ${variante}`;
+    if (esPadre) etiqueta += ' (familia completa)';
+    if (p?.ml_item_id) etiqueta += ` [${p.ml_item_id}]`;
+    return etiqueta;
+};
+
 // Redirect URI de OAuth: fija, no lleva el ID de la tienda (compartida por todas).
 const URL_CALLBACK_ML = 'https://bonito-amor-backend.onrender.com/api/tiendas/mercadolibre/callback/';
 
@@ -659,12 +673,17 @@ export default function IntegracionMercadoLibrePanel() {
                                     {productosML
                                         .filter(p => !arancelesML.some(a => (a.producto?.id ?? a.producto) === p.id))
                                         .map(p => (
-                                            <option key={p.id} value={p.id}>{p.nombre} {p.codigo ? `(${p.codigo})` : ''}</option>
+                                            <option key={p.id} value={p.id}>{etiquetaProductoML(p)}</option>
                                         ))}
                                 </select>
                                 {productosML.length === 0 && (
                                     <p style={s.guiaDesc}>No hay productos disponibles. Primero añadí productos a la tienda.</p>
                                 )}
+                                <p style={s.guiaDesc}>
+                                    Un producto con varias variantes de Mercado Libre en realidad son varias publicaciones
+                                    separadas (una por talle/color) — no hace falta cargar el costo de envío en cada una:
+                                    configurándolo en <b>una sola</b> ya se aplica al resto de sus variantes automáticamente.
+                                </p>
 
                                 <label style={s.lbl}>Costo por envío (por unidad)</label>
                                 <input type="number" name="costo_envio" value={arancelMLForm.costo_envio}
@@ -703,7 +722,13 @@ export default function IntegracionMercadoLibrePanel() {
                                     ) : (
                                         arancelesML.map(a => (
                                             <tr key={a.id}>
-                                                <td style={s.td}>{a.producto_nombre || a.producto?.nombre || '-'}</td>
+                                                <td style={s.td}>
+                                                    {a.producto_nombre || a.producto?.nombre || '-'}
+                                                    {[a.producto_talle, a.producto_variante2].filter(Boolean).join(' · ') &&
+                                                        ` — ${[a.producto_talle, a.producto_variante2].filter(Boolean).join(' · ')}`}
+                                                    {a.producto_es_padre && ' (familia completa)'}
+                                                    {a.producto_ml_item_id && ` [${a.producto_ml_item_id}]`}
+                                                </td>
                                                 <td style={s.td}>${parseFloat(a.costo_envio || 0).toFixed(2)}</td>
                                                 <td style={s.td}>{parseFloat(a.impuestos_porcentaje || 0).toFixed(2)}%</td>
                                                 <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
