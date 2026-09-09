@@ -2009,6 +2009,15 @@ const PuntoVenta = () => {
 
                 {activeCart && activeCart.items.length > 0 ? (
                     <>
+                        {/* Total de unidades en el carrito: cada línea suma su cantidad, salvo
+                            los productos "por peso" (cantidad en gramos, no unidades) que cuentan
+                            como 1 -- un control rápido antes de procesar la venta. */}
+                        {(() => {
+                            const totalUnidadesCarrito = activeCart.items.reduce(
+                                (acc, item) => acc + (item.product?.se_vende_por_peso ? 1 : (item.quantity || 0)),
+                                0
+                            );
+                            return (
                         <div style={styles.cartTableWrap} className="cart-table-wrap">
                             <div style={styles.tableResponsive} className="table-responsive">
                                 <table style={styles.table} className="table">
@@ -2018,7 +2027,17 @@ const PuntoVenta = () => {
                                             <th style={styles.th}>Cant.</th>
                                             <th style={styles.th}>P. unit.</th>
                                             <th style={styles.th}>Subtotal</th>
-                                            <th style={styles.th}>Acciones</th>
+                                            <th style={{ ...styles.th, textAlign: 'right' }}>
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                                    Acciones
+                                                    <span
+                                                        style={styles.cartUnitsBadge}
+                                                        title={`${totalUnidadesCarrito} unidad(es) en el carrito`}
+                                                    >
+                                                        {totalUnidadesCarrito}
+                                                    </span>
+                                                </span>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2078,6 +2097,8 @@ const PuntoVenta = () => {
                                 </table>
                             </div>
                         </div>
+                            );
+                        })()}
                         <h4 style={styles.totalVenta}>Subtotal: {formatearMonto(activeCart.total)}</h4>
                         <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
                             <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de pago</label>
@@ -2813,6 +2834,12 @@ const styles = {
     activeCartActions: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
     searchRow: { marginTop: '12px', marginBottom: '12px' },
     cartTableWrap: { marginTop: '16px', marginBottom: '8px', overflow: 'hidden' },
+    cartUnitsBadge: {
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '999px',
+        backgroundColor: '#eaf7ef', color: '#2f7d4f', border: '1px solid #cdeed9',
+        fontSize: '11px', fontWeight: 700, lineHeight: 1,
+    },
     arancelWarning: { padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', color: '#92400e', fontSize: '0.9em', margin: 0 },
     redondearRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' },
     redondearLabel: { margin: 0, fontSize: '0.9em', cursor: 'pointer', color: '#475569' },
