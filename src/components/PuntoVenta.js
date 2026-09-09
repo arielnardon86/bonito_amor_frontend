@@ -1514,6 +1514,13 @@ const PuntoVenta = () => {
     const totalTeoricoCierre  = cambioInicial + totalVentasEfectivo + totalIngresos - totalGastos - totalRetiros;
     const diferenciaCierre    = totalBilletesActual - totalTeoricoCierre;
 
+    // Total de unidades en el carrito: cada línea suma su cantidad, salvo los
+    // productos "por peso" (cantidad en gramos, no unidades) que cuentan como 1 --
+    // un control rápido antes de procesar la venta.
+    const totalUnidadesCarrito = activeCart
+        ? activeCart.items.reduce((acc, item) => acc + (item.product?.se_vende_por_peso ? 1 : (item.quantity || 0)), 0)
+        : 0;
+
     return (
         <div style={styles.container}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
@@ -2009,20 +2016,6 @@ const PuntoVenta = () => {
 
                 {activeCart && activeCart.items.length > 0 ? (
                     <>
-                        {/* Total de unidades en el carrito: cada línea suma su cantidad, salvo
-                            los productos "por peso" (cantidad en gramos, no unidades) que cuentan
-                            como 1 -- un control rápido antes de procesar la venta. */}
-                        {(() => {
-                            const totalUnidadesCarrito = activeCart.items.reduce(
-                                (acc, item) => acc + (item.product?.se_vende_por_peso ? 1 : (item.quantity || 0)),
-                                0
-                            );
-                            return (
-                        <>
-                        <div style={styles.cartUnitsWrap}>
-                            <div style={styles.cartUnitsCircle}>{totalUnidadesCarrito}</div>
-                            <span style={styles.cartUnitsLabel}>Cantidad de productos o unidades</span>
-                        </div>
                         <div style={styles.cartTableWrap} className="cart-table-wrap">
                             <div style={styles.tableResponsive} className="table-responsive">
                                 <table style={styles.table} className="table">
@@ -2092,10 +2085,13 @@ const PuntoVenta = () => {
                                 </table>
                             </div>
                         </div>
-                        </>
-                            );
-                        })()}
-                        <h4 style={styles.totalVenta}>Subtotal: {formatearMonto(activeCart.total)}</h4>
+                        <div style={styles.subtotalRow}>
+                            <h4 style={{ ...styles.totalVenta, margin: 0 }}>Subtotal: {formatearMonto(activeCart.total)}</h4>
+                            <div style={styles.cartUnitsRow}>
+                                <div style={styles.cartUnitsCircle}>{totalUnidadesCarrito}</div>
+                                <span style={styles.cartUnitsLabel}>Cantidad de productos</span>
+                            </div>
+                        </div>
                         <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
                             <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de pago</label>
                             {formasPago.length === 0 ? (
@@ -2830,14 +2826,15 @@ const styles = {
     activeCartActions: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
     searchRow: { marginTop: '12px', marginBottom: '12px' },
     cartTableWrap: { marginTop: '16px', marginBottom: '8px', overflow: 'hidden' },
-    cartUnitsWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginLeft: 'auto', width: 'fit-content' },
+    subtotalRow: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', margin: '12px 0 4px' },
+    cartUnitsRow: { display: 'flex', alignItems: 'center', gap: '8px' },
     cartUnitsCircle: {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        minWidth: '46px', height: '46px', padding: '0 6px', borderRadius: '50%',
+        minWidth: '34px', height: '34px', padding: '0 4px', borderRadius: '50%',
         backgroundColor: '#eaf7ef', color: '#2f7d4f', border: '1px solid #cdeed9',
-        fontSize: '18px', fontWeight: 700, lineHeight: 1,
+        fontSize: '14px', fontWeight: 700, lineHeight: 1,
     },
-    cartUnitsLabel: { fontSize: '11px', color: '#94a3b8', textAlign: 'center', maxWidth: '100px', lineHeight: 1.25 },
+    cartUnitsLabel: { fontSize: '12px', color: '#94a3b8' },
     arancelWarning: { padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', color: '#92400e', fontSize: '0.9em', margin: 0 },
     redondearRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' },
     redondearLabel: { margin: 0, fontSize: '0.9em', cursor: 'pointer', color: '#475569' },
