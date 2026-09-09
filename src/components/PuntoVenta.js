@@ -2018,6 +2018,11 @@ const PuntoVenta = () => {
                                 0
                             );
                             return (
+                        <>
+                        <div style={styles.cartUnitsWrap}>
+                            <div style={styles.cartUnitsCircle}>{totalUnidadesCarrito}</div>
+                            <span style={styles.cartUnitsLabel}>Cantidad de productos o unidades</span>
+                        </div>
                         <div style={styles.cartTableWrap} className="cart-table-wrap">
                             <div style={styles.tableResponsive} className="table-responsive">
                                 <table style={styles.table} className="table">
@@ -2027,17 +2032,7 @@ const PuntoVenta = () => {
                                             <th style={styles.th}>Cant.</th>
                                             <th style={styles.th}>P. unit.</th>
                                             <th style={styles.th}>Subtotal</th>
-                                            <th style={{ ...styles.th, textAlign: 'right' }}>
-                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                                                    Acciones
-                                                    <span
-                                                        style={styles.cartUnitsBadge}
-                                                        title={`${totalUnidadesCarrito} unidad(es) en el carrito`}
-                                                    >
-                                                        {totalUnidadesCarrito}
-                                                    </span>
-                                                </span>
-                                            </th>
+                                            <th style={styles.th}>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2097,6 +2092,7 @@ const PuntoVenta = () => {
                                 </table>
                             </div>
                         </div>
+                        </>
                             );
                         })()}
                         <h4 style={styles.totalVenta}>Subtotal: {formatearMonto(activeCart.total)}</h4>
@@ -2834,12 +2830,14 @@ const styles = {
     activeCartActions: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
     searchRow: { marginTop: '12px', marginBottom: '12px' },
     cartTableWrap: { marginTop: '16px', marginBottom: '8px', overflow: 'hidden' },
-    cartUnitsBadge: {
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '999px',
+    cartUnitsWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginLeft: 'auto', width: 'fit-content' },
+    cartUnitsCircle: {
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: '46px', height: '46px', padding: '0 6px', borderRadius: '50%',
         backgroundColor: '#eaf7ef', color: '#2f7d4f', border: '1px solid #cdeed9',
-        fontSize: '11px', fontWeight: 700, lineHeight: 1,
+        fontSize: '18px', fontWeight: 700, lineHeight: 1,
     },
+    cartUnitsLabel: { fontSize: '11px', color: '#94a3b8', textAlign: 'center', maxWidth: '100px', lineHeight: 1.25 },
     arancelWarning: { padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', color: '#92400e', fontSize: '0.9em', margin: 0 },
     redondearRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' },
     redondearLabel: { margin: 0, fontSize: '0.9em', cursor: 'pointer', color: '#475569' },
