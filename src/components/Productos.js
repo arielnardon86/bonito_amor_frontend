@@ -910,16 +910,47 @@ const Productos = () => {
         }
     };
 
+    // Cuando el backend detecta que origen y/o destino están vinculados a Tienda
+    // Nube, no transfiere nada todavía y devuelve requiere_confirmacion_tn: true —
+    // acá se le pregunta al usuario si también quiere reflejar el cambio en TN.
+    // Devuelve true/false con la respuesta, o null si el usuario cerró el diálogo
+    // (en ese caso hay que abortar la transferencia por completo).
+    const preguntarSincronizarTN = async (origenVinculado, destinoVinculado) => {
+        const detalle = origenVinculado && destinoVinculado
+            ? 'El producto de origen y el de destino ya están vinculados a Tienda Nube.'
+            : origenVinculado
+                ? 'El producto de origen está vinculado a Tienda Nube.'
+                : 'El producto de destino ya existe vinculado a Tienda Nube.';
+        const result = await Swal.fire({
+            title: '¿Actualizar el stock en Tienda Nube?',
+            text: `${detalle} ¿Querés reflejar también ahí el cambio de stock de esta transferencia?`,
+            icon: 'question',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: 'Sí, actualizar',
+            denyButtonText: 'No, solo local',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#7c3aed',
+        });
+        if (result.isConfirmed) return true;
+        if (result.isDenied) return false;
+        return null;
+    };
+
     const handleTransferirStock = async () => {
         const cantidad = parseInt(cantidadTransferir, 10);
         if (!cantidad || cantidad <= 0 || cantidad > (productoParaTransferir.stock || 0) || !tiendaDestinoTransferir) return;
         setLoadingTransferir(true);
         try {
-            await axios.post(
-                `${BASE_API_ENDPOINT}/api/productos/${productoParaTransferir.id}/transferir-stock/`,
-                { tienda_destino: tiendaDestinoTransferir, cantidad },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const payload = { tienda_destino: tiendaDestinoTransferir, cantidad };
+            const url = `${BASE_API_ENDPOINT}/api/productos/${productoParaTransferir.id}/transferir-stock/`;
+            const headers = { Authorization: `Bearer ${token}` };
+            const { data } = await axios.post(url, payload, { headers });
+            if (data && data.requiere_confirmacion_tn) {
+                const sincronizarTN = await preguntarSincronizarTN(data.origen_vinculado, data.destino_vinculado);
+                if (sincronizarTN === null) { setLoadingTransferir(false); return; }
+                await axios.post(url, { ...payload, sincronizar_tn: sincronizarTN }, { headers });
+            }
             setShowTransferirStockModal(false);
             setProductoParaTransferir(null);
             setTiendaDestinoTransferir('');
@@ -939,11 +970,15 @@ const Productos = () => {
         if (variantes.length === 0 || !tiendaDestinoFamilia) return;
         setLoadingTransferirFamilia(true);
         try {
-            await axios.post(
-                `${BASE_API_ENDPOINT}/api/productos/${familiaParaTransferir.id}/transferir-stock-lote/`,
-                { tienda_destino: tiendaDestinoFamilia, variantes },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const payload = { tienda_destino: tiendaDestinoFamilia, variantes };
+            const url = `${BASE_API_ENDPOINT}/api/productos/${familiaParaTransferir.id}/transferir-stock-lote/`;
+            const headers = { Authorization: `Bearer ${token}` };
+            const { data } = await axios.post(url, payload, { headers });
+            if (data && data.requiere_confirmacion_tn) {
+                const sincronizarTN = await preguntarSincronizarTN(data.origen_vinculado, data.destino_vinculado);
+                if (sincronizarTN === null) { setLoadingTransferirFamilia(false); return; }
+                await axios.post(url, { ...payload, sincronizar_tn: sincronizarTN }, { headers });
+            }
             setShowTransferirFamiliaModal(false);
             setFamiliaParaTransferir(null);
             setTiendaDestinoFamilia('');
