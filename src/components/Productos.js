@@ -7,7 +7,7 @@ import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPencil, faTrash, faPlus, faArrowUp, faRightLeft, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
+import { faPencil, faTrash, faPlus, faArrowUp, faRightLeft, faLayerGroup, faChevronUp, faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import HelpButton from './HelpButton';
 import { resizeLogoToBase64 } from '../utils/resizeLogo';
 
@@ -136,6 +136,7 @@ const Productos = () => {
     const [tiendaDestinoFamilia, setTiendaDestinoFamilia] = useState('');
     const [cantidadesFamilia, setCantidadesFamilia] = useState({});
     const [loadingTransferirFamilia, setLoadingTransferirFamilia] = useState(false);
+    const [moviendoVarianteId, setMoviendoVarianteId] = useState(null);
 
     const generarCodigoDeBarrasEAN13 = () => {
         let code = '779' + Math.floor(100000000 + Math.random() * 900000000).toString();
@@ -991,6 +992,22 @@ const Productos = () => {
         }
     };
 
+    const handleMoverVariante = async (varianteId, direccion) => {
+        setMoviendoVarianteId(varianteId);
+        try {
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/productos/${varianteId}/mover-variante/`,
+                { direccion },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            fetchProductos(currentPageUrl);
+        } catch (err) {
+            setError('Error al reordenar la variante: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+        } finally {
+            setMoviendoVarianteId(null);
+        }
+    };
+
     const handleToggleEtiqueta = (id, isChecked) => {
         setEtiquetasSeleccionadas(prev => {
             const next = { ...prev };
@@ -1836,7 +1853,9 @@ const Productos = () => {
                                             </td>
                                         </tr>
                                         {/* Filas de variantes expandidas */}
-                                        {tieneVars && expandido && producto.variantes.map(v => {
+                                        {tieneVars && expandido && producto.variantes.map((v, vIdx) => {
+                                            const esPrimeraVariante = vIdx === 0;
+                                            const esUltimaVariante = vIdx === producto.variantes.length - 1;
                                             const vPrecio = parseFloat(v.precio) || 0;
                                             const vCosto = parseFloat(v.costo ?? producto.costo) || 0;
                                             // IVA y Rubro no son campos por variante: se heredan del producto padre.
@@ -1955,6 +1974,28 @@ const Productos = () => {
                                                             >
                                                                 <FontAwesomeIcon icon={faRightLeft} />
                                                             </button>
+                                                        )}
+                                                        {user.is_superuser && (
+                                                            <>
+                                                                <button
+                                                                    className="icon-btn"
+                                                                    onClick={() => handleMoverVariante(v.id, 'arriba')}
+                                                                    disabled={esPrimeraVariante || moviendoVarianteId === v.id}
+                                                                    style={{ color: 'white', backgroundColor: '#64748b', opacity: esPrimeraVariante ? 0.4 : 1 }}
+                                                                    data-tooltip="Subir en el orden"
+                                                                >
+                                                                    <FontAwesomeIcon icon={faChevronUp} />
+                                                                </button>
+                                                                <button
+                                                                    className="icon-btn"
+                                                                    onClick={() => handleMoverVariante(v.id, 'abajo')}
+                                                                    disabled={esUltimaVariante || moviendoVarianteId === v.id}
+                                                                    style={{ color: 'white', backgroundColor: '#64748b', opacity: esUltimaVariante ? 0.4 : 1 }}
+                                                                    data-tooltip="Bajar en el orden"
+                                                                >
+                                                                    <FontAwesomeIcon icon={faChevronDown} />
+                                                                </button>
+                                                            </>
                                                         )}
                                                         </div>
                                                     </td>
