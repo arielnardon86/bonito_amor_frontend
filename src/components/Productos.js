@@ -595,7 +595,7 @@ const Productos = () => {
         const costoNum = parseFloat(newProduct.costo);
         const precioNum = parseFloat(newProduct.precio);
         if (!costoNum || !precioNum || precioNum <= 0) return null;
-        return ((precioNum - costoNum) / precioNum * 100).toFixed(1);
+        return ((precioNum - costoNum) / costoNum * 100).toFixed(1);
     })();
     const margenBloqueadoNuevo = margenCalculadoNuevo !== null;
 
@@ -646,7 +646,7 @@ const Productos = () => {
         const costoNum = parseFloat(v.costo);
         const precioNum = parseFloat(v.precio);
         if (!costoNum || !precioNum || precioNum <= 0) return null;
-        return ((precioNum - costoNum) / precioNum * 100).toFixed(1);
+        return ((precioNum - costoNum) / costoNum * 100).toFixed(1);
     };
 
     const handleVarianteImagenChange = async (i, file) => {
@@ -1718,9 +1718,12 @@ const Productos = () => {
                                         const costo = parseFloat(producto.costo) || 0;
                                         const ivaPct = parseFloat(producto.iva_porcentaje) || 0;
                                         const costoConIva = costo * (1 + ivaPct / 100);
-                                        // El margen se calcula contra el costo con IVA (si no hay IVA cargado, es igual al costo sin IVA).
-                                        const margen = precio > 0 && costoConIva > 0 ? ((precio - costoConIva) / precio * 100) : null;
-                                        const margenColor = margen === null ? '#94a3b8' : margen >= 30 ? '#1a6a40' : margen >= 15 ? '#d97706' : '#e25252';
+                                        // % sobre costo (markup), igual criterio que "Margen de ganancia" al cargar el
+                                        // producto y que la edición masiva por rubro (precio = costoConIva * (1+%)) --
+                                        // antes esto calculaba el margen bruto sobre el precio de venta, un número
+                                        // distinto que nunca coincidía con el % que se había cargado.
+                                        const margen = precio > 0 && costoConIva > 0 ? ((precio - costoConIva) / costoConIva * 100) : null;
+                                        const margenColor = margen === null ? '#94a3b8' : margen >= 40 ? '#1a6a40' : margen >= 20 ? '#d97706' : '#e25252';
                                         const tieneVars = producto.variantes && producto.variantes.length > 0;
                                         const expandido = !!expandedVariants[producto.id];
                                         return (
@@ -1893,8 +1896,9 @@ const Productos = () => {
                                             // IVA y Rubro no son campos por variante: se heredan del producto padre.
                                             const vIvaPct = parseFloat(producto.iva_porcentaje) || 0;
                                             const vCostoConIva = vCosto * (1 + vIvaPct / 100);
-                                            const vMargen = vPrecio > 0 && vCosto > 0 ? ((vPrecio - vCosto) / vPrecio * 100) : null;
-                                            const vMargenColor = vMargen === null ? '#94a3b8' : vMargen >= 30 ? '#1a6a40' : vMargen >= 15 ? '#d97706' : '#e25252';
+                                            // % sobre costo con IVA (markup), mismo criterio que la fila del padre.
+                                            const vMargen = vPrecio > 0 && vCostoConIva > 0 ? ((vPrecio - vCostoConIva) / vCostoConIva * 100) : null;
+                                            const vMargenColor = vMargen === null ? '#94a3b8' : vMargen >= 40 ? '#1a6a40' : vMargen >= 20 ? '#d97706' : '#e25252';
                                             return (
                                                 <tr key={v.id} style={{ background: '#f8fafc', borderLeft: '2px solid #a8e6c5' }}>
                                                     <td style={{ ...styles.td, textAlign: 'center' }}>
