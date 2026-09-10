@@ -690,8 +690,9 @@ const PuntoVenta = () => {
             showCustomAlert(product.se_vende_por_peso ? 'Ingresá un peso mayor a 0.' : 'La cantidad debe ser mayor que cero.', 'error');
             return;
         }
-        // Los productos "por peso" no llevan stock (se pesa lo que haya físicamente).
-        if (!product.se_vende_por_peso) {
+        // Los productos "por peso" y los de "precio variable" no llevan stock (se pesa
+        // lo que haya físicamente / no hay una cantidad predefinida para "Varios").
+        if (!product.se_vende_por_peso && !product.precio_variable) {
             if (product.stock === 0) {
                 showCustomAlert('Este producto no tiene stock disponible.', 'error');
                 return;
@@ -714,10 +715,20 @@ const PuntoVenta = () => {
     const [productoPesoPendiente, setProductoPesoPendiente] = useState(null);
     const [gramosIngresados, setGramosIngresados] = useState('');
 
+    // Productos de "precio variable" (ej. "Varios"): no tienen un precio de catálogo
+    // real, así que antes de agregarlos hay que pedirle el precio al usuario.
+    const [productoPrecioVariablePendiente, setProductoPrecioVariablePendiente] = useState(null);
+    const [montoIngresado, setMontoIngresado] = useState('');
+
     const agregarProductoAlCarrito = useCallback((product, quantity = 1) => {
         if (product.se_vende_por_peso) {
             setProductoPesoPendiente(product);
             setGramosIngresados('');
+            return;
+        }
+        if (product.precio_variable) {
+            setProductoPrecioVariablePendiente(product);
+            setMontoIngresado('');
             return;
         }
         handleAddProductoEnVenta(product, quantity);
@@ -732,6 +743,21 @@ const PuntoVenta = () => {
         handleAddProductoEnVenta(productoPesoPendiente, gramos);
         setProductoPesoPendiente(null);
         setGramosIngresados('');
+    };
+
+    const confirmarPrecioYAgregar = () => {
+        const monto = parseFloat(montoIngresado);
+        if (!monto || monto <= 0) {
+            showCustomAlert('Ingresá un precio mayor a 0.', 'error');
+            return;
+        }
+        // Cada confirmación agrega 1 unidad al precio recién cargado. Si ya había una
+        // línea de este producto en el carrito, SalesContext promedia el precio entre
+        // las unidades (un solo precio_unitario por línea de venta) en vez de perder
+        // el precio anterior.
+        handleAddProductoEnVenta({ ...productoPrecioVariablePendiente, precio: monto }, 1);
+        setProductoPrecioVariablePendiente(null);
+        setMontoIngresado('');
     };
 
 
@@ -1994,21 +2020,28 @@ const PuntoVenta = () => {
                     </div>
                 </div>
 
-                {productoSeleccionado && !productoPesoPendiente && (
+                {productoSeleccionado && !productoPesoPendiente && !productoPrecioVariablePendiente && (
                     <div style={styles.foundProductCard} className="found-product-card">
                         <p style={styles.foundProductText}>
-                            <strong>{productoSeleccionado.nombre}</strong> — {formatearMonto(productoSeleccionado.precio)}
-                            {productoSeleccionado.se_vende_por_peso ? ' /kg' : ` · Stock: ${productoSeleccionado.stock}`}
+                            <strong>{productoSeleccionado.nombre}</strong>
+                            {productoSeleccionado.precio_variable ? '' : ` — ${formatearMonto(productoSeleccionado.precio)}`}
+                            {productoSeleccionado.se_vende_por_peso
+                                ? ' /kg'
+                                : productoSeleccionado.precio_variable
+                                    ? ''
+                                    : ` · Stock: ${productoSeleccionado.stock}`}
                         </p>
                         <div style={styles.productActions} className="product-actions">
                             <button
                                 onClick={() => agregarProductoAlCarrito(productoSeleccionado, 1)}
-                                disabled={!productoSeleccionado.se_vende_por_peso && productoSeleccionado.stock === 0}
-                                style={(!productoSeleccionado.se_vende_por_peso && productoSeleccionado.stock === 0) ? styles.disabledButton : styles.addProductButton}
+                                disabled={!productoSeleccionado.se_vende_por_peso && !productoSeleccionado.precio_variable && productoSeleccionado.stock === 0}
+                                style={(!productoSeleccionado.se_vende_por_peso && !productoSeleccionado.precio_variable && productoSeleccionado.stock === 0) ? styles.disabledButton : styles.addProductButton}
                             >
                                 {productoSeleccionado.se_vende_por_peso
                                     ? 'Cargar peso'
-                                    : (productoSeleccionado.stock === 0 ? 'Sin stock' : 'Añadir 1 Ud.')}
+                                    : productoSeleccionado.precio_variable
+                                        ? 'Cargar precio'
+                                        : (productoSeleccionado.stock === 0 ? 'Sin stock' : 'Añadir 1 Ud.')}
                             </button>
                         </div>
                     </div>
@@ -2065,8 +2098,8 @@ const PuntoVenta = () => {
                                                             <span style={styles.quantityText}>{item.quantity}</span>
                                                             <button
                                                                 onClick={() => handleAddProductoEnVenta(item.product, 1)}
-                                                                disabled={item.quantity >= item.product.stock}
-                                                                style={{ ...styles.quantityButton, opacity: item.quantity >= item.product.stock ? 0.4 : 1, cursor: item.quantity >= item.product.stock ? 'not-allowed' : 'pointer' }}
+                                                                disabled={!item.product.precio_variable && item.quantity >= item.product.stock}
+                                                                style={{ ...styles.quantityButton, opacity: (!item.product.precio_variable && item.quantity >= item.product.stock) ? 0.4 : 1, cursor: (!item.product.precio_variable && item.quantity >= item.product.stock) ? 'not-allowed' : 'pointer' }}
                                                                 aria-label={`Aumentar cantidad de ${item.product.nombre}`}
                                                             >+</button>
                                                         </div>
@@ -2521,21 +2554,25 @@ const PuntoVenta = () => {
                                             }
                                             return [product];
                                         }).map(product => (
-                                            <tr key={product.id} style={{ ...styles.tableRow, ...(!product.se_vende_por_peso && product.stock === 0 ? { opacity: 0.5, background: '#f8fafc' } : {}) }}>
+                                            <tr key={product.id} style={{ ...styles.tableRow, ...(!product.se_vende_por_peso && !product.precio_variable && product.stock === 0 ? { opacity: 0.5, background: '#f8fafc' } : {}) }}>
                                                 <td style={styles.td}>
                                                     {product.nombre}
-                                                    {!product.se_vende_por_peso && product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#e25252', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '1px 5px' }}>SIN STOCK</span>}
+                                                    {!product.se_vende_por_peso && !product.precio_variable && product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#e25252', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '1px 5px' }}>SIN STOCK</span>}
                                                 </td>
                                                 {mostrarTalle && <td style={styles.td}>{[product.talle, product.variante2].filter(Boolean).join(' · ') || '-'}</td>}
-                                                <td style={styles.td}>{formatearMonto(product.precio)}{product.se_vende_por_peso ? ' /kg' : ''}</td>
-                                                <td style={styles.td}>{product.se_vende_por_peso ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Por peso</span> : product.stock}</td>
+                                                <td style={styles.td}>{product.precio_variable ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>A cargar</span> : formatearMonto(product.precio)}{product.se_vende_por_peso ? ' /kg' : ''}</td>
+                                                <td style={styles.td}>{product.se_vende_por_peso ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Por peso</span> : product.precio_variable ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Sin límite</span> : product.stock}</td>
                                                 <td style={styles.td}>
                                                     <button
                                                         onClick={() => agregarProductoAlCarrito(product, 1)}
-                                                        disabled={!product.se_vende_por_peso && product.stock === 0}
-                                                        style={(!product.se_vende_por_peso && product.stock === 0) ? styles.disabledButton : styles.addButton}
+                                                        disabled={!product.se_vende_por_peso && !product.precio_variable && product.stock === 0}
+                                                        style={(!product.se_vende_por_peso && !product.precio_variable && product.stock === 0) ? styles.disabledButton : styles.addButton}
                                                     >
-                                                        {product.se_vende_por_peso ? 'Cargar peso' : (product.stock === 0 ? 'Sin Stock' : 'Añadir')}
+                                                        {product.se_vende_por_peso
+                                                            ? 'Cargar peso'
+                                                            : product.precio_variable
+                                                                ? 'Cargar precio'
+                                                                : (product.stock === 0 ? 'Sin Stock' : 'Añadir')}
                                                     </button>
                                                 </td>
                                             </tr>
@@ -2612,6 +2649,32 @@ const PuntoVenta = () => {
                         <div style={styles.modalActions}>
                             <button onClick={confirmarPesoYAgregar} style={styles.modalConfirmButton}>Agregar</button>
                             <button onClick={() => { setProductoPesoPendiente(null); setGramosIngresados(''); }} style={styles.modalCancelButton}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {productoPrecioVariablePendiente && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3 style={{ marginTop: 0 }}>💲 {productoPrecioVariablePendiente.nombre}</h3>
+                        <p style={styles.modalMessage}>Ingresá el precio de esta venta.</p>
+                        <div style={styles.inputGroup}>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                autoFocus
+                                placeholder="Precio"
+                                value={montoIngresado}
+                                onChange={(e) => setMontoIngresado(e.target.value)}
+                                onKeyPress={(e) => { if (e.key === 'Enter') confirmarPrecioYAgregar(); }}
+                                style={styles.inputField}
+                            />
+                        </div>
+                        <div style={styles.modalActions}>
+                            <button onClick={confirmarPrecioYAgregar} style={styles.modalConfirmButton}>Agregar</button>
+                            <button onClick={() => { setProductoPrecioVariablePendiente(null); setMontoIngresado(''); }} style={styles.modalCancelButton}>Cancelar</button>
                         </div>
                     </div>
                 </div>

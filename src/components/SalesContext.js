@@ -95,9 +95,19 @@ export const SalesProvider = ({ children }) => {
         }
 
         if (existingItemIndex > -1) {
-          updatedItems = cart.items.map((item, index) => 
-            index === existingItemIndex 
-              ? { ...item, quantity: item.quantity + quantity }
+          const existingItem = cart.items[existingItemIndex];
+          // "Precio variable" (ej. "Varios"): cada agregado puede traer un precio
+          // distinto (se carga a mano en el POS), así que en vez de ignorarlo como
+          // con el resto de los productos, se promedia contra la línea existente --
+          // no hay otra forma de guardar dos precios distintos en una sola línea de
+          // venta (precio_unitario es uno solo por detalle).
+          const nuevoPrecio = productToAdd.precio_variable
+            ? ((parseFloat(existingItem.product.precio) || 0) * existingItem.quantity + productPrice * quantity)
+              / (existingItem.quantity + quantity)
+            : existingItem.product.precio;
+          updatedItems = cart.items.map((item, index) =>
+            index === existingItemIndex
+              ? { ...item, quantity: item.quantity + quantity, product: { ...item.product, precio: nuevoPrecio } }
               : item
           );
         } else {

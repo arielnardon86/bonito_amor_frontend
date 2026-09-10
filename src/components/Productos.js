@@ -92,6 +92,10 @@ const Productos = () => {
     // Cobro por peso: precio/costo pasan a ser por Kg, no se lleva stock, y en el
     // Punto de Venta se carga el peso en gramos. Excluyente con Variantes.
     const [sePorPeso, setSePorPeso] = useState(false);
+    // Precio variable ("Varios"): no lleva stock, y en el Punto de Venta se carga
+    // el precio a mano en cada venta en vez de usar el de catálogo. Excluyente con
+    // Variantes y con Por peso.
+    const [precioVariable, setPrecioVariable] = useState(false);
     const VARIANTE_VACIA = { talle: '', variante2: '', precio: '', costo: '', stock: '', codigo_barras: '', margen: '', imagen: '' };
     const detalleVariante = v => [v.talle, v.variante2].filter(Boolean).join(' · ');
     const [variantesNuevas, setVariantesNuevas] = useState([{ ...VARIANTE_VACIA }]);
@@ -526,7 +530,8 @@ const Productos = () => {
                     tienda_slug: selectedStoreSlug,
                     talle: null,
                     se_vende_por_peso: sePorPeso,
-                    stock: sePorPeso ? 0 : newProduct.stock,
+                    precio_variable: precioVariable,
+                    stock: (sePorPeso || precioVariable) ? 0 : newProduct.stock,
                 };
                 await axios.post(`${BASE_API_ENDPOINT}/api/productos/`, productToCreate, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -536,6 +541,7 @@ const Productos = () => {
             setNewProduct({ nombre: '', precio: '', costo: '', stock: '', codigo_barras: '', codigo_interno: '', iva_porcentaje: '', rubro: '', proveedor: '', margen: '', imagen: '' });
             setShowNuevoProductoModal(false);
             setTieneVariantes(false);
+            setPrecioVariable(false);
             setSePorPeso(false);
             setVariantesNuevas([{ ...VARIANTE_VACIA }]);
             setBarcodeNombreSugerido('');
@@ -1032,7 +1038,7 @@ const Productos = () => {
         const visibles = stockBajoFilter
             ? productos.filter(p => p.variantes && p.variantes.length > 0
                 ? p.variantes.some(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD)
-                : !p.se_vende_por_peso && (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
+                : !p.se_vende_por_peso && !p.precio_variable && (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
             : productos;
         const seleccionadas = {};
         visibles.forEach(p => { seleccionadas[p.id] = true; });
@@ -1214,7 +1220,7 @@ const Productos = () => {
                                         onClick={() => {
                                             const nuevoValor = !tieneVariantes;
                                             setTieneVariantes(nuevoValor);
-                                            if (nuevoValor) setSePorPeso(false);
+                                            if (nuevoValor) { setSePorPeso(false); setPrecioVariable(false); }
                                             if (!nuevoValor) setVariantesNuevas([{ ...VARIANTE_VACIA }]);
                                         }}
                                         style={{
@@ -1232,7 +1238,7 @@ const Productos = () => {
                                         onClick={() => {
                                             const nuevoValor = !sePorPeso;
                                             setSePorPeso(nuevoValor);
-                                            if (nuevoValor) setTieneVariantes(false);
+                                            if (nuevoValor) { setTieneVariantes(false); setPrecioVariable(false); }
                                         }}
                                         style={{
                                             padding: '0 16px', borderRadius: 8, whiteSpace: 'nowrap',
@@ -1243,6 +1249,24 @@ const Productos = () => {
                                         }}
                                     >
                                         {sePorPeso ? '✓ Por peso' : 'Por peso'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const nuevoValor = !precioVariable;
+                                            setPrecioVariable(nuevoValor);
+                                            if (nuevoValor) { setTieneVariantes(false); setSePorPeso(false); }
+                                        }}
+                                        style={{
+                                            padding: '0 16px', borderRadius: 8, whiteSpace: 'nowrap',
+                                            border: '1.5px solid ' + (precioVariable ? '#5dc87a' : '#e2e8f0'),
+                                            background: precioVariable ? '#e8f5ec' : '#fff',
+                                            color: precioVariable ? '#1a7a3f' : '#475569',
+                                            fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                                        }}
+                                        data-tooltip="Sin stock; el precio se carga en cada venta desde el Punto de Venta"
+                                    >
+                                        {precioVariable ? '✓ Precio variable' : 'Precio variable'}
                                     </button>
                                 </div>
                             </div>
@@ -1296,6 +1320,7 @@ const Productos = () => {
                                     disabled={tieneVariantes}
                                 />
                                 {sePorPeso && <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>En el Punto de Venta se va a cargar el peso en gramos y se calcula solo.</p>}
+                                {precioVariable && <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>Valor de referencia: en el Punto de Venta se va a pedir el precio real en cada venta.</p>}
                             </div>
 
                             <div style={styles.inputGroupModal}>
@@ -1359,15 +1384,15 @@ const Productos = () => {
                             </div>
 
                             <div style={styles.inputGroupModal}>
-                                <label style={{ ...styles.label, color: (tieneVariantes || sePorPeso) ? '#aaa' : undefined }}>Stock</label>
+                                <label style={{ ...styles.label, color: (tieneVariantes || sePorPeso || precioVariable) ? '#aaa' : undefined }}>Stock</label>
                                 <input
                                     type="number"
-                                    value={sePorPeso ? '' : newProduct.stock}
+                                    value={(sePorPeso || precioVariable) ? '' : newProduct.stock}
                                     onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                                    style={{ ...styles.modalInput, background: (tieneVariantes || sePorPeso) ? '#f3f4f6' : undefined, color: (tieneVariantes || sePorPeso) ? '#aaa' : undefined, cursor: (tieneVariantes || sePorPeso) ? 'not-allowed' : undefined }}
-                                    placeholder={sePorPeso ? 'No aplica (se vende por peso)' : undefined}
-                                    required={!tieneVariantes && !sePorPeso}
-                                    disabled={tieneVariantes || sePorPeso}
+                                    style={{ ...styles.modalInput, background: (tieneVariantes || sePorPeso || precioVariable) ? '#f3f4f6' : undefined, color: (tieneVariantes || sePorPeso || precioVariable) ? '#aaa' : undefined, cursor: (tieneVariantes || sePorPeso || precioVariable) ? 'not-allowed' : undefined }}
+                                    placeholder={sePorPeso ? 'No aplica (se vende por peso)' : precioVariable ? 'No aplica (precio variable)' : undefined}
+                                    required={!tieneVariantes && !sePorPeso && !precioVariable}
+                                    disabled={tieneVariantes || sePorPeso || precioVariable}
                                 />
                             </div>
 
@@ -1611,7 +1636,7 @@ const Productos = () => {
                             if (p.variantes && p.variantes.length > 0) {
                                 return acc + p.variantes.filter(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD).length;
                             }
-                            if (p.se_vende_por_peso) return acc;
+                            if (p.se_vende_por_peso || p.precio_variable) return acc;
                             return acc + ((p.stock || 0) <= STOCK_BAJO_THRESHOLD ? 1 : 0);
                         }, 0);
                         return stockBajoCount > 0 ? (
@@ -1686,7 +1711,7 @@ const Productos = () => {
                                     {(stockBajoFilter
                                         ? productos.filter(p => p.variantes && p.variantes.length > 0
                                             ? p.variantes.some(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD)
-                                            : !p.se_vende_por_peso && (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
+                                            : !p.se_vende_por_peso && !p.precio_variable && (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
                                         : productos
                                     ).map(producto => {
                                         const precio = parseFloat(producto.precio) || 0;
@@ -1700,7 +1725,7 @@ const Productos = () => {
                                         const expandido = !!expandedVariants[producto.id];
                                         return (
                                         <React.Fragment key={producto.id}>
-                                        <tr style={(!tieneVars && !producto.se_vende_por_peso && producto.stock <= STOCK_BAJO_THRESHOLD) ? { background: '#fef9ec' } : tieneVars ? { background: '#f0faf5' } : {}}>
+                                        <tr style={(!tieneVars && !producto.se_vende_por_peso && !producto.precio_variable && producto.stock <= STOCK_BAJO_THRESHOLD) ? { background: '#fef9ec' } : tieneVars ? { background: '#f0faf5' } : {}}>
                                             <td style={{ ...styles.td, textAlign: 'center' }}>
                                                 <input
                                                     type="checkbox"
@@ -1743,6 +1768,11 @@ const Productos = () => {
                                                         POR PESO
                                                     </span>
                                                 )}
+                                                {producto.precio_variable && (
+                                                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#0f766e', background: '#ccfbf1', borderRadius: 8, padding: '1px 7px' }}>
+                                                        PRECIO VARIABLE
+                                                    </span>
+                                                )}
                                                 {producto.ml_stock_full && (
                                                     <span
                                                         title="Stock Full: lo repone y despacha Mercado Libre, no depende de tu depósito"
@@ -1769,14 +1799,16 @@ const Productos = () => {
                                             <td style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
                                                 {tieneVars ? '—' : margen !== null ? `${margen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                             </td>
-                                            <td style={{ ...styles.td, color: (!tieneVars && !producto.se_vende_por_peso && producto.stock <= STOCK_BAJO_THRESHOLD) ? '#e25252' : undefined, fontWeight: (!tieneVars && !producto.se_vende_por_peso && producto.stock <= STOCK_BAJO_THRESHOLD) ? 700 : undefined }}>
+                                            <td style={{ ...styles.td, color: (!tieneVars && !producto.se_vende_por_peso && !producto.precio_variable && producto.stock <= STOCK_BAJO_THRESHOLD) ? '#e25252' : undefined, fontWeight: (!tieneVars && !producto.se_vende_por_peso && !producto.precio_variable && producto.stock <= STOCK_BAJO_THRESHOLD) ? 700 : undefined }}>
                                                 {tieneVars
                                                     ? <span style={{ color: '#475569', fontSize: 12 }}>
                                                         {producto.variantes.reduce((s, v) => s + (v.stock || 0), 0)} total
                                                       </span>
                                                     : producto.se_vende_por_peso
                                                         ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Por peso</span>
-                                                        : <>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</>
+                                                        : producto.precio_variable
+                                                            ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Sin límite</span>
+                                                            : <>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</>
                                                 }
                                             </td>
                                             <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
@@ -2053,10 +2085,26 @@ const Productos = () => {
                                     onChange={(e) => setEditProduct({
                                         ...editProduct,
                                         se_vende_por_peso: e.target.checked,
+                                        precio_variable: e.target.checked ? false : editProduct.precio_variable,
                                         stock: e.target.checked ? 0 : editProduct.stock,
                                     })}
                                 />
                                 Se vende por peso (precio por Kg, sin stock)
+                            </label>
+                        </div>
+                        <div style={styles.inputGroupModal}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={!!editProduct.precio_variable}
+                                    onChange={(e) => setEditProduct({
+                                        ...editProduct,
+                                        precio_variable: e.target.checked,
+                                        se_vende_por_peso: e.target.checked ? false : editProduct.se_vende_por_peso,
+                                        stock: e.target.checked ? 0 : editProduct.stock,
+                                    })}
+                                />
+                                Precio variable (se carga en cada venta, sin stock)
                             </label>
                         </div>
                         <div style={styles.inputGroupModal}>
@@ -2067,6 +2115,7 @@ const Productos = () => {
                                 onChange={(e) => setEditProduct({ ...editProduct, precio: e.target.value })}
                                 style={styles.modalInput}
                             />
+                            {editProduct.precio_variable && <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>Valor de referencia: en el Punto de Venta se va a pedir el precio real en cada venta.</p>}
                         </div>
                         {/* NUEVO CAMPO EN EL MODAL */}
                         <div style={styles.inputGroupModal}>
@@ -2079,14 +2128,14 @@ const Productos = () => {
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
-                            <label style={{ ...styles.label, color: editProduct.se_vende_por_peso ? '#aaa' : undefined }}>Stock:</label>
+                            <label style={{ ...styles.label, color: (editProduct.se_vende_por_peso || editProduct.precio_variable) ? '#aaa' : undefined }}>Stock:</label>
                             <input
                                 type="number"
-                                value={editProduct.se_vende_por_peso ? '' : editProduct.stock}
+                                value={(editProduct.se_vende_por_peso || editProduct.precio_variable) ? '' : editProduct.stock}
                                 onChange={(e) => setEditProduct({ ...editProduct, stock: e.target.value })}
-                                style={{ ...styles.modalInput, background: editProduct.se_vende_por_peso ? '#f3f4f6' : undefined, cursor: editProduct.se_vende_por_peso ? 'not-allowed' : undefined }}
-                                placeholder={editProduct.se_vende_por_peso ? 'No aplica (se vende por peso)' : undefined}
-                                disabled={editProduct.se_vende_por_peso}
+                                style={{ ...styles.modalInput, background: (editProduct.se_vende_por_peso || editProduct.precio_variable) ? '#f3f4f6' : undefined, cursor: (editProduct.se_vende_por_peso || editProduct.precio_variable) ? 'not-allowed' : undefined }}
+                                placeholder={editProduct.se_vende_por_peso ? 'No aplica (se vende por peso)' : editProduct.precio_variable ? 'No aplica (precio variable)' : undefined}
+                                disabled={editProduct.se_vende_por_peso || editProduct.precio_variable}
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
