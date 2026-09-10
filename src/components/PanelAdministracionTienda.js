@@ -1682,8 +1682,11 @@ Script.complete();
                                                 onChange={handleUserFormChange}
                                                 style={styles.checkbox}
                                             />
-                                            Habilitar cierre de caja (turno)
+                                            Cierre de caja obligatorio
                                         </label>
+                                        <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0 24px' }}>
+                                            Va a tener que abrir su turno de caja antes de poder cobrar (sin excepción por su rol). Cualquier usuario puede abrir caja igual, tenga esto tildado o no.
+                                        </p>
                                     </div>
                                 </div>
                                 <div style={styles.formActions} className="panel-admin-form-actions">

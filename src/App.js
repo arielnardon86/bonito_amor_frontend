@@ -107,7 +107,7 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
   }, [isAuthenticated, selectedStoreSlug, token]);
 
   const handleLogout = async () => {
-    if (user?.cierre_caja_habilitado && !user?.is_supervisor && !user?.is_superuser && token && selectedStoreSlug) {
+    if (user?.cierre_caja_habilitado && token && selectedStoreSlug) {
       try {
         const res = await axios.get(`${BASE_API_URL}/api/cierre-caja/activo/`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -598,7 +598,6 @@ const AppContent = () => {
 
   const verificarCierreActivo = useCallback(async () => {
     if (!token || !selectedStoreSlug || !user?.cierre_caja_habilitado) return;
-    if (user?.is_supervisor || user?.is_superuser) return;
     try {
       const res = await axios.get(`${BASE_API_URL}/api/cierre-caja/activo/`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -614,8 +613,7 @@ const AppContent = () => {
   }, [token, selectedStoreSlug, user]);
 
   useEffect(() => {
-    if (!loading && isAuthenticated && selectedStoreSlug && user?.cierre_caja_habilitado
-        && !user?.is_supervisor && !user?.is_superuser) {
+    if (!loading && isAuthenticated && selectedStoreSlug && user?.cierre_caja_habilitado) {
       verificarCierreActivo();
     }
   }, [loading, isAuthenticated, selectedStoreSlug, user, verificarCierreActivo]);
@@ -810,11 +808,9 @@ const AppContent = () => {
             <p style={{ color: '#475569', fontSize: 14, marginBottom: 4 }}>
               Ingresá el cambio inicial en efectivo con el que comenzás el turno.
             </p>
-            {!user?.is_superuser && (
-              <p style={{ color: '#c53030', fontSize: 12, marginBottom: 16, fontWeight: 600 }}>
-                Este paso es obligatorio. Si no tenés efectivo, ingresá 0.
-              </p>
-            )}
+            <p style={{ color: '#c53030', fontSize: 12, marginBottom: 16, fontWeight: 600 }}>
+              Este paso es obligatorio. Si no tenés efectivo, ingresá 0.
+            </p>
             {tiendasAutorizadas?.length > 1 && (
               <div style={{ marginBottom: 16, textAlign: 'left' }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>
@@ -849,22 +845,11 @@ const AppContent = () => {
               onKeyDown={e => e.key === 'Enter' && handleConfirmarCambioInicial()}
             />
             <div style={{ display: 'flex', gap: 10 }}>
-              {(user?.is_superuser || user?.is_supervisor) && (
-                <button
-                  onClick={() => { setMostrarModalCambioInicial(false); setCambioInicialInput(''); }}
-                  disabled={guardandoCambioInicial}
-                  style={{
-                    flex: 1, padding: '12px', borderRadius: 8, border: '1px solid #e2e8f0',
-                    background: '#f1f5f9', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: 14,
-                  }}>
-                  Omitir
-                </button>
-              )}
               <button
                 onClick={handleConfirmarCambioInicial}
                 disabled={guardandoCambioInicial}
                 style={{
-                  flex: 2, padding: '12px', borderRadius: 8, border: 'none',
+                  flex: 1, padding: '12px', borderRadius: 8, border: 'none',
                   background: '#3b9ede', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
                 }}>
                 {guardandoCambioInicial ? 'Guardando...' : 'Iniciar turno'}
