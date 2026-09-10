@@ -685,6 +685,17 @@ const PuntoVenta = () => {
             showCustomAlert('Por favor, selecciona o crea un carrito antes de añadir productos.', 'info');
             return;
         }
+        // Cierre de caja obligatorio: un administrador puede omitir el aviso de
+        // "Inicio de turno" para seguir navegando otras secciones, pero acá -- en el
+        // momento real de agregar algo al carrito -- se lo frena igual y se lo manda
+        // a abrir su caja. El backend valida esto mismo al procesar la venta; esto es
+        // solo para no dejarlo armar un carrito entero para recién ahí enterarse.
+        if (user?.cierre_caja_habilitado && (!cierreActivo || cierreActivo.estado === 'CERRADO')) {
+            showCustomAlert('Tenés el cierre de caja obligatorio activado: abrí tu caja antes de agregar productos.', 'error');
+            setCambioAbrirInput('');
+            setMostrarModalAbrirCaja(true);
+            return;
+        }
         if (quantity <= 0) {
             showCustomAlert(product.se_vende_por_peso ? 'Ingresá un peso mayor a 0.' : 'La cantidad debe ser mayor que cero.', 'error');
             return;
@@ -707,7 +718,7 @@ const PuntoVenta = () => {
         setBusquedaProducto('');
         setProductoSeleccionado(null);
         showCustomAlert('Producto añadido al carrito.', 'success');
-    }, [activeCart, addProductToCart]);
+    }, [activeCart, addProductToCart, user, cierreActivo]);
 
     // Productos "por peso": antes de agregarlos hay que pedir el peso en gramos
     // (no tiene sentido un botón "+1" ni asumir quantity=1 para algo que se pesa).

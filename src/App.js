@@ -808,9 +808,17 @@ const AppContent = () => {
             <p style={{ color: '#475569', fontSize: 14, marginBottom: 4 }}>
               Ingresá el cambio inicial en efectivo con el que comenzás el turno.
             </p>
-            <p style={{ color: '#c53030', fontSize: 12, marginBottom: 16, fontWeight: 600 }}>
-              Este paso es obligatorio. Si no tenés efectivo, ingresá 0.
-            </p>
+            {user?.is_superuser ? (
+              <p style={{ color: '#475569', fontSize: 12, marginBottom: 16 }}>
+                Podés omitir este paso para seguir navegando otras secciones, pero
+                no vas a poder agregar productos ni cobrar en Punto de Venta hasta
+                que abras la caja.
+              </p>
+            ) : (
+              <p style={{ color: '#c53030', fontSize: 12, marginBottom: 16, fontWeight: 600 }}>
+                Este paso es obligatorio. Si no tenés efectivo, ingresá 0.
+              </p>
+            )}
             {tiendasAutorizadas?.length > 1 && (
               <div style={{ marginBottom: 16, textAlign: 'left' }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>
@@ -845,11 +853,22 @@ const AppContent = () => {
               onKeyDown={e => e.key === 'Enter' && handleConfirmarCambioInicial()}
             />
             <div style={{ display: 'flex', gap: 10 }}>
+              {user?.is_superuser && (
+                <button
+                  onClick={() => { setMostrarModalCambioInicial(false); setCambioInicialInput(''); }}
+                  disabled={guardandoCambioInicial}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 8, border: '1px solid #e2e8f0',
+                    background: '#f1f5f9', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                  }}>
+                  Omitir
+                </button>
+              )}
               <button
                 onClick={handleConfirmarCambioInicial}
                 disabled={guardandoCambioInicial}
                 style={{
-                  flex: 1, padding: '12px', borderRadius: 8, border: 'none',
+                  flex: user?.is_superuser ? 2 : 1, padding: '12px', borderRadius: 8, border: 'none',
                   background: '#3b9ede', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 15,
                 }}>
                 {guardandoCambioInicial ? 'Guardando...' : 'Iniciar turno'}
