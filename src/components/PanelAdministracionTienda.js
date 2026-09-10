@@ -107,7 +107,7 @@ const notificacionesSoportadas = () =>
     typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
 
 const PanelAdministracionTienda = () => {
-    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas, logout, renombrarTiendaLocal } = useAuth();
+    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas, logout, renombrarTiendaLocal, updateUser } = useAuth();
     const navigate = useNavigate();
     const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken, error: notificationError } = useNotifications();
     const [searchParams] = useSearchParams();
@@ -857,7 +857,7 @@ Script.complete();
 
     const handleUpdateUser = async (e) => {
         e.preventDefault();
-        
+
         try {
             await axios.patch(`${BASE_API_ENDPOINT}/api/users/${editingUser.id}/`, {
                 username: userForm.username,
@@ -872,7 +872,20 @@ Script.complete();
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
+            // Si el admin edita su propia cuenta, el objeto `user` en memoria (derivado
+            // del JWT) queda desactualizado hasta el próximo login -- sin esto, destildar
+            // "Cierre de caja obligatorio" para uno mismo no tenía efecto real hasta
+            // cerrar sesión y volver a entrar (el modal de abrir caja seguía apareciendo).
+            if (String(editingUser.id) === String(user?.id)) {
+                updateUser({
+                    is_staff: userForm.is_staff,
+                    is_superuser: userForm.is_superuser,
+                    is_supervisor: userForm.is_supervisor,
+                    cierre_caja_habilitado: userForm.cierre_caja_habilitado,
+                });
+            }
+
             Swal.fire({
                 icon: 'success',
                 title: 'Éxito',
