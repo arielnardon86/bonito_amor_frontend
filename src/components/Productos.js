@@ -2797,6 +2797,12 @@ const Productos = () => {
                                 ))}
                             </tbody>
                         </table>
+                        <div style={styles.variantCountRow}>
+                            <div style={styles.variantCountCircle}>
+                                {Object.values(cantidadesFamilia).reduce((acc, c) => acc + (parseInt(c, 10) || 0), 0)}
+                            </div>
+                            <span style={styles.variantCountLabel}>Cantidad de productos</span>
+                        </div>
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
                             <button
                                 onClick={() => { setShowTransferirFamiliaModal(false); setFamiliaParaTransferir(null); setTiendaDestinoFamilia(''); setCantidadesFamilia({}); }}
@@ -2910,6 +2916,14 @@ const styles = {
     modalActions: { display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' },
     modalConfirmButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
     modalCancelButton: { padding: '10px 15px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    variantCountRow: { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, margin: '4px 0 12px' },
+    variantCountCircle: {
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: 34, height: 34, padding: '0 4px', borderRadius: '50%',
+        backgroundColor: '#eaf7ef', color: '#2f7d4f', border: '1px solid #cdeed9',
+        fontSize: 14, fontWeight: 700, lineHeight: 1,
+    },
+    variantCountLabel: { fontSize: 12, color: '#94a3b8' },
     accessDeniedMessage: { color: '#e25252', textAlign: 'center', fontWeight: 'bold' },
     noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },
 };
