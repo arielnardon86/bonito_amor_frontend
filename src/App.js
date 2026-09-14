@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -457,6 +457,10 @@ const AppContent = () => {
   const [unlocking, setUnlocking] = useState(false);
   const [suscripcionPendiente, setSuscripcionPendiente] = useState(false);
   const [estadoSuscripcion, setEstadoSuscripcion] = useState('');
+  // MP tiene un cobro sin resolver pero la tienda sigue activa (no se le saca
+  // acceso, a diferencia de gracia/pausada) -- solo se le avisa al ingresar, una
+  // vez por sesión (ref en vez de state para no disparar el efecto de nuevo).
+  const pagoAtrasadoAvisadoRef = useRef(false);
   const [cuitTienda, setCuitTienda] = useState('');
   const [cuitInput, setCuitInput] = useState('');
   const [planPendiente, setPlanPendiente] = useState('');
@@ -631,6 +635,20 @@ const AppContent = () => {
         setEstadoSuscripcion(r.data.estado || '');
         setCuitTienda(r.data.cuit || '');
         setPlanPendiente(r.data.plan || '');
+
+        // Aviso de pago atrasado en MP: la tienda sigue con acceso pleno (no es
+        // lo mismo que "bloqueada" arriba), solo se le informa al ingresar.
+        if (r.data.pago_atrasado && !pagoAtrasadoAvisadoRef.current) {
+          pagoAtrasadoAvisadoRef.current = true;
+          Swal.fire({
+            icon: 'warning',
+            title: 'Tenés un pago pendiente',
+            html: 'Mercado Pago no pudo cobrar tu suscripción y está reintentando. '
+              + 'Verificá tu método de pago para evitar que se suspenda tu cuenta.',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#f59e0b',
+          });
+        }
       }).catch(() => {});
     }
   }, [loading, isAuthenticated, selectedStoreSlug, token]);
