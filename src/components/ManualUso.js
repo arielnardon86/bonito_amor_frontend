@@ -234,7 +234,7 @@ const ManualUso = () => {
                             <li><strong>Imprimir etiquetas con código de barras</strong> — uno, varios, o "Todos" los de la página, en hoja A4 o impresora térmica.</li>
                             <li><strong>Mostrar en la etiqueta el precio con descuento por pago en efectivo</strong>, destacado en un recuadro debajo del precio de lista. Usa el % que configures en Panel de Administración, pero lo podés tildar/destildar y ajustar antes de cada impresión.</li>
                             <li><strong>Editar en masa por rubro</strong>: IVA o precio de todo un rubro de una vez.</li>
-                            <li><strong>Vender por peso</strong>: tildá "Se vende por peso (precio por Kg, sin stock)" para fiambres, carnes u otros productos a granel — el precio y costo se cargan por kilogramo, no se lleva stock (no aplica: se pesa lo que haya físicamente), y en Punto de Venta se carga el peso en gramos en vez de una cantidad de unidades.</li>
+                            <li><strong>Venta fraccionada (por peso o por metro)</strong>: tildá "Venta fraccionada" y elegí la unidad (Kilogramo o Metro) para fiambres, carnes, cables, sogas u otros productos que se vendan a granel o a medida — el precio y costo se cargan por esa unidad, no se lleva stock (no aplica: se pesa o se corta lo que haya físicamente), y en Punto de Venta se carga la cantidad en gramos o centímetros en vez de una cantidad de unidades.</li>
                             <li><strong>Vincular o publicar productos en Tienda Nube</strong> de forma manual y selectiva (solo si tu tienda tiene la integración conectada) — ver el detalle abajo.</li>
                         </ul>
 

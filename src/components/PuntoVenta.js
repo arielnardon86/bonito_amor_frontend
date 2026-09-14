@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
-import { useSales, calcularSubtotalItem } from './SalesContext';
+import { useSales, calcularSubtotalItem, DIVISOR_UNIDAD_FRACCIONADA } from './SalesContext';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
 import HelpButton from './HelpButton';
@@ -25,6 +25,14 @@ const normalizeApiUrl = (url) => {
     return normalizedUrl;
 };
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
+
+// Venta fraccionada: la unidad "grande" es la del precio de catálogo, la
+// "chica" es la que se carga como cantidad acá en el POS.
+const UNIDADES_FRACCIONADAS = {
+    KG: { abrev: 'kg', chicaLabel: 'Peso en gramos', chicaSufijo: 'g', accion: 'Cargar peso', articuloCantidad: 'un peso' },
+    METRO: { abrev: 'm', chicaLabel: 'Longitud en centímetros', chicaSufijo: 'cm', accion: 'Cargar medida', articuloCantidad: 'una longitud' },
+};
+const unidadDe = (product) => UNIDADES_FRACCIONADAS[product?.unidad_fraccionada] || UNIDADES_FRACCIONADAS.KG;
 
 const PuntoVenta = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
@@ -718,7 +726,12 @@ const PuntoVenta = () => {
             return;
         }
         if (quantity <= 0) {
-            showCustomAlert(product.se_vende_por_peso ? 'Ingresá un peso mayor a 0.' : 'La cantidad debe ser mayor que cero.', 'error');
+            showCustomAlert(
+                product.se_vende_por_peso
+                    ? `Ingresá ${unidadDe(product).articuloCantidad} mayor a 0.`
+                    : 'La cantidad debe ser mayor que cero.',
+                'error'
+            );
             return;
         }
         // Los productos "por peso" y los de "precio variable" no llevan stock (se pesa
@@ -741,8 +754,9 @@ const PuntoVenta = () => {
         showCustomAlert('Producto añadido al carrito.', 'success');
     }, [activeCart, addProductToCart, user, cierreActivo]);
 
-    // Productos "por peso": antes de agregarlos hay que pedir el peso en gramos
-    // (no tiene sentido un botón "+1" ni asumir quantity=1 para algo que se pesa).
+    // Venta fraccionada (por peso o por metro): antes de agregarlos hay que pedir
+    // la cantidad en la unidad chica (gramos o centímetros) -- no tiene sentido un
+    // botón "+1" ni asumir quantity=1 para algo que se pesa o se corta a medida.
     const [productoPesoPendiente, setProductoPesoPendiente] = useState(null);
     const [gramosIngresados, setGramosIngresados] = useState('');
 
@@ -768,7 +782,7 @@ const PuntoVenta = () => {
     const confirmarPesoYAgregar = () => {
         const gramos = parseInt(gramosIngresados, 10);
         if (!gramos || gramos <= 0) {
-            showCustomAlert('Ingresá un peso en gramos mayor a 0.', 'error');
+            showCustomAlert(`Ingresá ${unidadDe(productoPesoPendiente).articuloCantidad} mayor a 0.`, 'error');
             return;
         }
         handleAddProductoEnVenta(productoPesoPendiente, gramos);
@@ -1184,11 +1198,12 @@ const PuntoVenta = () => {
                         detalles: activeCart.items.map(item => ({
                             producto: item.product.id,
                             cantidad: item.quantity,
-                            // "Por peso": el backend recalcula precio_unitario como precio/kg ÷ 1000
-                            // de todas formas (nunca confía en esto para ese caso), pero se manda
-                            // ya coherente para que un eventual preview no muestre otro número.
+                            // Venta fraccionada: el backend recalcula precio_unitario a partir del
+                            // precio por Kg/Metro de todas formas (nunca confía en esto para ese
+                            // caso), pero se manda ya coherente para que un eventual preview no
+                            // muestre otro número.
                             precio_unitario: item.product.se_vende_por_peso
-                                ? parseFloat(item.product.precio) / 1000
+                                ? parseFloat(item.product.precio) / (DIVISOR_UNIDAD_FRACCIONADA[item.product.unidad_fraccionada] || 1000)
                                 : parseFloat(item.product.precio),
                         })),
                     };
@@ -2055,7 +2070,7 @@ const PuntoVenta = () => {
                             <strong>{productoSeleccionado.nombre}</strong>
                             {productoSeleccionado.precio_variable ? '' : ` — ${formatearMonto(productoSeleccionado.precio)}`}
                             {productoSeleccionado.se_vende_por_peso
-                                ? ' /kg'
+                                ? ` /${unidadDe(productoSeleccionado).abrev}`
                                 : productoSeleccionado.precio_variable
                                     ? ''
                                     : ` · Stock: ${productoSeleccionado.stock}`}
@@ -2067,7 +2082,7 @@ const PuntoVenta = () => {
                                 style={(!productoSeleccionado.se_vende_por_peso && !productoSeleccionado.precio_variable && productoSeleccionado.stock === 0) ? styles.disabledButton : styles.addProductButton}
                             >
                                 {productoSeleccionado.se_vende_por_peso
-                                    ? 'Cargar peso'
+                                    ? unidadDe(productoSeleccionado).accion
                                     : productoSeleccionado.precio_variable
                                         ? 'Cargar precio'
                                         : (productoSeleccionado.stock === 0 ? 'Sin stock' : 'Añadir 1 Ud.')}
@@ -2117,9 +2132,9 @@ const PuntoVenta = () => {
                                                                     setProductQuantityInCart(activeCartId, item.product.id, isNaN(gramos) ? 0 : gramos);
                                                                 }}
                                                                 style={{ ...styles.quantityText, width: 70, textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 2px' }}
-                                                                aria-label={`Gramos de ${item.product.nombre}`}
+                                                                aria-label={`${unidadDe(item.product).chicaLabel} de ${item.product.nombre}`}
                                                             />
-                                                            <span style={{ fontSize: 12, color: '#94a3b8' }}>g</span>
+                                                            <span style={{ fontSize: 12, color: '#94a3b8' }}>{unidadDe(item.product).chicaSufijo}</span>
                                                         </div>
                                                     ) : (
                                                         <div style={styles.quantityControl} className="quantity-control">
@@ -2134,7 +2149,7 @@ const PuntoVenta = () => {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td style={styles.td}>{formatearMonto(item.product.precio)}{item.product.se_vende_por_peso ? ' /kg' : ''}</td>
+                                                <td style={styles.td}>{formatearMonto(item.product.precio)}{item.product.se_vende_por_peso ? ` /${unidadDe(item.product).abrev}` : ''}</td>
                                                 <td style={styles.td}>{formatearMonto(calcularSubtotalItem(item))}</td>
                                                 <td style={styles.td}>
                                                     <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} style={styles.removeButton}>
@@ -2591,8 +2606,8 @@ const PuntoVenta = () => {
                                                     {!product.se_vende_por_peso && !product.precio_variable && product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#e25252', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '1px 5px' }}>SIN STOCK</span>}
                                                 </td>
                                                 {mostrarTalle && <td style={styles.td}>{[product.talle, product.variante2].filter(Boolean).join(' · ') || '-'}</td>}
-                                                <td style={styles.td}>{product.precio_variable ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>A cargar</span> : formatearMonto(product.precio)}{product.se_vende_por_peso ? ' /kg' : ''}</td>
-                                                <td style={styles.td}>{product.se_vende_por_peso ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Por peso</span> : product.precio_variable ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Sin límite</span> : product.stock}</td>
+                                                <td style={styles.td}>{product.precio_variable ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>A cargar</span> : formatearMonto(product.precio)}{product.se_vende_por_peso ? ` /${unidadDe(product).abrev}` : ''}</td>
+                                                <td style={styles.td}>{product.se_vende_por_peso ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Por {unidadDe(product).abrev}</span> : product.precio_variable ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Sin límite</span> : product.stock}</td>
                                                 <td style={styles.td}>
                                                     <button
                                                         onClick={() => agregarProductoAlCarrito(product, 1)}
@@ -2600,7 +2615,7 @@ const PuntoVenta = () => {
                                                         style={(!product.se_vende_por_peso && !product.precio_variable && product.stock === 0) ? styles.disabledButton : styles.addButton}
                                                     >
                                                         {product.se_vende_por_peso
-                                                            ? 'Cargar peso'
+                                                            ? unidadDe(product).accion
                                                             : product.precio_variable
                                                                 ? 'Cargar precio'
                                                                 : (product.stock === 0 ? 'Sin Stock' : 'Añadir')}
@@ -2656,16 +2671,16 @@ const PuntoVenta = () => {
             {productoPesoPendiente && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
-                        <h3 style={{ marginTop: 0 }}>⚖️ {productoPesoPendiente.nombre}</h3>
+                        <h3 style={{ marginTop: 0 }}>{unidadDe(productoPesoPendiente).abrev === 'm' ? '📏' : '⚖️'} {productoPesoPendiente.nombre}</h3>
                         <p style={styles.modalMessage}>
-                            {formatearMonto(productoPesoPendiente.precio)} /kg
+                            {formatearMonto(productoPesoPendiente.precio)} /{unidadDe(productoPesoPendiente).abrev}
                         </p>
                         <div style={styles.inputGroup}>
                             <input
                                 type="number"
                                 min="1"
                                 autoFocus
-                                placeholder="Peso en gramos"
+                                placeholder={unidadDe(productoPesoPendiente).chicaLabel}
                                 value={gramosIngresados}
                                 onChange={(e) => setGramosIngresados(e.target.value)}
                                 onKeyPress={(e) => { if (e.key === 'Enter') confirmarPesoYAgregar(); }}
@@ -2674,7 +2689,7 @@ const PuntoVenta = () => {
                         </div>
                         {gramosIngresados && !isNaN(parseInt(gramosIngresados, 10)) && (
                             <p style={{ fontSize: 13, color: '#475569', marginTop: -6, marginBottom: 12 }}>
-                                Total: <strong>{formatearMonto((parseFloat(productoPesoPendiente.precio) / 1000) * parseInt(gramosIngresados, 10))}</strong>
+                                Total: <strong>{formatearMonto((parseFloat(productoPesoPendiente.precio) / (DIVISOR_UNIDAD_FRACCIONADA[productoPesoPendiente.unidad_fraccionada] || 1000)) * parseInt(gramosIngresados, 10))}</strong>
                             </p>
                         )}
                         <div style={styles.modalActions}>

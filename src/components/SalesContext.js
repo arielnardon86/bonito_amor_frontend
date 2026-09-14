@@ -4,13 +4,17 @@ import { v4 as uuidv4 } from 'uuid';
 
 const SalesContext = createContext();
 
-// Productos "por peso": 'precio' es por KILOGRAMO y 'quantity' del ítem del
-// carrito son los GRAMOS cargados -- el subtotal es precio/1000 * gramos, no
-// precio * quantity directo como el resto de los productos.
+// Venta fraccionada: 'precio' es por Kg o por Metro (unidad_fraccionada) y
+// 'quantity' del ítem del carrito es la unidad "chica" cargada -- gramos para
+// Kg, centímetros para Metro -- así que el subtotal es precio/divisor *
+// cantidad, no precio * quantity directo como el resto de los productos.
+export const DIVISOR_UNIDAD_FRACCIONADA = { KG: 1000, METRO: 100 };
+
 export const calcularSubtotalItem = (item) => {
   const precio = parseFloat(item.product.precio) || 0;
   if (item.product.se_vende_por_peso) {
-    return (precio / 1000) * item.quantity;
+    const divisor = DIVISOR_UNIDAD_FRACCIONADA[item.product.unidad_fraccionada] || 1000;
+    return (precio / divisor) * item.quantity;
   }
   return precio * item.quantity;
 };

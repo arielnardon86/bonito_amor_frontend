@@ -29,6 +29,12 @@ const normalizeApiUrl = (url) => {
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
+// Venta fraccionada: la unidad "grande" es la que se usa para precio/costo, la
+// "chica" es la que se carga como cantidad en el Punto de Venta.
+const UNIDADES_FRACCIONADAS = {
+    KG: { nombre: 'Kilogramo', abrev: 'Kg', chica: 'gramos' },
+    METRO: { nombre: 'Metro', abrev: 'Metro', chica: 'centímetros' },
+};
 
 const Productos = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas } = useAuth();
@@ -89,9 +95,12 @@ const Productos = () => {
     const [guardandoMasivo, setGuardandoMasivo] = useState(false);
     const [descargandoExcel, setDescargandoExcel] = useState(false);
     const [tieneVariantes, setTieneVariantes] = useState(false);
-    // Cobro por peso: precio/costo pasan a ser por Kg, no se lleva stock, y en el
-    // Punto de Venta se carga el peso en gramos. Excluyente con Variantes.
+    // Venta fraccionada: precio/costo pasan a ser por Kg o por Metro (según
+    // unidadFraccionada), no se lleva stock, y en el Punto de Venta se carga la
+    // cantidad en la unidad chica correspondiente (gramos o centímetros) en vez de
+    // una cantidad de unidades. Excluyente con Variantes.
     const [sePorPeso, setSePorPeso] = useState(false);
+    const [unidadFraccionada, setUnidadFraccionada] = useState('KG');
     // Precio variable ("Varios"): no lleva stock, y en el Punto de Venta se carga
     // el precio a mano en cada venta en vez de usar el de catálogo. Excluyente con
     // Variantes y con Por peso.
@@ -530,6 +539,7 @@ const Productos = () => {
                     tienda_slug: selectedStoreSlug,
                     talle: null,
                     se_vende_por_peso: sePorPeso,
+                    unidad_fraccionada: unidadFraccionada,
                     precio_variable: precioVariable,
                     stock: (sePorPeso || precioVariable) ? 0 : newProduct.stock,
                 };
@@ -543,6 +553,7 @@ const Productos = () => {
             setTieneVariantes(false);
             setPrecioVariable(false);
             setSePorPeso(false);
+            setUnidadFraccionada('KG');
             setVariantesNuevas([{ ...VARIANTE_VACIA }]);
             setBarcodeNombreSugerido('');
             fetchProductos();
@@ -1248,8 +1259,20 @@ const Productos = () => {
                                             fontWeight: 600, fontSize: 13, cursor: 'pointer',
                                         }}
                                     >
-                                        {sePorPeso ? '✓ Por peso' : 'Por peso'}
+                                        {sePorPeso ? '✓ Venta fraccionada' : 'Venta fraccionada'}
                                     </button>
+                                    {sePorPeso && (
+                                        <select
+                                            value={unidadFraccionada}
+                                            onChange={(e) => setUnidadFraccionada(e.target.value)}
+                                            style={{ padding: '0 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13, fontWeight: 600, color: '#475569' }}
+                                            title="Unidad en la que se carga el precio/costo"
+                                        >
+                                            {Object.entries(UNIDADES_FRACCIONADAS).map(([valor, u]) => (
+                                                <option key={valor} value={valor}>{u.nombre}</option>
+                                            ))}
+                                        </select>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -1310,7 +1333,7 @@ const Productos = () => {
                             )}
 
                             <div style={styles.inputGroupModal}>
-                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>{sePorPeso ? 'Precio por Kg' : 'Precio'}</label>
+                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>{sePorPeso ? `Precio por ${UNIDADES_FRACCIONADAS[unidadFraccionada].abrev}` : 'Precio'}</label>
                                 <input
                                     type="number"
                                     value={newProduct.precio}
@@ -1319,12 +1342,12 @@ const Productos = () => {
                                     required={!tieneVariantes}
                                     disabled={tieneVariantes}
                                 />
-                                {sePorPeso && <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>En el Punto de Venta se va a cargar el peso en gramos y se calcula solo.</p>}
+                                {sePorPeso && <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>En el Punto de Venta se va a cargar la cantidad en {UNIDADES_FRACCIONADAS[unidadFraccionada].chica} y se calcula solo.</p>}
                                 {precioVariable && <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>Valor de referencia: en el Punto de Venta se va a pedir el precio real en cada venta.</p>}
                             </div>
 
                             <div style={styles.inputGroupModal}>
-                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>{sePorPeso ? 'Costo por Kg' : 'Costo'} <span style={styles.opcionalTag}>(Opcional)</span></label>
+                                <label style={{ ...styles.label, color: tieneVariantes ? '#aaa' : undefined }}>{sePorPeso ? `Costo por ${UNIDADES_FRACCIONADAS[unidadFraccionada].abrev}` : 'Costo'} <span style={styles.opcionalTag}>(Opcional)</span></label>
                                 <input
                                     type="number"
                                     value={newProduct.costo}
@@ -1390,7 +1413,7 @@ const Productos = () => {
                                     value={(sePorPeso || precioVariable) ? '' : newProduct.stock}
                                     onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
                                     style={{ ...styles.modalInput, background: (tieneVariantes || sePorPeso || precioVariable) ? '#f3f4f6' : undefined, color: (tieneVariantes || sePorPeso || precioVariable) ? '#aaa' : undefined, cursor: (tieneVariantes || sePorPeso || precioVariable) ? 'not-allowed' : undefined }}
-                                    placeholder={sePorPeso ? 'No aplica (se vende por peso)' : precioVariable ? 'No aplica (precio variable)' : undefined}
+                                    placeholder={sePorPeso ? 'No aplica (venta fraccionada)' : precioVariable ? 'No aplica (precio variable)' : undefined}
                                     required={!tieneVariantes && !sePorPeso && !precioVariable}
                                     disabled={tieneVariantes || sePorPeso || precioVariable}
                                 />
@@ -1768,7 +1791,7 @@ const Productos = () => {
                                                 )}
                                                 {producto.se_vende_por_peso && (
                                                     <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', borderRadius: 8, padding: '1px 7px' }}>
-                                                        POR PESO
+                                                        POR {UNIDADES_FRACCIONADAS[producto.unidad_fraccionada || 'KG'].abrev.toUpperCase()}
                                                     </span>
                                                 )}
                                                 {producto.precio_variable && (
@@ -1808,7 +1831,7 @@ const Productos = () => {
                                                         {producto.variantes.reduce((s, v) => s + (v.stock || 0), 0)} total
                                                       </span>
                                                     : producto.se_vende_por_peso
-                                                        ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Por peso</span>
+                                                        ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Por {UNIDADES_FRACCIONADAS[producto.unidad_fraccionada || 'KG'].abrev.toLowerCase()}</span>
                                                         : producto.precio_variable
                                                             ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Sin límite</span>
                                                             : <>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</>
@@ -2089,12 +2112,24 @@ const Productos = () => {
                                     onChange={(e) => setEditProduct({
                                         ...editProduct,
                                         se_vende_por_peso: e.target.checked,
+                                        unidad_fraccionada: editProduct.unidad_fraccionada || 'KG',
                                         precio_variable: e.target.checked ? false : editProduct.precio_variable,
                                         stock: e.target.checked ? 0 : editProduct.stock,
                                     })}
                                 />
-                                Se vende por peso (precio por Kg, sin stock)
+                                Venta fraccionada (por peso o medida, sin stock)
                             </label>
+                            {editProduct.se_vende_por_peso && (
+                                <select
+                                    value={editProduct.unidad_fraccionada || 'KG'}
+                                    onChange={(e) => setEditProduct({ ...editProduct, unidad_fraccionada: e.target.value })}
+                                    style={{ ...styles.modalInput, marginTop: 6, width: 'auto' }}
+                                >
+                                    {Object.entries(UNIDADES_FRACCIONADAS).map(([valor, u]) => (
+                                        <option key={valor} value={valor}>{u.nombre}</option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                         <div style={styles.inputGroupModal}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
@@ -2112,7 +2147,7 @@ const Productos = () => {
                             </label>
                         </div>
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>{editProduct.se_vende_por_peso ? 'Precio por Kg:' : 'Precio:'}</label>
+                            <label style={styles.label}>{editProduct.se_vende_por_peso ? `Precio por ${UNIDADES_FRACCIONADAS[editProduct.unidad_fraccionada || 'KG'].abrev}:` : 'Precio:'}</label>
                             <input
                                 type="number"
                                 value={editProduct.precio}
@@ -2123,7 +2158,7 @@ const Productos = () => {
                         </div>
                         {/* NUEVO CAMPO EN EL MODAL */}
                         <div style={styles.inputGroupModal}>
-                            <label style={styles.label}>{editProduct.se_vende_por_peso ? 'Costo por Kg:' : 'Costo:'}</label>
+                            <label style={styles.label}>{editProduct.se_vende_por_peso ? `Costo por ${UNIDADES_FRACCIONADAS[editProduct.unidad_fraccionada || 'KG'].abrev}:` : 'Costo:'}</label>
                             <input
                                 type="number"
                                 value={editProduct.costo || ''}
@@ -2138,7 +2173,7 @@ const Productos = () => {
                                 value={(editProduct.se_vende_por_peso || editProduct.precio_variable) ? '' : editProduct.stock}
                                 onChange={(e) => setEditProduct({ ...editProduct, stock: e.target.value })}
                                 style={{ ...styles.modalInput, background: (editProduct.se_vende_por_peso || editProduct.precio_variable) ? '#f3f4f6' : undefined, cursor: (editProduct.se_vende_por_peso || editProduct.precio_variable) ? 'not-allowed' : undefined }}
-                                placeholder={editProduct.se_vende_por_peso ? 'No aplica (se vende por peso)' : editProduct.precio_variable ? 'No aplica (precio variable)' : undefined}
+                                placeholder={editProduct.se_vende_por_peso ? 'No aplica (venta fraccionada)' : editProduct.precio_variable ? 'No aplica (precio variable)' : undefined}
                                 disabled={editProduct.se_vende_por_peso || editProduct.precio_variable}
                             />
                         </div>
