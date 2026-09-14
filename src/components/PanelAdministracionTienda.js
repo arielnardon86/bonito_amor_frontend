@@ -13,6 +13,7 @@ import NotasCreditoPage from './NotasCreditoPage';
 import IntegracionTiendaNube from './IntegracionTiendaNube';
 import IntegracionMercadoLibrePanel from './IntegracionMercadoLibrePanel';
 import ModalUpgrade from './ModalUpgrade';
+import { extraerLimitePlan } from '../utils/planLimite';
 
 const normalizeApiUrl = (url) => {
     if (!url) {
@@ -204,6 +205,11 @@ const PanelAdministracionTienda = () => {
     const [upgradeMotivo, setUpgradeMotivo] = useState('');   // 'factura' | 'ecommerce'
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelando, setCancelando] = useState(false);
+    // Modal de "actualizá tu plan" al llegar al tope de usuarios (ej. Free).
+    // Separado de showUpgradeModal/upgradeMotivo (esos son para features
+    // bloqueadas -- factura/ecommerce -- con planesSugeridos fijos) para no
+    // arriesgar ese flujo ya andando.
+    const [upgradeInfoLimite, setUpgradeInfoLimite] = useState(null);
 
     // Estados para Historial de Acciones
     const [historial, setHistorial] = useState([]);
@@ -829,11 +835,16 @@ Script.complete();
             fetchUsers();
         } catch (err) {
             console.error('Error al crear usuario:', err);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: err.response?.data?.username?.[0] || err.response?.data?.detail || 'Error al crear el usuario.'
-            });
+            const limite = extraerLimitePlan(err);
+            if (limite) {
+                setUpgradeInfoLimite(limite);
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: err.response?.data?.username?.[0] || err.response?.data?.detail || 'Error al crear el usuario.'
+                });
+            }
         }
     };
 
@@ -2795,6 +2806,24 @@ Script.complete();
                             headers: { Authorization: `Bearer ${token}` },
                             params: { tienda_slug: selectedStoreSlug }
                         }).then(r => setPlanInfo(r.data)).catch(() => {}).finally(() => setLoadingPlan(false));
+                    }}
+                />
+            )}
+
+            {/* Modal upgrade al llegar al tope de usuarios del plan (ej. Free) */}
+            {upgradeInfoLimite && (
+                <ModalUpgrade
+                    visible={!!upgradeInfoLimite}
+                    onClose={() => setUpgradeInfoLimite(null)}
+                    planActual={upgradeInfoLimite.planActual}
+                    planesSugeridos={upgradeInfoLimite.planesSugeridos}
+                    mensaje={upgradeInfoLimite.mensaje}
+                    token={token}
+                    tiendaSlug={selectedStoreSlug}
+                    cuitActual={planInfo?.cuit}
+                    onUpgradeOk={(nuevoPlan) => {
+                        setUpgradeInfoLimite(null);
+                        setPlanInfo(prev => prev ? { ...prev, plan: nuevoPlan } : prev);
                     }}
                 />
             )}

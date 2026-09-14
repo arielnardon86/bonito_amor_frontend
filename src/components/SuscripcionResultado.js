@@ -24,6 +24,10 @@ export default function SuscripcionResultado() {
   const preapprovalId = searchParams.get('preapproval_id') || '';
   // MP puede enviar status directamente o via preapproval_id
   const statusParam = searchParams.get('status') || searchParams.get('collection_status') || '';
+  // Solo lo manda Registro.js para el plan Free (sin checkout de Mercado Pago,
+  // ver el comentario en handleSubmit) -- acá no hay período de prueba de por
+  // medio, así que el mensaje de bienvenida no debe hablar de "7 días".
+  const esPlanFree = searchParams.get('plan') === 'free';
 
   // Si viene preapproval_id, verificar con el backend
   useEffect(() => {
@@ -93,10 +97,15 @@ export default function SuscripcionResultado() {
         <FontAwesomeIcon icon={faCheckCircle} style={{ fontSize: 64, color: COLORES.verde, marginBottom: 20 }} />
         <h1 style={s.titulo}>¡Bienvenido a Total Stock!</h1>
         <p style={s.subtitulo}>
-          Tu suscripción fue activada exitosamente.<br />
-          Empezá tu período de prueba de 7 días gratis.
+          {esPlanFree ? (
+            <>Tu tienda ya está lista, sin costo.</>
+          ) : (
+            <>Tu suscripción fue activada exitosamente.<br />Empezá tu período de prueba de 7 días gratis.</>
+          )}
         </p>
-        <div style={s.trialBadge}>🎉 7 días de prueba gratuita activados</div>
+        <div style={s.trialBadge}>
+          {esPlanFree ? '🎉 Plan Free activado' : '🎉 7 días de prueba gratuita activados'}
+        </div>
         {resultado?.username && (
           <p style={{ color: COLORES.gris, fontSize: 13, marginTop: 12 }}>
             Tu usuario: <strong>{resultado.username}</strong>

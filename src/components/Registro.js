@@ -23,6 +23,13 @@ const COLORES = {
 };
 
 const PLAN_INFO = {
+  free: {
+    display: 'Free',
+    precio: '0',
+    color: COLORES.gris,
+    colorOsc: '#64748b',
+    features: ['Hasta 50 productos', '1 usuario', 'Hasta 10 ventas/día'],
+  },
   starter: {
     display: 'Starter',
     precio: '35.000',
@@ -105,7 +112,12 @@ export default function Registro() {
     if (!form.username.trim() || form.username.length < 3) e.username = 'El usuario debe tener al menos 3 caracteres.';
     else if (!USERNAME_REGEX.test(form.username)) e.username = 'El usuario no puede tener espacios ni acentos. Usá solo letras, números, punto, guion, guion bajo, @ o +.';
     if (form.cuit.replace(/\D/g, '').length !== 11) e.cuit = 'El CUIT/CUIL debe tener 11 dígitos.';
-    if (!form.mp_payer_email.trim() || !/\S+@\S+\.\S+/.test(form.mp_payer_email)) e.mp_payer_email = 'Email inválido.';
+    // El plan Free no cobra, así que no le pedimos el email de Mercado Pago (ver
+    // _crear_tienda_usuario_suscripcion en el backend, que tampoco lo exige para
+    // este plan).
+    if (planSeleccionado !== 'free' && (!form.mp_payer_email.trim() || !/\S+@\S+\.\S+/.test(form.mp_payer_email))) {
+      e.mp_payer_email = 'Email inválido.';
+    }
     if (!form.password || form.password.length < 6) e.password = 'La contraseña debe tener al menos 6 caracteres.';
     if (form.password !== form.password2) e.password2 = 'Las contraseñas no coinciden.';
     setErrores(e);
@@ -148,7 +160,10 @@ export default function Registro() {
       if (data.init_point) {
         window.location.href = data.init_point;
       } else {
-        navigate('/suscripcion/resultado?status=approved');
+        // Hoy solo pasa esto con el plan Free (sin mp_plan_id, ver registro_publico):
+        // se manda el plan en la URL para que la pantalla de resultado no hable de
+        // "7 días de prueba" ni de Mercado Pago, que no aplican acá.
+        navigate(`/suscripcion/resultado?status=approved&plan=${data.plan || planSeleccionado}`);
       }
     } catch (err) {
       setErrorGeneral(err.response?.data?.error || 'Error al crear la cuenta. Intentá de nuevo.');
@@ -200,7 +215,9 @@ export default function Registro() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <span style={{ ...s.planBadgeNombre, color: plan.color }}>Plan {plan.display}</span>
-                <span style={s.planBadgePrecio}> — ${plan.precio}/mes</span>
+                <span style={s.planBadgePrecio}>
+                  {planSeleccionado === 'free' ? ' — Gratis' : ` — $${plan.precio}/mes`}
+                </span>
               </div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {plan.features.map(f => (
@@ -212,7 +229,9 @@ export default function Registro() {
               </div>
             </div>
             <div style={{ marginTop: 8, fontSize: 12, color: COLORES.gris }}>
-              7 días de prueba gratis · Mercado Pago · Cancelás cuando quieras
+              {planSeleccionado === 'free'
+                ? 'Sin tarjeta · Sin vencimiento · Subís de plan cuando quieras'
+                : '7 días de prueba gratis · Mercado Pago · Cancelás cuando quieras'}
             </div>
           </div>
 
@@ -260,7 +279,7 @@ export default function Registro() {
           {campo('telefono', 'Teléfono (opcional)', faPhone, 'tel', '+54 11...')}
           {campo('password', 'Contraseña', faLock, 'password', 'Mínimo 6 caracteres')}
           {campo('password2', 'Repetir contraseña', faLock, 'password', 'Repetí tu contraseña')}
-          {campo('mp_payer_email', 'Email de tu cuenta de Mercado Pago', faEnvelope, 'email', 'tu-email@ejemplo.com')}
+          {planSeleccionado !== 'free' && campo('mp_payer_email', 'Email de tu cuenta de Mercado Pago', faEnvelope, 'email', 'tu-email@ejemplo.com')}
           <p style={s.ayudaCampo}>
             Tiene que ser el email con el que iniciás sesión en Mercado Pago — puede ser distinto al de Total Stock.
           </p>

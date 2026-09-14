@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
+import { extraerLimitePlan } from '../utils/planLimite';
+import ModalUpgrade from './ModalUpgrade';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -64,6 +66,9 @@ const CargaMasivaProductos = () => {
 
     const [step, setStep] = useState('upload'); // upload | asignar_rubros | preview | resultado
     const [error, setError] = useState(null);
+    // Modal de "actualizá tu plan" si el archivo llevaría a la tienda a superar
+    // el tope de productos de su plan (ej. Free).
+    const [upgradeInfo, setUpgradeInfo] = useState(null);
     const [nombreArchivo, setNombreArchivo] = useState('');
     // Al re-subir un archivo ya importado (ej. para corregir precio/IVA/rubro),
     // permite no volver a sumar la cantidad de cada fila al stock existente.
@@ -359,7 +364,12 @@ const CargaMasivaProductos = () => {
             setResultadoFinal(resp.data);
             setStep('resultado');
         } catch (err) {
-            Swal.fire('Error', err.response?.data?.error || 'No se pudo completar la importación.', 'error');
+            const limite = extraerLimitePlan(err);
+            if (limite) {
+                setUpgradeInfo(limite);
+            } else {
+                Swal.fire('Error', err.response?.data?.error || 'No se pudo completar la importación.', 'error');
+            }
         } finally {
             setConfirmando(false);
         }
@@ -629,6 +639,18 @@ const CargaMasivaProductos = () => {
                         )}
                     </div>
                 </div>
+            )}
+            {upgradeInfo && (
+                <ModalUpgrade
+                    visible={!!upgradeInfo}
+                    onClose={() => setUpgradeInfo(null)}
+                    planActual={upgradeInfo.planActual}
+                    planesSugeridos={upgradeInfo.planesSugeridos}
+                    mensaje={upgradeInfo.mensaje}
+                    token={token}
+                    tiendaSlug={selectedStoreSlug}
+                    onUpgradeOk={() => setUpgradeInfo(null)}
+                />
             )}
         </div>
     );

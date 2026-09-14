@@ -4,6 +4,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
+import { extraerLimitePlan } from '../utils/planLimite';
+import ModalUpgrade from './ModalUpgrade';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -53,6 +55,9 @@ const ImportacionIA = () => {
 
     const [step, setStep] = useState('upload'); // upload | extrayendo | preview | resultado
     const [error, setError] = useState(null);
+    // Modal de "actualizá tu plan" si la importación llevaría a la tienda a
+    // superar el tope de productos de su plan (ej. Free).
+    const [upgradeInfo, setUpgradeInfo] = useState(null);
     const [nombreArchivo, setNombreArchivo] = useState('');
 
     const [metadata, setMetadata] = useState(null); // { proveedor, numero_documento, fecha }
@@ -184,7 +189,12 @@ const ImportacionIA = () => {
             setResultadoFinal(resp.data);
             setStep('resultado');
         } catch (err) {
-            Swal.fire('Error', err.response?.data?.error || 'No se pudo completar la importación.', 'error');
+            const limite = extraerLimitePlan(err);
+            if (limite) {
+                setUpgradeInfo(limite);
+            } else {
+                Swal.fire('Error', err.response?.data?.error || 'No se pudo completar la importación.', 'error');
+            }
         } finally {
             setConfirmando(false);
         }
@@ -367,6 +377,18 @@ const ImportacionIA = () => {
                         <button onClick={() => navigate('/productos')} style={styles.primaryButton}>Ir a Gestión de Productos</button>
                     </div>
                 </div>
+            )}
+            {upgradeInfo && (
+                <ModalUpgrade
+                    visible={!!upgradeInfo}
+                    onClose={() => setUpgradeInfo(null)}
+                    planActual={upgradeInfo.planActual}
+                    planesSugeridos={upgradeInfo.planesSugeridos}
+                    mensaje={upgradeInfo.mensaje}
+                    token={token}
+                    tiendaSlug={selectedStoreSlug}
+                    onUpgradeOk={() => setUpgradeInfo(null)}
+                />
             )}
         </div>
     );

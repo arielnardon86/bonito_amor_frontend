@@ -10,6 +10,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPencil, faTrash, faPlus, faArrowUp, faRightLeft, faLayerGroup, faChevronUp, faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import HelpButton from './HelpButton';
 import { resizeLogoToBase64 } from '../utils/resizeLogo';
+import { extraerLimitePlan } from '../utils/planLimite';
+import ModalUpgrade from './ModalUpgrade';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -43,6 +45,8 @@ const Productos = () => {
     const [productos, setProductos] = useState([]);
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [error, setError] = useState(null);
+    // Modal de "actualizá tu plan" cuando se llega al tope de productos (Free, etc).
+    const [upgradeInfo, setUpgradeInfo] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -558,7 +562,12 @@ const Productos = () => {
             setBarcodeNombreSugerido('');
             fetchProductos();
         } catch (err) {
-            setError('Error al crear producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            const limite = extraerLimitePlan(err);
+            if (limite) {
+                setUpgradeInfo(limite);
+            } else {
+                setError('Error al crear producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
+            }
             setLoadingProducts(false);
         }
     };
@@ -2966,6 +2975,18 @@ const Productos = () => {
                 }
                 `}
             </style>
+            {upgradeInfo && (
+                <ModalUpgrade
+                    visible={!!upgradeInfo}
+                    onClose={() => setUpgradeInfo(null)}
+                    planActual={upgradeInfo.planActual}
+                    planesSugeridos={upgradeInfo.planesSugeridos}
+                    mensaje={upgradeInfo.mensaje}
+                    token={token}
+                    tiendaSlug={selectedStoreSlug}
+                    onUpgradeOk={() => setUpgradeInfo(null)}
+                />
+            )}
         </div>
     );
 };

@@ -8,13 +8,23 @@ const C = {
     verdeOsc: '#3ab87a',
     texto: '#1a2926',
     gris: '#475569',
+    free: '#64748b',
     pro: '#3b82f6',
     advanced: '#10b981',
 };
 
-const PLAN_ORDER = ['starter', 'pro', 'advanced'];
+const PLAN_ORDER = ['free', 'starter', 'pro', 'advanced'];
 
 const PLANS = [
+    {
+        id: 'free',
+        nombre: 'Free',
+        precio: '0',
+        color: C.free,
+        features: ['Hasta 50 productos', '1 usuario', 'Hasta 10 ventas por día', 'Sin tarjeta de crédito'],
+        ctaClass: 'plan-cta-green',
+        ctaLabel: 'Crear cuenta gratis →',
+    },
     {
         id: 'starter',
         nombre: 'Starter',
@@ -63,7 +73,7 @@ export default function PricingSection({ minPlanId, minPlanNote = 'No incluye es
                 <span style={s.sectionPill}>Sin permanencia mínima</span>
                 <h2 style={s.sectionH2}>Planes para cada etapa de tu negocio</h2>
                 <p style={s.sectionSub}>
-                    Todos incluyen 7 días de prueba gratis. Pagás con Mercado Pago, cancelás cuando quieras.
+                    Arrancá gratis para probar el sistema, o elegí un plan pago con 7 días de prueba. Pagás con Mercado Pago, cancelás cuando quieras.
                 </p>
                 <div style={s.pricingGrid}>
                     {PLANS.map((plan) => {
@@ -82,11 +92,17 @@ export default function PricingSection({ minPlanId, minPlanNote = 'No incluye es
                                 )}
                                 <div style={s.pricingHeader}>
                                     <h3 style={{ ...s.planName, ...(plan.avanzado ? { color: '#1a6a40' } : {}) }}>{plan.nombre}</h3>
-                                    <div style={s.priceRow}>
-                                        <span style={{ ...s.priceCurrency, color: plan.color }}>$</span>
-                                        <span style={{ ...s.priceNum, ...(plan.avanzado ? { color: '#1a6a40' } : {}) }}>{plan.precio}</span>
-                                    </div>
-                                    <p style={s.pricePer}>por tienda / por mes</p>
+                                    {plan.precio === '0' ? (
+                                        <div style={s.priceRow}>
+                                            <span style={{ ...s.priceNum, color: plan.color }}>Gratis</span>
+                                        </div>
+                                    ) : (
+                                        <div style={s.priceRow}>
+                                            <span style={{ ...s.priceCurrency, color: plan.color }}>$</span>
+                                            <span style={{ ...s.priceNum, ...(plan.avanzado ? { color: '#1a6a40' } : {}) }}>{plan.precio}</span>
+                                        </div>
+                                    )}
+                                    <p style={s.pricePer}>{plan.precio === '0' ? 'para siempre' : 'por tienda / por mes'}</p>
                                 </div>
                                 <div style={s.featureList}>
                                     {plan.features.map((f) => (
@@ -104,7 +120,7 @@ export default function PricingSection({ minPlanId, minPlanNote = 'No incluye es
                                         style={{ ...s.planCta, background: plan.color }}
                                         className={plan.ctaClass}
                                     >
-                                        Empezar gratis 7 días →
+                                        {plan.ctaLabel || 'Empezar gratis 7 días →'}
                                     </button>
                                 )}
                             </div>

@@ -6,6 +6,8 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useSales, calcularSubtotalItem, DIVISOR_UNIDAD_FRACCIONADA } from './SalesContext';
 import Swal from 'sweetalert2';
+import ModalUpgrade from './ModalUpgrade';
+import { extraerLimitePlan } from '../utils/planLimite';
 import { formatearMonto } from '../utils/formatearMonto';
 import HelpButton from './HelpButton';
 
@@ -68,6 +70,8 @@ const PuntoVenta = () => {
     // `productos` porque esa lista está paginada/filtrada y daría un resultado
     // distinto según la página o búsqueda activa.
     const [hayCodigoInterno, setHayCodigoInterno] = useState(false);
+    // Modal de "actualizá tu plan" al llegar al tope de ventas diarias (ej. Free).
+    const [upgradeInfo, setUpgradeInfo] = useState(null);
     const [metodosPago, setMetodosPago] = useState([]);
     const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
     
@@ -1442,16 +1446,21 @@ const PuntoVenta = () => {
 
                 } catch (err) {
                     console.error('Error al procesar la venta:', err.response ? JSON.stringify(err.response.data) : err.message);
-                    Swal.fire({
-                        title: 'Error!',
-                        html: 'Error al procesar la venta:<br>' + (err.response?.data
-                            ? (typeof err.response.data === 'string'
-                                ? err.response.data
-                                : Object.values(err.response.data).flat().map(v => typeof v === 'object' ? JSON.stringify(v) : v).join('<br>'))
-                            : err.message),
-                        icon: 'error',
-                        confirmButtonText: 'Ok'
-                    });
+                    const limite = extraerLimitePlan(err);
+                    if (limite) {
+                        setUpgradeInfo(limite);
+                    } else {
+                        Swal.fire({
+                            title: 'Error!',
+                            html: 'Error al procesar la venta:<br>' + (err.response?.data
+                                ? (typeof err.response.data === 'string'
+                                    ? err.response.data
+                                    : Object.values(err.response.data).flat().map(v => typeof v === 'object' ? JSON.stringify(v) : v).join('<br>'))
+                                : err.message),
+                            icon: 'error',
+                            confirmButtonText: 'Ok'
+                        });
+                    }
                 } finally {
                     setProcesandoVenta(false);
                 }
@@ -2912,6 +2921,18 @@ const PuntoVenta = () => {
                 }
                 `}
             </style>
+            {upgradeInfo && (
+                <ModalUpgrade
+                    visible={!!upgradeInfo}
+                    onClose={() => setUpgradeInfo(null)}
+                    planActual={upgradeInfo.planActual}
+                    planesSugeridos={upgradeInfo.planesSugeridos}
+                    mensaje={upgradeInfo.mensaje}
+                    token={token}
+                    tiendaSlug={selectedStoreSlug}
+                    onUpgradeOk={() => setUpgradeInfo(null)}
+                />
+            )}
         </div>
     );
 };

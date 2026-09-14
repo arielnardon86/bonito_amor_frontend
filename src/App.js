@@ -936,7 +936,10 @@ const AppContent = () => {
                     <p style={{ color: '#94a3b8', fontSize: 14 }}>Cargando planes...</p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-                      {planesData.map(plan => (
+                      {/* El plan Free solo se ofrece en el alta pública (Registro.js): acá la
+                          tienda ya existe y cambiar-plan rechaza 'free' como destino, así que
+                          mostrarlo sería un botón que siempre falla al tocarlo. */}
+                      {planesData.filter(plan => plan.nombre !== 'free').map(plan => (
                         <div key={plan.nombre} style={{
                           border: '1.5px solid #e2e8f0', borderRadius: 12, padding: '14px 18px',
                           textAlign: 'left', background: '#f8fafc',
