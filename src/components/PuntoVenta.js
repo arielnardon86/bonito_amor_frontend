@@ -54,6 +54,12 @@ const PuntoVenta = () => {
     } = useSales();
 
     const [productos, setProductos] = useState([]);
+    // La columna "Cód. Interno" del listado navegable solo tiene sentido para
+    // tiendas que efectivamente cargan ese campo (viene de la carga masiva por
+    // Excel) -- se consulta una sola vez para toda la tienda, no se deriva de
+    // `productos` porque esa lista está paginada/filtrada y daría un resultado
+    // distinto según la página o búsqueda activa.
+    const [hayCodigoInterno, setHayCodigoInterno] = useState(false);
     const [metodosPago, setMetodosPago] = useState([]);
     const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
     
@@ -552,6 +558,20 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug]);
 
+    const fetchTieneCodigoInterno = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/tiene-codigo-interno/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug },
+            });
+            setHayCodigoInterno(!!response.data.tiene_codigo_interno);
+        } catch (err) {
+            console.error("Error al consultar código interno:", err.response ? err.response.data : err.message);
+            setHayCodigoInterno(false);
+        }
+    }, [token, selectedStoreSlug]);
+
     // **********************************************
     // EFECTO PRINCIPAL (Carga inicial) - Similar a Productos.js
     // Solo se ejecuta cuando cambian las condiciones de autenticación/tienda
@@ -569,6 +589,7 @@ const PuntoVenta = () => {
                         fetchArancelesML(),
                         fetchTiendaInfo(),
                         fetchCierreActivo(),
+                        fetchTieneCodigoInterno(),
                         fetchProductos(1, filterTerm || ''),
                     ]);
                 } catch (err) {
@@ -587,7 +608,7 @@ const PuntoVenta = () => {
         loadInitialData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, token,
-        fetchMetodosPago, fetchAranceles, fetchArancelesML, fetchTiendaInfo, fetchProductos, fetchCierreActivo]);
+        fetchMetodosPago, fetchAranceles, fetchArancelesML, fetchTiendaInfo, fetchProductos, fetchCierreActivo, fetchTieneCodigoInterno]);
         // NOTA: filterTerm NO está en las dependencias para evitar llamadas duplicadas
 
     // **********************************************
@@ -2543,6 +2564,7 @@ const PuntoVenta = () => {
                             <table style={styles.table} className="table">
                                 <thead>
                                     <tr style={styles.tableHeaderRow}>
+                                        {hayCodigoInterno && <th style={styles.th}>Cód. Interno</th>}
                                         <th style={styles.th}>Nombre</th>
                                         {mostrarTalle && <th style={styles.th}>Variante</th>}
                                         <th style={styles.th}>Precio</th>
@@ -2563,6 +2585,7 @@ const PuntoVenta = () => {
                                             return [product];
                                         }).map(product => (
                                             <tr key={product.id} style={{ ...styles.tableRow, ...(!product.se_vende_por_peso && !product.precio_variable && product.stock === 0 ? { opacity: 0.5, background: '#f8fafc' } : {}) }}>
+                                                {hayCodigoInterno && <td style={{ ...styles.td, color: '#475569' }}>{product.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}</td>}
                                                 <td style={styles.td}>
                                                     {product.nombre}
                                                     {!product.se_vende_por_peso && !product.precio_variable && product.stock === 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#e25252', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '1px 5px' }}>SIN STOCK</span>}
@@ -2587,7 +2610,7 @@ const PuntoVenta = () => {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={mostrarTalle ? 5 : 4} style={{ ...styles.noDataMessage, textAlign: 'center', padding: '24px 16px' }}>
+                                            <td colSpan={4 + (mostrarTalle ? 1 : 0) + (hayCodigoInterno ? 1 : 0)} style={{ ...styles.noDataMessage, textAlign: 'center', padding: '24px 16px' }}>
                                                 {filterTerm ? (
                                                     <span>
                                                         No se encontraron productos para <strong>"{filterTerm}"</strong>.{' '}
