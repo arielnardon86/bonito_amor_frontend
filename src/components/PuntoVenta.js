@@ -116,6 +116,9 @@ const PuntoVenta = () => {
 
     // Cuenta Corriente: fecha límite acordada para cancelar el pago (informativa, sale en recibo/factura)
     const [fechaLimitePago, setFechaLimitePago] = useState('');
+    // Cuenta Corriente: observación libre (ej. quién retira la mercadería), sale en recibo/factura
+    const [observacionesCC, setObservacionesCC] = useState('');
+    const OBSERVACIONES_CC_MAX_LENGTH = 120;
 
     const [redondearMonto, setRedondearMonto] = useState(false);
     const [redondearMontoArriba, setRedondearMontoArriba] = useState(false);
@@ -855,7 +858,34 @@ const PuntoVenta = () => {
         if (!activeCart) return;
         decrementProductQuantity(activeCartId, productId);
         showCustomAlert('Cantidad de producto actualizada.', 'info');
-    }, [activeCart, activeCartId, decrementProductQuantity]); 
+    }, [activeCart, activeCartId, decrementProductQuantity]);
+
+    // Permite escribir la cantidad directamente en vez de tener que apretar +/- (ej. 100
+    // unidades). Se guarda en un buffer aparte -- no se toca el carrito hasta confirmar
+    // (blur/Enter) -- para no vaciar el carrito mientras el usuario borra el campo para
+    // tipear un número nuevo (setProductQuantityInCart saca el ítem si la cantidad llega a 0).
+    const [cantidadEditBuffer, setCantidadEditBuffer] = useState({});
+
+    const commitCantidadEditada = useCallback((item) => {
+        const raw = cantidadEditBuffer[item.product.id];
+        setCantidadEditBuffer(prev => {
+            const next = { ...prev };
+            delete next[item.product.id];
+            return next;
+        });
+        if (raw === undefined) return;
+        const cantidad = parseInt(raw, 10);
+        if (isNaN(cantidad) || cantidad <= 0) return; // valor inválido: se descarta, queda la cantidad anterior
+
+        const sinLimiteStock = item.product.precio_variable;
+        const maxPermitido = sinLimiteStock ? cantidad : Math.min(cantidad, item.product.stock);
+        if (maxPermitido < cantidad) {
+            showCustomAlert(`No hay suficiente stock. Disponible: ${item.product.stock}.`, 'error');
+        }
+        if (maxPermitido !== item.quantity) {
+            setProductQuantityInCart(activeCartId, item.product.id, maxPermitido);
+        }
+    }, [cantidadEditBuffer, activeCartId, setProductQuantityInCart]);
 
     // FUNCIÓN 8: Eliminar Producto
     const handleRemoveProductoEnVenta = useCallback((productId) => {
@@ -1230,6 +1260,9 @@ const PuntoVenta = () => {
                     if (isCuentaCorriente && fechaLimitePago) {
                         ventaData.fecha_limite_pago = fechaLimitePago;
                     }
+                    if (isCuentaCorriente && observacionesCC.trim()) {
+                        ventaData.observaciones = observacionesCC.trim();
+                    }
 
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
@@ -1274,6 +1307,7 @@ const PuntoVenta = () => {
                     setBusquedaClienteCC('');
                     setClientesEncontradosCC([]);
                     setFechaLimitePago('');
+                    setObservacionesCC('');
                     setDescuentoPorcentaje('');
                     setDescuentoMonto('');
                     setRecargoPorcentaje('');
@@ -2148,7 +2182,16 @@ const PuntoVenta = () => {
                                                     ) : (
                                                         <div style={styles.quantityControl} className="quantity-control">
                                                             <button onClick={() => handleDecrementQuantity(item.product.id)} style={styles.quantityButton} aria-label={`Reducir cantidad de ${item.product.nombre}`}>−</button>
-                                                            <span style={styles.quantityText}>{item.quantity}</span>
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                value={cantidadEditBuffer[item.product.id] !== undefined ? cantidadEditBuffer[item.product.id] : item.quantity}
+                                                                onChange={(e) => setCantidadEditBuffer(prev => ({ ...prev, [item.product.id]: e.target.value }))}
+                                                                onBlur={() => commitCantidadEditada(item)}
+                                                                onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                                                                style={{ ...styles.quantityText, width: 44, border: '1px solid #e2e8f0', borderRadius: 6, padding: '2px 0' }}
+                                                                aria-label={`Cantidad de ${item.product.nombre}`}
+                                                            />
                                                             <button
                                                                 onClick={() => handleAddProductoEnVenta(item.product, 1)}
                                                                 disabled={!item.product.precio_variable && item.quantity >= item.product.stock}
@@ -2320,6 +2363,23 @@ const PuntoVenta = () => {
                                     onChange={(e) => setFechaLimitePago(e.target.value)}
                                     style={{ ...styles.inputField, marginBottom: 0, flex: 1 }}
                                 />
+                            </div>
+                        )}
+                        {!formasPago.length && isCuentaCorriente && (
+                            <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
+                                <label htmlFor="observacionesCC" style={styles.paymentMethodLabel}>Observaciones</label>
+                                <input
+                                    type="text"
+                                    id="observacionesCC"
+                                    placeholder="Ej: retira Juan Pérez"
+                                    value={observacionesCC}
+                                    maxLength={OBSERVACIONES_CC_MAX_LENGTH}
+                                    onChange={(e) => setObservacionesCC(e.target.value)}
+                                    style={{ ...styles.inputField, marginBottom: 0, flex: 1 }}
+                                />
+                                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, textAlign: 'right' }}>
+                                    {observacionesCC.length}/{OBSERVACIONES_CC_MAX_LENGTH}
+                                </div>
                             </div>
                         )}
                         <div style={styles.ajustesContainer} className="ajustesContainer">
