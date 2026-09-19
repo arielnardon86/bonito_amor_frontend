@@ -21,7 +21,7 @@ const normalizeApiUrl = (url) => {
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
-const FORM_INICIAL = { nombre_razon_social: '', cuit_cuil: '', direccion: '', telefono: '', email: '' };
+const FORM_INICIAL = { nombre_razon_social: '', cuit_cuil: '', direccion: '', telefono: '', email: '', dia_cierre_cuenta_corriente: '' };
 
 const Clientes = () => {
     const { token, selectedStoreSlug } = useAuth();
@@ -274,6 +274,15 @@ const Clientes = () => {
                             <label style={styles.formLabel}>Mail
                                 <input type="email" style={styles.inputField} value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                            </label>
+                            <label style={styles.formLabel}>Día de cierre de cuenta corriente
+                                <select style={styles.inputField} value={formData.dia_cierre_cuenta_corriente}
+                                    onChange={(e) => setFormData({ ...formData, dia_cierre_cuenta_corriente: e.target.value })}>
+                                    <option value="">Sin configurar (pedir fecha en cada venta)</option>
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map(dia => (
+                                        <option key={dia} value={dia}>{dia}</option>
+                                    ))}
+                                </select>
                             </label>
                         </div>
                         <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>

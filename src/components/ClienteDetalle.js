@@ -181,6 +181,35 @@ const ClienteDetalle = () => {
         </div>
     );
 
+    const renderCampoDiaCierre = () => (
+        <div>
+            <span style={styles.infoLabel}>Día de cierre de cuenta corriente</span>
+            {campoEditando === 'dia_cierre_cuenta_corriente' ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <select
+                        autoFocus
+                        value={valorEditado}
+                        onChange={(e) => setValorEditado(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') guardarCampo(); if (e.key === 'Escape') cancelarEdicion(); }}
+                        style={styles.inputField}
+                    >
+                        <option value="">Sin configurar (pedir fecha en cada venta)</option>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(dia => (
+                            <option key={dia} value={dia}>{dia}</option>
+                        ))}
+                    </select>
+                    <button onClick={guardarCampo} disabled={guardandoCampo} style={styles.iconButtonGreen} title="Guardar">✓</button>
+                    <button onClick={cancelarEdicion} style={styles.iconButtonGray} title="Cancelar">✕</button>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <p style={{ margin: 0 }}>{cliente.dia_cierre_cuenta_corriente || 'Sin configurar'}</p>
+                    <button onClick={() => empezarEdicion('dia_cierre_cuenta_corriente', cliente.dia_cierre_cuenta_corriente)} style={styles.pencilButton} title="Editar día de cierre">✏️</button>
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <div style={styles.container}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: 10 }}>
@@ -211,6 +240,7 @@ const ClienteDetalle = () => {
                     {renderCampo('Teléfono', 'telefono', cliente.telefono)}
                     {renderCampo('Dirección', 'direccion', cliente.direccion)}
                     {renderCampo('Mail', 'email', cliente.email, 'email')}
+                    {renderCampoDiaCierre()}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, flexWrap: 'wrap', gap: 12 }}>
                     <div>

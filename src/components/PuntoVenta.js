@@ -36,6 +36,33 @@ const UNIDADES_FRACCIONADAS = {
 };
 const unidadDe = (product) => UNIDADES_FRACCIONADAS[product?.unidad_fraccionada] || UNIDADES_FRACCIONADAS.KG;
 
+// Cuenta Corriente: próxima fecha de cierre a partir del "día de cierre" configurado
+// en el cliente (Cliente.dia_cierre_cuenta_corriente). Si hoy todavía no pasó ese día
+// del mes, el cierre es este mes; si ya pasó, es el mes que viene. En ambos casos se
+// ajusta al último día del mes si el mes no llega a tener ese día (ej. 31 en abril).
+const calcularProximaFechaCierreCC = (diaCierre, desde = new Date()) => {
+    const anio = desde.getFullYear();
+    const mes = desde.getMonth(); // 0-indexado
+    const ultimoDiaDelMes = (a, m) => new Date(a, m + 1, 0).getDate();
+
+    if (desde.getDate() <= Math.min(diaCierre, ultimoDiaDelMes(anio, mes))) {
+        return new Date(anio, mes, Math.min(diaCierre, ultimoDiaDelMes(anio, mes)));
+    }
+    return new Date(anio, mes + 1, Math.min(diaCierre, ultimoDiaDelMes(anio, mes + 1)));
+};
+
+const fechaAInputDate = (fecha) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}`;
+};
+
+const diferenciaEnDias = (fechaA, fechaB) => Math.round(
+    (Date.UTC(fechaA.getFullYear(), fechaA.getMonth(), fechaA.getDate())
+        - Date.UTC(fechaB.getFullYear(), fechaB.getMonth(), fechaB.getDate())) / 86400000
+);
+
+const DIAS_AVISO_CIERRE_CC = 10;
+
 const PuntoVenta = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
     const navigate = useNavigate();
@@ -904,6 +931,39 @@ const PuntoVenta = () => {
     const isMercadoLibre = metodoPagoSeleccionado === 'Mercado Libre';
     const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero && !isMercadoLibre; // ML usa aranceles por producto, no Plan/Arancel
     const isCuentaCorriente = metodoPagoSeleccionado === 'Cuenta Corriente';
+
+    // Cuenta Corriente: si el cliente tiene un día de cierre configurado, autocompletar
+    // la fecha límite de pago con la próxima ocurrencia de ese día (en vez de pedirla a
+    // mano). Si a esa fecha le quedan 10 días o menos, se le avisa al cajero por si
+    // quiere cargar otra fecha para esta compra puntual.
+    useEffect(() => {
+        if (!isCuentaCorriente || !clienteSeleccionadoCC) return;
+        const diaCierre = clienteSeleccionadoCC.dia_cierre_cuenta_corriente;
+        if (!diaCierre) return; // sin día configurado: se sigue pidiendo la fecha a mano
+
+        const hoy = new Date();
+        const fechaCierre = calcularProximaFechaCierreCC(diaCierre, hoy);
+        setFechaLimitePago(fechaAInputDate(fechaCierre));
+
+        const diasRestantes = diferenciaEnDias(fechaCierre, hoy);
+        if (diasRestantes <= DIAS_AVISO_CIERRE_CC) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cierre de cuenta próximo',
+                html: `A <strong>${clienteSeleccionadoCC.nombre_razon_social}</strong> le queda${diasRestantes === 1 ? '' : 'n'} `
+                    + `<strong>${diasRestantes} día${diasRestantes === 1 ? '' : 's'}</strong> para el cierre de su cuenta corriente `
+                    + `(${fechaCierre.toLocaleDateString('es-AR')}).<br/><br/>¿Querés cargar una fecha de pago distinta para esta compra?`,
+                showCancelButton: true,
+                confirmButtonText: 'Cargar otra fecha',
+                cancelButtonText: `Usar ${fechaCierre.toLocaleDateString('es-AR')}`,
+            }).then((resultado) => {
+                if (resultado.isConfirmed) {
+                    setFechaLimitePago('');
+                }
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [clienteSeleccionadoCC, isCuentaCorriente]);
 
     // Filtrar los aranceles disponibles para el método de pago seleccionado
     // Usar comparación flexible (trim y case-insensitive) para evitar problemas de formato
