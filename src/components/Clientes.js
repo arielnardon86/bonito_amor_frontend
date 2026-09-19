@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
+import SelectorDiaCierre from './SelectorDiaCierre';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -276,13 +277,8 @@ const Clientes = () => {
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                             </label>
                             <label style={styles.formLabel}>Día de cierre de cuenta corriente
-                                <select style={styles.inputField} value={formData.dia_cierre_cuenta_corriente}
-                                    onChange={(e) => setFormData({ ...formData, dia_cierre_cuenta_corriente: e.target.value })}>
-                                    <option value="">Sin configurar (pedir fecha en cada venta)</option>
-                                    {Array.from({ length: 31 }, (_, i) => i + 1).map(dia => (
-                                        <option key={dia} value={dia}>{dia}</option>
-                                    ))}
-                                </select>
+                                <SelectorDiaCierre value={formData.dia_cierre_cuenta_corriente}
+                                    onChange={(dia) => setFormData({ ...formData, dia_cierre_cuenta_corriente: dia })} />
                             </label>
                         </div>
                         <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>

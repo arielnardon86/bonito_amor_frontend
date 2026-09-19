@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
+import SelectorDiaCierre from './SelectorDiaCierre';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -157,7 +158,7 @@ const ClienteDetalle = () => {
     const saldo = parseFloat(historial.saldo_pendiente || 0);
 
     const renderCampo = (label, campo, valor, inputType = 'text') => (
-        <div>
+        <div style={{ minWidth: 0 }}>
             <span style={styles.infoLabel}>{label}</span>
             {campoEditando === campo ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
@@ -174,7 +175,7 @@ const ClienteDetalle = () => {
                 </div>
             ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <p style={{ margin: 0 }}>{valor || '—'}</p>
+                    <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{valor || '—'}</p>
                     <button onClick={() => empezarEdicion(campo, valor)} style={styles.pencilButton} title={`Editar ${label}`}>✏️</button>
                 </div>
             )}
@@ -182,24 +183,15 @@ const ClienteDetalle = () => {
     );
 
     const renderCampoDiaCierre = () => (
-        <div>
-            <span style={styles.infoLabel}>Día de cierre de cuenta corriente</span>
+        <div style={{ position: 'relative', minWidth: 0 }}>
+            <span style={styles.infoLabel}>Día de cierre</span>
             {campoEditando === 'dia_cierre_cuenta_corriente' ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <select
-                        autoFocus
-                        value={valorEditado}
-                        onChange={(e) => setValorEditado(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') guardarCampo(); if (e.key === 'Escape') cancelarEdicion(); }}
-                        style={styles.inputField}
-                    >
-                        <option value="">Sin configurar (pedir fecha en cada venta)</option>
-                        {Array.from({ length: 31 }, (_, i) => i + 1).map(dia => (
-                            <option key={dia} value={dia}>{dia}</option>
-                        ))}
-                    </select>
-                    <button onClick={guardarCampo} disabled={guardandoCampo} style={styles.iconButtonGreen} title="Guardar">✓</button>
-                    <button onClick={cancelarEdicion} style={styles.iconButtonGray} title="Cancelar">✕</button>
+                <div style={styles.popoverDiaCierre}>
+                    <SelectorDiaCierre value={valorEditado} onChange={setValorEditado} />
+                    <div style={{ display: 'flex', gap: 6, marginTop: 10, justifyContent: 'flex-end' }}>
+                        <button onClick={guardarCampo} disabled={guardandoCampo} style={styles.iconButtonGreen} title="Guardar">✓</button>
+                        <button onClick={cancelarEdicion} style={styles.iconButtonGray} title="Cancelar">✕</button>
+                    </div>
                 </div>
             ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -387,6 +379,11 @@ const styles = {
     pencilButton: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#94a3b8', padding: 2, lineHeight: 1 },
     iconButtonGreen: { background: '#5dc87a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', width: 28, height: 28, fontWeight: 700 },
     iconButtonGray: { background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: 6, cursor: 'pointer', width: 28, height: 28, fontWeight: 700 },
+    popoverDiaCierre: {
+        position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 10,
+        background: 'white', border: '1px solid #e2e8f0', borderRadius: 10,
+        boxShadow: '0 10px 30px rgba(0,0,0,0.12)', padding: 14,
+    },
     errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px', marginBottom: 15 },
     noDataMessage: { textAlign: 'center', fontStyle: 'italic', color: '#94a3b8' },
     primaryButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' },
