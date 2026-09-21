@@ -1,6 +1,17 @@
 // BarcodeScannerModal.js
 import React, { useEffect, useRef, useState } from 'react';
-import { BrowserMultiFormatReader } from '@zxing/browser';
+import { BrowserMultiFormatReader, BarcodeFormat } from '@zxing/browser';
+import { DecodeHintType } from '@zxing/library';
+
+// Formatos de código de barras que se usan en retail (1D: EAN/UPC en productos
+// envasados, Code128/Code39 en etiquetas propias) -- restringir a estos en vez de
+// probar también los 2D (QR, Data Matrix, etc.) hace cada intento de decodificación
+// más rápido y más preciso.
+const FORMATOS_RETAIL = [
+    BarcodeFormat.EAN_13, BarcodeFormat.EAN_8,
+    BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
+    BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.ITF,
+];
 
 // Modal a pantalla completa que usa la cámara para leer códigos de barras.
 // Usa @zxing/library (vía @zxing/browser) en vez de la BarcodeDetector nativa
@@ -13,10 +24,19 @@ const BarcodeScannerModal = ({ onDetected, onClose }) => {
 
     useEffect(() => {
         let cancelado = false;
-        const reader = new BrowserMultiFormatReader();
+        // Sin estos hints, el lector prueba TODOS los formatos (incluidos QR/Data
+        // Matrix) sin darle prioridad a hacer bien el trabajo -- en la práctica casi
+        // no llega a leer códigos EAN/UPC reales de producto (borrosos, con brillo,
+        // o el enfoque automático del celular todavía ajustando). TRY_HARDER + acotar
+        // a los formatos de retail es la combinación recomendada por la propia
+        // librería para este caso.
+        const hints = new Map();
+        hints.set(DecodeHintType.TRY_HARDER, true);
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, FORMATOS_RETAIL);
+        const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 150 });
 
         reader.decodeFromConstraints(
-            { video: { facingMode: 'environment' } },
+            { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } },
             videoRef.current,
             (result) => {
                 if (cancelado || !result) return;
