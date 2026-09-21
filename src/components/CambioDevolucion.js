@@ -281,12 +281,19 @@ const CambioDevolucion = () => {
         if (!activeCart) return;
         if (product.stock === 0) {
             Swal.fire({ title: 'Sin stock', text: 'Este producto no tiene stock disponible.', icon: 'warning', confirmButtonText: 'Entendido' });
+            // Limpiar igual que en un agregado exitoso: si vino de un escaneo, no debe
+            // quedar el código en el campo (con el desplegable de sugerencias
+            // reapareciendo atrás del aviso).
+            setBusquedaProducto('');
+            setProductoSeleccionado(null);
             return;
         }
         const currentItemInCart = activeCart.items.find(item => item.product.id === product.id);
         const currentQuantityInCart = currentItemInCart ? currentItemInCart.quantity : 0;
         if (currentQuantityInCart + quantity > product.stock) {
             Swal.fire({ title: 'Stock insuficiente', text: `Stock disponible: ${product.stock}. Ya tenés ${currentQuantityInCart} en el carrito.`, icon: 'warning', confirmButtonText: 'Entendido' });
+            setBusquedaProducto('');
+            setProductoSeleccionado(null);
             return;
         }
         addProductToCart(product, quantity);

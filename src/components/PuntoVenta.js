@@ -780,12 +780,19 @@ const PuntoVenta = () => {
         if (!product.se_vende_por_peso && !product.precio_variable) {
             if (product.stock === 0) {
                 showCustomAlert('Este producto no tiene stock disponible.', 'error');
+                // Limpiar igual que en un agregado exitoso: si vino de un escaneo, no
+                // debe quedar el código en el campo (con el desplegable de sugerencias
+                // reapareciendo atrás del aviso).
+                setBusquedaProducto('');
+                setProductoSeleccionado(null);
                 return;
             }
             const currentItemInCart = activeCart.items.find(item => item.product.id === product.id);
             const currentQuantityInCart = currentItemInCart ? currentItemInCart.quantity : 0;
             if (currentQuantityInCart + quantity > product.stock) {
                 showCustomAlert(`No hay suficiente stock. Disponible: ${product.stock}, en carrito: ${currentQuantityInCart}.`, 'error');
+                setBusquedaProducto('');
+                setProductoSeleccionado(null);
                 return;
             }
         }
