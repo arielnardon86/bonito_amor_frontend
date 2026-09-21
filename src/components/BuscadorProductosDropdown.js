@@ -102,7 +102,7 @@ const BuscadorProductosDropdown = ({
                 onBlur={() => setTimeout(() => setMostrar(false), 150)}
                 style={{
                     ...inputStyle,
-                    ...(iconoIzquierdo ? { paddingLeft: 38 } : {}),
+                    ...(iconoIzquierdo ? { paddingLeft: 40 } : {}),
                     ...(badgeTexto ? { paddingRight: 122 } : {}),
                 }}
                 className={[inputClassName, onAbrirCamara ? 'buscador-productos-input-con-camara' : ''].filter(Boolean).join(' ')}
@@ -197,8 +197,8 @@ const styles = {
         border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: 16,
     },
     iconoIzquierdo: {
-        position: 'absolute', top: '50%', left: 14, transform: 'translateY(-50%)',
-        color: '#8fb9a8', fontSize: 17, fontWeight: 700, pointerEvents: 'none', lineHeight: 1,
+        position: 'absolute', top: '50%', left: 15, transform: 'translateY(-50%)', zIndex: 1,
+        color: '#8fb9a8', fontSize: 16, fontWeight: 700, pointerEvents: 'none', lineHeight: 1,
     },
     // display se maneja por CSS (.buscador-productos-badge), no acá: en mobile se
     // oculta para dejarle el lugar al ícono de cámara (ver el <style> de arriba).

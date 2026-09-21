@@ -2154,25 +2154,21 @@ const PuntoVenta = () => {
                     >
                         +
                     </button>
-                </div>
-
-                {activeCart && (
-                    <div style={styles.activeCartInfo} className="active-cart-info">
-                        <span style={styles.activeCartTitle}>Venta: {activeCart.alias || activeCart.name}</span>
-                        <div style={styles.activeCartActions} className="active-cart-actions">
+                    {activeCart && (
+                        <div style={styles.activeCartInlineActions} className="active-cart-inline-actions">
                             <input
                                 type="text"
                                 placeholder="Alias (opcional)"
                                 value={activeCart.alias || ''}
                                 onChange={(e) => updateCartAlias(activeCartId, e.target.value)}
-                                style={styles.inputField}
+                                style={styles.activeCartAliasInput}
                             />
                             <button onClick={handleDeleteActiveCart} style={styles.deleteCartButton}>
                                 Eliminar
                             </button>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 <div style={styles.searchRow} className="search-row">
                     <div style={{ ...styles.inputGroup, marginBottom: 0 }} className="input-group">
@@ -2186,7 +2182,6 @@ const PuntoVenta = () => {
                             onAbrirCamara={() => setMostrarEscaner(true)}
                             placeholder="Escaneá el código de barras o escribí el nombre..."
                             iconoIzquierdo="#"
-                            badgeTexto="foco al entrar"
                             inputStyle={styles.searchInputField}
                             inputClassName="input-field"
                             autoFocus
@@ -2948,17 +2943,14 @@ const PuntoVenta = () => {
                     .new-cart-button {
                         flex: 0 0 auto;
                     }
-                    .active-cart-info {
+                    .active-cart-inline-actions {
                         flex-direction: column;
                         align-items: stretch;
-                        gap: 10px;
+                        gap: 8px;
                         width: 100%;
+                        margin-left: 0;
                     }
-                    .active-cart-actions {
-                        flex-direction: column;
-                        width: 100%;
-                    }
-                    .active-cart-actions input {
+                    .active-cart-inline-actions input {
                         width: 100% !important;
                         box-sizing: border-box;
                     }
@@ -3126,9 +3118,14 @@ const styles = {
         border: 'none', borderRadius: '50%', cursor: 'pointer', fontWeight: 700, fontSize: 18, lineHeight: 1,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     },
-    activeCartInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap', gap: '10px' },
-    activeCartTitle: { margin: 0, color: '#5dc87a', fontSize: '1rem', fontWeight: 600 },
-    activeCartActions: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+    // Alias + Eliminar de la venta activa: en la misma fila que las cápsulas de
+    // ventas (empujado a la derecha), no en una fila propia -- la cápsula activa ya
+    // deja claro cuál es la venta seleccionada, no hace falta repetirlo aparte.
+    activeCartInlineActions: { display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' },
+    activeCartAliasInput: {
+        padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 10,
+        boxSizing: 'border-box', color: '#1a2926', fontSize: '14px', width: 160,
+    },
     searchRow: { marginTop: '12px', marginBottom: '12px' },
     cartTableWrap: { marginTop: '16px', marginBottom: '8px', overflow: 'hidden' },
     subtotalRow: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', margin: '12px 0 4px' },
