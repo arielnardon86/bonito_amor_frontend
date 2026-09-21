@@ -33,6 +33,7 @@ const BuscadorProductosDropdown = ({
     const [mostrar, setMostrar] = useState(false);
 
     useEffect(() => {
+        let cancelado = false;
         const termino = value.trim();
         if (termino.length < 2 || !tiendaSlug || !token) {
             setSugerencias([]);
@@ -45,13 +46,20 @@ const BuscadorProductosDropdown = ({
                     headers: { Authorization: `Bearer ${token}` },
                     params: { tienda_slug: tiendaSlug, search: termino, page: 1 },
                 });
+                // Si el valor ya cambió (ej. se escaneó un código y la búsqueda directa
+                // por barcode ya encontró y agregó el producto, limpiando el input, antes
+                // de que ESTA respuesta llegara) no hay que mostrar un desplegable viejo.
+                if (cancelado) return;
                 setSugerencias((response.data.results || response.data || []).slice(0, 6));
                 setMostrar(true);
             } catch {
-                setSugerencias([]);
+                if (!cancelado) setSugerencias([]);
             }
         }, 300);
-        return () => clearTimeout(timeoutId);
+        return () => {
+            cancelado = true;
+            clearTimeout(timeoutId);
+        };
     }, [value, tiendaSlug, token]);
 
     const seleccionar = (producto) => {
