@@ -1,6 +1,6 @@
 // components/PuntoVenta.js
 // BONITO_AMOR/frontend/src/components/PuntoVenta.js
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
@@ -11,7 +11,10 @@ import { extraerLimitePlan } from '../utils/planLimite';
 import { formatearMonto } from '../utils/formatearMonto';
 import HelpButton from './HelpButton';
 import BuscadorProductosDropdown from './BuscadorProductosDropdown';
-import BarcodeScannerModal from './BarcodeScannerModal';
+// Carga diferida: @zxing/browser pesa ~128KB gzip y solo hace falta en el momento
+// en que alguien abre la cámara -- así el resto de la app (incluida gente que nunca
+// escanea, ej. en desktop) no paga ese costo en la carga inicial.
+const BarcodeScannerModal = lazy(() => import('./BarcodeScannerModal'));
 
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -3064,14 +3067,16 @@ const PuntoVenta = () => {
                 />
             )}
             {mostrarEscaner && (
-                <BarcodeScannerModal
-                    onDetected={(codigo) => {
-                        setMostrarEscaner(false);
-                        setBusquedaProducto(codigo);
-                        handleBuscarProducto(codigo);
-                    }}
-                    onClose={() => setMostrarEscaner(false)}
-                />
+                <Suspense fallback={<div style={styles.escanerCargando}>Cargando cámara…</div>}>
+                    <BarcodeScannerModal
+                        onDetected={(codigo) => {
+                            setMostrarEscaner(false);
+                            setBusquedaProducto(codigo);
+                            handleBuscarProducto(codigo);
+                        }}
+                        onClose={() => setMostrarEscaner(false)}
+                    />
+                </Suspense>
             )}
         </div>
     );
@@ -3084,6 +3089,15 @@ const styles = {
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' },
     sectionHeader: { color: '#475569', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 },
     loadingMessage: { textAlign: 'center', color: '#94a3b8' },
+    // Fallback mientras se descarga el chunk de BarcodeScannerModal (lazy, ver
+    // import más arriba): mismo overlay oscuro que el modal para que no haya un
+    // salto visual entre "Cargando cámara..." y la cámara ya abierta.
+    escanerCargando: {
+        position: 'fixed', inset: 0, zIndex: 3000,
+        background: 'rgba(15,30,58,0.92)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#fff', fontWeight: 600, fontSize: 15,
+    },
     accessDeniedMessage: { color: '#e25252', textAlign: 'center' },
     noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },
     errorMessage: { color: '#991b1b', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },

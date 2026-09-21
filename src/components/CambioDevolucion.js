@@ -1,5 +1,5 @@
 // CambioDevolucion.js
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -7,7 +7,10 @@ import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
 import BuscadorProductosDropdown from './BuscadorProductosDropdown';
-import BarcodeScannerModal from './BarcodeScannerModal';
+// Carga diferida: @zxing/browser pesa ~128KB gzip y solo hace falta en el momento
+// en que alguien abre la cámara -- así el resto de la app no paga ese costo en la
+// carga inicial.
+const BarcodeScannerModal = lazy(() => import('./BarcodeScannerModal'));
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -1413,14 +1416,16 @@ const CambioDevolucion = () => {
                 </div>
             )}
             {mostrarEscaner && (
-                <BarcodeScannerModal
-                    onDetected={(codigo) => {
-                        setMostrarEscaner(false);
-                        setBusquedaProducto(codigo);
-                        handleBuscarProducto(codigo);
-                    }}
-                    onClose={() => setMostrarEscaner(false)}
-                />
+                <Suspense fallback={<div style={styles.escanerCargando}>Cargando cámara…</div>}>
+                    <BarcodeScannerModal
+                        onDetected={(codigo) => {
+                            setMostrarEscaner(false);
+                            setBusquedaProducto(codigo);
+                            handleBuscarProducto(codigo);
+                        }}
+                        onClose={() => setMostrarEscaner(false)}
+                    />
+                </Suspense>
             )}
         </div>
     );
@@ -1429,6 +1434,15 @@ const CambioDevolucion = () => {
 // --- OBJETO DE ESTILOS (Igual que PuntoVenta.js) ---
 const styles = {
     container: { padding: 0, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", width: '100%' },
+    // Fallback mientras se descarga el chunk de BarcodeScannerModal (lazy, ver
+    // import más arriba): mismo overlay oscuro que el modal para que no haya un
+    // salto visual entre "Cargando cámara..." y la cámara ya abierta.
+    escanerCargando: {
+        position: 'fixed', inset: 0, zIndex: 3000,
+        background: 'rgba(15,30,58,0.92)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#fff', fontWeight: 600, fontSize: 15,
+    },
     pageTitle: { color: '#1a2926', fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' },
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f1f5f9', borderRadius: '10px' },
     sectionHeader: { color: '#475569', fontSize: '1.1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginTop: '1rem', marginBottom: '0.5rem' },
