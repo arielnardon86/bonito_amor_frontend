@@ -10,6 +10,7 @@ import ModalUpgrade from './ModalUpgrade';
 import { extraerLimitePlan } from '../utils/planLimite';
 import { formatearMonto } from '../utils/formatearMonto';
 import HelpButton from './HelpButton';
+import BuscadorProductosDropdown from './BuscadorProductosDropdown';
 
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -2152,14 +2153,15 @@ const PuntoVenta = () => {
 
                 <div style={styles.searchRow} className="search-row">
                     <div style={{ ...styles.inputGroup, marginBottom: 0 }} className="input-group">
-                        <input
-                            type="text"
-                            placeholder="Código de barras o nombre"
+                        <BuscadorProductosDropdown
+                            token={token}
+                            tiendaSlug={selectedStoreSlug}
                             value={busquedaProducto}
-                            onChange={(e) => setBusquedaProducto(e.target.value)}
-                            onKeyPress={(e) => { if (e.key === 'Enter') handleBuscarProducto(); }}
-                            style={styles.inputField}
-                            className="input-field"
+                            onChange={setBusquedaProducto}
+                            onSeleccionarProducto={(producto) => agregarProductoAlCarrito(producto, 1)}
+                            onEnterSinSugerencias={handleBuscarProducto}
+                            inputStyle={styles.inputField}
+                            inputClassName="input-field"
                         />
                         <button onClick={handleBuscarProducto} style={styles.primaryButton} className="primary-button">
                             Buscar

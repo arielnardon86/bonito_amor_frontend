@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
+import BuscadorProductosDropdown from './BuscadorProductosDropdown';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -1110,18 +1111,16 @@ const CambioDevolucion = () => {
                         
                         {/* Búsqueda de productos */}
                         <div style={styles.inputGroup}>
-                            <input
-                                ref={barcodeProductoRef}
-                                type="text"
-                                placeholder="Escanear código de barras o buscar producto..."
+                            <BuscadorProductosDropdown
+                                inputRef={barcodeProductoRef}
+                                token={token}
+                                tiendaSlug={tiendaOperativaSlug}
                                 value={busquedaProducto}
-                                onChange={(e) => setBusquedaProducto(e.target.value)}
-                                onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleBuscarProducto();
-                                    }
-                                }}
-                                style={styles.inputField}
+                                onChange={setBusquedaProducto}
+                                onSeleccionarProducto={(producto) => handleAddProductoEnVenta(producto, 1)}
+                                onEnterSinSugerencias={handleBuscarProducto}
+                                placeholder="Escanear código de barras o buscar producto..."
+                                inputStyle={styles.inputField}
                             />
                             <button onClick={handleBuscarProducto} style={styles.primaryButton}>Buscar</button>
                         </div>
