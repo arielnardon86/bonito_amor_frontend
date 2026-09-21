@@ -27,7 +27,7 @@ const abrevUnidad = (product) => UNIDADES_FRACCIONADAS[product?.unidad_fracciona
 const BuscadorProductosDropdown = ({
     token, tiendaSlug, value, onChange, onSeleccionarProducto, onEnterSinSugerencias,
     placeholder = 'Código de barras o nombre', inputStyle, inputClassName, autoFocus,
-    inputRef,
+    inputRef, onAbrirCamara,
 }) => {
     const [sugerencias, setSugerencias] = useState([]);
     const [mostrar, setMostrar] = useState(false);
@@ -63,6 +63,15 @@ const BuscadorProductosDropdown = ({
 
     return (
         <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            {onAbrirCamara && (
+                <style>{`
+                    .buscador-productos-camera-btn { display: none; }
+                    @media (max-width: 768px) {
+                        .buscador-productos-camera-btn { display: flex; }
+                        .buscador-productos-input-con-camara { padding-right: 42px !important; }
+                    }
+                `}</style>
+            )}
             <input
                 ref={inputRef}
                 type="text"
@@ -80,10 +89,22 @@ const BuscadorProductosDropdown = ({
                 onFocus={() => { if (sugerencias.length > 0) setMostrar(true); }}
                 onBlur={() => setTimeout(() => setMostrar(false), 150)}
                 style={inputStyle}
-                className={inputClassName}
+                className={[inputClassName, onAbrirCamara ? 'buscador-productos-input-con-camara' : ''].filter(Boolean).join(' ')}
                 autoFocus={autoFocus}
                 autoComplete="off"
             />
+            {onAbrirCamara && (
+                <button
+                    type="button"
+                    onClick={onAbrirCamara}
+                    className="buscador-productos-camera-btn"
+                    style={styles.cameraButton}
+                    title="Escanear con la cámara"
+                    aria-label="Escanear con la cámara"
+                >
+                    📷
+                </button>
+            )}
             {mostrar && sugerencias.length > 0 && (
                 <ul style={styles.dropdown} className="buscador-productos-dropdown">
                     <style>{`
@@ -147,6 +168,15 @@ const styles = {
     nombre: { fontSize: 14, fontWeight: 600, color: '#1a2926' },
     codigo: { fontSize: 11, color: '#94a3b8' },
     dato: { fontSize: 12, color: '#64748b' },
+    // display se maneja por CSS (.buscador-productos-camera-btn), no acá: solo se
+    // muestra en mobile (ver el <style> de arriba) -- un inline style de display le
+    // ganaría siempre a la regla CSS que lo oculta en desktop.
+    cameraButton: {
+        position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)',
+        width: 30, height: 30, alignItems: 'center', justifyContent: 'center',
+        padding: 0, backgroundColor: 'transparent', color: '#1e8068',
+        border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: 16,
+    },
 };
 
 export default BuscadorProductosDropdown;

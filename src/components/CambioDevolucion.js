@@ -7,6 +7,7 @@ import { useSales } from './SalesContext';
 import Swal from 'sweetalert2';
 import { formatearMonto } from '../utils/formatearMonto';
 import BuscadorProductosDropdown from './BuscadorProductosDropdown';
+import BarcodeScannerModal from './BarcodeScannerModal';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -55,6 +56,8 @@ const CambioDevolucion = () => {
     // Punto de Venta - Productos nuevos
     const [productos, setProductos] = useState([]);
     const [busquedaProducto, setBusquedaProducto] = useState('');
+    // Escaneo con la cámara del celular (solo mobile, ver BuscadorProductosDropdown)
+    const [mostrarEscaner, setMostrarEscaner] = useState(false);
     const [filterTerm, setFilterTerm] = useState('');
     const [productoSeleccionado, setProductoSeleccionado] = useState(null);
     const [, setLoadingProducts] = useState(true);
@@ -237,20 +240,23 @@ const CambioDevolucion = () => {
         ));
     };
 
-    // Buscar producto por código de barras
-    const handleBuscarProducto = useCallback(async () => {
-        if (!busquedaProducto || !tiendaOperativaSlug) return;
+    // Buscar producto por código de barras. Acepta un código opcional para que el
+    // escáner de cámara (que lo detecta de forma asíncrona) pueda dispararla directo,
+    // sin esperar a que el estado de busquedaProducto se actualice primero.
+    const handleBuscarProducto = useCallback(async (codigoOverride) => {
+        const codigo = codigoOverride ?? busquedaProducto;
+        if (!codigo || !tiendaOperativaSlug) return;
 
         try {
             let response;
             try {
                 response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
                     headers: { 'Authorization': `Bearer ${token}` },
-                    params: { barcode: busquedaProducto, tienda_slug: tiendaOperativaSlug }
+                    params: { barcode: codigo, tienda_slug: tiendaOperativaSlug }
                 });
             } catch (error) {
                 if (error.response && error.response.status === 404) {
-                    setFilterTerm(busquedaProducto);
+                    setFilterTerm(codigo);
                     setBusquedaProducto('');
                     return;
                 }
@@ -1119,6 +1125,7 @@ const CambioDevolucion = () => {
                                 onChange={setBusquedaProducto}
                                 onSeleccionarProducto={(producto) => handleAddProductoEnVenta(producto, 1)}
                                 onEnterSinSugerencias={handleBuscarProducto}
+                                onAbrirCamara={() => setMostrarEscaner(true)}
                                 placeholder="Escanear código de barras o buscar producto..."
                                 inputStyle={styles.inputField}
                             />
@@ -1404,6 +1411,16 @@ const CambioDevolucion = () => {
                         </button>
                     </div>
                 </div>
+            )}
+            {mostrarEscaner && (
+                <BarcodeScannerModal
+                    onDetected={(codigo) => {
+                        setMostrarEscaner(false);
+                        setBusquedaProducto(codigo);
+                        handleBuscarProducto(codigo);
+                    }}
+                    onClose={() => setMostrarEscaner(false)}
+                />
             )}
         </div>
     );

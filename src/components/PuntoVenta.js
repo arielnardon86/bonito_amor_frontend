@@ -11,6 +11,7 @@ import { extraerLimitePlan } from '../utils/planLimite';
 import { formatearMonto } from '../utils/formatearMonto';
 import HelpButton from './HelpButton';
 import BuscadorProductosDropdown from './BuscadorProductosDropdown';
+import BarcodeScannerModal from './BarcodeScannerModal';
 
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -115,6 +116,8 @@ const PuntoVenta = () => {
 
     // ESTADO ORIGINAL (NO SE TOCA, SOLO PARA CÓDIGO DE BARRAS)
     const [busquedaProducto, setBusquedaProducto] = useState('');
+    // Escaneo con la cámara del celular (solo mobile, ver BuscadorProductosDropdown)
+    const [mostrarEscaner, setMostrarEscaner] = useState(false);
     
     // CAMBIO 1: NUEVO ESTADO PARA EL FILTRO INSTANTÁNEO DE LA TABLA
     const [filterTerm, setFilterTerm] = useState('');
@@ -841,9 +844,13 @@ const PuntoVenta = () => {
     };
 
 
-    // FUNCIÓN 6: Búsqueda de Producto por Código de Barras (NO SE TOCA)
-    const handleBuscarProducto = useCallback(async () => {
-        if (!busquedaProducto) {
+    // FUNCIÓN 6: Búsqueda de Producto por Código de Barras
+    // Acepta un código opcional para que el escáner de cámara (que detecta el código
+    // de forma asíncrona) pueda dispararla directo, sin esperar a que el estado de
+    // busquedaProducto se actualice primero.
+    const handleBuscarProducto = useCallback(async (codigoOverride) => {
+        const codigo = codigoOverride ?? busquedaProducto;
+        if (!codigo) {
             showCustomAlert('Por favor, ingresa un código de barras o nombre para buscar.', 'info');
             return;
         }
@@ -856,18 +863,18 @@ const PuntoVenta = () => {
             try {
                  response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/buscar_por_barcode/`, {
                     headers: { 'Authorization': `Bearer ${token}` },
-                    params: { barcode: busquedaProducto, tienda_slug: selectedStoreSlug }
+                    params: { barcode: codigo, tienda_slug: selectedStoreSlug }
                 });
             } catch (error) {
                 if (error.response && error.response.status === 404) {
                     // Si no es un barcode, busca por nombre/código en el listado de abajo.
-                    setFilterTerm(busquedaProducto); // <-- Actualiza el filtro de la tabla
+                    setFilterTerm(codigo); // <-- Actualiza el filtro de la tabla
                     showCustomAlert('Búsqueda por nombre aplicada al listado de abajo.', 'info');
                     setProductoSeleccionado(null);
                     setBusquedaProducto(''); // Limpia el input principal
                     return;
                 }
-                throw error; 
+                throw error;
             }
             const productoEncontrado = response.data;
             setProductoSeleccionado(productoEncontrado);
@@ -879,7 +886,7 @@ const PuntoVenta = () => {
             setProductoSeleccionado(null);
             showCustomAlert('Producto no encontrado o error en la búsqueda.', 'error');
         }
-    }, [busquedaProducto, selectedStoreSlug, token, agregarProductoAlCarrito]); 
+    }, [busquedaProducto, selectedStoreSlug, token, agregarProductoAlCarrito]);
 
     // FUNCIÓN 7: Decrementar Cantidad
     const handleDecrementQuantity = useCallback((productId) => {
@@ -2160,6 +2167,7 @@ const PuntoVenta = () => {
                             onChange={setBusquedaProducto}
                             onSeleccionarProducto={(producto) => agregarProductoAlCarrito(producto, 1)}
                             onEnterSinSugerencias={handleBuscarProducto}
+                            onAbrirCamara={() => setMostrarEscaner(true)}
                             inputStyle={styles.inputField}
                             inputClassName="input-field"
                         />
@@ -3053,6 +3061,16 @@ const PuntoVenta = () => {
                     token={token}
                     tiendaSlug={selectedStoreSlug}
                     onUpgradeOk={() => setUpgradeInfo(null)}
+                />
+            )}
+            {mostrarEscaner && (
+                <BarcodeScannerModal
+                    onDetected={(codigo) => {
+                        setMostrarEscaner(false);
+                        setBusquedaProducto(codigo);
+                        handleBuscarProducto(codigo);
+                    }}
+                    onClose={() => setMostrarEscaner(false)}
                 />
             )}
         </div>
