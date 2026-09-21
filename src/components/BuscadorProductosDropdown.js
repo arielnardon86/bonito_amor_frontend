@@ -27,7 +27,7 @@ const abrevUnidad = (product) => UNIDADES_FRACCIONADAS[product?.unidad_fracciona
 const BuscadorProductosDropdown = ({
     token, tiendaSlug, value, onChange, onSeleccionarProducto, onEnterSinSugerencias,
     placeholder = 'Código de barras o nombre', inputStyle, inputClassName, autoFocus,
-    inputRef, onAbrirCamara,
+    inputRef, onAbrirCamara, iconoIzquierdo, badgeTexto,
 }) => {
     const [sugerencias, setSugerencias] = useState([]);
     const [mostrar, setMostrar] = useState(false);
@@ -71,14 +71,18 @@ const BuscadorProductosDropdown = ({
 
     return (
         <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-            {onAbrirCamara && (
+            {(onAbrirCamara || badgeTexto) && (
                 <style>{`
                     .buscador-productos-camera-btn { display: none; }
                     @media (max-width: 768px) {
                         .buscador-productos-camera-btn { display: flex; }
                         .buscador-productos-input-con-camara { padding-right: 42px !important; }
+                        .buscador-productos-badge { display: none !important; }
                     }
                 `}</style>
+            )}
+            {iconoIzquierdo && (
+                <span style={styles.iconoIzquierdo} aria-hidden="true">{iconoIzquierdo}</span>
             )}
             <input
                 ref={inputRef}
@@ -96,11 +100,18 @@ const BuscadorProductosDropdown = ({
                 }}
                 onFocus={() => { if (sugerencias.length > 0) setMostrar(true); }}
                 onBlur={() => setTimeout(() => setMostrar(false), 150)}
-                style={inputStyle}
+                style={{
+                    ...inputStyle,
+                    ...(iconoIzquierdo ? { paddingLeft: 38 } : {}),
+                    ...(badgeTexto ? { paddingRight: 122 } : {}),
+                }}
                 className={[inputClassName, onAbrirCamara ? 'buscador-productos-input-con-camara' : ''].filter(Boolean).join(' ')}
                 autoFocus={autoFocus}
                 autoComplete="off"
             />
+            {badgeTexto && (
+                <span style={styles.badge} className="buscador-productos-badge" aria-hidden="true">{badgeTexto}</span>
+            )}
             {onAbrirCamara && (
                 <button
                     type="button"
@@ -184,6 +195,17 @@ const styles = {
         width: 30, height: 30, alignItems: 'center', justifyContent: 'center',
         padding: 0, backgroundColor: 'transparent', color: '#1e8068',
         border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: 16,
+    },
+    iconoIzquierdo: {
+        position: 'absolute', top: '50%', left: 14, transform: 'translateY(-50%)',
+        color: '#8fb9a8', fontSize: 17, fontWeight: 700, pointerEvents: 'none', lineHeight: 1,
+    },
+    // display se maneja por CSS (.buscador-productos-badge), no acá: en mobile se
+    // oculta para dejarle el lugar al ícono de cámara (ver el <style> de arriba).
+    badge: {
+        position: 'absolute', top: '50%', right: 10, transform: 'translateY(-50%)',
+        background: '#eef2f6', color: '#64748b', fontSize: 11.5, fontWeight: 600,
+        padding: '5px 10px', borderRadius: 999, whiteSpace: 'nowrap', pointerEvents: 'none',
     },
 };
 

@@ -2145,8 +2145,14 @@ const PuntoVenta = () => {
                             {cart.alias || `Venta ${index + 1}`}
                         </button>
                     ))}
-                    <button onClick={() => setShowNewCartModal(true)} style={styles.newCartButton} className="new-cart-button">
-                        + Nueva Venta
+                    <button
+                        onClick={() => setShowNewCartModal(true)}
+                        style={styles.newCartButton}
+                        className="new-cart-button"
+                        title="Nueva venta"
+                        aria-label="Nueva venta"
+                    >
+                        +
                     </button>
                 </div>
 
@@ -2178,12 +2184,13 @@ const PuntoVenta = () => {
                             onSeleccionarProducto={(producto) => agregarProductoAlCarrito(producto, 1)}
                             onEnterSinSugerencias={handleBuscarProducto}
                             onAbrirCamara={() => setMostrarEscaner(true)}
-                            inputStyle={styles.inputField}
+                            placeholder="Escaneá el código de barras o escribí el nombre..."
+                            iconoIzquierdo="#"
+                            badgeTexto="foco al entrar"
+                            inputStyle={styles.searchInputField}
                             inputClassName="input-field"
+                            autoFocus
                         />
-                        <button onClick={handleBuscarProducto} style={styles.primaryButton} className="primary-button">
-                            Buscar
-                        </button>
                     </div>
                 </div>
 
@@ -2934,9 +2941,12 @@ const PuntoVenta = () => {
                         flex-wrap: wrap;
                         gap: 8px;
                     }
-                    .active-cart-button, .inactive-cart-button, .new-cart-button {
+                    .active-cart-button, .inactive-cart-button {
                         flex: 1 1 auto;
                         min-width: 100px;
+                    }
+                    .new-cart-button {
+                        flex: 0 0 auto;
                     }
                     .active-cart-info {
                         flex-direction: column;
@@ -2963,9 +2973,6 @@ const PuntoVenta = () => {
                     .search-row .input-field {
                         width: 100%;
                         box-sizing: border-box;
-                    }
-                    .search-row .primary-button {
-                        width: 100%;
                     }
                     .found-product-card {
                         flex-direction: column;
@@ -3051,9 +3058,12 @@ const PuntoVenta = () => {
                     .cart-selection-container {
                         flex-direction: column;
                     }
-                    .active-cart-button, .inactive-cart-button, .new-cart-button {
+                    .active-cart-button, .inactive-cart-button {
                         min-width: 100%;
                         width: 100%;
+                    }
+                    .cart-selection-container {
+                        align-items: flex-start;
                     }
                     .cart-table-wrap table.table {
                         min-width: 340px;
@@ -3108,10 +3118,14 @@ const styles = {
     accessDeniedMessage: { color: '#e25252', textAlign: 'center' },
     noStoreSelectedMessage: { textAlign: 'center', marginTop: '50px' },
     errorMessage: { color: '#991b1b', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },
-    cartSelectionContainer: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' },
-    activeCartButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
-    inactiveCartButton: { padding: '10px 15px', backgroundColor: '#f1f5f9', color: '#334155', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer' },
-    newCartButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
+    cartSelectionContainer: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginBottom: '20px' },
+    activeCartButton: { padding: '9px 20px', backgroundColor: '#0f1e3a', color: 'white', border: 'none', borderRadius: 999, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
+    inactiveCartButton: { padding: '9px 20px', backgroundColor: '#f1f5f9', color: '#334155', border: 'none', borderRadius: 999, cursor: 'pointer', fontWeight: 500, fontSize: 14 },
+    newCartButton: {
+        width: 34, height: 34, padding: 0, backgroundColor: '#f1f5f9', color: '#334155',
+        border: 'none', borderRadius: '50%', cursor: 'pointer', fontWeight: 700, fontSize: 18, lineHeight: 1,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    },
     activeCartInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap', gap: '10px' },
     activeCartTitle: { margin: 0, color: '#5dc87a', fontSize: '1rem', fontWeight: 600 },
     activeCartActions: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
@@ -3130,6 +3144,13 @@ const styles = {
     redondearRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' },
     redondearLabel: { margin: 0, fontSize: '0.9em', cursor: 'pointer', color: '#475569' },
     inputField: { padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', boxSizing: 'border-box', color: '#1a2926', fontSize: '14px' },
+    // Buscador de producto de "Ventas activas": más ancho y prominente que un input
+    // común -- ya no es solo un campo de código de barras, actúa como buscador.
+    searchInputField: {
+        width: '100%', boxSizing: 'border-box',
+        padding: '14px 16px', fontSize: 15, color: '#1a2926',
+        border: '2px solid #5dc87a', borderRadius: 18, outline: 'none', background: '#fff',
+    },
     deleteCartButton: { backgroundColor: '#fef2f2', color: '#991b1b', padding: '8px 12px', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9em' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
     modalContent: { backgroundColor: 'white', padding: '24px', borderRadius: '10px', textAlign: 'center', width: '90%', maxWidth: '400px', boxShadow: '0 10px 30px rgba(0,0,0,0.10)' },
