@@ -1805,22 +1805,26 @@ const Productos = () => {
                         </button>
                     )}
                     {resumen && resumen.stock_bajo > 0 && (
+                        // Siempre con estilo de alerta (ámbar) mientras haya productos en stock
+                        // bajo, tildado o no -- es un aviso permanente, no un chip neutro que
+                        // recién se "activa" al clickear. Tildado: se invierte a relleno sólido
+                        // para distinguir claramente que el filtro está aplicado.
                         <button
                             type="button"
                             onClick={() => setStockBajoFilter(v => !v)}
                             style={{
                                 padding: '9px 16px', borderRadius: 20, cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                                background: stockBajoFilter ? '#fffbeb' : '#f7faf9',
-                                color: stockBajoFilter ? '#b45309' : '#475569',
-                                border: `1px solid ${stockBajoFilter ? '#fcd34d' : '#e2e8f0'}`,
+                                background: stockBajoFilter ? '#f59e0b' : '#fffbeb',
+                                color: stockBajoFilter ? '#fff' : '#b45309',
+                                border: `1px solid ${stockBajoFilter ? '#f59e0b' : '#fcd34d'}`,
                                 transition: 'all 0.15s',
                                 whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6,
                             }}
                         >
                             Stock bajo
                             <span style={{
-                                background: stockBajoFilter ? '#f59e0b' : '#cbd5e1',
-                                color: stockBajoFilter ? '#fff' : '#475569',
+                                background: stockBajoFilter ? '#fff' : '#f59e0b',
+                                color: stockBajoFilter ? '#b45309' : '#fff',
                                 borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 800,
                             }}>
                                 {resumen.stock_bajo}
@@ -1859,14 +1863,14 @@ const Productos = () => {
                                         </th>
                                         <th style={styles.th}>Producto</th>
                                         {mostrarTalle && <th style={styles.th}>Talle</th>}
-                                        <th style={styles.th}>Precio</th>
-                                        {columnasVisibles.costo && <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>s/IVA</span></th>}
-                                        {columnasVisibles.costoConIva && <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>c/IVA</span></th>}
-                                        {columnasVisibles.iva && <th style={styles.th}>IVA</th>}
-                                        <th style={styles.th}>Margen</th>
-                                        <th style={styles.th}>Stock</th>
+                                        <th style={styles.thRight}>Precio</th>
+                                        {columnasVisibles.costo && <th style={styles.thRight}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>s/IVA</span></th>}
+                                        {columnasVisibles.costoConIva && <th style={styles.thRight}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>c/IVA</span></th>}
+                                        {columnasVisibles.iva && <th style={styles.thRight}>IVA</th>}
+                                        <th style={styles.thRight}>Margen</th>
+                                        <th style={styles.thRight}>Stock</th>
                                         <th style={styles.th} title="Última carga manual de stock -- no refleja ventas, transferencias ni cambios/devoluciones">Últ. mov.</th>
-                                        <th style={styles.th}>Acciones</th>
+                                        <th style={styles.thRight}>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1962,20 +1966,20 @@ const Productos = () => {
                                                 </div>
                                             </td>
                                             {mostrarTalle && <td data-label="Talle" style={styles.td}>{detalleVariante(producto) || (tieneVars ? '—' : '-')}</td>}
-                                            <td data-label="Precio" style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.precio)}</td>
-                                            {columnasVisibles.costo && <td data-label="Costo s/IVA" style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.costo || 0)}</td>}
-                                            {columnasVisibles.costoConIva && <td data-label="Costo c/IVA" style={styles.td}>{tieneVars ? '—' : formatearMonto(costoConIva)}</td>}
+                                            <td data-label="Precio" style={styles.tdRight}>{tieneVars ? '—' : formatearMonto(producto.precio)}</td>
+                                            {columnasVisibles.costo && <td data-label="Costo s/IVA" style={styles.tdRight}>{tieneVars ? '—' : formatearMonto(producto.costo || 0)}</td>}
+                                            {columnasVisibles.costoConIva && <td data-label="Costo c/IVA" style={styles.tdRight}>{tieneVars ? '—' : formatearMonto(costoConIva)}</td>}
                                             {columnasVisibles.iva && (
-                                                <td data-label="IVA" style={styles.td}>
+                                                <td data-label="IVA" style={styles.tdRight}>
                                                     {!tieneVars && producto.iva_porcentaje !== null && producto.iva_porcentaje !== undefined
                                                         ? <>{parseFloat(producto.iva_porcentaje)}<span style={{ color: '#94a3b8', fontSize: '0.75em' }}>%</span></>
                                                         : <span style={{ color: '#94a3b8' }}>—</span>}
                                                 </td>
                                             )}
-                                            <td data-label="Margen" style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
+                                            <td data-label="Margen" style={{ ...styles.tdRight, fontWeight: 700, color: margenColor }}>
                                                 {tieneVars ? '—' : margen !== null ? `${margen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                             </td>
-                                            <td data-label="Stock" style={styles.td}>
+                                            <td data-label="Stock" style={styles.tdRight}>
                                                 {tieneVars
                                                     ? <span style={{ color: '#475569', fontSize: 12 }}>
                                                         {producto.variantes.reduce((s, v) => s + (v.stock || 0), 0)} total
@@ -1993,7 +1997,7 @@ const Productos = () => {
                                                 {!tieneVars ? (formatearFechaRelativa(producto.fecha_ultimo_ingreso) || <span style={{ color: '#c0ccc9' }}>—</span>) : <span style={{ color: '#c0ccc9' }}>—</span>}
                                             </td>
                                             <td data-label="Acciones" style={{ ...styles.td, whiteSpace: 'nowrap' }}>
-                                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
                                                     {user.is_superuser && (
                                                         <button
                                                             onClick={() => { setEditProduct({ ...producto }); setTnLinkInput(''); setTnVariantesParaElegir(null); setShowEditModal(true); }}
@@ -2075,20 +2079,20 @@ const Productos = () => {
                                                         </div>
                                                     </td>
                                                     {mostrarTalle && <td data-label="Talle" style={styles.td}>{detalleVariante(v) || '-'}</td>}
-                                                    <td data-label="Precio" style={styles.td}>{formatearMonto(v.precio)}</td>
-                                                    {columnasVisibles.costo && <td data-label="Costo s/IVA" style={styles.td}>{formatearMonto(vCosto)}</td>}
-                                                    {columnasVisibles.costoConIva && <td data-label="Costo c/IVA" style={styles.td}>{formatearMonto(vCostoConIva)}</td>}
+                                                    <td data-label="Precio" style={styles.tdRight}>{formatearMonto(v.precio)}</td>
+                                                    {columnasVisibles.costo && <td data-label="Costo s/IVA" style={styles.tdRight}>{formatearMonto(vCosto)}</td>}
+                                                    {columnasVisibles.costoConIva && <td data-label="Costo c/IVA" style={styles.tdRight}>{formatearMonto(vCostoConIva)}</td>}
                                                     {columnasVisibles.iva && (
-                                                        <td data-label="IVA" style={styles.td}>
+                                                        <td data-label="IVA" style={styles.tdRight}>
                                                             {producto.iva_porcentaje !== null && producto.iva_porcentaje !== undefined
                                                                 ? <>{parseFloat(producto.iva_porcentaje)}<span style={{ color: '#94a3b8', fontSize: '0.75em' }}>%</span></>
                                                                 : <span style={{ color: '#94a3b8' }}>—</span>}
                                                         </td>
                                                     )}
-                                                    <td data-label="Margen" style={{ ...styles.td, fontWeight: 700, color: vMargenColor }}>
+                                                    <td data-label="Margen" style={{ ...styles.tdRight, fontWeight: 700, color: vMargenColor }}>
                                                         {vMargen !== null ? `${vMargen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                                     </td>
-                                                    <td data-label="Stock" style={styles.td}>
+                                                    <td data-label="Stock" style={styles.tdRight}>
                                                         <span style={{ ...styles.stockChip, ...(vStockBajo ? styles.stockChipBajo : styles.stockChipOk) }}>
                                                             {v.stock === 0 ? 'Sin stock' : vStockBajo ? `${v.stock} bajo` : v.stock}
                                                         </span>
@@ -2097,7 +2101,7 @@ const Productos = () => {
                                                         {formatearFechaRelativa(v.fecha_ultimo_ingreso) || <span style={{ color: '#c0ccc9' }}>—</span>}
                                                     </td>
                                                     <td data-label="Acciones" style={{ ...styles.td, whiteSpace: 'nowrap' }}>
-                                                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
                                                             {user.is_superuser && (
                                                                 <button
                                                                     onClick={() => {
@@ -2176,9 +2180,20 @@ const Productos = () => {
 
             {/* Modal para editar producto */}
             {showEditModal && editProduct && (
-                <div style={styles.modalOverlay}>
-                    <div style={{ ...styles.modalContent, maxHeight: '90vh', overflowY: 'auto' }}>
-                        <h3>Editar Producto</h3>
+                <div style={styles.modalOverlay} onClick={() => setShowEditModal(false)}>
+                    <div style={{ ...styles.modalContent, maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                        <div style={styles.modalHeaderRow}>
+                            <h3 style={{ margin: 0 }}>Editar Producto</h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowEditModal(false)}
+                                style={styles.modalCloseButton}
+                                title="Cerrar"
+                                aria-label="Cerrar"
+                            >
+                                ✕
+                            </button>
+                        </div>
                         <div style={styles.inputGroupModal}>
                             <label style={styles.label}>Nombre:</label>
                             <input
@@ -3102,6 +3117,7 @@ const Productos = () => {
                     }
                     .productos-tabla-wrap tbody td[data-label="Acciones"] > div {
                         flex-wrap: wrap;
+                        justify-content: flex-start !important;
                     }
                     .productos-pagination {
                         flex-direction: column;
@@ -3132,7 +3148,15 @@ const Productos = () => {
 const styles = {
     container: { padding: 0, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", width: '100%' },
     title: { color: '#1a2926', fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.25rem' },
-    section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f7faf9', borderRadius: '10px' },
+    // Se apoya justo debajo de headerCard (marginTop -1px) para que el borde
+    // compartido se vea como una sola línea, no dos superpuestas -- juntos arman
+    // una única tarjeta blanca con la fila de filtros separada del header por esa
+    // línea, igual que el mockup.
+    section: {
+        marginTop: '-1px', marginBottom: '30px', padding: '20px 24px 24px',
+        backgroundColor: '#fff', border: '1px solid #e2e8f0', borderTop: 'none',
+        borderRadius: '0 0 18px 18px', boxShadow: '0 8px 24px rgba(15,23,42,0.04)',
+    },
     sectionTitle: { color: '#475569', fontSize: '1.1rem', borderBottom: '1px solid #edf5f2', paddingBottom: '8px', marginTop: '1.5rem', marginBottom: '0.5rem' },
     form: { display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-end' },
     inputGroup: { flex: '1 1 200px', display: 'flex', flexDirection: 'column' },
@@ -3151,7 +3175,9 @@ const styles = {
     tableResponsive: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse' },
     th: { padding: '4px 5px', borderBottom: '2px solid #e2e8f0', textAlign: 'left', backgroundColor: '#f7faf9' },
+    thRight: { padding: '4px 5px', borderBottom: '2px solid #e2e8f0', textAlign: 'right', backgroundColor: '#f7faf9' },
     td: { padding: '4px 5px', borderBottom: '1px solid #e2e8f0' },
+    tdRight: { padding: '4px 5px', borderBottom: '1px solid #e2e8f0', textAlign: 'right' },
     etiquetasInput: { width: '50px' },
     editButton: { padding: '5px 10px', backgroundColor: '#f59e0b', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' },
     deleteButton: { padding: '5px 10px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
@@ -3160,7 +3186,11 @@ const styles = {
     paginationButtonActivo: { padding: '8px 13px', minWidth: 40, minHeight: 40, backgroundColor: '#0f1e3a', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 },
     pageNumber: { fontSize: '0.9em', color: '#64748b' },
     // Header de la página: título + resumen + botones (Etiquetas / ··· / + Nuevo producto).
-    headerCard: { marginBottom: '20px' },
+    headerCard: {
+        marginBottom: 0, padding: '20px 24px', backgroundColor: '#fff',
+        border: '1px solid #e2e8f0', borderRadius: '18px 18px 0 0',
+        boxShadow: '0 8px 24px rgba(15,23,42,0.04)',
+    },
     resumenSubtitulo: { margin: '4px 0 0', color: '#64748b', fontSize: 13 },
     headerSecondaryButton: {
         padding: '9px 18px', backgroundColor: '#fff', color: '#334155', border: '1px solid #e2e8f0',
@@ -3198,16 +3228,35 @@ const styles = {
     stockChipOk: { background: '#f1f5f9', color: '#334155' },
     stockChipBajo: { background: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d' },
     // Acciones de fila: texto en vez de solo íconos (touch target >= 40px).
+    // "Editar" neutro (outline gris, texto oscuro) y "+ Stock" con relleno verde
+    // clarito -- son las dos acciones más comunes, se destacan por contraste de
+    // relleno entre sí, no por colores de marca distintos sin relación.
     accionTexto: {
-        padding: '8px 14px', minHeight: 40, backgroundColor: '#fff', color: '#1e8068',
-        border: '1px solid #cdeed9', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap',
+        padding: '8px 14px', minHeight: 40, backgroundColor: '#fff', color: '#1a2926',
+        border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap',
     },
     accionTextoSecundaria: {
-        padding: '8px 14px', minHeight: 40, backgroundColor: '#fff', color: '#3b82f6',
-        border: '1px solid #bfdbfe', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap',
+        padding: '8px 14px', minHeight: 40, backgroundColor: '#eaf7ef', color: '#1a7a3f',
+        border: '1px solid #eaf7ef', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap',
     },
-    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-    modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', textAlign: 'center', width: '90%', maxWidth: '500px' },
+    // zIndex bien por encima del sidebar (position:fixed, z-index:1000 en App.css):
+    // con el mismo valor, el navegador puede terminar apilando el sidebar arriba del
+    // overlay según el contexto de stacking, y el grisado queda invisible detrás.
+    modalOverlay: {
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1500,
+        backgroundColor: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(2px)',
+        display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16,
+    },
+    modalContent: {
+        backgroundColor: 'white', padding: '24px', borderRadius: '18px', textAlign: 'center',
+        width: '90%', maxWidth: '500px', boxShadow: '0 20px 60px rgba(15,23,42,0.25)',
+    },
+    modalHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    modalCloseButton: {
+        width: 30, height: 30, minWidth: 30, borderRadius: '50%', border: 'none',
+        background: '#f1f5f9', color: '#64748b', fontSize: 14, cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
     inputGroupModal: { marginBottom: '15px' },
     modalInput: { width: '100%', padding: '8px', boxSizing: 'border-box' },
     modalActions: { display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' },
