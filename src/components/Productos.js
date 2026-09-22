@@ -3218,7 +3218,7 @@ const styles = {
         display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9',
     },
     nombreProducto: {
-        fontWeight: 700, color: '#1a2926', display: 'inline-block', maxWidth: 220,
+        fontWeight: 700, color: '#1a2926', fontSize: 14.5, display: 'inline-block', maxWidth: 220,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle',
     },
     metaProducto: { fontSize: 12, color: '#94a3b8', marginTop: 1 },
