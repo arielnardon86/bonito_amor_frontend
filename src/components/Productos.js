@@ -1,13 +1,11 @@
 // Productos.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatearMonto } from '../utils/formatearMonto';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPencil, faTrash, faPlus, faArrowUp, faRightLeft, faLayerGroup, faChevronUp, faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import HelpButton from './HelpButton';
 import { resizeLogoToBase64 } from '../utils/resizeLogo';
 import { extraerLimitePlan } from '../utils/planLimite';
@@ -38,6 +36,150 @@ const UNIDADES_FRACCIONADAS = {
     METRO: { nombre: 'Metro', abrev: 'Metro', chica: 'centímetros' },
 };
 
+const PRODUCTOS_POR_PAGINA = 25;
+
+// "Última carga manual de stock" -- no un movimiento real (ver tooltip donde se usa):
+// no refleja ventas, transferencias ni cambios/devoluciones, solo altas manuales e
+// importación masiva (fecha_ultimo_ingreso, el único dato que ya existe sin agregar
+// tracking nuevo al backend).
+const formatearFechaRelativa = (fechaISO) => {
+    if (!fechaISO) return null;
+    const fecha = new Date(fechaISO);
+    if (isNaN(fecha.getTime())) return null;
+    const ahora = new Date();
+    const diffMs = ahora - fecha;
+    if (fecha.toDateString() === ahora.toDateString()) {
+        const diffMin = Math.floor(diffMs / 60000);
+        if (diffMin < 1) return 'recién';
+        if (diffMin < 60) return `hace ${diffMin} min`;
+        return `hoy ${fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    const diffDias = Math.floor(diffMs / 86400000);
+    if (diffDias === 1) return 'ayer';
+    if (diffDias < 7) return `hace ${diffDias} días`;
+    if (diffDias < 30) {
+        const semanas = Math.floor(diffDias / 7);
+        return `hace ${semanas} semana${semanas !== 1 ? 's' : ''}`;
+    }
+    return fecha.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+};
+
+// Menú "..." reutilizable (header y fila de la tabla): botón que abre un popover con
+// una lista de acciones de texto, se cierra solo al elegir una o al clickear afuera.
+const MenuDesplegable = ({ items, align = 'right', title = 'Más acciones' }) => {
+    const [abierto, setAbierto] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        if (!abierto) return;
+        const onClickFuera = (e) => { if (ref.current && !ref.current.contains(e.target)) setAbierto(false); };
+        document.addEventListener('mousedown', onClickFuera);
+        return () => document.removeEventListener('mousedown', onClickFuera);
+    }, [abierto]);
+
+    if (items.length === 0) return null;
+
+    return (
+        <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+                type="button"
+                onClick={() => setAbierto(v => !v)}
+                title={title}
+                aria-label={title}
+                style={estilosMenuDesplegable.boton}
+            >
+                ⋯
+            </button>
+            {abierto && (
+                <div style={{ ...estilosMenuDesplegable.popover, [align]: 0 }} className="menu-desplegable-popover">
+                    <style>{`.menu-desplegable-popover button:hover { background: #f1f5f9; }`}</style>
+                    {items.map((item, i) => (
+                        <button
+                            key={i}
+                            type="button"
+                            disabled={item.disabled}
+                            onClick={() => { setAbierto(false); item.onClick(); }}
+                            style={{
+                                ...estilosMenuDesplegable.item,
+                                ...(item.peligro ? { color: '#b91c1c' } : {}),
+                                ...(item.disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
+                            }}
+                        >
+                            {item.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const estilosMenuDesplegable = {
+    boton: {
+        width: 40, height: 40, minWidth: 40, borderRadius: 10, border: '1px solid #e2e8f0',
+        background: '#fff', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+    },
+    popover: {
+        position: 'absolute', top: 'calc(100% + 6px)', zIndex: 60, minWidth: 220,
+        background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+        boxShadow: '0 8px 24px rgba(15,30,58,0.14)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2,
+    },
+    item: {
+        textAlign: 'left', padding: '10px 12px', borderRadius: 6, border: 'none', background: 'none',
+        cursor: 'pointer', fontSize: 14, color: '#1a2926', minHeight: 40,
+    },
+};
+
+// Costo s/IVA, Costo c/IVA e IVA% son "datos de dueño, no de depósito": quedan
+// ocultos por defecto y se muestran/ocultan como columnas extra desde acá. El
+// Margen (derivado de esos mismos datos) NO es opcional -- siempre visible en la
+// tabla, ver la columna Margen más abajo.
+const PopoverColumnas = ({ columnasVisibles, setColumnasVisibles, mostrarTalle, setMostrarTalle, hayVariantesConTalle, abierto, setAbierto }) => {
+    const ref = useRef(null);
+
+    useEffect(() => {
+        if (!abierto) return;
+        const onClickFuera = (e) => { if (ref.current && !ref.current.contains(e.target)) setAbierto(false); };
+        document.addEventListener('mousedown', onClickFuera);
+        return () => document.removeEventListener('mousedown', onClickFuera);
+    }, [abierto, setAbierto]);
+
+    const toggle = (clave) => setColumnasVisibles(prev => ({ ...prev, [clave]: !prev[clave] }));
+    const cantidadActivas = Object.values(columnasVisibles).filter(Boolean).length + (mostrarTalle ? 1 : 0);
+
+    return (
+        <div ref={ref} style={{ position: 'relative' }}>
+            <button type="button" onClick={() => setAbierto(v => !v)} style={styles.columnasBoton}>
+                Columnas
+                {cantidadActivas > 0 && <span style={styles.headerButtonBadge}>{cantidadActivas}</span>}
+            </button>
+            {abierto && (
+                <div style={styles.columnasPopover}>
+                    <label style={styles.columnasOpcion}>
+                        <input type="checkbox" checked={columnasVisibles.costo} onChange={() => toggle('costo')} />
+                        <span>Costo s/IVA</span>
+                    </label>
+                    <label style={styles.columnasOpcion}>
+                        <input type="checkbox" checked={columnasVisibles.costoConIva} onChange={() => toggle('costoConIva')} />
+                        <span>Costo c/IVA</span>
+                    </label>
+                    <label style={styles.columnasOpcion}>
+                        <input type="checkbox" checked={columnasVisibles.iva} onChange={() => toggle('iva')} />
+                        <span>IVA %</span>
+                    </label>
+                    {hayVariantesConTalle && (
+                        <label style={styles.columnasOpcion}>
+                            <input type="checkbox" checked={mostrarTalle} onChange={(e) => setMostrarTalle(e.target.checked)} />
+                            <span>Talle / Variante</span>
+                        </label>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const Productos = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas } = useAuth();
     const navigate = useNavigate();
@@ -49,9 +191,6 @@ const Productos = () => {
     const [upgradeInfo, setUpgradeInfo] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [nextPage, setNextPage] = useState(null);
-    const [prevPage, setPrevPage] = useState(null);
     const [currentPageUrl, setCurrentPageUrl] = useState(null);
 
     const [newProduct, setNewProduct] = useState({
@@ -137,6 +276,16 @@ const Productos = () => {
     const [showEtiquetasModal, setShowEtiquetasModal] = useState(false);
     const [cantidadesModal, setCantidadesModal] = useState({});
 
+    // Resumen del header ("N productos · M con stock bajo · valorizado $X"): totales
+    // de TODO el catálogo (según búsqueda/rubro activos), no solo la página cargada.
+    const [resumen, setResumen] = useState(null);
+    // Total real de la paginación (count de la API) -- separado de totalPages para
+    // poder mostrar "1–25 de 248" sin recalcular a partir del ceil.
+    const [totalCount, setTotalCount] = useState(0);
+    // Columnas opcionales ("datos de dueño, no de depósito"): apagadas por defecto.
+    const [columnasVisibles, setColumnasVisibles] = useState({ costo: false, costoConIva: false, iva: false });
+    const [mostrarPopoverColumnas, setMostrarPopoverColumnas] = useState(false);
+
     const [showAgregarStockModal, setShowAgregarStockModal] = useState(false);
     const [productoParaStock, setProductoParaStock] = useState(null);
     const [cantidadAGregar, setCantidadAGregar] = useState('');
@@ -206,16 +355,33 @@ const Productos = () => {
                     tienda_slug: selectedStoreSlug,
                     search: searchTerm,
                     rubro_id: filtroRubroId || undefined,
+                    stock_bajo: stockBajoFilter ? '1' : undefined,
+                    page_size: PRODUCTOS_POR_PAGINA,
                 }
             });
             setProductos(response.data.results);
-            setNextPage(response.data.next);
-            setPrevPage(response.data.previous);
-            setTotalPages(Math.ceil(response.data.count / 10));
+            setTotalCount(response.data.count);
             setLoadingProducts(false);
         } catch (err) {
             setError('Error al cargar productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
+        }
+    }, [token, selectedStoreSlug, searchTerm, filtroRubroId, stockBajoFilter]);
+
+    // Resumen para el header: total del catálogo, cuántos en stock bajo y el
+    // valorizado -- independiente de la paginación/del chip "Stock bajo" (ver
+    // ProductoViewSet.resumen en el backend, que a propósito NO aplica ese filtro
+    // acá para poder mostrar siempre "M con stock bajo" sea cual sea el chip).
+    const fetchResumen = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/resumen/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug, search: searchTerm, rubro_id: filtroRubroId || undefined },
+            });
+            setResumen(response.data);
+        } catch (err) {
+            console.error('Error al cargar el resumen de productos:', err);
         }
     }, [token, selectedStoreSlug, searchTerm, filtroRubroId]);
 
@@ -457,13 +623,14 @@ const Productos = () => {
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_supervisor || user.is_staff) && selectedStoreSlug) {
             fetchProductos();
+            fetchResumen();
         } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_supervisor))) {
             setError("Acceso denegado. No tenés permisos para gestionar productos.");
             setLoadingProducts(false);
         } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_supervisor) && !selectedStoreSlug) {
             setLoadingProducts(false);
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchProductos, fetchResumen]);
 
     const handleCreateProduct = async (e) => {
         e.preventDefault();
@@ -762,6 +929,7 @@ const Productos = () => {
             setConvirtiendoAFamilia(false);
             setVariantesNuevas([{ ...VARIANTE_VACIA }]);
             fetchProductos(currentPageUrl);
+            fetchResumen();
         } catch (err) {
             setError('Error al agregar variantes: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
@@ -782,6 +950,7 @@ const Productos = () => {
             setEditProduct(null);
             setShowEditModal(false);
             fetchProductos(currentPageUrl);
+            fetchResumen();
         } catch (err) {
             setError('Error al editar producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
@@ -823,6 +992,7 @@ const Productos = () => {
                 await Swal.fire('Vinculado', data.mensaje, 'success');
             }
             fetchProductos(currentPageUrl);
+            fetchResumen();
         } catch (err) {
             if (err.response?.status === 409 && err.response.data?.requiere_variante) {
                 setTnVariantesParaElegir(err.response.data.variantes);
@@ -845,6 +1015,7 @@ const Productos = () => {
             );
             setEditProduct(prev => ({ ...prev, tn_product_id: null, tn_variant_id: null }));
             fetchProductos(currentPageUrl);
+            fetchResumen();
         } catch (err) {
             setError('Error al desvincular de Tienda Nube: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
         } finally {
@@ -895,11 +1066,13 @@ const Productos = () => {
             setShowDeleteModal(false);
             setProductToDelete(null);
             fetchProductos(currentPageUrl);
+            fetchResumen();
         } catch (err) {
             if (err.response && err.response.status === 404) {
                 setShowDeleteModal(false);
                 setProductToDelete(null);
                 fetchProductos(currentPageUrl);
+            fetchResumen();
             } else {
                 setError('Error al eliminar producto: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
                 setLoadingProducts(false);
@@ -983,6 +1156,7 @@ const Productos = () => {
             setTiendaDestinoTransferir('');
             setCantidadTransferir('');
             fetchProductos(currentPageUrl);
+            fetchResumen();
         } catch (err) {
             setError('Error al transferir stock: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
         } finally {
@@ -1011,6 +1185,7 @@ const Productos = () => {
             setTiendaDestinoFamilia('');
             setCantidadesFamilia({});
             fetchProductos(currentPageUrl);
+            fetchResumen();
         } catch (err) {
             setError('Error al transferir stock: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
         } finally {
@@ -1027,6 +1202,7 @@ const Productos = () => {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             fetchProductos(currentPageUrl);
+            fetchResumen();
         } catch (err) {
             setError('Error al reordenar la variante: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
         } finally {
@@ -1139,73 +1315,61 @@ const Productos = () => {
     
     return (
         <div style={styles.container}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <h1 style={{ ...styles.title, marginBottom: 0 }}>Productos</h1>
-                    <HelpButton
-                        titulo="Gestión de Productos"
-                        bullets={[
-                            'Buscá productos por nombre o código de barras',
-                            'Creá nuevos productos: el código de barras se genera automáticamente si no lo tenés',
-                            'Seleccioná uno o varios productos y hacé clic en "Imprimir Etiquetas" para generar etiquetas con código de barras',
-                            'Los Supervisores pueden agregar productos pero no editarlos ni eliminarlos',
-                            'Solo los Administradores pueden editar precio, stock o eliminar productos',
-                            'Gestioná tus rubros (ver, editar el % de IVA, crear o eliminar) con el botón "Rubros"',
-                            'Importá productos en lote desde Excel/CSV con "Importación masiva"',
-                            'Subí la foto o el PDF de una factura de compra con "Importación IA" para crear productos o reponer stock automáticamente',
-                            'Descargá todo tu catálogo con "Exportar mis productos" (mismo formato que la plantilla de importación, sirve para llevarlo a otra tienda)',
-                        ]}
-                    />
-                </div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <button
-                        type="button"
-                        onClick={() => setShowGestionRubrosModal(true)}
-                        style={{ padding: '8px 16px', backgroundColor: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
-                    >
-                        Rubros
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleDescargarExcel}
-                        disabled={descargandoExcel}
-                        style={{ padding: '8px 16px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '10px', cursor: descargandoExcel ? 'not-allowed' : 'pointer', fontWeight: 600 }}
-                    >
-                        {descargandoExcel ? 'Descargando...' : 'Exportar mis productos'}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => navigate('/productos/carga-masiva')}
-                        style={{ padding: '8px 16px', backgroundColor: '#3b9ede', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
-                    >
-                        Importación masiva
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => navigate('/productos/importacion-ia')}
-                        style={{ padding: '8px 16px', backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
-                    >
-                        Importación IA
-                    </button>
-                </div>
-            </div>
-            
-            <div style={styles.section}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <h2 style={{ ...styles.sectionTitle, margin: 0 }}>Nuevo producto</h2>
-                    <button
-                        type="button"
-                        onClick={() => setShowNuevoProductoModal(true)}
-                        title="Agregar producto"
-                        style={{
-                            width: 34, height: 34, borderRadius: '50%', border: 'none',
-                            background: '#5dc87a', color: '#fff', fontSize: 20, fontWeight: 700,
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 2px 8px rgba(93,200,122,0.35)', lineHeight: 1, padding: 0, flexShrink: 0,
-                        }}
-                    >
-                        +
-                    </button>
+            <div style={styles.headerCard} className="productos-header-card">
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <h1 style={{ ...styles.title, marginBottom: 0 }}>Productos</h1>
+                            <HelpButton
+                                titulo="Gestión de Productos"
+                                bullets={[
+                                    'Buscá productos por nombre o código de barras',
+                                    'Creá nuevos productos: el código de barras se genera automáticamente si no lo tenés',
+                                    'Seleccioná uno o varios productos y hacé clic en "Etiquetas" para generar etiquetas con código de barras',
+                                    'Los Supervisores pueden agregar productos pero no editarlos ni eliminarlos',
+                                    'Solo los Administradores pueden editar precio, stock o eliminar productos',
+                                    'Gestioná tus rubros (ver, editar el % de IVA, crear o eliminar), exportar tu catálogo o importar productos en lote desde el botón "···"',
+                                    'Los costos (s/IVA, c/IVA, IVA%) son opcionales: mostralos con el botón "Columnas" si los necesitás',
+                                ]}
+                            />
+                        </div>
+                        {resumen && (
+                            <p style={styles.resumenSubtitulo}>
+                                {resumen.total} producto{resumen.total !== 1 ? 's' : ''}
+                                {resumen.stock_bajo > 0 && (
+                                    <> · <span style={{ color: '#b45309', fontWeight: 600 }}>{resumen.stock_bajo} con stock bajo</span></>
+                                )}
+                                {' '}· valorizado {formatearMonto(resumen.valorizado)}
+                            </p>
+                        )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <button type="button" onClick={handleImprimirEtiquetas} style={styles.headerSecondaryButton}>
+                            Etiquetas
+                            {Object.keys(etiquetasSeleccionadas).length > 0 && (
+                                <span style={styles.headerButtonBadge}>{Object.keys(etiquetasSeleccionadas).length}</span>
+                            )}
+                        </button>
+                        <MenuDesplegable
+                            title="Más acciones"
+                            items={[
+                                { label: 'Rubros', onClick: () => setShowGestionRubrosModal(true) },
+                                { label: descargandoExcel ? 'Descargando...' : 'Exportar mis productos', onClick: handleDescargarExcel, disabled: descargandoExcel },
+                                { label: 'Importación masiva', onClick: () => navigate('/productos/carga-masiva') },
+                                { label: 'Importación IA', onClick: () => navigate('/productos/importacion-ia') },
+                                ...(tnConectado && Object.keys(etiquetasSeleccionadas).length > 0
+                                    ? [{ label: `Publicar ${Object.keys(etiquetasSeleccionadas).length} seleccionados en Tienda Nube`, onClick: handlePublicarSeleccionadosTN }]
+                                    : []),
+                            ]}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowNuevoProductoModal(true)}
+                            style={styles.headerPrimaryButton}
+                        >
+                            + Nuevo producto
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1603,45 +1767,22 @@ const Productos = () => {
             )}
 
             <div style={styles.section}>
-                <div style={styles.tableHeader}>
-                    <h2 style={styles.sectionTitle}>Listado</h2>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button onClick={handleImprimirEtiquetas} style={styles.printButton}>
-                            Imprimir Etiquetas
-                            {Object.keys(etiquetasSeleccionadas).length > 0 && (
-                                <span style={{ marginLeft: 7, background: '#fff', color: '#1a7a3f', borderRadius: 10, padding: '1px 7px', fontSize: 12, fontWeight: 800 }}>
-                                    {Object.keys(etiquetasSeleccionadas).length}
-                                </span>
-                            )}
-                        </button>
-                        {tnConectado && Object.keys(etiquetasSeleccionadas).length > 0 && (
-                            <button
-                                onClick={handlePublicarSeleccionadosTN}
-                                disabled={loadingProducts}
-                                style={{ ...styles.printButton, backgroundColor: '#3b9ede' }}
-                            >
-                                Publicar seleccionados en Tienda Nube
-                                <span style={{ marginLeft: 7, background: '#fff', color: '#1a7a3f', borderRadius: 10, padding: '1px 7px', fontSize: 12, fontWeight: 800 }}>
-                                    {Object.keys(etiquetasSeleccionadas).length}
-                                </span>
-                            </button>
-                        )}
-                    </div>
-                </div>
-                <div style={styles.filtersContainer}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                <div style={styles.filtersContainer} className="productos-filters-container">
+                    <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
+                        <span style={styles.searchIcon} aria-hidden="true">🔍</span>
                         <input
                             type="text"
-                            placeholder="Buscar por nombre, código interno o código de barras..."
+                            placeholder="Nombre o código de barras..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            style={styles.filterInput}
+                            style={{ ...styles.filterInput, width: '100%', boxSizing: 'border-box', paddingLeft: 34 }}
                         />
                         {/^\d{6,}$/.test(searchTerm) && (
-                            <span style={{ fontSize: 11, color: '#1a7a3f', fontWeight: 600 }}>🔍 Buscando por código de barras</span>
+                            <span style={{ position: 'absolute', left: 2, top: '100%', marginTop: 2, fontSize: 11, color: '#1a7a3f', fontWeight: 600 }}>
+                                🔍 Buscando por código de barras
+                            </span>
                         )}
                     </div>
-                    <button onClick={() => fetchProductos()} style={styles.searchButton}>Buscar</button>
                     {rubros.length > 0 && (
                         <select
                             value={filtroRubroId}
@@ -1663,41 +1804,38 @@ const Productos = () => {
                             Editar en masa por rubro
                         </button>
                     )}
-                    {(() => {
-                        const stockBajoCount = productos.reduce((acc, p) => {
-                            if (p.variantes && p.variantes.length > 0) {
-                                return acc + p.variantes.filter(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD).length;
-                            }
-                            if (p.se_vende_por_peso || p.precio_variable) return acc;
-                            return acc + ((p.stock || 0) <= STOCK_BAJO_THRESHOLD ? 1 : 0);
-                        }, 0);
-                        return stockBajoCount > 0 ? (
-                            <button
-                                type="button"
-                                onClick={() => setStockBajoFilter(v => !v)}
-                                style={{
-                                    padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                                    background: stockBajoFilter ? '#fef2f2' : '#f7faf9',
-                                    color: stockBajoFilter ? '#991b1b' : '#475569',
-                                    border: `1px solid ${stockBajoFilter ? '#fca5a5' : '#e2e8f0'}`,
-                                    transition: 'all 0.15s',
-                                    whiteSpace: 'nowrap',
-                                }}
-                            >
-                                ⚠️ Stock bajo ({stockBajoCount})
-                            </button>
-                        ) : null;
-                    })()}
-                    {productos.some(p => (p.talle && String(p.talle).trim() !== '') || (p.variante2 && String(p.variante2).trim() !== '')) && (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginLeft: '12px' }}>
-                            <input
-                                type="checkbox"
-                                checked={mostrarTalle}
-                                onChange={(e) => setMostrarTalle(e.target.checked)}
-                            />
-                            <span>Mostrar variante</span>
-                        </label>
+                    {resumen && resumen.stock_bajo > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setStockBajoFilter(v => !v)}
+                            style={{
+                                padding: '9px 16px', borderRadius: 20, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                                background: stockBajoFilter ? '#fffbeb' : '#f7faf9',
+                                color: stockBajoFilter ? '#b45309' : '#475569',
+                                border: `1px solid ${stockBajoFilter ? '#fcd34d' : '#e2e8f0'}`,
+                                transition: 'all 0.15s',
+                                whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6,
+                            }}
+                        >
+                            Stock bajo
+                            <span style={{
+                                background: stockBajoFilter ? '#f59e0b' : '#cbd5e1',
+                                color: stockBajoFilter ? '#fff' : '#475569',
+                                borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 800,
+                            }}>
+                                {resumen.stock_bajo}
+                            </span>
+                        </button>
                     )}
+                    <PopoverColumnas
+                        columnasVisibles={columnasVisibles}
+                        setColumnasVisibles={setColumnasVisibles}
+                        mostrarTalle={mostrarTalle}
+                        setMostrarTalle={setMostrarTalle}
+                        hayVariantesConTalle={productos.some(p => (p.talle && String(p.talle).trim() !== '') || (p.variante2 && String(p.variante2).trim() !== ''))}
+                        abierto={mostrarPopoverColumnas}
+                        setAbierto={setMostrarPopoverColumnas}
+                    />
                 </div>
                 
                 {loadingProducts ? (
@@ -1711,41 +1849,28 @@ const Productos = () => {
                                 <thead>
                                     <tr>
                                         <th style={styles.th}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={Object.keys(etiquetasSeleccionadas).length > 0}
-                                                    onChange={(e) => handleToggleSeleccionarTodosEtiquetas(e.target.checked)}
-                                                    style={{ width: 16, height: 16, cursor: 'pointer' }}
-                                                    title="Seleccionar todos los productos de esta página para imprimir etiquetas"
-                                                />
-                                                <span style={{ fontSize: 10, fontWeight: 400, color: '#94a3b8' }}>
-                                                    Pág.
-                                                </span>
-                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={Object.keys(etiquetasSeleccionadas).length > 0}
+                                                onChange={(e) => handleToggleSeleccionarTodosEtiquetas(e.target.checked)}
+                                                style={{ width: 16, height: 16, cursor: 'pointer' }}
+                                                title="Seleccionar todos los productos de esta página para imprimir etiquetas"
+                                            />
                                         </th>
-                                        <th style={styles.th}>Foto</th>
-                                        <th style={styles.th}>Cód. Interno</th>
-                                        <th style={styles.th}>Nombre</th>
+                                        <th style={styles.th}>Producto</th>
                                         {mostrarTalle && <th style={styles.th}>Talle</th>}
                                         <th style={styles.th}>Precio</th>
-                                        <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>s/IVA</span></th>
-                                        <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>c/IVA</span></th>
-                                        <th style={styles.th}>IVA</th>
-                                        <th style={styles.th}>Rubro</th>
+                                        {columnasVisibles.costo && <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>s/IVA</span></th>}
+                                        {columnasVisibles.costoConIva && <th style={styles.th}>Costo <span style={{ fontSize: '0.75em', color: '#94a3b8', fontWeight: 400 }}>c/IVA</span></th>}
+                                        {columnasVisibles.iva && <th style={styles.th}>IVA</th>}
                                         <th style={styles.th}>Margen</th>
                                         <th style={styles.th}>Stock</th>
-                                        <th style={styles.th}>Últ. ingreso</th>
+                                        <th style={styles.th} title="Última carga manual de stock -- no refleja ventas, transferencias ni cambios/devoluciones">Últ. mov.</th>
                                         <th style={styles.th}>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {(stockBajoFilter
-                                        ? productos.filter(p => p.variantes && p.variantes.length > 0
-                                            ? p.variantes.some(v => (v.stock || 0) <= STOCK_BAJO_THRESHOLD)
-                                            : !p.se_vende_por_peso && !p.precio_variable && (p.stock || 0) <= STOCK_BAJO_THRESHOLD)
-                                        : productos
-                                    ).map(producto => {
+                                    {productos.map(producto => {
                                         const precio = parseFloat(producto.precio) || 0;
                                         const costo = parseFloat(producto.costo) || 0;
                                         const ivaPct = parseFloat(producto.iva_porcentaje) || 0;
@@ -1758,10 +1883,29 @@ const Productos = () => {
                                         const margenColor = margen === null ? '#94a3b8' : margen >= 40 ? '#1a6a40' : margen >= 20 ? '#d97706' : '#e25252';
                                         const tieneVars = producto.variantes && producto.variantes.length > 0;
                                         const expandido = !!expandedVariants[producto.id];
+                                        const stockBajo = !tieneVars && !producto.se_vende_por_peso && !producto.precio_variable && producto.stock <= STOCK_BAJO_THRESHOLD;
+                                        const menuItemsProducto = [
+                                            ...(user.is_superuser ? [{
+                                                label: tieneVars ? 'Agregar variante' : 'Convertir en producto con variantes',
+                                                onClick: () => { setEditProduct({ ...producto }); setConvirtiendoAFamilia(!tieneVars); setVariantesNuevas([{ ...VARIANTE_VACIA, precio: producto.precio ?? '', costo: producto.costo ?? '' }]); setShowAddVarianteModal(true); },
+                                            }] : []),
+                                            ...((user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 && !tieneVars ? [{
+                                                label: 'Transferir stock a otra tienda',
+                                                onClick: () => { setProductoParaTransferir(producto); setTiendaDestinoTransferir(''); setCantidadTransferir(''); setShowTransferirStockModal(true); },
+                                            }] : []),
+                                            ...((user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 && tieneVars ? [{
+                                                label: 'Transferir variantes a otra tienda',
+                                                onClick: () => { setFamiliaParaTransferir(producto); setTiendaDestinoFamilia(''); setCantidadesFamilia({}); setShowTransferirFamiliaModal(true); },
+                                            }] : []),
+                                            ...(user.is_superuser ? [{
+                                                label: 'Eliminar', peligro: true,
+                                                onClick: () => { setProductToDelete(producto); setShowDeleteModal(true); },
+                                            }] : []),
+                                        ];
                                         return (
                                         <React.Fragment key={producto.id}>
-                                        <tr style={(!tieneVars && !producto.se_vende_por_peso && !producto.precio_variable && producto.stock <= STOCK_BAJO_THRESHOLD) ? { background: '#fef9ec' } : tieneVars ? { background: '#f0faf5' } : {}}>
-                                            <td style={{ ...styles.td, textAlign: 'center' }}>
+                                        <tr style={stockBajo ? { background: '#fef9ec' } : tieneVars ? { background: '#f0faf5' } : {}}>
+                                            <td data-label="checkbox" style={{ ...styles.td, textAlign: 'center' }}>
                                                 <input
                                                     type="checkbox"
                                                     checked={!!etiquetasSeleccionadas[producto.id]}
@@ -1770,71 +1914,68 @@ const Productos = () => {
                                                     title={tieneVars ? 'Selecciona todas las variantes de esta familia' : undefined}
                                                 />
                                             </td>
-                                            <td style={{ ...styles.td, textAlign: 'center' }}>
-                                                {producto.imagen
-                                                    ? <img src={producto.imagen} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', border: '1px solid #e2e8f0' }} />
-                                                    : <span style={{ color: '#c0ccc9' }}>—</span>}
+                                            <td data-label="Producto" style={styles.td}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                    {tieneVars && (
+                                                        <button
+                                                            onClick={() => setExpandedVariants(prev => ({ ...prev, [producto.id]: !prev[producto.id] }))}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#1a7a3f', fontWeight: 700, flexShrink: 0 }}
+                                                        >
+                                                            {expandido ? '▼' : '▶'}
+                                                        </button>
+                                                    )}
+                                                    {producto.imagen
+                                                        ? <img src={producto.imagen} alt="" style={styles.miniaturaProducto} />
+                                                        : <span style={styles.miniaturaPlaceholder} aria-hidden="true">📦</span>}
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                            <span title={producto.nombre} style={styles.nombreProducto}>{producto.nombre}</span>
+                                                            {tieneVars && (
+                                                                <span style={{ fontSize: 11, color: '#475569', background: '#e2e8f0', borderRadius: 8, padding: '1px 7px' }}>
+                                                                    {producto.variantes.length} variante{producto.variantes.length !== 1 ? 's' : ''}
+                                                                </span>
+                                                            )}
+                                                            {producto.se_vende_por_peso && (
+                                                                <span style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', borderRadius: 8, padding: '1px 7px' }}>
+                                                                    POR {UNIDADES_FRACCIONADAS[producto.unidad_fraccionada || 'KG'].abrev.toUpperCase()}
+                                                                </span>
+                                                            )}
+                                                            {producto.precio_variable && (
+                                                                <span style={{ fontSize: 10, fontWeight: 700, color: '#0f766e', background: '#ccfbf1', borderRadius: 8, padding: '1px 7px' }}>
+                                                                    PRECIO VARIABLE
+                                                                </span>
+                                                            )}
+                                                            {producto.ml_stock_full && (
+                                                                <span
+                                                                    title="Stock Full: lo repone y despacha Mercado Libre, no depende de tu depósito"
+                                                                    style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 8, padding: '1px 7px' }}
+                                                                >
+                                                                    FULL
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={styles.metaProducto}>
+                                                            {producto.codigo_interno || '—'}
+                                                            {!tieneVars && producto.rubro_nombre && <> · {producto.rubro_nombre}</>}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td style={{ ...styles.td, color: '#475569' }}>
-                                                {producto.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
-                                            </td>
-                                            <td style={styles.td}>
-                                                {tieneVars && (
-                                                    <button
-                                                        onClick={() => setExpandedVariants(prev => ({ ...prev, [producto.id]: !prev[producto.id] }))}
-                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: 6, fontSize: 13, color: '#1a7a3f', fontWeight: 700 }}
-                                                    >
-                                                        {expandido ? '▼' : '▶'}
-                                                    </button>
-                                                )}
-                                                <span
-                                                    title={producto.nombre}
-                                                    style={{ display: 'inline-block', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}
-                                                >
-                                                    {producto.nombre}
-                                                </span>
-                                                {tieneVars && (
-                                                    <span style={{ marginLeft: 8, fontSize: 11, color: '#475569', background: '#e2e8f0', borderRadius: 8, padding: '1px 7px' }}>
-                                                        {producto.variantes.length} variante{producto.variantes.length !== 1 ? 's' : ''}
-                                                    </span>
-                                                )}
-                                                {producto.se_vende_por_peso && (
-                                                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', borderRadius: 8, padding: '1px 7px' }}>
-                                                        POR {UNIDADES_FRACCIONADAS[producto.unidad_fraccionada || 'KG'].abrev.toUpperCase()}
-                                                    </span>
-                                                )}
-                                                {producto.precio_variable && (
-                                                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#0f766e', background: '#ccfbf1', borderRadius: 8, padding: '1px 7px' }}>
-                                                        PRECIO VARIABLE
-                                                    </span>
-                                                )}
-                                                {producto.ml_stock_full && (
-                                                    <span
-                                                        title="Stock Full: lo repone y despacha Mercado Libre, no depende de tu depósito"
-                                                        style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 8, padding: '1px 7px' }}
-                                                    >
-                                                        FULL
-                                                    </span>
-                                                )}
-                                            </td>
-                                            {mostrarTalle && <td style={styles.td}>{detalleVariante(producto) || (tieneVars ? '—' : '-')}</td>}
-                                            <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.precio)}</td>
-                                            <td style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.costo || 0)}</td>
-                                            <td style={styles.td}>{tieneVars ? '—' : formatearMonto(costoConIva)}</td>
-                                            <td style={styles.td}>
-                                                {!tieneVars && producto.iva_porcentaje !== null && producto.iva_porcentaje !== undefined
-                                                    ? <>{parseFloat(producto.iva_porcentaje)}<span style={{ color: '#94a3b8', fontSize: '0.75em' }}>%</span></>
-                                                    : <span style={{ color: '#94a3b8' }}>—</span>}
-                                            </td>
-                                            <td style={styles.td}>
-                                                {!tieneVars && producto.rubro_nombre
-                                                    ? <span title={producto.rubro_nombre} style={{ display: 'inline-block', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{producto.rubro_nombre}</span>
-                                                    : <span style={{ color: '#94a3b8' }}>—</span>}
-                                            </td>
-                                            <td style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
+                                            {mostrarTalle && <td data-label="Talle" style={styles.td}>{detalleVariante(producto) || (tieneVars ? '—' : '-')}</td>}
+                                            <td data-label="Precio" style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.precio)}</td>
+                                            {columnasVisibles.costo && <td data-label="Costo s/IVA" style={styles.td}>{tieneVars ? '—' : formatearMonto(producto.costo || 0)}</td>}
+                                            {columnasVisibles.costoConIva && <td data-label="Costo c/IVA" style={styles.td}>{tieneVars ? '—' : formatearMonto(costoConIva)}</td>}
+                                            {columnasVisibles.iva && (
+                                                <td data-label="IVA" style={styles.td}>
+                                                    {!tieneVars && producto.iva_porcentaje !== null && producto.iva_porcentaje !== undefined
+                                                        ? <>{parseFloat(producto.iva_porcentaje)}<span style={{ color: '#94a3b8', fontSize: '0.75em' }}>%</span></>
+                                                        : <span style={{ color: '#94a3b8' }}>—</span>}
+                                                </td>
+                                            )}
+                                            <td data-label="Margen" style={{ ...styles.td, fontWeight: 700, color: margenColor }}>
                                                 {tieneVars ? '—' : margen !== null ? `${margen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                             </td>
-                                            <td style={{ ...styles.td, color: (!tieneVars && !producto.se_vende_por_peso && !producto.precio_variable && producto.stock <= STOCK_BAJO_THRESHOLD) ? '#e25252' : undefined, fontWeight: (!tieneVars && !producto.se_vende_por_peso && !producto.precio_variable && producto.stock <= STOCK_BAJO_THRESHOLD) ? 700 : undefined }}>
+                                            <td data-label="Stock" style={styles.td}>
                                                 {tieneVars
                                                     ? <span style={{ color: '#475569', fontSize: 12 }}>
                                                         {producto.variantes.reduce((s, v) => s + (v.stock || 0), 0)} total
@@ -1843,79 +1984,33 @@ const Productos = () => {
                                                         ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Por {UNIDADES_FRACCIONADAS[producto.unidad_fraccionada || 'KG'].abrev.toLowerCase()}</span>
                                                         : producto.precio_variable
                                                             ? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Sin límite</span>
-                                                            : <>{producto.stock}{producto.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}</>
+                                                            : <span style={{ ...styles.stockChip, ...(stockBajo ? styles.stockChipBajo : styles.stockChipOk) }}>
+                                                                {producto.stock === 0 ? 'Sin stock' : stockBajo ? `${producto.stock} bajo` : producto.stock}
+                                                              </span>
                                                 }
                                             </td>
-                                            <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
-                                                {!tieneVars && producto.stock_ultimo_ingreso != null ? (
-                                                    <span>
-                                                        <span style={{ fontWeight: 600 }}>{producto.stock_ultimo_ingreso}</span>
-                                                        {producto.fecha_ultimo_ingreso && (
-                                                            <span style={{ marginLeft: 5, fontSize: 11, color: '#94a3b8' }}>
-                                                                {new Date(producto.fecha_ultimo_ingreso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                ) : <span style={{ color: '#c0ccc9' }}>—</span>}
+                                            <td data-label="Últ. mov." style={{ ...styles.td, whiteSpace: 'nowrap', color: '#64748b', fontSize: 13 }}>
+                                                {!tieneVars ? (formatearFechaRelativa(producto.fecha_ultimo_ingreso) || <span style={{ color: '#c0ccc9' }}>—</span>) : <span style={{ color: '#c0ccc9' }}>—</span>}
                                             </td>
-                                            <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+                                            <td data-label="Acciones" style={{ ...styles.td, whiteSpace: 'nowrap' }}>
                                                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                                {user.is_superuser && <>
-                                                    <button
-                                                        className="icon-btn"
-                                                        onClick={() => { setEditProduct({ ...producto }); setTnLinkInput(''); setTnVariantesParaElegir(null); setShowEditModal(true); }}
-                                                        style={{ color: 'white', backgroundColor: '#f59e0b' }}
-                                                        data-tooltip="Editar producto"
-                                                    >
-                                                        <FontAwesomeIcon icon={faPencil} />
-                                                    </button>
-                                                    <button
-                                                        className="icon-btn"
-                                                        onClick={() => { setEditProduct({ ...producto }); setConvirtiendoAFamilia(!tieneVars); setVariantesNuevas([{ ...VARIANTE_VACIA, precio: producto.precio ?? '', costo: producto.costo ?? '' }]); setShowAddVarianteModal(true); }}
-                                                        style={{ color: 'white', backgroundColor: '#5dc87a' }}
-                                                        data-tooltip={tieneVars ? 'Agregar variante' : 'Convertir en producto con variantes'}
-                                                    >
-                                                        <FontAwesomeIcon icon={faPlus} />
-                                                    </button>
-                                                    <button
-                                                        className="icon-btn"
-                                                        onClick={() => { setProductToDelete(producto); setShowDeleteModal(true); }}
-                                                        style={{ color: 'white', backgroundColor: '#e25252' }}
-                                                        data-tooltip="Eliminar producto"
-                                                    >
-                                                        <FontAwesomeIcon icon={faTrash} />
-                                                    </button>
-                                                </>}
-                                                {user.is_supervisor && !user.is_superuser && !tieneVars && (
-                                                    <button
-                                                        className="icon-btn"
-                                                        onClick={() => { setProductoParaStock(producto); setCantidadAGregar(''); setShowAgregarStockModal(true); }}
-                                                        style={{ color: 'white', backgroundColor: '#3b82f6' }}
-                                                        data-tooltip="Agregar stock"
-                                                    >
-                                                        <FontAwesomeIcon icon={faArrowUp} />
-                                                    </button>
-                                                )}
-                                                {(user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 && !tieneVars && (
-                                                    <button
-                                                        className="icon-btn"
-                                                        onClick={() => { setProductoParaTransferir(producto); setTiendaDestinoTransferir(''); setCantidadTransferir(''); setShowTransferirStockModal(true); }}
-                                                        style={{ color: 'white', backgroundColor: '#7c3aed' }}
-                                                        data-tooltip="Transferir stock a otra tienda"
-                                                    >
-                                                        <FontAwesomeIcon icon={faRightLeft} />
-                                                    </button>
-                                                )}
-                                                {(user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 && tieneVars && (
-                                                    <button
-                                                        className="icon-btn"
-                                                        onClick={() => { setFamiliaParaTransferir(producto); setTiendaDestinoFamilia(''); setCantidadesFamilia({}); setShowTransferirFamiliaModal(true); }}
-                                                        style={{ color: 'white', backgroundColor: '#7c3aed' }}
-                                                        data-tooltip="Transferir variantes a otra tienda"
-                                                    >
-                                                        <FontAwesomeIcon icon={faLayerGroup} />
-                                                    </button>
-                                                )}
+                                                    {user.is_superuser && (
+                                                        <button
+                                                            onClick={() => { setEditProduct({ ...producto }); setTnLinkInput(''); setTnVariantesParaElegir(null); setShowEditModal(true); }}
+                                                            style={styles.accionTexto}
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                    )}
+                                                    {(user.is_superuser || user.is_supervisor) && !tieneVars && (
+                                                        <button
+                                                            onClick={() => { setProductoParaStock(producto); setCantidadAGregar(''); setShowAgregarStockModal(true); }}
+                                                            style={styles.accionTextoSecundaria}
+                                                        >
+                                                            + Stock
+                                                        </button>
+                                                    )}
+                                                    <MenuDesplegable title={`Más acciones de ${producto.nombre}`} items={menuItemsProducto} />
                                                 </div>
                                             </td>
                                         </tr>
@@ -1931,9 +2026,22 @@ const Productos = () => {
                                             // % sobre costo con IVA (markup), mismo criterio que la fila del padre.
                                             const vMargen = vPrecio > 0 && vCostoConIva > 0 ? ((vPrecio - vCostoConIva) / vCostoConIva * 100) : null;
                                             const vMargenColor = vMargen === null ? '#94a3b8' : vMargen >= 40 ? '#1a6a40' : vMargen >= 20 ? '#d97706' : '#e25252';
+                                            const vStockBajo = v.stock <= STOCK_BAJO_THRESHOLD;
+                                            const nombreVariante = `${producto.nombre}${detalleVariante(v) ? ` · ${detalleVariante(v)}` : ''}`;
+                                            const menuItemsVariante = [
+                                                ...((user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 ? [{
+                                                    label: 'Transferir stock a otra tienda',
+                                                    onClick: () => { setProductoParaTransferir({ ...v, nombre: nombreVariante }); setTiendaDestinoTransferir(''); setCantidadTransferir(''); setShowTransferirStockModal(true); },
+                                                }] : []),
+                                                ...(user.is_superuser ? [
+                                                    { label: 'Subir en el orden', disabled: esPrimeraVariante || moviendoVarianteId === v.id, onClick: () => handleMoverVariante(v.id, 'arriba') },
+                                                    { label: 'Bajar en el orden', disabled: esUltimaVariante || moviendoVarianteId === v.id, onClick: () => handleMoverVariante(v.id, 'abajo') },
+                                                    { label: 'Eliminar', peligro: true, onClick: () => { setProductToDelete({ ...v, nombre: nombreVariante }); setShowDeleteModal(true); } },
+                                                ] : []),
+                                            ];
                                             return (
                                                 <tr key={v.id} style={{ background: '#f8fafc', borderLeft: '2px solid #a8e6c5' }}>
-                                                    <td style={{ ...styles.td, textAlign: 'center' }}>
+                                                    <td data-label="checkbox" style={{ ...styles.td, textAlign: 'center' }}>
                                                         <input
                                                             type="checkbox"
                                                             checked={!!etiquetasSeleccionadas[v.id]}
@@ -1942,129 +2050,76 @@ const Productos = () => {
                                                             title="Selecciona solo esta variante"
                                                         />
                                                     </td>
-                                                    <td style={{ ...styles.td, textAlign: 'center' }}>
-                                                        {v.imagen
-                                                            ? <img src={v.imagen} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', border: '1px solid #e2e8f0' }} />
-                                                            : <span style={{ color: '#c0ccc9' }}>—</span>}
+                                                    <td data-label="Producto" style={styles.td}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 22 }}>
+                                                            {v.imagen
+                                                                ? <img src={v.imagen} alt="" style={styles.miniaturaProducto} />
+                                                                : <span style={styles.miniaturaPlaceholder} aria-hidden="true">📦</span>}
+                                                            <div style={{ minWidth: 0 }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                                    <span style={{ color: '#475569', fontSize: 13 }}>↳ {detalleVariante(v) || '(sin talle)'}</span>
+                                                                    {v.ml_stock_full && (
+                                                                        <span
+                                                                            title="Stock Full: lo repone y despacha Mercado Libre, no depende de tu depósito"
+                                                                            style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 8, padding: '1px 7px' }}
+                                                                        >
+                                                                            FULL
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div style={styles.metaProducto}>
+                                                                    {v.codigo_interno || '—'}
+                                                                    {producto.rubro_nombre && <> · {producto.rubro_nombre}</>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </td>
-                                                    <td style={{ ...styles.td, color: '#475569' }}>
-                                                        {v.codigo_interno || <span style={{ color: '#c0ccc9' }}>—</span>}
-                                                    </td>
-                                                    <td style={{ ...styles.td, paddingLeft: 28, color: '#475569', fontSize: 13 }}>
-                                                        ↳ {detalleVariante(v) || '(sin talle)'}
-                                                        {v.ml_stock_full && (
-                                                            <span
-                                                                title="Stock Full: lo repone y despacha Mercado Libre, no depende de tu depósito"
-                                                                style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 8, padding: '1px 7px' }}
-                                                            >
-                                                                FULL
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    {mostrarTalle && <td style={styles.td}>{detalleVariante(v) || '-'}</td>}
-                                                    <td style={styles.td}>{formatearMonto(v.precio)}</td>
-                                                    <td style={styles.td}>{formatearMonto(vCosto)}</td>
-                                                    <td style={styles.td}>{formatearMonto(vCostoConIva)}</td>
-                                                    <td style={styles.td}>
-                                                        {producto.iva_porcentaje !== null && producto.iva_porcentaje !== undefined
-                                                            ? <>{parseFloat(producto.iva_porcentaje)}<span style={{ color: '#94a3b8', fontSize: '0.75em' }}>%</span></>
-                                                            : <span style={{ color: '#94a3b8' }}>—</span>}
-                                                    </td>
-                                                    <td style={styles.td}>
-                                                        {producto.rubro_nombre
-                                                            ? <span title={producto.rubro_nombre} style={{ display: 'inline-block', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{producto.rubro_nombre}</span>
-                                                            : <span style={{ color: '#94a3b8' }}>—</span>}
-                                                    </td>
-                                                    <td style={{ ...styles.td, fontWeight: 700, color: vMargenColor }}>
+                                                    {mostrarTalle && <td data-label="Talle" style={styles.td}>{detalleVariante(v) || '-'}</td>}
+                                                    <td data-label="Precio" style={styles.td}>{formatearMonto(v.precio)}</td>
+                                                    {columnasVisibles.costo && <td data-label="Costo s/IVA" style={styles.td}>{formatearMonto(vCosto)}</td>}
+                                                    {columnasVisibles.costoConIva && <td data-label="Costo c/IVA" style={styles.td}>{formatearMonto(vCostoConIva)}</td>}
+                                                    {columnasVisibles.iva && (
+                                                        <td data-label="IVA" style={styles.td}>
+                                                            {producto.iva_porcentaje !== null && producto.iva_porcentaje !== undefined
+                                                                ? <>{parseFloat(producto.iva_porcentaje)}<span style={{ color: '#94a3b8', fontSize: '0.75em' }}>%</span></>
+                                                                : <span style={{ color: '#94a3b8' }}>—</span>}
+                                                        </td>
+                                                    )}
+                                                    <td data-label="Margen" style={{ ...styles.td, fontWeight: 700, color: vMargenColor }}>
                                                         {vMargen !== null ? `${vMargen.toFixed(1)}%` : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
                                                     </td>
-                                                    <td style={{ ...styles.td, color: v.stock <= STOCK_BAJO_THRESHOLD ? '#e25252' : undefined, fontWeight: v.stock <= STOCK_BAJO_THRESHOLD ? 700 : undefined }}>
-                                                        {v.stock}{v.stock <= STOCK_BAJO_THRESHOLD && <span style={{ marginLeft: 4, fontSize: 10 }}>⚠️</span>}
+                                                    <td data-label="Stock" style={styles.td}>
+                                                        <span style={{ ...styles.stockChip, ...(vStockBajo ? styles.stockChipBajo : styles.stockChipOk) }}>
+                                                            {v.stock === 0 ? 'Sin stock' : vStockBajo ? `${v.stock} bajo` : v.stock}
+                                                        </span>
                                                     </td>
-                                                    <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
-                                                        {v.stock_ultimo_ingreso != null ? (
-                                                            <span>
-                                                                <span style={{ fontWeight: 600 }}>{v.stock_ultimo_ingreso}</span>
-                                                                {v.fecha_ultimo_ingreso && (
-                                                                    <span style={{ marginLeft: 5, fontSize: 11, color: '#94a3b8' }}>
-                                                                        {new Date(v.fecha_ultimo_ingreso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                                                                    </span>
-                                                                )}
-                                                            </span>
-                                                        ) : <span style={{ color: '#c0ccc9' }}>—</span>}
+                                                    <td data-label="Últ. mov." style={{ ...styles.td, whiteSpace: 'nowrap', color: '#64748b', fontSize: 13 }}>
+                                                        {formatearFechaRelativa(v.fecha_ultimo_ingreso) || <span style={{ color: '#c0ccc9' }}>—</span>}
                                                     </td>
-                                                    <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+                                                    <td data-label="Acciones" style={{ ...styles.td, whiteSpace: 'nowrap' }}>
                                                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                                        {user.is_superuser && (
-                                                            <button
-                                                                className="icon-btn"
-                                                                onClick={() => {
-                                                                    const varianteFull = productos.find(p => p.id === v.id) || v;
-                                                                    setEditProduct({ ...varianteFull, nombre: varianteFull.nombre || producto.nombre });
-                                                                    setTnLinkInput(''); setTnVariantesParaElegir(null);
-                                                                    setShowEditModal(true);
-                                                                }}
-                                                                style={{ color: 'white', backgroundColor: '#f59e0b' }}
-                                                                data-tooltip="Editar variante"
-                                                            >
-                                                                <FontAwesomeIcon icon={faPencil} />
-                                                            </button>
-                                                        )}
-                                                        {user.is_superuser && (
-                                                            <button
-                                                                className="icon-btn"
-                                                                onClick={() => {
-                                                                    setProductToDelete({ ...v, nombre: `${producto.nombre}${detalleVariante(v) ? ` · ${detalleVariante(v)}` : ''}` });
-                                                                    setShowDeleteModal(true);
-                                                                }}
-                                                                style={{ color: 'white', backgroundColor: '#e25252' }}
-                                                                data-tooltip="Eliminar variante"
-                                                            >
-                                                                <FontAwesomeIcon icon={faTrash} />
-                                                            </button>
-                                                        )}
-                                                        {user.is_supervisor && !user.is_superuser && (
-                                                            <button
-                                                                className="icon-btn"
-                                                                onClick={() => { setProductoParaStock({ ...v, nombre: `${producto.nombre}${detalleVariante(v) ? ` · ${detalleVariante(v)}` : ''}` }); setCantidadAGregar(''); setShowAgregarStockModal(true); }}
-                                                                style={{ color: 'white', backgroundColor: '#3b82f6' }}
-                                                                data-tooltip="Agregar stock"
-                                                            >
-                                                                <FontAwesomeIcon icon={faArrowUp} />
-                                                            </button>
-                                                        )}
-                                                        {(user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 && (
-                                                            <button
-                                                                className="icon-btn"
-                                                                onClick={() => { setProductoParaTransferir({ ...v, nombre: `${producto.nombre}${detalleVariante(v) ? ` · ${detalleVariante(v)}` : ''}` }); setTiendaDestinoTransferir(''); setCantidadTransferir(''); setShowTransferirStockModal(true); }}
-                                                                style={{ color: 'white', backgroundColor: '#7c3aed' }}
-                                                                data-tooltip="Transferir stock a otra tienda"
-                                                            >
-                                                                <FontAwesomeIcon icon={faRightLeft} />
-                                                            </button>
-                                                        )}
-                                                        {user.is_superuser && (
-                                                            <>
+                                                            {user.is_superuser && (
                                                                 <button
-                                                                    className="icon-btn"
-                                                                    onClick={() => handleMoverVariante(v.id, 'arriba')}
-                                                                    disabled={esPrimeraVariante || moviendoVarianteId === v.id}
-                                                                    style={{ color: 'white', backgroundColor: '#64748b', opacity: esPrimeraVariante ? 0.4 : 1 }}
-                                                                    data-tooltip="Subir en el orden"
+                                                                    onClick={() => {
+                                                                        const varianteFull = productos.find(p => p.id === v.id) || v;
+                                                                        setEditProduct({ ...varianteFull, nombre: varianteFull.nombre || producto.nombre });
+                                                                        setTnLinkInput(''); setTnVariantesParaElegir(null);
+                                                                        setShowEditModal(true);
+                                                                    }}
+                                                                    style={styles.accionTexto}
                                                                 >
-                                                                    <FontAwesomeIcon icon={faChevronUp} />
+                                                                    Editar
                                                                 </button>
+                                                            )}
+                                                            {(user.is_superuser || user.is_supervisor) && (
                                                                 <button
-                                                                    className="icon-btn"
-                                                                    onClick={() => handleMoverVariante(v.id, 'abajo')}
-                                                                    disabled={esUltimaVariante || moviendoVarianteId === v.id}
-                                                                    style={{ color: 'white', backgroundColor: '#64748b', opacity: esUltimaVariante ? 0.4 : 1 }}
-                                                                    data-tooltip="Bajar en el orden"
+                                                                    onClick={() => { setProductoParaStock({ ...v, nombre: nombreVariante }); setCantidadAGregar(''); setShowAgregarStockModal(true); }}
+                                                                    style={styles.accionTextoSecundaria}
                                                                 >
-                                                                    <FontAwesomeIcon icon={faChevronDown} />
+                                                                    + Stock
                                                                 </button>
-                                                            </>
-                                                        )}
+                                                            )}
+                                                            <MenuDesplegable title={`Más acciones de ${nombreVariante}`} items={menuItemsVariante} />
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -2076,24 +2131,45 @@ const Productos = () => {
                                 </tbody>
                             </table>
                         </div>
-                        
-                        <div style={styles.paginationContainer}>
-                            <button onClick={() => {
-                                if (prevPage) {
-                                    const pageNumber = new URLSearchParams(new URL(prevPage).search).get('page');
-                                    setCurrentPage(pageNumber ? parseInt(pageNumber, 10) : 1);
-                                    fetchProductos(prevPage);
-                                }
-                            }} disabled={!prevPage} style={styles.paginationButton}>Anterior</button>
-                            <span style={styles.pageNumber}>Página {currentPage} de {totalPages}</span>
-                            <button onClick={() => {
-                                if (nextPage) {
-                                    const pageNumber = new URLSearchParams(new URL(nextPage).search).get('page');
-                                    setCurrentPage(parseInt(pageNumber, 10));
-                                    fetchProductos(nextPage);
-                                }
-                            }} disabled={!nextPage} style={styles.paginationButton}>Siguiente</button>
-                        </div>
+
+                        {(() => {
+                            const totalPaginas = Math.max(1, Math.ceil(totalCount / PRODUCTOS_POR_PAGINA));
+                            const ventana = 2;
+                            let desde = Math.max(1, currentPage - ventana);
+                            let hasta = Math.min(totalPaginas, currentPage + ventana);
+                            while (hasta - desde < 4 && (desde > 1 || hasta < totalPaginas)) {
+                                if (desde > 1) desde--;
+                                else if (hasta < totalPaginas) hasta++;
+                                else break;
+                            }
+                            const numeros = [];
+                            for (let n = desde; n <= hasta; n++) numeros.push(n);
+                            const irAPagina = (n) => {
+                                if (n === currentPage) return;
+                                setCurrentPage(n);
+                                fetchProductos(`${BASE_API_ENDPOINT}/api/productos/?page=${n}`);
+                            };
+                            const desdeItem = totalCount === 0 ? 0 : (currentPage - 1) * PRODUCTOS_POR_PAGINA + 1;
+                            const hastaItem = Math.min(currentPage * PRODUCTOS_POR_PAGINA, totalCount);
+                            return (
+                                <div style={styles.paginationContainer} className="productos-pagination">
+                                    <span style={styles.pageNumber}>{desdeItem}–{hastaItem} de {totalCount}</span>
+                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                        <button onClick={() => irAPagina(currentPage - 1)} disabled={currentPage <= 1} style={styles.paginationButton}>‹</button>
+                                        {numeros.map(n => (
+                                            <button
+                                                key={n}
+                                                onClick={() => irAPagina(n)}
+                                                style={n === currentPage ? styles.paginationButtonActivo : styles.paginationButton}
+                                            >
+                                                {n}
+                                            </button>
+                                        ))}
+                                        <button onClick={() => irAPagina(currentPage + 1)} disabled={currentPage >= totalPaginas} style={styles.paginationButton}>›</button>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </>
                 )}
             </div>
@@ -2935,9 +3011,6 @@ const Productos = () => {
                     width: 11px;
                     height: 11px;
                 }
-                .productos-tabla-wrap td[style*="white-space: nowrap"] > div {
-                    gap: 4px !important;
-                }
                 @media (max-width: 768px) {
                     [style*="form"] {
                         flex-direction: column;
@@ -2946,31 +3019,97 @@ const Productos = () => {
                     [style*="inputGroup"], [style*="submitButton"] {
                         width: 100%;
                     }
-                    [style*="tableHeader"] {
+                    .productos-header-card > div {
                         flex-direction: column;
-                        align-items: flex-start;
-                        gap: 10px;
+                        align-items: stretch !important;
+                        gap: 12px;
                     }
-                    [style*="filtersContainer"] {
+                    .productos-filters-container {
                         flex-direction: column;
-                        gap: 10px;
+                        align-items: stretch;
                     }
-                    [style*="filterInput"], [style*="searchButton"] {
+                    .productos-filters-container > select,
+                    .productos-filters-container > button {
                         width: 100%;
                     }
-                    [style*="tableResponsive"] {
-                        overflow-x: auto;
-                    }
-                    table {
+                    /* Tabla -> tarjetas apiladas (mismo criterio que el carrito de Punto de
+                       Venta): cada <tr> se convierte en una tarjeta con "etiqueta: valor" por
+                       fila, usando el data-label de cada <td> como contenido del ::before. La
+                       columna "Producto" y el checkbox van arriba sin etiqueta; "Acciones" ocupa
+                       todo el ancho abajo. */
+                    .productos-tabla-wrap table,
+                    .productos-tabla-wrap thead,
+                    .productos-tabla-wrap tbody {
+                        display: block;
                         width: 100%;
-                        white-space: nowrap;
                     }
-                    [style*="paginationContainer"] {
+                    .productos-tabla-wrap thead {
+                        display: none;
+                    }
+                    .productos-tabla-wrap tbody tr {
+                        display: flex;
+                        flex-wrap: wrap;
+                        background: #fff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 12px;
+                        padding: 12px;
+                        margin-bottom: 10px;
+                        gap: 2px 0;
+                    }
+                    .productos-tabla-wrap tbody td {
+                        border-bottom: none;
+                        padding: 3px 0;
+                    }
+                    .productos-tabla-wrap tbody td[data-label="checkbox"] {
+                        order: 1;
+                        flex: 0 0 auto;
+                        padding-right: 8px;
+                    }
+                    .productos-tabla-wrap tbody td[data-label="Producto"] {
+                        order: 2;
+                        flex: 1 1 100%;
+                        min-width: 0;
+                    }
+                    .productos-tabla-wrap tbody td[data-label="Producto"] span {
+                        max-width: none !important;
+                        white-space: normal !important;
+                    }
+                    .productos-tabla-wrap tbody td:not([data-label="checkbox"]):not([data-label="Producto"]):not([data-label="Acciones"]) {
+                        order: 3;
+                        flex: 1 1 50%;
+                        display: flex !important;
+                        justify-content: space-between;
+                        gap: 8px;
+                        font-size: 13px;
+                    }
+                    .productos-tabla-wrap tbody td:not([data-label="checkbox"]):not([data-label="Producto"]):not([data-label="Acciones"])::before {
+                        content: attr(data-label);
+                        font-size: 10.5px;
+                        font-weight: 700;
+                        color: #94a3b8;
+                        text-transform: uppercase;
+                        letter-spacing: 0.02em;
+                    }
+                    .productos-tabla-wrap tbody td[data-label="Acciones"] {
+                        order: 4;
+                        flex: 1 1 100%;
+                        display: flex !important;
+                        flex-wrap: wrap;
+                        gap: 6px;
+                        margin-top: 6px;
+                        padding-top: 8px;
+                        border-top: 1px solid #f1f5f9;
+                    }
+                    .productos-tabla-wrap tbody td[data-label="Acciones"] > div {
+                        flex-wrap: wrap;
+                    }
+                    .productos-pagination {
                         flex-direction: column;
                         gap: 10px;
+                        align-items: stretch;
                     }
-                    [style*="paginationButton"] {
-                        width: 100%;
+                    .productos-pagination > div {
+                        justify-content: center;
                     }
                 }
                 `}
@@ -3003,9 +3142,10 @@ const styles = {
     submitButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', alignSelf: 'flex-end' },
     tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
     printButton: { padding: '10px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    filtersContainer: { display: 'flex', gap: '10px', marginBottom: '20px' },
+    filtersContainer: { display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' },
     filterInput: { flex: '1', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' },
     searchButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+    searchIcon: { position: 'absolute', top: '50%', left: 12, transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 13, pointerEvents: 'none' },
     loadingMessage: { textAlign: 'center', color: '#777' },
     errorMessage: { color: '#e25252', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px' },
     tableResponsive: { overflowX: 'auto' },
@@ -3015,9 +3155,57 @@ const styles = {
     etiquetasInput: { width: '50px' },
     editButton: { padding: '5px 10px', backgroundColor: '#f59e0b', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' },
     deleteButton: { padding: '5px 10px', backgroundColor: '#e25252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-    paginationContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', gap: '10px' },
-    paginationButton: { padding: '8px 15px', backgroundColor: '#5dc87a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
-    pageNumber: { fontSize: '1em', fontWeight: 'bold' },
+    paginationContainer: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', gap: '10px', flexWrap: 'wrap' },
+    paginationButton: { padding: '8px 13px', minWidth: 40, minHeight: 40, backgroundColor: '#fff', color: '#334155', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
+    paginationButtonActivo: { padding: '8px 13px', minWidth: 40, minHeight: 40, backgroundColor: '#0f1e3a', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 },
+    pageNumber: { fontSize: '0.9em', color: '#64748b' },
+    // Header de la página: título + resumen + botones (Etiquetas / ··· / + Nuevo producto).
+    headerCard: { marginBottom: '20px' },
+    resumenSubtitulo: { margin: '4px 0 0', color: '#64748b', fontSize: 13 },
+    headerSecondaryButton: {
+        padding: '9px 18px', backgroundColor: '#fff', color: '#334155', border: '1px solid #e2e8f0',
+        borderRadius: 10, cursor: 'pointer', fontWeight: 600, minHeight: 40,
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+    },
+    headerPrimaryButton: { padding: '9px 20px', backgroundColor: '#1e8068', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 700, minHeight: 40 },
+    headerButtonBadge: { background: '#e25252', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 800 },
+    // "Columnas" (costos opcionales -- "datos de dueño, no de depósito")
+    columnasBoton: {
+        padding: '9px 16px', backgroundColor: '#fff', color: '#334155', border: '1px solid #e2e8f0',
+        borderRadius: 10, cursor: 'pointer', fontWeight: 600, minHeight: 40, whiteSpace: 'nowrap',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+    },
+    columnasPopover: {
+        position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 60, minWidth: 200,
+        background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+        boxShadow: '0 8px 24px rgba(15,30,58,0.14)', padding: 10, display: 'flex', flexDirection: 'column', gap: 8,
+    },
+    columnasOpcion: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: '#1a2926' },
+    // Celda "Producto": miniatura + nombre + código/rubro en gris chico debajo.
+    miniaturaProducto: { width: 34, height: 34, borderRadius: 6, objectFit: 'cover', border: '1px solid #e2e8f0', flexShrink: 0 },
+    miniaturaPlaceholder: {
+        width: 34, height: 34, borderRadius: 6, flexShrink: 0, fontSize: 14,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9',
+    },
+    nombreProducto: {
+        fontWeight: 700, color: '#1a2926', display: 'inline-block', maxWidth: 220,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle',
+    },
+    metaProducto: { fontSize: 12, color: '#94a3b8', marginTop: 1 },
+    // Chip de stock: gris con el número si está OK, ámbar con "N bajo" si está en
+    // stock bajo -- reemplaza el número en rojo + emoji de antes.
+    stockChip: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '3px 10px', borderRadius: 999, fontSize: 13, fontWeight: 700 },
+    stockChipOk: { background: '#f1f5f9', color: '#334155' },
+    stockChipBajo: { background: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d' },
+    // Acciones de fila: texto en vez de solo íconos (touch target >= 40px).
+    accionTexto: {
+        padding: '8px 14px', minHeight: 40, backgroundColor: '#fff', color: '#1e8068',
+        border: '1px solid #cdeed9', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap',
+    },
+    accionTextoSecundaria: {
+        padding: '8px 14px', minHeight: 40, backgroundColor: '#fff', color: '#3b82f6',
+        border: '1px solid #bfdbfe', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap',
+    },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
     modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '10px', textAlign: 'center', width: '90%', maxWidth: '500px' },
     inputGroupModal: { marginBottom: '15px' },
