@@ -61,7 +61,7 @@ const FacturaImpresion = () => {
 
     /**
      * Construye el JSON ARCA y retorna la URL de validación:
-     * https://www.afip.gob.ar/fe/qr/?p=<base64url>
+     * https://www.afip.gob.ar/fe/qr/?p=<base64>
      */
     const buildArcaUrl = (factura) => {
         if (!factura.cae) return null;
@@ -95,13 +95,18 @@ const FacturaImpresion = () => {
             codAut: parseInt(factura.cae, 10) || 0,
         };
 
-        // Base64url (sin padding, + → -, / → _)
-        const base64url = btoa(JSON.stringify(payload))
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=+$/, '');
+        // Base64 estándar (con +, / y padding =), sin transformar a base64url -- es
+        // literalmente lo que espera decodificar el validador de ARCA/AFIP. Referencia:
+        // pyafipws/pyqr.py (misma librería que ya usa este backend para facturar), que
+        // hace exactamente `base64.b64encode(json.dumps(datos).encode()).decode()` y
+        // arma la URL sin ningún reemplazo de caracteres. La versión anterior de este
+        // código convertía a base64url (+/ → -_, sin padding), lo que rompe el decoder
+        // estándar de ARCA apenas el payload trae un '+', un '/' o necesita padding --
+        // el celular abre el link pero la página no puede decodificar el JSON y no
+        // muestra la factura.
+        const base64 = btoa(JSON.stringify(payload));
 
-        return `https://www.afip.gob.ar/fe/qr/?p=${base64url}`;
+        return `https://www.afip.gob.ar/fe/qr/?p=${base64}`;
     };
 
     useEffect(() => {
