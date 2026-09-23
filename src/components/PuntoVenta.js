@@ -889,14 +889,25 @@ const PuntoVenta = () => {
             const productoEncontrado = response.data;
             setProductoSeleccionado(productoEncontrado);
             if (productoEncontrado) {
-                agregarProductoAlCarrito(productoEncontrado, 1);
+                // Etiqueta de balanza (peso variable): el peso ya viene decodificado del
+                // propio código de barras (ver ProductoViewSet.buscar_por_barcode), así
+                // que se agrega directo con ese peso -- no tiene sentido pedirle de nuevo
+                // el peso al cajero si la balanza ya lo pesó y lo imprimió en la etiqueta.
+                if (productoEncontrado.peso_decodificado_gramos != null) {
+                    const gramos = productoEncontrado.peso_decodificado_gramos;
+                    handleAddProductoEnVenta(productoEncontrado, gramos);
+                    const kg = (gramos / (DIVISOR_UNIDAD_FRACCIONADA[productoEncontrado.unidad_fraccionada] || 1000)).toFixed(3);
+                    showCustomAlert(`Agregado: ${kg} Kg de ${productoEncontrado.nombre} (de la etiqueta de la balanza).`, 'success');
+                } else {
+                    agregarProductoAlCarrito(productoEncontrado, 1);
+                }
             }
         } catch (err) {
             console.error("Error al buscar producto:", err.response ? err.response.data : err.message);
             setProductoSeleccionado(null);
             showCustomAlert('Producto no encontrado o error en la búsqueda.', 'error');
         }
-    }, [busquedaProducto, selectedStoreSlug, token, agregarProductoAlCarrito]);
+    }, [busquedaProducto, selectedStoreSlug, token, agregarProductoAlCarrito, handleAddProductoEnVenta]);
 
     // FUNCIÓN 7: Decrementar Cantidad
     const handleDecrementQuantity = useCallback((productId) => {
