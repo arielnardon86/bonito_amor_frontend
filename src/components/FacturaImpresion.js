@@ -45,6 +45,10 @@ const FacturaImpresion = () => {
     const navigate = useNavigate();
     const { token } = useAuth();
     const { factura, venta, skipReciboPrompt } = location.state || {};
+    // Una Factura en estado 'ERROR' (intento de emisión que ARCA rechazó, ver
+    // ProductoViewSet.emitir_factura) no tiene CAE y nunca fue autorizada -- no debe
+    // poder imprimirse/enviarse como si fuera un comprobante válido.
+    const facturaNoAutorizada = !!(factura && factura.estado && factura.estado !== 'EMITIDA');
     const facturaRef = useRef(null);
     const [enviandoEmail, setEnviandoEmail] = useState(false);
     const [compartiendo, setCompartiendo] = useState(false);
@@ -110,6 +114,17 @@ const FacturaImpresion = () => {
                     </div>
                 `;
             }
+            return;
+        }
+
+        if (facturaNoAutorizada) {
+            facturaRef.current.innerHTML = `
+                <div style="text-align: center; padding: 20px; max-width: 420px; margin: 0 auto;">
+                    <h1 style="color: #e25252;">Esta factura no fue autorizada por ARCA</h1>
+                    <p>El intento de emisión falló${factura.error_mensaje ? `: "${factura.error_mensaje}"` : '.'} No tiene CAE ni QR, y no es un comprobante fiscal válido -- no se puede imprimir ni enviar.</p>
+                    <p>Volvé a intentar emitirla desde <strong>Listado de Ventas</strong> con el botón "Facturar".</p>
+                </div>
+            `;
             return;
         }
 
@@ -406,17 +421,21 @@ const FacturaImpresion = () => {
     return (
         <div style={{ padding: '20px' }}>
             <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
-                <button onClick={handlePrint} style={styles.btnPrint}>
-                    Imprimir Factura
-                </button>
-                <button onClick={enviarPorEmail} disabled={enviandoEmail} style={{ ...styles.btnMail, ...(enviandoEmail ? styles.btnDisabled : {}) }}>
-                    <FontAwesomeIcon icon={faEnvelope} />
-                    {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}
-                </button>
-                <button onClick={compartirPorWhatsapp} disabled={compartiendo} style={{ ...styles.btnWhatsapp, ...(compartiendo ? styles.btnDisabled : {}) }}>
-                    <WhatsappIcon />
-                    {compartiendo ? 'Preparando...' : 'Compartir por WhatsApp'}
-                </button>
+                {!facturaNoAutorizada && (
+                    <>
+                        <button onClick={handlePrint} style={styles.btnPrint}>
+                            Imprimir Factura
+                        </button>
+                        <button onClick={enviarPorEmail} disabled={enviandoEmail} style={{ ...styles.btnMail, ...(enviandoEmail ? styles.btnDisabled : {}) }}>
+                            <FontAwesomeIcon icon={faEnvelope} />
+                            {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}
+                        </button>
+                        <button onClick={compartirPorWhatsapp} disabled={compartiendo} style={{ ...styles.btnWhatsapp, ...(compartiendo ? styles.btnDisabled : {}) }}>
+                            <WhatsappIcon />
+                            {compartiendo ? 'Preparando...' : 'Compartir por WhatsApp'}
+                        </button>
+                    </>
+                )}
                 <button onClick={handleTicketCambio} style={styles.btnTicket}>
                     Ticket de cambio
                 </button>
