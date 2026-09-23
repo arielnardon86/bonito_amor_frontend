@@ -45,6 +45,7 @@ const ManualUso = () => {
                         <h3>Qué podés hacer</h3>
                         <ul>
                             <li><strong>Buscar productos</strong> por nombre, código de barras o Código Interno, escaneando o tipeando. Con lector de código de barras, el producto se agrega solo al carrito.</li>
+                            <li><strong>Escanear etiquetas de balanza</strong> (peso variable): si el producto está cargado como "Venta fraccionada" con su Código Interno igual al PLU de la balanza, al escanear la etiqueta el carrito se completa solo con el peso exacto que se pesó, sin pedirlo a mano. Ver el detalle en Gestión de Productos.</li>
                             <li><strong>Atender varios clientes a la vez</strong>, con pestañas de carrito: podés dejar uno a medias y atender a otro cliente sin perder nada.</li>
                             <li><strong>Editar el carrito</strong>: sumar o restar cantidades, o sacar un producto.</li>
                             <li><strong>Elegir cómo cobra</strong>: efectivo, transferencia, QR, tarjeta (con su plan de cuotas), o <strong>combinar dos o más métodos</strong> en la misma venta.</li>
@@ -242,6 +243,17 @@ const ManualUso = () => {
                         <p>La <strong>importación por Excel</strong> evita cargar producto por producto al armar el catálogo. La opción de <strong>"no sumar stock" al reimportar</strong> permite corregir datos sin arriesgarse a duplicar cantidades. La <strong>transferencia entre tiendas</strong> es para negocios con más de una sucursal, que antes tenían que editar el stock a mano en las dos puntas.</p>
 
                         <div className="mu-callout warn">El Supervisor puede sumar stock a productos existentes, pero <b>no</b> puede cambiar precio, costo u otros datos, ni eliminar productos, ni transferir stock entre tiendas — esas acciones son solo del Administrador.</div>
+
+                        <h3>Leer etiquetas de balanza (código de barras de peso variable)</h3>
+                        <p>Si tenés una balanza con etiquetadora (por ejemplo una Systel Cuora Max) que imprime el peso pesado dentro del propio código de barras, Total Stock puede leer esa etiqueta directamente en Punto de Venta y agregar el producto con el peso exacto, sin pasar por el modal de carga manual de peso.</p>
+                        <ol className="mu-steps">
+                            <li>En el menú de configuración de la balanza, anotá el <strong>PLU</strong> (código corto) que tiene asignado ese producto.</li>
+                            <li>En Gestión de Productos, cargá (o editá) el producto: activá <strong>"Venta fraccionada"</strong> con unidad Kilogramo, y en <strong>Código Interno</strong> escribí exactamente ese mismo PLU.</li>
+                            <li>Cargá el precio por Kg y guardá.</li>
+                            <li>Pesá el producto en la balanza e imprimí la etiqueta como siempre.</li>
+                            <li>Escaneala en Punto de Venta: el producto se agrega solo al carrito, con el peso ya cargado y el subtotal calculado.</li>
+                        </ol>
+                        <div className="mu-callout warn">El Código Interno cargado en el producto tiene que ser <b>idéntico</b> al PLU configurado en la balanza para ese mismo producto — si no coinciden, al escanear la etiqueta el sistema va a avisar que no encontró el producto.</div>
 
                         <h3>Vincular o publicar en Tienda Nube (manual y selectivo)</h3>
                         <p>Si preferís armar la ficha del producto directamente en Tienda Nube (fotos, descripción, SEO) en vez de usar la publicación masiva, o si solo querés subir algunos productos puntuales y no todo el catálogo de una vez, tenés estas dos opciones — ambas aparecen <strong>solo si tu tienda tiene Tienda Nube conectado</strong> (Panel de Administración → Tienda Nube):</p>
