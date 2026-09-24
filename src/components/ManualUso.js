@@ -247,13 +247,13 @@ const ManualUso = () => {
                         <h3>Leer etiquetas de balanza (código de barras de peso variable)</h3>
                         <p>Si tenés una balanza con etiquetadora (por ejemplo una Systel Cuora Max) que imprime el peso pesado dentro del propio código de barras, Total Stock puede leer esa etiqueta directamente en Punto de Venta y agregar el producto con el peso exacto, sin pasar por el modal de carga manual de peso.</p>
                         <ol className="mu-steps">
-                            <li>En el menú de configuración de la balanza, anotá el <strong>PLU</strong> (código corto) que tiene asignado ese producto.</li>
+                            <li>En el menú de configuración de la balanza, anotá el <strong>PLU</strong> (código corto) que tiene asignado ese producto — es el número que también sale impreso en cualquier etiqueta ya pesada de ese producto (a veces al lado de la palabra "PLU", a veces solo el número, según cómo esté configurado el ticket).</li>
                             <li>En Gestión de Productos, cargá (o editá) el producto: activá <strong>"Venta fraccionada"</strong> con unidad Kilogramo, y en <strong>Código Interno</strong> escribí exactamente ese mismo PLU.</li>
                             <li>Cargá el precio por Kg y guardá.</li>
                             <li>Pesá el producto en la balanza e imprimí la etiqueta como siempre.</li>
                             <li>Escaneala en Punto de Venta: el producto se agrega solo al carrito, con el peso ya cargado y el subtotal calculado.</li>
                         </ol>
-                        <div className="mu-callout warn">El Código Interno cargado en el producto tiene que ser <b>idéntico</b> al PLU configurado en la balanza para ese mismo producto — si no coinciden, al escanear la etiqueta el sistema va a avisar que no encontró el producto.</div>
+                        <div className="mu-callout warn">El Código Interno cargado en el producto tiene que ser <b>idéntico</b> al PLU configurado en la balanza para ese mismo producto — si no coinciden, al escanear la etiqueta el sistema va a avisar que no encontró el producto. Si no ubicás el PLU en el visor de la balanza, también lo podés sacar directo del código de barras impreso: son sus <b>dígitos 2° a 6°</b> (5 dígitos), sin los ceros a la izquierda. Por ejemplo, en <code>2000520032350</code> esos dígitos son <code>00052</code>, o sea PLU <b>52</b>.</div>
 
                         <h3>Vincular o publicar en Tienda Nube (manual y selectivo)</h3>
                         <p>Si preferís armar la ficha del producto directamente en Tienda Nube (fotos, descripción, SEO) en vez de usar la publicación masiva, o si solo querés subir algunos productos puntuales y no todo el catálogo de una vez, tenés estas dos opciones — ambas aparecen <strong>solo si tu tienda tiene Tienda Nube conectado</strong> (Panel de Administración → Tienda Nube):</p>
