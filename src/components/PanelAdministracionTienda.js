@@ -14,6 +14,7 @@ import IntegracionTiendaNube from './IntegracionTiendaNube';
 import IntegracionMercadoLibrePanel from './IntegracionMercadoLibrePanel';
 import ModalUpgrade from './ModalUpgrade';
 import { extraerLimitePlan } from '../utils/planLimite';
+import * as XLSX from 'xlsx';
 
 const normalizeApiUrl = (url) => {
     if (!url) {
@@ -218,6 +219,11 @@ const PanelAdministracionTienda = () => {
     const [historialFechaHasta, setHistorialFechaHasta] = useState('');
     const [historialUsuarioId, setHistorialUsuarioId] = useState('');
     const [usuarios, setUsuarios] = useState([]);
+
+    // Estados para Exportar para contador (detalle de ventas + subdiario IVA multi-tienda)
+    const [exportarFechaDesde, setExportarFechaDesde] = useState('');
+    const [exportarFechaHasta, setExportarFechaHasta] = useState('');
+    const [exportando, setExportando] = useState(false);
 
     // Cargar información de la tienda (ML, facturación, etc.)
     // Cargar estado de facturación ARCA desde el backend (debe ir ANTES de fetchTiendaInfo)
@@ -761,6 +767,75 @@ Script.complete();
             if (usuarios.length === 0) fetchUsuariosHistorial();
         }
     }, [activeTab, fetchHistorial, fetchUsuariosHistorial, usuarios.length]);
+
+    const handleMesActualExportar = () => {
+        const hoy = new Date();
+        const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+        const aISO = (d) => d.toISOString().slice(0, 10);
+        setExportarFechaDesde(aISO(primerDia));
+        setExportarFechaHasta(aISO(ultimoDia));
+    };
+
+    // Exporta un solo .xlsx con el detalle de ventas y el subdiario de IVA de
+    // TODAS las tiendas a las que este usuario tiene acceso (tienda principal +
+    // tiendas_autorizadas, ver _get_tiendas_ids_usuario en el backend) -- pensado
+    // para un dueño con más de una sucursal que necesita mandarle un solo archivo
+    // combinado a su contador/a, en vez de exportar tienda por tienda.
+    const handleExportarContador = async () => {
+        if (!token) return;
+        if (!exportarFechaDesde || !exportarFechaHasta) {
+            Swal.fire({ title: 'Faltan fechas', text: 'Elegí un rango de fechas (o "Mes actual") antes de exportar.', icon: 'warning' });
+            return;
+        }
+        setExportando(true);
+        try {
+            const params = { fecha_desde: exportarFechaDesde, fecha_hasta: exportarFechaHasta };
+            const headers = { Authorization: `Bearer ${token}` };
+            const [resVentas, resSubdiario] = await Promise.all([
+                axios.get(`${BASE_API_ENDPOINT}/api/ventas/exportar-multitienda/`, { params, headers }),
+                axios.get(`${BASE_API_ENDPOINT}/api/facturas/subdiario-iva/`, { params, headers }),
+            ]);
+
+            const wb = XLSX.utils.book_new();
+
+            const formatFecha = (iso) => new Date(iso).toLocaleString('es-AR', {
+                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+            });
+
+            // Hoja 1: Detalle de Ventas
+            const ventas = resVentas.data.ventas || [];
+            const filasVentas = [
+                ['Fecha', 'Sucursal', 'Vendedor', 'Método de Pago', 'Total', 'Anulada', 'Tipo'],
+                ...ventas.map(v => [
+                    formatFecha(v.fecha), v.tienda_nombre, v.vendedor, v.metodo_pago,
+                    parseFloat(v.total), v.anulada ? 'Sí' : 'No', v.tipo,
+                ]),
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasVentas), 'Detalle de Ventas');
+
+            // Hoja 2: Subdiario IVA
+            const { comprobantes = [], totales = {} } = resSubdiario.data;
+            const condicionIvaText = { RI: 'Responsable Inscripto', CF: 'Consumidor Final', EX: 'Exento', MT: 'Monotributo', NR: 'No Responsable' };
+            const filasSubdiario = [
+                ['Fecha', 'Sucursal', 'Tipo', 'Comprobante', 'Cliente', 'CUIT', 'Cond. IVA', 'Neto', 'IVA', 'Total', 'CAE'],
+                ...comprobantes.map(c => [
+                    formatFecha(c.fecha), c.tienda_nombre, c.tipo === 'NOTA_CREDITO' ? 'Nota de Crédito' : `Factura ${c.tipo_comprobante}`,
+                    c.numero_completo, c.cliente_nombre, c.cliente_cuit, condicionIvaText[c.condicion_iva] || c.condicion_iva,
+                    parseFloat(c.neto), parseFloat(c.iva), parseFloat(c.total), c.cae,
+                ]),
+                [],
+                ['', '', '', '', '', '', 'TOTALES', parseFloat(totales.neto || 0), parseFloat(totales.iva || 0), parseFloat(totales.total || 0), ''],
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasSubdiario), 'Subdiario IVA');
+
+            XLSX.writeFile(wb, `contador_${exportarFechaDesde}_a_${exportarFechaHasta}.xlsx`);
+        } catch (err) {
+            Swal.fire({ title: 'Error', text: 'No se pudo generar el archivo: ' + (err.response?.data?.error || err.message), icon: 'error' });
+        } finally {
+            setExportando(false);
+        }
+    };
 
     // ========== FUNCIONES PARA USUARIOS ==========
     const fetchUsers = useCallback(async () => {
@@ -1307,6 +1382,7 @@ Script.complete();
                             'notas-credito': 'Notas de Crédito',
                             'tiendanube': 'Integración TiendaNube',
                             'mercadolibre-panel': 'Integración MercadoLibre',
+                            'exportar-contador': 'Exportar para contador',
                         }[activeTab] || 'Panel de Administración'}
                         bullets={{
                             'usuarios': [
@@ -1340,6 +1416,11 @@ Script.complete();
                                 'Sincronizá el stock entre Total Stock y tus publicaciones de ML.',
                                 'Visualizá las ventas de ML y su impacto en el inventario.',
                                 'También desde ahí configurás los aranceles de ML por producto.',
+                            ],
+                            'exportar-contador': [
+                                'Descargá en un solo Excel el detalle de ventas y el subdiario de IVA de todas tus tiendas juntas.',
+                                'Incluye únicamente facturas y notas de crédito ya emitidas (con CAE) del período elegido.',
+                                'El IVA se calcula a la tasa única con la que factura el sistema (21%, o exento en Factura C).',
                             ],
                         }[activeTab] || [
                             'Panel de administración de la tienda.',
@@ -1448,6 +1529,13 @@ Script.complete();
                     className="panel-admin-tab"
                 >
                     Historial
+                </button>
+                <button
+                    onClick={() => setActiveTab('exportar-contador')}
+                    style={activeTab === 'exportar-contador' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
+                    className="panel-admin-tab"
+                >
+                    Exportar para contador
                 </button>
             </div>
 
@@ -3063,6 +3151,39 @@ Script.complete();
                             </table>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* TAB: EXPORTAR PARA CONTADOR */}
+            {activeTab === 'exportar-contador' && (
+                <div style={styles.tabContent}>
+                    <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, maxWidth: 640 }}>
+                        Genera un solo Excel con el detalle de ventas y el subdiario de IVA de
+                        {tiendasAutorizadas.length > 0 ? ' todas tus tiendas' : ' tu tienda'} para el
+                        período elegido, listo para mandarle a tu contador/a.
+                    </p>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, alignItems: 'flex-end' }}>
+                        <div>
+                            <label style={{ fontSize: 12, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Desde</label>
+                            <input type="date" value={exportarFechaDesde}
+                                onChange={e => setExportarFechaDesde(e.target.value)}
+                                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13 }} />
+                        </div>
+                        <div>
+                            <label style={{ fontSize: 12, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Hasta</label>
+                            <input type="date" value={exportarFechaHasta}
+                                onChange={e => setExportarFechaHasta(e.target.value)}
+                                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13 }} />
+                        </div>
+                        <button onClick={handleMesActualExportar}
+                            style={{ padding: '8px 18px', background: '#fff', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                            Mes actual
+                        </button>
+                        <button onClick={handleExportarContador} disabled={exportando}
+                            style={{ padding: '8px 18px', background: exportando ? '#a8e6c5' : '#5dc87a', color: '#fff', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: exportando ? 'not-allowed' : 'pointer' }}>
+                            {exportando ? 'Generando...' : '⬇ Exportar Excel'}
+                        </button>
+                    </div>
                 </div>
             )}
 
