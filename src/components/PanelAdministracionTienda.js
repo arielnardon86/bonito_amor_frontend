@@ -815,17 +815,21 @@ Script.complete();
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasVentas), 'Detalle de Ventas');
 
             // Hoja 2: Subdiario IVA
-            const { comprobantes = [], totales = {} } = resSubdiario.data;
+            const { comprobantes = [], totales = {}, alertas = {} } = resSubdiario.data;
             const condicionIvaText = { RI: 'Responsable Inscripto', CF: 'Consumidor Final', EX: 'Exento', MT: 'Monotributo', NR: 'No Responsable' };
+            // Una factura de una venta anulada sin su Nota de Crédito correspondiente
+            // queda marcada acá (ver comentario en subdiario_iva, backend) -- una vez
+            // emitida la NC, esta alerta desaparece sola al volver a exportar.
+            const textoAlerta = (c) => c.venta_anulada_sin_nc ? '⚠ Venta anulada sin Nota de Crédito -- revisar' : '';
             const filasSubdiario = [
-                ['Fecha', 'Sucursal', 'Tipo', 'Comprobante', 'Cliente', 'CUIT', 'Cond. IVA', 'Neto', 'IVA', 'Total', 'CAE'],
+                ['Fecha', 'Sucursal', 'Tipo', 'Comprobante', 'Cliente', 'CUIT', 'Cond. IVA', 'Neto', 'IVA', 'Total', 'CAE', 'Alerta'],
                 ...comprobantes.map(c => [
                     formatFecha(c.fecha), c.tienda_nombre, c.tipo === 'NOTA_CREDITO' ? 'Nota de Crédito' : `Factura ${c.tipo_comprobante}`,
                     c.numero_completo, c.cliente_nombre, c.cliente_cuit, condicionIvaText[c.condicion_iva] || c.condicion_iva,
-                    parseFloat(c.neto), parseFloat(c.iva), parseFloat(c.total), c.cae,
+                    parseFloat(c.neto), parseFloat(c.iva), parseFloat(c.total), c.cae, textoAlerta(c),
                 ]),
                 [],
-                ['', '', '', '', '', '', 'TOTALES', parseFloat(totales.neto || 0), parseFloat(totales.iva || 0), parseFloat(totales.total || 0), ''],
+                ['', '', '', '', '', '', 'TOTALES', parseFloat(totales.neto || 0), parseFloat(totales.iva || 0), parseFloat(totales.total || 0), '', ''],
             ];
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasSubdiario), 'Subdiario IVA');
 
@@ -836,7 +840,7 @@ Script.complete();
             // consumidor final (sin CUIT) va en "Consumidor Final" -- nunca las
             // dos a la vez.
             const filasArca = [
-                ['Fecha', 'Tipo de factura', 'Número', 'Razón Social', 'Consumidor Final', 'Importe'],
+                ['Fecha', 'Tipo de factura', 'Número', 'Razón Social', 'Consumidor Final', 'Importe', 'Alerta'],
                 ...comprobantes.map(c => {
                     const tipoLabel = (c.tipo === 'NOTA_CREDITO' ? 'Nota de Crédito ' : 'Factura ') + c.tipo_comprobante;
                     const esConsumidorFinal = !c.cliente_cuit;
@@ -845,12 +849,22 @@ Script.complete();
                         esConsumidorFinal ? '' : c.cliente_nombre,
                         esConsumidorFinal ? 'Consumidor Final' : '',
                         parseFloat(c.total),
+                        textoAlerta(c),
                     ];
                 }),
             ];
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasArca), 'Subdiario IVA (ARCA)');
 
             XLSX.writeFile(wb, `contador_${exportarFechaDesde}_a_${exportarFechaHasta}.xlsx`);
+
+            const cantidadAlertas = alertas.facturas_venta_anulada_sin_nc || 0;
+            if (cantidadAlertas > 0) {
+                Swal.fire({
+                    title: 'Revisá antes de enviarlo',
+                    html: `Hay <b>${cantidadAlertas}</b> factura${cantidadAlertas !== 1 ? 's' : ''} de ventas anuladas sin su Nota de Crédito emitida (marcadas en la columna "Alerta" del Subdiario IVA).<br/><br/>Emitila desde "Notas de Crédito" y volvé a generar este reporte para que quede corregido.`,
+                    icon: 'warning',
+                });
+            }
         } catch (err) {
             Swal.fire({ title: 'Error', text: 'No se pudo generar el archivo: ' + (err.response?.data?.error || err.message), icon: 'error' });
         } finally {
@@ -1443,6 +1457,7 @@ Script.complete();
                                 'Incluye únicamente facturas y notas de crédito ya emitidas (con CAE) del período elegido.',
                                 'El IVA se calcula a la tasa única con la que factura el sistema (21%, o exento en Factura C).',
                                 'Trae una hoja extra "Subdiario IVA (ARCA)" con el formato puntual que pide tu contador/a: Fecha, Tipo de factura, Número, Razón Social, Consumidor Final e Importe.',
+                                'Si una venta facturada se anuló sin emitir su Nota de Crédito, queda marcada con una alerta en ambas hojas -- emitila y volvé a exportar para que se corrija sola.',
                             ],
                         }[activeTab] || [
                             'Panel de administración de la tienda.',
