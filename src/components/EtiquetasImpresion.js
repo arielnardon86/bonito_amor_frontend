@@ -68,6 +68,7 @@ const EtiquetasImpresion = () => {
             labelsRef.current.innerHTML = '';
 
             const esTermica = tipoImpresion === 'xprinter_39x20';
+            const esHoja4x9 = tipoImpresion === 'hoja_4x9_36';
             const pctDescuento = mostrarDescuento ? parseFloat(descuentoInput) : NaN;
             const aplicarDescuento = !isNaN(pctDescuento) && pctDescuento > 0 && pctDescuento < 100;
 
@@ -81,9 +82,9 @@ const EtiquetasImpresion = () => {
                     : `PROD-${producto.id || 'N/A'}`;
                 const isEAN13 = /^\d{12,13}$/.test(codigoBarras);
 
-                const nombreMostrado = truncate(producto.nombre, esTermica ? 16 : 24);
+                const nombreMostrado = truncate(producto.nombre, esTermica ? 16 : esHoja4x9 ? 28 : 24);
                 const detalleMostrado = producto.variante_detalle
-                    ? truncate(producto.variante_detalle, esTermica ? 14 : 20)
+                    ? truncate(producto.variante_detalle, esTermica ? 14 : esHoja4x9 ? 24 : 20)
                     : '';
 
                 const precioLista = parseFloat(producto.precio) || 0;
@@ -115,7 +116,11 @@ const EtiquetasImpresion = () => {
                             displayValue: false,
                             fontSize: 8,
                             width: esTermica ? 2 : 3,
-                            height: esTermica ? (aplicarDescuento ? 22 : 28) : (aplicarDescuento ? 48 : 60),
+                            height: esTermica
+                                ? (aplicarDescuento ? 22 : 28)
+                                : esHoja4x9
+                                    ? (aplicarDescuento ? 26 : 34)
+                                    : (aplicarDescuento ? 48 : 60),
                             margin: 0,
                         });
                     } catch (e) {
@@ -169,6 +174,7 @@ const EtiquetasImpresion = () => {
                 >
                     <option value="estandar">Impresora estándar (rollo angosto)</option>
                     <option value="a4_grilla">Hoja A4 (máx. etiquetas por hoja)</option>
+                    <option value="hoja_4x9_36">Hoja de etiquetas 4×9 (36 por hoja, ~5x2,8cm)</option>
                     <option value="xprinter_39x20">Térmica Xprinter XP-410B (rollo 39x20mm)</option>
                 </select>
                 <label style={mobileStyles.descuentoLabel}>
@@ -198,6 +204,7 @@ const EtiquetasImpresion = () => {
                 className={`label-container ${
                     tipoImpresion === 'xprinter_39x20' ? 'layout-termica'
                     : tipoImpresion === 'a4_grilla' ? 'layout-a4'
+                    : tipoImpresion === 'hoja_4x9_36' ? 'layout-hoja4x9'
                     : 'layout-estandar'
                 }`}
                 ref={labelsRef}
@@ -378,6 +385,93 @@ const EtiquetasImpresion = () => {
                         margin-top: 0;
                     }
 
+                    /* Layout "hoja4x9": hoja de etiquetas autoadhesivas pre-troqueladas, 21,5x29cm,
+                       4 columnas x 9 filas = 36 etiquetas de ~5x2,8cm. A diferencia de "layout-a4"
+                       (que arma una grilla libre y deja que el navegador pagine solo), acá la
+                       posición de cada etiqueta tiene que calcar la del papel físico -- si se corre
+                       aunque sea 1-2mm, la impresión ya no cae sobre la etiqueta real. Los valores de
+                       ancho/alto/margen son una estimación a partir de las medidas que pasó el
+                       cliente (no hay código de fábrica confirmado de esta hoja) -- probar con una
+                       impresión real sobre la hoja física antes de imprimir un lote grande, y ajustar
+                       PAGE_W/PAGE_H/margin acá si hace falta correrlo un par de mm. */
+                    .label-container.layout-hoja4x9 {
+                        display: grid;
+                        grid-template-columns: repeat(4, 5cm);
+                        grid-template-rows: repeat(9, 2.8cm);
+                        width: 20cm;
+                        margin: 1.9cm auto 0 auto;
+                        box-sizing: border-box;
+                    }
+
+                    .label-container.layout-hoja4x9 .label {
+                        width: 5cm;
+                        height: 2.8cm;
+                        padding: 1mm 2mm;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        text-align: center;
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                        box-sizing: border-box;
+                        overflow: hidden;
+                    }
+
+                    .label-container.layout-hoja4x9 .label p {
+                        margin: 0;
+                        line-height: 1.1;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        max-width: 100%;
+                        font-weight: bold;
+                        color: #000;
+                        -webkit-font-smoothing: none;
+                    }
+                    .label-container.layout-hoja4x9 .label .product-name {
+                        font-weight: bold;
+                        font-size: 2.4mm;
+                    }
+                    .label-container.layout-hoja4x9 .label .variant-detail {
+                        font-weight: 600;
+                        font-size: 2.1mm;
+                        margin-top: 0.3mm;
+                    }
+                    .label-container.layout-hoja4x9 .label .barcode-wrapper {
+                        margin-top: 0.5mm;
+                        margin-bottom: 0.5mm;
+                    }
+                    .label-container.layout-hoja4x9 .label .price {
+                        font-weight: bold;
+                        font-size: 5mm;
+                        margin-top: 0.3mm;
+                    }
+                    .label-container.layout-hoja4x9 .label .price-lista {
+                        font-weight: 600;
+                        font-size: 1.8mm;
+                        color: #333;
+                        margin-top: 0.3mm;
+                    }
+                    .label-container.layout-hoja4x9 .label .price-destacado-box {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        border: 0.3mm solid #000;
+                        border-radius: 0.5mm;
+                        padding: 0.2mm 1mm;
+                        margin-top: 0.3mm;
+                    }
+                    .label-container.layout-hoja4x9 .label .price-destacado-label {
+                        font-weight: 600;
+                        font-size: 1.5mm;
+                        margin: 0;
+                    }
+                    .label-container.layout-hoja4x9 .label .price-destacado-box .price {
+                        font-size: 4mm;
+                        margin-top: 0;
+                    }
+
                     /* Layout "termica": una etiqueta por página, tamaño exacto del rollo de la Xprinter XP-410B (39x20mm) */
                     .label-container.layout-termica {
                         width: 39mm;
@@ -479,6 +573,7 @@ const EtiquetasImpresion = () => {
                             margin: ${tipoImpresion === 'a4_grilla' ? '5mm' : '0'};
                             ${tipoImpresion === 'xprinter_39x20' ? 'size: 39mm 20mm;' : ''}
                             ${tipoImpresion === 'a4_grilla' ? 'size: A4;' : ''}
+                            ${tipoImpresion === 'hoja_4x9_36' ? 'size: 21.5cm 29cm;' : ''}
                             @top-left { content: none; }
                             @top-center { content: none; }
                             @top-right { content: none; }
