@@ -829,6 +829,27 @@ Script.complete();
             ];
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasSubdiario), 'Subdiario IVA');
 
+            // Hoja 3: Subdiario IVA (ARCA) -- formato pedido puntualmente por la
+            // contadora para mandarle a ARCA: Fecha, Tipo de factura, Número,
+            // Razón Social, Consumidor Final, Importe (con IVA incluido). Un
+            // cliente identificado (con CUIT) va en "Razón Social"; una venta a
+            // consumidor final (sin CUIT) va en "Consumidor Final" -- nunca las
+            // dos a la vez.
+            const filasArca = [
+                ['Fecha', 'Tipo de factura', 'Número', 'Razón Social', 'Consumidor Final', 'Importe'],
+                ...comprobantes.map(c => {
+                    const tipoLabel = (c.tipo === 'NOTA_CREDITO' ? 'Nota de Crédito ' : 'Factura ') + c.tipo_comprobante;
+                    const esConsumidorFinal = !c.cliente_cuit;
+                    return [
+                        formatFecha(c.fecha), tipoLabel, c.numero_completo,
+                        esConsumidorFinal ? '' : c.cliente_nombre,
+                        esConsumidorFinal ? 'Consumidor Final' : '',
+                        parseFloat(c.total),
+                    ];
+                }),
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasArca), 'Subdiario IVA (ARCA)');
+
             XLSX.writeFile(wb, `contador_${exportarFechaDesde}_a_${exportarFechaHasta}.xlsx`);
         } catch (err) {
             Swal.fire({ title: 'Error', text: 'No se pudo generar el archivo: ' + (err.response?.data?.error || err.message), icon: 'error' });
@@ -1421,6 +1442,7 @@ Script.complete();
                                 'Descargá en un solo Excel el detalle de ventas y el subdiario de IVA de todas tus tiendas juntas.',
                                 'Incluye únicamente facturas y notas de crédito ya emitidas (con CAE) del período elegido.',
                                 'El IVA se calcula a la tasa única con la que factura el sistema (21%, o exento en Factura C).',
+                                'Trae una hoja extra "Subdiario IVA (ARCA)" con el formato puntual que pide tu contador/a: Fecha, Tipo de factura, Número, Razón Social, Consumidor Final e Importe.',
                             ],
                         }[activeTab] || [
                             'Panel de administración de la tienda.',
