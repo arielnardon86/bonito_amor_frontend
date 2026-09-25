@@ -385,21 +385,26 @@ const EtiquetasImpresion = () => {
                         margin-top: 0;
                     }
 
-                    /* Layout "hoja4x9": hoja de etiquetas autoadhesivas pre-troqueladas, 21,5x29cm,
-                       4 columnas x 9 filas = 36 etiquetas de ~5x2,8cm. A diferencia de "layout-a4"
-                       (que arma una grilla libre y deja que el navegador pagine solo), acá la
-                       posición de cada etiqueta tiene que calcar la del papel físico -- si se corre
-                       aunque sea 1-2mm, la impresión ya no cae sobre la etiqueta real. Los valores de
-                       ancho/alto/margen son una estimación a partir de las medidas que pasó el
-                       cliente (no hay código de fábrica confirmado de esta hoja) -- probar con una
-                       impresión real sobre la hoja física antes de imprimir un lote grande, y ajustar
-                       PAGE_W/PAGE_H/margin acá si hace falta correrlo un par de mm. */
+                    /* Layout "hoja4x9": hoja de etiquetas autoadhesivas pre-troqueladas, tamaño
+                       Carta/Letter (21,59x27,94cm -- confirmado real: la primera versión asumía
+                       21,5x29cm, pero el diálogo de impresión del cliente mostraba "Carta" y la
+                       diferencia de casi 1,1cm en la altura desalineaba la grilla contra el papel
+                       físico real, cada vez más notorio fila tras fila), 4 columnas x 9 filas = 36
+                       etiquetas de ~5x2,8cm. A diferencia de "layout-a4" (que arma una grilla libre
+                       y deja que el navegador pagine solo), acá la posición de cada etiqueta tiene
+                       que calcar la del papel físico -- si se corre aunque sea 1-2mm, la impresión
+                       ya no cae sobre la etiqueta real. El ancho/alto de cada etiqueta sigue siendo
+                       una estimación a partir de lo que midió el cliente (no hay código de fábrica
+                       confirmado de esta hoja) -- probar con una impresión real sobre la hoja física
+                       y ajustar acá si hace falta correrlo. */
                     .label-container.layout-hoja4x9 {
                         display: grid;
                         grid-template-columns: repeat(4, 5cm);
                         grid-template-rows: repeat(9, 2.8cm);
                         width: 20cm;
-                        margin: 1.9cm auto 0 auto;
+                        /* Carta mide 27,94cm de alto; 9 filas de 2,8cm = 25,2cm -- centrado vertical
+                           deja 1,37cm arriba y abajo. */
+                        margin: 1.37cm auto 0 auto;
                         box-sizing: border-box;
                     }
 
@@ -573,7 +578,7 @@ const EtiquetasImpresion = () => {
                             margin: ${tipoImpresion === 'a4_grilla' ? '5mm' : '0'};
                             ${tipoImpresion === 'xprinter_39x20' ? 'size: 39mm 20mm;' : ''}
                             ${tipoImpresion === 'a4_grilla' ? 'size: A4;' : ''}
-                            ${tipoImpresion === 'hoja_4x9_36' ? 'size: 21.5cm 29cm;' : ''}
+                            ${tipoImpresion === 'hoja_4x9_36' ? 'size: letter;' : ''}
                             @top-left { content: none; }
                             @top-center { content: none; }
                             @top-right { content: none; }
