@@ -2342,6 +2342,17 @@ const Productos = () => {
                             />
                         </div>
                         <div style={styles.inputGroupModal}>
+                            <label style={styles.label}>Código Interno <span style={styles.opcionalTag}>(Opcional)</span>:</label>
+                            <input
+                                type="text"
+                                maxLength={100}
+                                value={editProduct.codigo_interno || ''}
+                                onChange={(e) => setEditProduct({ ...editProduct, codigo_interno: e.target.value })}
+                                style={styles.modalInput}
+                                placeholder="Ej: A123, o el PLU de la balanza"
+                            />
+                        </div>
+                        <div style={styles.inputGroupModal}>
                             <label style={styles.label}>Imagen <span style={styles.opcionalTag}>(Opcional)</span>:</label>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 {editProduct.imagen && (
