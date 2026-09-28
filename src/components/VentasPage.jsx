@@ -764,6 +764,11 @@ const VentasPage = () => {
                                         <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
                                         <td style={styles.td}>
                                             {venta.metodo_pago || 'N/A'}
+                                            {venta.origen_tiendanube && (
+                                                <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#3b9ede', color: 'white', borderRadius: '6px', fontSize: '0.72em', fontWeight: 600 }}>
+                                                    Tiendanube {venta.tn_order_number ? `#${venta.tn_order_number}` : ''}
+                                                </span>
+                                            )}
                                             {venta.origen_mercadolibre && (() => {
                                                 const entregado = !!venta.ml_fecha_entrega;
                                                 return entregado
