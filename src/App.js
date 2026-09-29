@@ -70,8 +70,6 @@ import {
   faEnvelope,
   faUsers,
   faFileInvoiceDollar,
-  faChevronLeft,
-  faChevronRight,
   faIndustry,
 } from '@fortawesome/free-solid-svg-icons';
 
@@ -87,7 +85,7 @@ const BASE_API_URL = (() => {
 })();
 
 // Componente para la navegación
-const Navbar = ({ collapsed, onToggleCollapsed }) => {
+const Navbar = () => {
   const { isAuthenticated, user, logout, token, selectedStoreSlug, selectStore, tiendasAutorizadas, lockSession } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -202,17 +200,7 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
       {/* Overlay para mobile cuando el menú está abierto */}
       {isOpen && <div className="sidebar-overlay" onClick={toggleMenu}></div>}
 
-      <nav className={`sidebar ${isOpen ? 'active' : ''} ${collapsed ? 'collapsed' : ''}`}>
-        {!isMobile && (
-          <button
-            type="button"
-            className="sidebar-collapse-toggle"
-            onClick={onToggleCollapsed}
-            title={collapsed ? 'Expandir menú' : 'Ocultar menú'}
-          >
-            <FontAwesomeIcon icon={collapsed ? faChevronRight : faChevronLeft} />
-          </button>
-        )}
+      <nav className={`sidebar collapsed ${isOpen ? 'active' : ''}`}>
         <div className="sidebar-header">
           <Link to="/" className="sidebar-logo" onClick={() => setIsOpen(false)}>
             <img src="/logo-completo.png" alt="Total Stock Logo" className="app-logo-image" />
@@ -244,10 +232,7 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
               <img
                 src={tiendaLogo}
                 alt="Logo de la tienda"
-                style={{
-                  width: 52, height: 52, borderRadius: '50%',
-                  objectFit: 'cover', border: '2px solid rgba(255,255,255,0.25)',
-                }}
+                className="sidebar-store-logo"
               />
             </div>
           )}
@@ -420,13 +405,6 @@ const Navbar = ({ collapsed, onToggleCollapsed }) => {
                 <a
                   href="mailto:info@totalstock.com.ar"
                   className="sidebar-footer-link"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 7,
-                    padding: '7px 10px', marginBottom: 6, borderRadius: 7,
-                    fontSize: 12, color: '#7a90b0', textDecoration: 'none',
-                    background: 'rgba(255,255,255,0.04)',
-                    transition: 'color 0.15s',
-                  }}
                   title="Contactar soporte"
                 >
                   <FontAwesomeIcon icon={faEnvelope} style={{ fontSize: 11, opacity: 0.7 }} />
@@ -474,9 +452,6 @@ const AppContent = () => {
   const [mostrarPlanes, setMostrarPlanes] = useState(false);
   const [planesData, setPlanesData] = useState([]);
   const [cargandoPlan, setCargandoPlan] = useState('');
-  // Sidebar colapsado (solo escritorio, opcional): siempre arranca expandido al cargar la página.
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
   // Cuando MP redirige a la raíz con ?preapproval_id=XXX:
   // - Guardar el ID para pasarlo al verificar si el gate aparece
   // - Redirigir al componente de resultado
@@ -690,7 +665,7 @@ const AppContent = () => {
 
   return (
     <>
-      <Navbar collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed(c => !c)} />
+      <Navbar />
 
       {/* Modal: admin sin email registrado */}
       {isAuthenticated && !loading && user?.is_superuser && !user?.email && !emailModalOmitido && !suscripcionPendiente && !sessionLocked && (
@@ -1137,7 +1112,7 @@ const AppContent = () => {
         </div>
       )}
 
-      <div className={`main-content ${isAuthenticated && selectedStoreSlug ? 'with-sidebar' : 'no-sidebar'} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <div className={`main-content ${isAuthenticated && selectedStoreSlug ? 'with-sidebar' : 'no-sidebar'}`}>
         <div className="container">
         <Routes>
           <Route path="/login/:storeSlug" element={<Login />} />

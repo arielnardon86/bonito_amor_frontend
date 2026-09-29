@@ -2165,8 +2165,16 @@ const PuntoVenta = () => {
                     >
                         +
                     </button>
+                    <div style={styles.cajaStatusGroup} className="caja-status-group">
+                        <span className={`ts-pill ${cierreActivo && cierreActivo.estado !== 'CERRADO' ? 'ts-pill-green' : 'ts-pill-red'}`}>
+                            {cierreActivo && cierreActivo.estado !== 'CERRADO'
+                                ? `Caja abierta · ${new Date(cierreActivo.fecha_apertura).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`
+                                : 'Caja cerrada'}
+                        </span>
+                        <span style={styles.cajaStatusUsuario}>{cierreActivo?.usuario_nombre || user?.username}</span>
+                    </div>
                     {activeCart && (
-                        <div style={styles.activeCartInlineActions} className="active-cart-inline-actions">
+                        <div style={{ ...styles.activeCartInlineActions, marginLeft: 0 }} className="active-cart-inline-actions">
                             <input
                                 type="text"
                                 placeholder="Alias (opcional)"
@@ -3129,6 +3137,10 @@ const styles = {
         border: 'none', borderRadius: '50%', cursor: 'pointer', fontWeight: 700, fontSize: 18, lineHeight: 1,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     },
+    // Estado de caja (abierta/cerrada) + usuario: mismo renglón que las cápsulas de
+    // venta, empujado a la derecha con las acciones de la venta activa (si hay).
+    cajaStatusGroup: { display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' },
+    cajaStatusUsuario: { fontSize: 12, color: '#94a3b8' },
     // Alias + Eliminar de la venta activa: en la misma fila que las cápsulas de
     // ventas (empujado a la derecha), no en una fila propia -- la cápsula activa ya
     // deja claro cuál es la venta seleccionada, no hace falta repetirlo aparte.
