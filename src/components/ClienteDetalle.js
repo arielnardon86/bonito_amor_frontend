@@ -1,5 +1,5 @@
 // ClienteDetalle.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
@@ -142,6 +142,36 @@ const ClienteDetalle = () => {
         }
     };
 
+    // Resumen mensual: agrupa lo ya traído en 'historial' (ventas + movimientos)
+    // por mes calendario, para que un cliente con muchos movimientos de Cuenta
+    // Corriente vea de un vistazo cuánto consumió y cuánto pagó cada mes, sin
+    // tener que sumar a mano las tablas de detalle de abajo. "Pagos" solo cuenta
+    // créditos que son cobros reales (concepto "Cobro cuenta corriente...") --
+    // los créditos por anulación de venta (revierten una deuda que dejó de
+    // existir) no son plata que el cliente haya pagado, así que se excluyen para
+    // no inflar el total de pagos del mes.
+    const resumenMensual = useMemo(() => {
+        const porMes = new Map();
+        const obtenerBucket = (fechaStr) => {
+            const fecha = new Date(fechaStr);
+            const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+            if (!porMes.has(key)) {
+                const label = fecha.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+                porMes.set(key, { key, label: label.charAt(0).toUpperCase() + label.slice(1), consumos: 0, pagos: 0 });
+            }
+            return porMes.get(key);
+        };
+        (historial?.ventas || []).forEach(v => {
+            obtenerBucket(v.fecha_venta).consumos += parseFloat(v.total || 0);
+        });
+        (historial?.movimientos || []).forEach(m => {
+            if (m.tipo === 'CREDITO' && (m.concepto || '').startsWith('Cobro cuenta corriente')) {
+                obtenerBucket(m.fecha).pagos += parseFloat(m.monto || 0);
+            }
+        });
+        return Array.from(porMes.values()).sort((a, b) => b.key.localeCompare(a.key));
+    }, [historial]);
+
     if (loading) {
         return <div style={styles.container}><p style={styles.noDataMessage}>Cargando...</p></div>;
     }
@@ -253,6 +283,39 @@ const ClienteDetalle = () => {
                     </div>
                 )}
             </div>
+
+            {resumenMensual.length > 0 && (
+                <div style={styles.section}>
+                    <h2 style={styles.sectionHeader}>Resumen mensual</h2>
+                    <div style={styles.tableResponsive}>
+                        <table style={styles.table}>
+                            <thead>
+                                <tr style={styles.tableHeaderRow}>
+                                    <th style={styles.th}>Mes</th>
+                                    <th style={styles.th}>Consumos</th>
+                                    <th style={styles.th}>Pagos</th>
+                                    <th style={styles.th}>Saldo del mes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {resumenMensual.map(mes => {
+                                    const saldoMes = mes.consumos - mes.pagos;
+                                    return (
+                                        <tr key={mes.key} style={styles.tableRow}>
+                                            <td style={styles.td}>{mes.label}</td>
+                                            <td style={styles.td}>{formatearMonto(mes.consumos)}</td>
+                                            <td style={styles.td}>{formatearMonto(mes.pagos)}</td>
+                                            <td style={{ ...styles.td, color: saldoMes > 0 ? '#e25252' : '#1a6a40', fontWeight: 600 }}>
+                                                {formatearMonto(saldoMes)}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             <div style={styles.section}>
                 <h2 style={styles.sectionHeader}>Consumos</h2>
