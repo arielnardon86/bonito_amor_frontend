@@ -44,6 +44,9 @@ const ClienteDetalle = () => {
     const [valorEditado, setValorEditado] = useState('');
     const [guardandoCampo, setGuardandoCampo] = useState(false);
 
+    // Descarga del PDF de resumen de cuenta
+    const [descargandoResumen, setDescargandoResumen] = useState(false);
+
     const fetchDatos = useCallback(async () => {
         if (!token || !clienteId) return;
         setLoading(true);
@@ -139,6 +142,28 @@ const ClienteDetalle = () => {
             Swal.fire('Error', msg, 'error');
         } finally {
             setGuardandoCampo(false);
+        }
+    };
+
+    const descargarResumenCuenta = async () => {
+        setDescargandoResumen(true);
+        try {
+            const resp = await axios.get(`${BASE_API_ENDPOINT}/api/clientes/${clienteId}/pdf-resumen-cuenta/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                responseType: 'blob',
+            });
+            const url = URL.createObjectURL(resp.data);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `resumen_cuenta_${cliente?.nombre_razon_social || clienteId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+        } catch (err) {
+            Swal.fire('Error', 'No se pudo generar el resumen de cuenta.', 'error');
+        } finally {
+            setDescargandoResumen(false);
         }
     };
 
@@ -286,7 +311,12 @@ const ClienteDetalle = () => {
 
             {resumenMensual.length > 0 && (
                 <div style={styles.section}>
-                    <h2 style={styles.sectionHeader}>Resumen mensual</h2>
+                    <div style={{ ...styles.sectionHeader, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                        <h2 style={{ margin: 0, fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>Resumen mensual</h2>
+                        <button onClick={descargarResumenCuenta} disabled={descargandoResumen} style={styles.smallButtonGreen}>
+                            {descargandoResumen ? 'Generando...' : 'Descargar resumen de cuenta (PDF)'}
+                        </button>
+                    </div>
                     <div style={styles.tableResponsive}>
                         <table style={styles.table}>
                             <thead>
