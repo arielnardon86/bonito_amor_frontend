@@ -1920,13 +1920,18 @@ const Productos = () => {
                                             </td>
                                             <td data-label="Producto" style={styles.td}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                    {tieneVars && (
+                                                    {tieneVars ? (
                                                         <button
                                                             onClick={() => setExpandedVariants(prev => ({ ...prev, [producto.id]: !prev[producto.id] }))}
-                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#1a7a3f', fontWeight: 700, flexShrink: 0 }}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#1a7a3f', fontWeight: 700, flexShrink: 0, width: 16, padding: 0, textAlign: 'center' }}
                                                         >
                                                             {expandido ? '▼' : '▶'}
                                                         </button>
+                                                    ) : (
+                                                        // Espacio reservado del mismo ancho que la flecha de expandir variantes,
+                                                        // para que el ícono/nombre del producto arranque en la misma columna
+                                                        // tenga o no variantes -- si no, las filas quedan desalineadas.
+                                                        <span style={{ width: 16, flexShrink: 0 }} aria-hidden="true" />
                                                     )}
                                                     {producto.imagen
                                                         ? <img src={producto.imagen} alt="" style={styles.miniaturaProducto} />
