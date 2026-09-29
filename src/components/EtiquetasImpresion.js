@@ -505,6 +505,19 @@ const EtiquetasImpresion = () => {
                     .label-container.layout-hoja4x9 .label .barcode-wrapper {
                         margin-top: 0.5mm;
                         margin-bottom: 0.5mm;
+                        width: 100%;
+                    }
+                    /* El margen de sobra real en esta hoja es de ~8mm por lado en el punto
+                       neutro (20cm de grilla en una Carta de 21,59cm) -- descontando el margen
+                       no imprimible propio de la impresora, no queda nada para tolerar un
+                       desajuste. En vez de perseguir un margen de página perfecto (que además
+                       varía de impresora en impresora), se achica el código de barras un 10%
+                       dentro de su propia celda: no cambia su proporción (mismo ancho/alto,
+                       sigue leyendo bien), solo deja ~2mm de aire de sobra a cada lado en la
+                       columna más comprometida (la última), sin depender de que el margen de
+                       toda la hoja esté calibrado al milímetro. */
+                    .label-container.layout-hoja4x9 .label .barcode-wrapper svg {
+                        max-width: 90%;
                     }
                     .label-container.layout-hoja4x9 .label .price {
                         font-weight: bold;
