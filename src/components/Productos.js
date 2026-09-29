@@ -2011,13 +2011,23 @@ const Productos = () => {
                                                             Editar
                                                         </button>
                                                     )}
-                                                    {(user.is_superuser || user.is_supervisor) && !tieneVars && (
-                                                        <button
-                                                            onClick={() => { setProductoParaStock(producto); setCantidadAGregar(''); setShowAgregarStockModal(true); }}
-                                                            style={styles.accionTextoSecundaria}
-                                                        >
-                                                            + Stock
-                                                        </button>
+                                                    {(user.is_superuser || user.is_supervisor) && (
+                                                        !tieneVars ? (
+                                                            <button
+                                                                onClick={() => { setProductoParaStock(producto); setCantidadAGregar(''); setShowAgregarStockModal(true); }}
+                                                                style={styles.accionTextoSecundaria}
+                                                            >
+                                                                + Stock
+                                                            </button>
+                                                        ) : (
+                                                            // Un producto con variantes no tiene stock propio (es por
+                                                            // variante) así que no lleva botón "+ Stock" -- pero se
+                                                            // reserva el mismo espacio en blanco para que "Editar" quede
+                                                            // en la misma columna que en las filas sin variantes.
+                                                            <span style={{ ...styles.accionTextoSecundaria, visibility: 'hidden' }} aria-hidden="true">
+                                                                + Stock
+                                                            </span>
+                                                        )
                                                     )}
                                                     <MenuDesplegable title={`Más acciones de ${producto.nombre}`} items={menuItemsProducto} />
                                                 </div>
