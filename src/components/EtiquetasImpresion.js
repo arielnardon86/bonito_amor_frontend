@@ -7,6 +7,13 @@ import { formatearMonto } from '../utils/formatearMonto';
 import { useAuth } from '../AuthContext';
 
 const TIPO_IMPRESION_STORAGE_KEY = 'etiquetas_tipo_impresora';
+// Ajuste fino (en mm) de la grilla de la hoja 4x9, sumado al margen calculado por
+// CSS -- las hojas adhesivas troqueladas varían de fabricación en fabricación (y
+// según la impresora), así que en vez de perseguir el margen "perfecto" a ciegas
+// desde fotos con regla, se lo deja calibrable por la propia tienda: imprimen una
+// prueba, miden con regla cuánto falta correr la grilla, y lo cargan acá una sola
+// vez (se guarda en localStorage, no hay que repetirlo en cada impresión).
+const AJUSTE_HOJA4X9_STORAGE_KEY = 'etiquetas_hoja4x9_ajuste_mm';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 const normalizeApiUrl = (url) => {
@@ -34,11 +41,30 @@ const EtiquetasImpresion = () => {
     const [mostrarDescuento, setMostrarDescuento] = useState(false);
     const [descuentoInput, setDescuentoInput] = useState('');
     const [descuentoRedondeo, setDescuentoRedondeo] = useState(''); // '' | 'abajo' | 'arriba'
+    const [ajusteHoja4x9, setAjusteHoja4x9] = useState(() => {
+        try {
+            const guardado = JSON.parse(localStorage.getItem(AJUSTE_HOJA4X9_STORAGE_KEY));
+            if (guardado) return { x: Number(guardado.x) || 0, y: Number(guardado.y) || 0 };
+        } catch { /* nada guardado todavía */ }
+        // Punto de partida sugerido a partir de las fotos con regla del cliente
+        // (Oxford Indumentaria): el contenido caía más abajo de lo que el margen
+        // "centrado" calculado preveía -- no es una medición exacta, solo ahorra
+        // el primer tanteo a ciegas.
+        return { x: 0, y: 10 };
+    });
 
     const handleTipoImpresionChange = (e) => {
         const valor = e.target.value;
         setTipoImpresion(valor);
         localStorage.setItem(TIPO_IMPRESION_STORAGE_KEY, valor);
+    };
+
+    const handleAjusteHoja4x9Change = (eje, valor) => {
+        setAjusteHoja4x9(prev => {
+            const nuevo = { ...prev, [eje]: valor === '' ? 0 : Number(valor) };
+            localStorage.setItem(AJUSTE_HOJA4X9_STORAGE_KEY, JSON.stringify(nuevo));
+            return nuevo;
+        });
     };
 
     // Trae el % de descuento por efectivo configurado por defecto para la tienda
@@ -177,6 +203,28 @@ const EtiquetasImpresion = () => {
                     <option value="hoja_4x9_36">Hoja de etiquetas 4×9 (36 por hoja, 5x3cm)</option>
                     <option value="xprinter_39x20">Térmica Xprinter XP-410B (rollo 39x20mm)</option>
                 </select>
+                {tipoImpresion === 'hoja_4x9_36' && (
+                    <div style={mobileStyles.ajusteHoja4x9Container} title="Corrige la posición de toda la grilla si no cae justo sobre el troquelado físico. Se guarda para la próxima vez.">
+                        <label style={mobileStyles.ajusteHoja4x9Label}>
+                            Ajuste horizontal (mm)
+                            <input
+                                type="number" step="0.5"
+                                value={ajusteHoja4x9.x}
+                                onChange={(e) => handleAjusteHoja4x9Change('x', e.target.value)}
+                                style={mobileStyles.ajusteHoja4x9Input}
+                            />
+                        </label>
+                        <label style={mobileStyles.ajusteHoja4x9Label}>
+                            Ajuste vertical (mm)
+                            <input
+                                type="number" step="0.5"
+                                value={ajusteHoja4x9.y}
+                                onChange={(e) => handleAjusteHoja4x9Change('y', e.target.value)}
+                                style={mobileStyles.ajusteHoja4x9Input}
+                            />
+                        </label>
+                    </div>
+                )}
                 <label style={mobileStyles.descuentoLabel}>
                     <input
                         type="checkbox"
@@ -208,6 +256,14 @@ const EtiquetasImpresion = () => {
                     : 'layout-estandar'
                 }`}
                 ref={labelsRef}
+                style={tipoImpresion === 'hoja_4x9_36' ? {
+                    // Pisa el margen calculado por CSS (centrado matemático) sumando el
+                    // ajuste fino cargado arriba -- 0.795cm/0.47cm son el margen izq/sup.
+                    // "centrado" de base, en cm; el ajuste del usuario viene en mm.
+                    marginTop: `${0.47 + ajusteHoja4x9.y / 10}cm`,
+                    marginLeft: `${0.795 + ajusteHoja4x9.x / 10}cm`,
+                    marginRight: 0,
+                } : undefined}
             >
                 {/* Las etiquetas se renderizarán aquí */}
             </div>
@@ -623,6 +679,28 @@ const mobileStyles = {
         borderRadius: '5px',
         border: '1px solid #ccc',
         fontSize: '14px',
+    },
+    ajusteHoja4x9Container: {
+        display: 'flex',
+        gap: '10px',
+        padding: '6px 10px',
+        border: '1px dashed #94a3b8',
+        borderRadius: '6px',
+        backgroundColor: '#f8fafc',
+    },
+    ajusteHoja4x9Label: {
+        display: 'flex',
+        flexDirection: 'column',
+        fontSize: '11px',
+        color: '#475569',
+        fontWeight: 600,
+    },
+    ajusteHoja4x9Input: {
+        width: '60px',
+        padding: '4px 6px',
+        borderRadius: '4px',
+        border: '1px solid #ccc',
+        marginTop: '2px',
     },
     descuentoLabel: {
         display: 'flex',
