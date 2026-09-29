@@ -1741,45 +1741,20 @@ const PuntoVenta = () => {
                         ]}
                     />
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    {/* Abrir caja: solo si no hay turno activo */}
-                    {!cierreActivo && (
-                        <button
-                            onClick={() => { setCambioAbrirInput(''); setMostrarModalAbrirCaja(true); }}
-                            style={{
-                                padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                                fontWeight: 700, fontSize: 14, background: '#5dc87a', color: '#fff',
-                            }}
-                        >
-                            Abrir Caja
-                        </button>
-                    )}
-                    {cierreActivo && cierreActivo.estado !== 'CERRADO' && (
-                        <>
-                            <button
-                                onClick={() => {
-                                    setEgresoForm({ tipo: 'EGRESO', concepto: '', importe: '' });
-                                    setMostrarModalEgresos(true);
-                                }}
-                                style={{
-                                    padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                                    fontWeight: 700, fontSize: 14, background: '#f59e0b', color: '#fff',
-                                }}
-                            >
-                                Egresos
-                            </button>
-                            <button
-                                onClick={abrirModalCierre}
-                                style={{
-                                    padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                                    fontWeight: 700, fontSize: 14, background: '#e25252', color: '#fff',
-                                }}
-                            >
-                                Cerrar Caja
-                            </button>
-                        </>
-                    )}
-                </div>
+                {cierreActivo && cierreActivo.estado !== 'CERRADO' && (
+                    <button
+                        onClick={() => {
+                            setEgresoForm({ tipo: 'EGRESO', concepto: '', importe: '' });
+                            setMostrarModalEgresos(true);
+                        }}
+                        style={{
+                            padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                            fontWeight: 700, fontSize: 14, background: '#f59e0b', color: '#fff',
+                        }}
+                    >
+                        Egresos
+                    </button>
+                )}
             </div>
 
             {/* Modal Abrir Caja */}
@@ -2144,7 +2119,27 @@ const PuntoVenta = () => {
 
             {/* --- SECCIÓN VENTAS ACTIVAS (buscador + carrito integrados) --- */}
             <div style={styles.section} className="punto-venta-ventas-activas">
-                <h2 style={styles.sectionHeader}>Ventas activas</h2>
+                <div style={styles.ventasActivasTitleRow}>
+                    <h2 style={{ margin: 0, color: '#475569' }}>Ventas activas</h2>
+                    {!cierreActivo && (
+                        <button
+                            type="button"
+                            onClick={() => { setCambioAbrirInput(''); setMostrarModalAbrirCaja(true); }}
+                            className="ts-pill ts-pill-green ts-pill-action"
+                        >
+                            Abrir Caja
+                        </button>
+                    )}
+                    {cierreActivo && cierreActivo.estado !== 'CERRADO' && (
+                        <button
+                            type="button"
+                            onClick={abrirModalCierre}
+                            className="ts-pill ts-pill-red ts-pill-action"
+                        >
+                            Cerrar Caja
+                        </button>
+                    )}
+                </div>
                 <div style={styles.cartSelectionContainer} className="cart-selection-container">
                     {carts.map((cart, index) => (
                         <button
@@ -3116,6 +3111,12 @@ const styles = {
     header: { color: '#1a2926', marginBottom: '1.25rem', fontSize: '1.5rem', fontWeight: '600' },
     section: { marginBottom: '30px', padding: '20px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' },
     sectionHeader: { color: '#475569', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', marginTop: 0 },
+    // Título de "Ventas activas" + cápsulas de Abrir/Cerrar Caja en la misma línea
+    // (antes vivían como botones sueltos arriba de toda la página).
+    ventasActivasTitleRow: {
+        display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+        color: '#475569', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', marginTop: 0, marginBottom: '14px',
+    },
     loadingMessage: { textAlign: 'center', color: '#94a3b8' },
     // Fallback mientras se descarga el chunk de BarcodeScannerModal (lazy, ver
     // import más arriba): mismo overlay oscuro que el modal para que no haya un

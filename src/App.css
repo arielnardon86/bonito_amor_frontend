@@ -137,6 +137,17 @@ body {
   box-shadow: 0 4px 14px rgba(0,0,0,0.3);
 }
 
+/* Isotipo solo-ícono (sin "TOTAL STOCK" en texto): solo se ve con el sidebar
+   colapsado, en vez de forzar el logo completo a un crop cuadrado. */
+.app-logo-icon {
+  display: none;
+  height: 40px;
+  width: 40px;
+  max-width: 40px;
+  object-fit: contain;
+  padding: 4px;
+}
+
 .store-name-sidebar {
   display: flex;
   align-items: center;
@@ -448,21 +459,20 @@ body {
     padding: 22px 20px 16px;
   }
 
-  .sidebar.collapsed .app-logo-image {
-    max-width: 40px;
-    height: 40px;
-    width: 40px;
-    object-fit: cover;
-    padding: 4px;
+  /* Colapsado: el logo completo (con "TOTAL STOCK" en texto, alto y angosto)
+     no entra en un cuadrado de 40px sin recortarse -- se cambia por el
+     isotipo solo-ícono en vez de forzar un crop. */
+  .sidebar.collapsed .app-logo-full { display: none; }
+  .sidebar.collapsed .app-logo-icon { display: block; }
+
+  .sidebar.collapsed:hover .app-logo-full,
+  .sidebar.collapsed:focus-within .app-logo-full {
+    display: block;
   }
 
-  .sidebar.collapsed:hover .app-logo-image,
-  .sidebar.collapsed:focus-within .app-logo-image {
-    max-width: 190px;
-    height: 62px;
-    width: auto;
-    object-fit: initial;
-    padding: 6px 10px;
+  .sidebar.collapsed:hover .app-logo-icon,
+  .sidebar.collapsed:focus-within .app-logo-icon {
+    display: none;
   }
 
   .sidebar.collapsed .sidebar-store-logo {
@@ -624,6 +634,17 @@ body {
   color: #991b1b;
   border: 1px solid #fca5a5;
 }
+
+/* Variante clickeable de .ts-pill (Abrir/Cerrar Caja, etc.): mismo lenguaje
+   visual que las cápsulas informativas, pero como botón real. */
+.ts-pill-action {
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.ts-pill-action:hover { filter: brightness(0.93); }
+.ts-pill-action:active { transform: scale(0.97); }
 
 /* Stat card: número grande + label */
 .ts-stat-card {

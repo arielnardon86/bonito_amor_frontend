@@ -203,7 +203,8 @@ const Navbar = () => {
       <nav className={`sidebar collapsed ${isOpen ? 'active' : ''}`}>
         <div className="sidebar-header">
           <Link to="/" className="sidebar-logo" onClick={() => setIsOpen(false)}>
-            <img src="/logo-completo.png" alt="Total Stock Logo" className="app-logo-image" />
+            <img src="/logo-completo.png" alt="Total Stock Logo" className="app-logo-image app-logo-full" />
+            <img src="/logo-icon-only.png" alt="Total Stock" className="app-logo-image app-logo-icon" />
           </Link>
           {selectedStoreSlug && (
             tiendasAutorizadas.length > 1 ? (
