@@ -174,7 +174,7 @@ const EtiquetasImpresion = () => {
                 >
                     <option value="estandar">Impresora estándar (rollo angosto)</option>
                     <option value="a4_grilla">Hoja A4 (máx. etiquetas por hoja)</option>
-                    <option value="hoja_4x9_36">Hoja de etiquetas 4×9 (36 por hoja, ~5x2,8cm)</option>
+                    <option value="hoja_4x9_36">Hoja de etiquetas 4×9 (36 por hoja, 5x3cm)</option>
                     <option value="xprinter_39x20">Térmica Xprinter XP-410B (rollo 39x20mm)</option>
                 </select>
                 <label style={mobileStyles.descuentoLabel}>
@@ -387,30 +387,33 @@ const EtiquetasImpresion = () => {
 
                     /* Layout "hoja4x9": hoja de etiquetas autoadhesivas pre-troqueladas, tamaño
                        Carta/Letter (21,59x27,94cm -- confirmado real: la primera versión asumía
-                       21,5x29cm, pero el diálogo de impresión del cliente mostraba "Carta" y la
-                       diferencia de casi 1,1cm en la altura desalineaba la grilla contra el papel
-                       físico real, cada vez más notorio fila tras fila), 4 columnas x 9 filas = 36
-                       etiquetas de ~5x2,8cm. A diferencia de "layout-a4" (que arma una grilla libre
-                       y deja que el navegador pagine solo), acá la posición de cada etiqueta tiene
-                       que calcar la del papel físico -- si se corre aunque sea 1-2mm, la impresión
-                       ya no cae sobre la etiqueta real. El ancho/alto de cada etiqueta sigue siendo
-                       una estimación a partir de lo que midió el cliente (no hay código de fábrica
-                       confirmado de esta hoja) -- probar con una impresión real sobre la hoja física
-                       y ajustar acá si hace falta correrlo. */
+                       21,5x29cm, pero el diálogo de impresión del cliente mostraba "Carta"), 4
+                       columnas x 9 filas = 36 etiquetas de 5x3cm cada una (corregido de 5x2,8cm:
+                       el cliente midió con regla la hoja física real y confirmó 3cm de alto por
+                       cuadrado -- esos 2mm de diferencia por fila son justo lo que desalineaba la
+                       grilla cada vez más fila tras fila). A diferencia de "layout-a4" (que arma
+                       una grilla libre y deja que el navegador pagine solo), acá la posición de
+                       cada etiqueta tiene que calcar la del papel físico -- si se corre aunque sea
+                       1-2mm, la impresión ya no cae sobre la etiqueta real. El margen superior
+                       sigue siendo una estimación (centrado matemático, asumiendo que el margen de
+                       fábrica antes de la primera fila es igual al margen después de la última) --
+                       no hay confirmado cuánto mide realmente el margen superior de fábrica antes
+                       del primer troquel; si sigue sin caer bien, medirlo con regla y ajustar el
+                       margin-top de acá directo, ya no como resta de un centrado calculado. */
                     .label-container.layout-hoja4x9 {
                         display: grid;
                         grid-template-columns: repeat(4, 5cm);
-                        grid-template-rows: repeat(9, 2.8cm);
+                        grid-template-rows: repeat(9, 3cm);
                         width: 20cm;
-                        /* Carta mide 27,94cm de alto; 9 filas de 2,8cm = 25,2cm -- centrado vertical
-                           deja 1,37cm arriba y abajo. */
-                        margin: 1.37cm auto 0 auto;
+                        /* Carta mide 27,94cm de alto; 9 filas de 3cm = 27cm -- centrado vertical
+                           deja 0,47cm arriba y abajo. */
+                        margin: 0.47cm auto 0 auto;
                         box-sizing: border-box;
                     }
 
                     .label-container.layout-hoja4x9 .label {
                         width: 5cm;
-                        height: 2.8cm;
+                        height: 3cm;
                         padding: 1mm 2mm;
                         display: flex;
                         flex-direction: column;
