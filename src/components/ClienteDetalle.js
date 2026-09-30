@@ -25,7 +25,7 @@ const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 const ClienteDetalle = () => {
     const { clienteId } = useParams();
     const navigate = useNavigate();
-    const { token, selectedStoreSlug } = useAuth();
+    const { token, user, stores, selectedStoreSlug } = useAuth();
 
     const [cliente, setCliente] = useState(null);
     const [historial, setHistorial] = useState(null);
@@ -170,6 +170,97 @@ const ClienteDetalle = () => {
             Swal.fire('Error', 'No se pudo generar el resumen de cuenta.', 'error');
         } finally {
             setDescargandoResumenKey(null);
+        }
+    };
+
+    // Facturación de un consumo (Cuenta Corriente u otro medio) desde la ficha
+    // del cliente -- mismo criterio/endpoints que Listado de Ventas (VentasPage.jsx),
+    // para no duplicar la lógica de facturación con un comportamiento distinto.
+    const isStaffOnly = user?.is_staff && !user?.is_superuser && !user?.is_supervisor;
+    const tiendaActualInfo = stores.find(s => s.nombre === selectedStoreSlug);
+    const tiendaTieneFacturacion = !!tiendaActualInfo && tiendaActualInfo.tipo_facturacion && tiendaActualInfo.tipo_facturacion !== 'NINGUNA';
+
+    const handleVerFactura = async (venta) => {
+        try {
+            const facturasResponse = await axios.get(`${BASE_API_ENDPOINT}/api/facturas/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { venta: venta.id },
+            });
+            const facturas = facturasResponse.data.results || facturasResponse.data || [];
+            if (facturas.length === 0) {
+                Swal.fire('Sin factura', 'Esta venta no tiene factura asociada.', 'info');
+                return;
+            }
+            navigate('/factura', { state: { factura: facturas[0], venta } });
+        } catch (err) {
+            Swal.fire('Error', 'No se pudo obtener la factura.', 'error');
+        }
+    };
+
+    const handleFacturarVenta = async (venta) => {
+        const esMonotributista = tiendaActualInfo?.condicion_iva_emisor === 'MT';
+
+        const { value: formValues } = await Swal.fire({
+            title: 'Datos del Cliente para Factura',
+            html: `
+                <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="${(venta.cliente_nombre || cliente?.nombre_razon_social || 'Consumidor Final').replace(/"/g, '&quot;')}" required>
+                <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" type="text" value="${venta.cliente_cuit || cliente?.cuit_cuil || ''}">
+                <p style="margin: -8px 0 8px; font-size: 12px; color: #94a3b8;">Ingresalo solo con números, sin guiones ni puntos (ej: 20123456789)</p>
+                <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)" value="${(venta.cliente_domicilio || cliente?.direccion || '').replace(/"/g, '&quot;')}">
+                ${esMonotributista ? '' : `
+                <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #d9d9d9; border-radius: 0.1875em; font-size: 1.125em;">
+                    <option value="CF" selected>Consumidor Final</option>
+                    <option value="RI">Responsable Inscripto</option>
+                    <option value="EX">Exento</option>
+                    <option value="MT">Monotributo</option>
+                    <option value="NR">No Responsable</option>
+                </select>
+                `}
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Emitir Factura',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const nombre = document.getElementById('cliente_nombre').value;
+                const cuit = document.getElementById('cliente_cuit').value;
+                const domicilio = document.getElementById('cliente_domicilio').value;
+                const condicionIva = esMonotributista ? 'CF' : document.getElementById('cliente_condicion_iva').value;
+                if (!nombre || nombre.trim() === '') {
+                    Swal.showValidationMessage('El nombre del cliente es requerido');
+                    return false;
+                }
+                return {
+                    cliente_nombre: nombre.trim(),
+                    cliente_cuit: cuit.trim() || null,
+                    cliente_domicilio: domicilio.trim() || null,
+                    cliente_condicion_iva: condicionIva,
+                };
+            },
+        });
+
+        if (!formValues) return;
+
+        try {
+            const facturaResponse = await axios.post(
+                `${BASE_API_ENDPOINT}/api/ventas/${venta.id}/emitir_factura/`,
+                { venta_id: venta.id, ...formValues },
+                { headers: { 'Authorization': `Bearer ${token}` } },
+            );
+            await fetchDatos();
+            const factura = facturaResponse.data.factura || facturaResponse.data;
+            const irAVerla = await Swal.fire({
+                title: 'Factura emitida con éxito',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Ver factura',
+                cancelButtonText: 'Quedarme acá',
+            });
+            if (irAVerla.isConfirmed) {
+                navigate('/factura', { state: { factura, venta } });
+            }
+        } catch (err) {
+            Swal.fire('Error', 'Error al emitir factura: ' + (err.response?.data?.error || (err.response ? JSON.stringify(err.response.data) : err.message)), 'error');
         }
     };
 
@@ -377,18 +468,36 @@ const ClienteDetalle = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {historial.ventas.map(v => (
-                                    <tr key={v.id} style={styles.tableRow}>
-                                        <td style={styles.td}>{new Date(v.fecha_venta).toLocaleString()}</td>
-                                        <td style={styles.td}>{v.metodo_pago}</td>
-                                        <td style={styles.td}>{formatearMonto(v.total)}</td>
-                                        <td style={styles.td}>
-                                            <button onClick={() => navigate('/recibo', { state: { venta: v } })} style={styles.smallButton}>
-                                                Ver recibo
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {historial.ventas.map(v => {
+                                    const estaFacturada = v.tiene_factura || v.facturada;
+                                    return (
+                                        <tr key={v.id} style={styles.tableRow}>
+                                            <td style={styles.td}>{new Date(v.fecha_venta).toLocaleString()}</td>
+                                            <td style={styles.td}>{v.metodo_pago}</td>
+                                            <td style={styles.td}>{formatearMonto(v.total)}</td>
+                                            <td style={styles.td}>
+                                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                                    {estaFacturada ? (
+                                                        <button onClick={() => handleVerFactura(v)} style={styles.smallButton}>
+                                                            Ver factura
+                                                        </button>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={() => navigate('/recibo', { state: { venta: v } })} style={styles.smallButton}>
+                                                                Ver recibo
+                                                            </button>
+                                                            {tiendaTieneFacturacion && !isStaffOnly && !v.anulada && (
+                                                                <button onClick={() => handleFacturarVenta(v)} style={styles.smallButtonGreen}>
+                                                                    Facturar
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
