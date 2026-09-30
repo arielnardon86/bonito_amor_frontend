@@ -404,12 +404,14 @@ body {
 @media (min-width: 769px) {
   .sidebar.collapsed {
     width: 72px;
+    overflow-y: hidden;
     transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .sidebar.collapsed:hover,
   .sidebar.collapsed:focus-within {
     width: 260px;
+    overflow-y: auto;
   }
 
   .sidebar.collapsed .sidebar-label,

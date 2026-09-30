@@ -131,6 +131,17 @@ const Navbar = () => {
     setIsOpen(!isOpen);
   };
 
+  // Al elegir una sección: cierra el menú en mobile (como ya hacía) y además le
+  // saca el foco al link clickeado -- si no, en escritorio el sidebar colapsado
+  // quedaba expandido por :focus-within hasta que el usuario clickeaba afuera,
+  // en vez de volver a colapsarse solo al sacar el mouse.
+  const handleNavClick = () => {
+    setIsOpen(false);
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
@@ -202,7 +213,7 @@ const Navbar = () => {
 
       <nav className={`sidebar collapsed ${isOpen ? 'active' : ''}`}>
         <div className="sidebar-header">
-          <Link to="/" className="sidebar-logo" onClick={() => setIsOpen(false)}>
+          <Link to="/" className="sidebar-logo" onClick={handleNavClick}>
             <img src="/logo-completo.png" alt="Total Stock Logo" className="app-logo-image app-logo-full" />
             <img src="/logo-icon-only.png" alt="Total Stock" className="app-logo-image app-logo-icon" />
           </Link>
@@ -242,7 +253,7 @@ const Navbar = () => {
         {isAuthenticated && (
           <ul className="sidebar-links">
             {user && (user.is_staff || user.is_superuser || user.is_supervisor) && (
-              <li onClick={() => setIsOpen(false)}>
+              <li onClick={handleNavClick}>
                 <Link to="/punto-venta" className={location.pathname === '/punto-venta' || location.pathname === '/' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faShoppingCart} className="nav-icon" />
                   <span className="sidebar-label">Punto de Venta</span>
@@ -251,7 +262,7 @@ const Navbar = () => {
             )}
 
             {user && (user.is_staff || user.is_superuser || user.is_supervisor) && (
-              <li onClick={() => setIsOpen(false)}>
+              <li onClick={handleNavClick}>
                 <Link to="/ventas" className={location.pathname === '/ventas' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faListAlt} className="nav-icon" />
                   <span className="sidebar-label">Listado de Ventas</span>
@@ -260,7 +271,7 @@ const Navbar = () => {
             )}
 
             {user && (user.is_staff || user.is_superuser || user.is_supervisor) && (
-              <li onClick={() => setIsOpen(false)}>
+              <li onClick={handleNavClick}>
                 <Link to="/clientes" className={location.pathname === '/clientes' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faUsers} className="nav-icon" />
                   <span className="sidebar-label">Clientes</span>
@@ -269,7 +280,7 @@ const Navbar = () => {
             )}
 
             {user && (user.is_staff || user.is_superuser || user.is_supervisor) && (
-              <li onClick={() => setIsOpen(false)}>
+              <li onClick={handleNavClick}>
                 <Link to="/presupuesto" className={location.pathname === '/presupuesto' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faFileInvoiceDollar} className="nav-icon" />
                   <span className="sidebar-label">Presupuesto</span>
@@ -278,7 +289,7 @@ const Navbar = () => {
             )}
 
             {user && (user.is_superuser || user.is_supervisor) && (
-              <li onClick={() => setIsOpen(false)}>
+              <li onClick={handleNavClick}>
                 <Link to="/productos" className={location.pathname === '/productos' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faBox} className="nav-icon" />
                   <span className="sidebar-label">Gestión de Productos</span>
@@ -287,7 +298,7 @@ const Navbar = () => {
             )}
 
             {user && (user.is_superuser || user.is_supervisor) && (
-              <li onClick={() => setIsOpen(false)}>
+              <li onClick={handleNavClick}>
                 <Link to="/proveedores" className={location.pathname === '/proveedores' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faIndustry} className="nav-icon" />
                   <span className="sidebar-label">Proveedores</span>
@@ -297,13 +308,13 @@ const Navbar = () => {
 
             {user && (user.is_superuser || user.is_supervisor) && (
               <>
-                <li onClick={() => setIsOpen(false)}>
+                <li onClick={handleNavClick}>
                   <Link to="/registro-compras" className={location.pathname === '/registro-compras' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faMoneyBillWave} className="nav-icon" />
                     <span className="sidebar-label">Registro de Egresos</span>
                   </Link>
                 </li>
-                <li onClick={() => setIsOpen(false)}>
+                <li onClick={handleNavClick}>
                   <Link to="/compras-stock" className={location.pathname === '/compras-stock' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faTruck} className="nav-icon" />
                     <span className="sidebar-label">Compras / Stock</span>
@@ -314,13 +325,13 @@ const Navbar = () => {
 
             {user && user.is_superuser && (
               <>
-                <li onClick={() => setIsOpen(false)}>
+                <li onClick={handleNavClick}>
                   <Link to="/metricas-ventas" className={location.pathname === '/metricas-ventas' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faChartLine} className="nav-icon" />
                     <span className="sidebar-label">Métricas de Ventas</span>
                   </Link>
                 </li>
-                <li onClick={() => setIsOpen(false)}>
+                <li onClick={handleNavClick}>
                   <Link to="/panel-administracion-tienda" className={location.pathname === '/panel-administracion-tienda' ? 'active' : ''}>
                     <FontAwesomeIcon icon={faCog} className="nav-icon" />
                     <span className="sidebar-label">Panel de Administración</span>
@@ -330,7 +341,7 @@ const Navbar = () => {
             )}
 
             {user && (user.is_superuser || user.is_supervisor) && tiendasAutorizadas.some(t => t.nombre === selectedStoreSlug && t.tiene_cierre_caja) && (
-              <li onClick={() => setIsOpen(false)}>
+              <li onClick={handleNavClick}>
                 <Link to="/cierres-caja" className={location.pathname === '/cierres-caja' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faCashRegister} className="nav-icon" />
                   <span className="sidebar-label">Cierres de Caja</span>
@@ -339,7 +350,7 @@ const Navbar = () => {
             )}
 
             {user && (user.is_staff || user.is_superuser || user.is_supervisor) && (
-              <li onClick={() => setIsOpen(false)}>
+              <li onClick={handleNavClick}>
                 <Link to="/manual" className={location.pathname === '/manual' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faBookOpen} className="nav-icon" />
                   <span className="sidebar-label">Manual de Uso</span>
