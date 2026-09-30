@@ -68,6 +68,124 @@ const diferenciaEnDias = (fechaA, fechaB) => Math.round(
 
 const DIAS_AVISO_CIERRE_CC = 10;
 
+// "Monitor en vivo": botón + panel con las ventas de hoy, inspirado en el widget
+// homónimo de Mercado Libre -- acá vive solo en Punto de Venta (no hay una barra
+// superior global en la app donde ponerlo para que se vea desde cualquier pantalla).
+const MonitorEnVivoBoton = ({ token, tiendaSlug, navigate }) => {
+    const [abierto, setAbierto] = useState(false);
+    const [datos, setDatos] = useState(null);
+    const [cargando, setCargando] = useState(false);
+    const [errorCarga, setErrorCarga] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        if (!abierto) return;
+        const onClickFuera = (e) => { if (ref.current && !ref.current.contains(e.target)) setAbierto(false); };
+        document.addEventListener('mousedown', onClickFuera);
+        return () => document.removeEventListener('mousedown', onClickFuera);
+    }, [abierto]);
+
+    const toggle = async () => {
+        if (abierto) { setAbierto(false); return; }
+        setAbierto(true);
+        setCargando(true);
+        setErrorCarga(false);
+        try {
+            const { data } = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/monitor-hoy/`, {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { tienda_slug: tiendaSlug },
+            });
+            setDatos(data);
+        } catch {
+            setErrorCarga(true);
+        } finally {
+            setCargando(false);
+        }
+    };
+
+    const variacion = datos?.variacion_pct;
+    const subeVariacion = variacion !== null && variacion !== undefined && variacion >= 0;
+    const horaActualizado = datos?.actualizado
+        ? new Date(datos.actualizado).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+        : '';
+
+    return (
+        <div ref={ref} style={{ position: 'relative' }}>
+            <button
+                type="button"
+                onClick={toggle}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '9px 16px', borderRadius: 10, border: '1px solid #e2e8f0',
+                    background: '#fff', color: '#1a2926', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+                }}
+            >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#5dc87a', flexShrink: 0 }} />
+                Monitor en vivo
+            </button>
+            {abierto && (
+                <div style={{
+                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 300,
+                    background: '#fff', borderRadius: 14, boxShadow: '0 16px 40px rgba(0,0,0,.18)',
+                    border: '1px solid #e2e8f0', zIndex: 60, overflow: 'hidden',
+                }}>
+                    <div style={{ padding: '16px 18px', background: '#f0faf5', borderBottom: '1px solid #e2e8f0' }}>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#1a6a40', textTransform: 'uppercase', letterSpacing: '.03em' }}>
+                            Ventas de hoy
+                        </p>
+                        {cargando ? (
+                            <p style={{ margin: '10px 0 0', fontSize: 14, color: '#94a3b8' }}>Cargando...</p>
+                        ) : errorCarga ? (
+                            <p style={{ margin: '10px 0 0', fontSize: 14, color: '#e25252' }}>No se pudo cargar.</p>
+                        ) : (
+                            <>
+                                <p style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 800, color: '#1a2926' }}>
+                                    {formatearMonto(datos?.total_ventas_hoy || 0)}
+                                </p>
+                                <p style={{ margin: '4px 0 0', fontSize: 13, fontWeight: 700, color: variacion === null ? '#94a3b8' : subeVariacion ? '#1a7a3f' : '#e25252' }}>
+                                    {variacion === null || variacion === undefined
+                                        ? 'Sin ventas registradas ayer a esta hora'
+                                        : `${subeVariacion ? '▲' : '▼'} ${Math.abs(variacion).toFixed(1)}% vs. ayer a esta hora`}
+                                </p>
+                                {horaActualizado && (
+                                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#7a90b0' }}>Actualizado {horaActualizado}</p>
+                                )}
+                            </>
+                        )}
+                    </div>
+                    {!cargando && !errorCarga && datos && (
+                        <div style={{ padding: '14px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                            <div>
+                                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1a2926' }}>{datos.cantidad_ventas}</p>
+                                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#7a90b0' }}>Ventas</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1a2926' }}>{datos.unidades_vendidas}</p>
+                                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#7a90b0' }}>Unidades</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1a2926' }}>{formatearMonto(datos.ticket_promedio)}</p>
+                                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#7a90b0' }}>Ticket prom.</p>
+                            </div>
+                        </div>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => { setAbierto(false); navigate('/metricas-ventas'); }}
+                        style={{
+                            display: 'block', width: '100%', padding: '12px 18px', border: 'none',
+                            borderTop: '1px solid #e2e8f0', background: '#fff', color: '#1a6a40',
+                            fontWeight: 700, fontSize: 13, cursor: 'pointer', textAlign: 'left',
+                        }}
+                    >
+                        Ir a métricas de ventas →
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const PuntoVenta = () => {
     const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token } = useAuth();
     const navigate = useNavigate();
@@ -1741,20 +1859,23 @@ const PuntoVenta = () => {
                         ]}
                     />
                 </div>
-                {cierreActivo && cierreActivo.estado !== 'CERRADO' && (
-                    <button
-                        onClick={() => {
-                            setEgresoForm({ tipo: 'EGRESO', concepto: '', importe: '' });
-                            setMostrarModalEgresos(true);
-                        }}
-                        style={{
-                            padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                            fontWeight: 700, fontSize: 14, background: '#f59e0b', color: '#fff',
-                        }}
-                    >
-                        Egresos
-                    </button>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <MonitorEnVivoBoton token={token} tiendaSlug={selectedStoreSlug} navigate={navigate} />
+                    {cierreActivo && cierreActivo.estado !== 'CERRADO' && (
+                        <button
+                            onClick={() => {
+                                setEgresoForm({ tipo: 'EGRESO', concepto: '', importe: '' });
+                                setMostrarModalEgresos(true);
+                            }}
+                            style={{
+                                padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                                fontWeight: 700, fontSize: 14, background: '#f59e0b', color: '#fff',
+                            }}
+                        >
+                            Egresos
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Modal Abrir Caja */}
