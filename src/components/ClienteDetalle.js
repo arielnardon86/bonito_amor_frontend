@@ -508,34 +508,36 @@ const ClienteDetalle = () => {
             </div>
 
             <div style={styles.section}>
-                <h2 style={styles.sectionHeader}>Movimientos de cuenta corriente</h2>
-                {historial.movimientos.length === 0 ? (
-                    <p style={styles.noDataMessage}>Sin movimientos.</p>
-                ) : (
-                    <div style={styles.tableResponsive}>
-                        <table style={styles.table}>
-                            <thead>
-                                <tr style={styles.tableHeaderRow}>
-                                    <th style={styles.th}>Fecha</th>
-                                    <th style={styles.th}>Tipo</th>
-                                    <th style={styles.th}>Concepto</th>
-                                    <th style={styles.th}>Monto</th>
-                                    <th style={styles.th}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {historial.movimientos.map(m => (
-                                    <tr key={m.id} style={styles.tableRow}>
-                                        <td style={styles.td}>{new Date(m.fecha).toLocaleString()}</td>
-                                        <td style={{ ...styles.td, color: m.tipo === 'DEBITO' ? '#e25252' : '#1a6a40', fontWeight: 600 }}>
-                                            {m.tipo_display}
-                                        </td>
-                                        <td style={styles.td}>{m.concepto}</td>
-                                        <td style={styles.td}>{formatearMonto(m.monto)}</td>
-                                        <td style={styles.td}>
-                                            {/* Los débitos son la venta en sí (ya tiene su recibo en Consumos);
-                                                acá solo se reimprime el comprobante de los cobros. */}
-                                            {m.tipo === 'CREDITO' && (
+                <h2 style={styles.sectionHeader}>Pagos</h2>
+                {(() => {
+                    // Solo cobros reales (mismo criterio que "Pagos" en Resumen mensual y en
+                    // el PDF de resumen de cuenta): se excluyen débitos (esos son los
+                    // consumos, ya en la tabla de arriba) y créditos que son reversiones por
+                    // anulación de venta, que no son plata que el cliente haya pagado.
+                    const pagos = historial.movimientos.filter(
+                        m => m.tipo === 'CREDITO' && (m.concepto || '').startsWith('Cobro cuenta corriente')
+                    );
+                    if (pagos.length === 0) {
+                        return <p style={styles.noDataMessage}>Sin pagos registrados.</p>;
+                    }
+                    return (
+                        <div style={styles.tableResponsive}>
+                            <table style={styles.table}>
+                                <thead>
+                                    <tr style={styles.tableHeaderRow}>
+                                        <th style={styles.th}>Fecha</th>
+                                        <th style={styles.th}>Concepto</th>
+                                        <th style={styles.th}>Monto</th>
+                                        <th style={styles.th}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {pagos.map(m => (
+                                        <tr key={m.id} style={styles.tableRow}>
+                                            <td style={styles.td}>{new Date(m.fecha).toLocaleString()}</td>
+                                            <td style={styles.td}>{m.concepto}</td>
+                                            <td style={{ ...styles.td, color: '#1a6a40', fontWeight: 600 }}>{formatearMonto(m.monto)}</td>
+                                            <td style={styles.td}>
                                                 <button
                                                     onClick={() => navigate('/recibo-cobro', {
                                                         state: { movimiento: m, cliente, tienda_nombre: selectedStoreSlug },
@@ -544,14 +546,14 @@ const ClienteDetalle = () => {
                                                 >
                                                     Ver recibo
                                                 </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    );
+                })()}
             </div>
 
             {mostrarCobro && (
