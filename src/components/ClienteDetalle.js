@@ -45,7 +45,9 @@ const ClienteDetalle = () => {
     const [guardandoCampo, setGuardandoCampo] = useState(false);
 
     // Descarga del PDF de resumen de cuenta
-    const [descargandoResumen, setDescargandoResumen] = useState(false);
+    // Key del mes (ej. "2026-07") en descarga -- por fila de la tabla de Resumen
+    // mensual, no un solo booleano global: cada mes tiene su propio botón.
+    const [descargandoResumenKey, setDescargandoResumenKey] = useState(null);
 
     const fetchDatos = useCallback(async () => {
         if (!token || !clienteId) return;
@@ -145,17 +147,21 @@ const ClienteDetalle = () => {
         }
     };
 
-    const descargarResumenCuenta = async () => {
-        setDescargandoResumen(true);
+    // El PDF corresponde a un mes puntual (mesKey = "2026-07"), no a todo el
+    // historial del cliente -- un botón por fila en la tabla de Resumen mensual.
+    const descargarResumenCuenta = async (mesKey) => {
+        setDescargandoResumenKey(mesKey);
         try {
+            const [anio, mes] = mesKey.split('-');
             const resp = await axios.get(`${BASE_API_ENDPOINT}/api/clientes/${clienteId}/pdf-resumen-cuenta/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
                 responseType: 'blob',
+                params: { anio, mes },
             });
             const url = URL.createObjectURL(resp.data);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `resumen_cuenta_${cliente?.nombre_razon_social || clienteId}.pdf`;
+            a.download = `resumen_cuenta_${cliente?.nombre_razon_social || clienteId}_${mesKey}.pdf`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -163,7 +169,7 @@ const ClienteDetalle = () => {
         } catch (err) {
             Swal.fire('Error', 'No se pudo generar el resumen de cuenta.', 'error');
         } finally {
-            setDescargandoResumen(false);
+            setDescargandoResumenKey(null);
         }
     };
 
@@ -311,11 +317,8 @@ const ClienteDetalle = () => {
 
             {resumenMensual.length > 0 && (
                 <div style={styles.section}>
-                    <div style={{ ...styles.sectionHeader, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                    <div style={styles.sectionHeader}>
                         <h2 style={{ margin: 0, fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>Resumen mensual</h2>
-                        <button onClick={descargarResumenCuenta} disabled={descargandoResumen} style={styles.smallButtonGreen}>
-                            {descargandoResumen ? 'Generando...' : 'Descargar resumen de cuenta (PDF)'}
-                        </button>
                     </div>
                     <div style={styles.tableResponsive}>
                         <table style={styles.table}>
@@ -325,11 +328,13 @@ const ClienteDetalle = () => {
                                     <th style={styles.th}>Consumos</th>
                                     <th style={styles.th}>Pagos</th>
                                     <th style={styles.th}>Saldo del mes</th>
+                                    <th style={styles.th}></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {resumenMensual.map(mes => {
                                     const saldoMes = mes.consumos - mes.pagos;
+                                    const descargando = descargandoResumenKey === mes.key;
                                     return (
                                         <tr key={mes.key} style={styles.tableRow}>
                                             <td style={styles.td}>{mes.label}</td>
@@ -337,6 +342,15 @@ const ClienteDetalle = () => {
                                             <td style={styles.td}>{formatearMonto(mes.pagos)}</td>
                                             <td style={{ ...styles.td, color: saldoMes > 0 ? '#e25252' : '#1a6a40', fontWeight: 600 }}>
                                                 {formatearMonto(saldoMes)}
+                                            </td>
+                                            <td style={styles.td}>
+                                                <button
+                                                    onClick={() => descargarResumenCuenta(mes.key)}
+                                                    disabled={descargando}
+                                                    style={styles.smallButtonGreen}
+                                                >
+                                                    {descargando ? 'Generando...' : 'Descargar resumen de cuenta'}
+                                                </button>
                                             </td>
                                         </tr>
                                     );
