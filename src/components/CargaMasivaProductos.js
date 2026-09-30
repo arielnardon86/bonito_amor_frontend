@@ -543,6 +543,26 @@ const CargaMasivaProductos = () => {
                                 <strong>{previewData.resultados.filter((r) => !r.error).length}</strong> fila(s) listas para importar,{' '}
                                 <strong style={{ color: '#e25252' }}>{previewData.errores}</strong> con error.
                             </p>
+                            {/* Checkbox + acciones arriba de la lista: con archivos grandes, tenerlas
+                                solo al final obligaba a scrollear toda la tabla de preview para llegar. */}
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={!actualizarStock}
+                                    onChange={(e) => setActualizarStock(!e.target.checked)}
+                                />
+                                No sumar stock (solo actualizar precio, IVA, rubro y código de barras de productos ya existentes)
+                            </label>
+                            <div style={{ display: 'flex', gap: 10, marginTop: 12, marginBottom: 20 }}>
+                                <button onClick={resetear} style={styles.modalCancelButton}>Cancelar</button>
+                                <button
+                                    onClick={confirmarImportacion}
+                                    disabled={confirmando || previewData.resultados.every((r) => r.error)}
+                                    style={styles.primaryButton}
+                                >
+                                    {confirmando ? 'Importando...' : 'Confirmar importación'}
+                                </button>
+                            </div>
                             {(() => {
                                 const conError = previewData.resultados.filter((r) => r.error);
                                 const sinError = previewData.resultados.filter((r) => !r.error);
@@ -598,24 +618,6 @@ const CargaMasivaProductos = () => {
                                     </>
                                 );
                             })()}
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, fontSize: 14, cursor: 'pointer' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={!actualizarStock}
-                                    onChange={(e) => setActualizarStock(!e.target.checked)}
-                                />
-                                No sumar stock (solo actualizar precio, IVA, rubro y código de barras de productos ya existentes)
-                            </label>
-                            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                                <button onClick={resetear} style={styles.modalCancelButton}>Cancelar</button>
-                                <button
-                                    onClick={confirmarImportacion}
-                                    disabled={confirmando || previewData.resultados.every((r) => r.error)}
-                                    style={styles.primaryButton}
-                                >
-                                    {confirmando ? 'Importando...' : 'Confirmar importación'}
-                                </button>
-                            </div>
                         </>
                     )}
                 </div>
