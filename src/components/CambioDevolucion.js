@@ -744,7 +744,6 @@ const CambioDevolucion = () => {
                                             <option value="RI">Responsable Inscripto</option>
                                             <option value="EX">Exento</option>
                                             <option value="MT">Monotributo</option>
-                                            <option value="NR">No Responsable</option>
                                         </select>
                                         `}
                                     `,
