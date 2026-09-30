@@ -7,13 +7,15 @@ import { formatearMonto } from '../utils/formatearMonto';
 import { useAuth } from '../AuthContext';
 
 const TIPO_IMPRESION_STORAGE_KEY = 'etiquetas_tipo_impresora';
-// Ajuste fino (en mm) de la grilla de la hoja 4x9, sumado al margen calculado por
-// CSS -- las hojas adhesivas troqueladas varían de fabricación en fabricación (y
-// según la impresora), así que en vez de perseguir el margen "perfecto" a ciegas
-// desde fotos con regla, se lo deja calibrable por la propia tienda: imprimen una
-// prueba, miden con regla cuánto falta correr la grilla, y lo cargan acá una sola
-// vez (se guarda en localStorage, no hay que repetirlo en cada impresión).
-const AJUSTE_HOJA4X9_STORAGE_KEY = 'etiquetas_hoja4x9_ajuste_mm';
+// Ajuste fino (en mm) de la grilla de la hoja 4x9, sumado a la base confirmada por
+// la ficha del fabricante (JetLabel código 2005: A4 sin margen, etiquetas de
+// 52,5x33mm calzan exacto). Por default debería quedar en 0/0/33 -- este campo es
+// solo para compensar variación de impresora a impresora (alimentación del papel,
+// margen no imprimible del hardware), no para adivinar el tamaño real de la hoja
+// como en versiones anteriores. Se guarda en localStorage por tienda/navegador.
+// Clave nueva (v2): la v1 se calibró sobre una base incorrecta (Carta + 5x3cm en
+// vez de A4 + 52,5x33mm) y esos valores ya no sirven de referencia.
+const AJUSTE_HOJA4X9_STORAGE_KEY = 'etiquetas_hoja4x9_ajuste_mm_v2';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 const normalizeApiUrl = (url) => {
@@ -48,14 +50,12 @@ const EtiquetasImpresion = () => {
                 return {
                     x: Number(guardado.x) || 0,
                     y: Number(guardado.y) || 0,
-                    // 30mm = 3cm, la mejor estimación que tenemos -- las fotos con regla no
-                    // terminaron de dar un número confiable (ver comentario abajo), así que
-                    // se deja calibrable en vez de perseguir un valor exacto a ciegas.
-                    alturaFila: guardado.alturaFila != null ? Number(guardado.alturaFila) : 30,
+                    // 33mm, confirmado por la ficha del fabricante (JetLabel código 2005).
+                    alturaFila: guardado.alturaFila != null ? Number(guardado.alturaFila) : 33,
                 };
             }
         } catch { /* nada guardado todavía */ }
-        return { x: 0, y: 10, alturaFila: 30 };
+        return { x: 0, y: 0, alturaFila: 33 };
     });
 
     const handleTipoImpresionChange = (e) => {
@@ -212,7 +212,7 @@ const EtiquetasImpresion = () => {
                 >
                     <option value="estandar">Impresora estándar (rollo angosto)</option>
                     <option value="a4_grilla">Hoja A4 (máx. etiquetas por hoja)</option>
-                    <option value="hoja_4x9_36">Hoja de etiquetas 4×9 (36 por hoja, 5x3cm)</option>
+                    <option value="hoja_4x9_36">Hoja de etiquetas 4×9 (A4, 36 por hoja, 52,5x33mm)</option>
                     <option value="xprinter_39x20">Térmica Xprinter XP-410B (rollo 39x20mm)</option>
                 </select>
                 {tipoImpresion === 'hoja_4x9_36' && (
@@ -278,22 +278,18 @@ const EtiquetasImpresion = () => {
                 }`}
                 ref={labelsRef}
                 style={tipoImpresion === 'hoja_4x9_36' ? (() => {
-                    // Pisa el margen y el alto de fila calculados por CSS con los valores
-                    // cargados arriba -- el alto de fila real de la hoja física no se pudo
-                    // confirmar de forma confiable por fotos con regla (las mediciones no
-                    // cerraban entre sí), así que en vez de perseguir un número exacto a
-                    // ciegas se deja calibrable acá: si las filas se desalinean cada vez más
-                    // a medida que se baja en la hoja, es este valor el que hay que ajustar,
-                    // no el "ajuste vertical" (que corre TODA la grilla pareja, no corrige
-                    // un desfasaje que crece fila a fila).
-                    const alturaFilaCm = ajusteHoja4x9.alturaFila / 10;
-                    const altoGrillaCm = alturaFilaCm * 9;
-                    const margenSuperiorCentradoCm = (27.94 - altoGrillaCm) / 2;
+                    // Base confirmada por la ficha del fabricante (JetLabel código 2005): hoja
+                    // A4 sin margen, etiquetas de 52,5x33mm calzan exacto (210mm y 297mm = ancho
+                    // y alto de A4). El ajuste que se carga arriba ya no corrige una estimación
+                    // a ciegas -- es solo para compensar variación de impresora a impresora
+                    // (alimentación del papel, margen no imprimible del hardware), así que por
+                    // default debería quedar en 0.
+                    const alturaFilaMm = ajusteHoja4x9.alturaFila;
                     return {
-                        marginTop: `${margenSuperiorCentradoCm + ajusteHoja4x9.y / 10}cm`,
-                        marginLeft: `${0.795 + ajusteHoja4x9.x / 10}cm`,
+                        marginTop: `${ajusteHoja4x9.y / 10}cm`,
+                        marginLeft: `${ajusteHoja4x9.x / 10}cm`,
                         marginRight: 0,
-                        gridTemplateRows: `repeat(9, ${alturaFilaCm}cm)`,
+                        gridTemplateRows: `repeat(9, ${alturaFilaMm}mm)`,
                     };
                 })() : undefined}
             >
@@ -473,35 +469,31 @@ const EtiquetasImpresion = () => {
                         margin-top: 0;
                     }
 
-                    /* Layout "hoja4x9": hoja de etiquetas autoadhesivas pre-troqueladas, tamaño
-                       Carta/Letter (21,59x27,94cm -- confirmado real: la primera versión asumía
-                       21,5x29cm, pero el diálogo de impresión del cliente mostraba "Carta"), 4
-                       columnas x 9 filas = 36 etiquetas de 5x3cm cada una (corregido de 5x2,8cm:
-                       el cliente midió con regla la hoja física real y confirmó 3cm de alto por
-                       cuadrado -- esos 2mm de diferencia por fila son justo lo que desalineaba la
-                       grilla cada vez más fila tras fila). A diferencia de "layout-a4" (que arma
-                       una grilla libre y deja que el navegador pagine solo), acá la posición de
-                       cada etiqueta tiene que calcar la del papel físico -- si se corre aunque sea
-                       1-2mm, la impresión ya no cae sobre la etiqueta real. El margen superior
-                       sigue siendo una estimación (centrado matemático, asumiendo que el margen de
-                       fábrica antes de la primera fila es igual al margen después de la última) --
-                       no hay confirmado cuánto mide realmente el margen superior de fábrica antes
-                       del primer troquel; si sigue sin caer bien, medirlo con regla y ajustar el
-                       margin-top de acá directo, ya no como resta de un centrado calculado. */
+                    /* Layout "hoja4x9": hoja de etiquetas autoadhesivas pre-troqueladas JetLabel
+                       código 2005 -- ficha del fabricante (caja original, confirmada por el
+                       cliente): hoja A4 (21x29,7cm, NO Carta/Letter -- las versiones anteriores
+                       de este layout asumieron primero 21,5x29cm y después Carta a partir de un
+                       diálogo de impresión que mostraba ese tamaño por default del sistema, no
+                       por el papel físico real), 36 etiquetas de 52,5x33,0mm (4 columnas x 9
+                       filas), SIN margen entre la hoja y las etiquetas: 4 x 52,5mm = 210mm =
+                       ancho exacto de A4, y 9 x 33mm = 297mm = alto exacto de A4 -- la grilla
+                       ocupa la hoja entera de punta a punta, no hay que centrar ni calcular
+                       margen. Con estos tres números confirmados por el fabricante ya no hace
+                       falta la calibración a ojo que se venía intentando antes (ver
+                       ajusteHoja4x9 en el componente, que ahora corrige sobre esta base exacta
+                       en vez de sobre una estimación). */
                     .label-container.layout-hoja4x9 {
                         display: grid;
-                        grid-template-columns: repeat(4, 5cm);
-                        grid-template-rows: repeat(9, 3cm);
-                        width: 20cm;
-                        /* Carta mide 27,94cm de alto; 9 filas de 3cm = 27cm -- centrado vertical
-                           deja 0,47cm arriba y abajo. */
-                        margin: 0.47cm auto 0 auto;
+                        grid-template-columns: repeat(4, 52.5mm);
+                        grid-template-rows: repeat(9, 33mm);
+                        width: 210mm;
+                        margin: 0;
                         box-sizing: border-box;
                     }
 
                     .label-container.layout-hoja4x9 .label {
-                        width: 5cm;
-                        height: 3cm;
+                        width: 52.5mm;
+                        height: 33mm;
                         padding: 1mm 2mm;
                         display: flex;
                         flex-direction: column;
@@ -682,7 +674,7 @@ const EtiquetasImpresion = () => {
                             margin: ${tipoImpresion === 'a4_grilla' ? '5mm' : '0'};
                             ${tipoImpresion === 'xprinter_39x20' ? 'size: 39mm 20mm;' : ''}
                             ${tipoImpresion === 'a4_grilla' ? 'size: A4;' : ''}
-                            ${tipoImpresion === 'hoja_4x9_36' ? 'size: letter;' : ''}
+                            ${tipoImpresion === 'hoja_4x9_36' ? 'size: A4;' : ''}
                             @top-left { content: none; }
                             @top-center { content: none; }
                             @top-right { content: none; }
