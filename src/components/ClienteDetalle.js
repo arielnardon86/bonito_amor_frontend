@@ -176,6 +176,10 @@ const ClienteDetalle = () => {
     // Facturación de un consumo (Cuenta Corriente u otro medio) desde la ficha
     // del cliente -- mismo criterio/endpoints que Listado de Ventas (VentasPage.jsx),
     // para no duplicar la lógica de facturación con un comportamiento distinto.
+    // El formulario se precarga con los datos YA CARGADOS en la ficha del cliente
+    // (nombre/CUIT/domicilio) antes que con el snapshot de la venta -- la venta
+    // suele traer "Consumidor Final" a secas, así que priorizar ese snapshot
+    // nunca llegaba a usar los datos reales del cliente.
     const isStaffOnly = user?.is_staff && !user?.is_superuser && !user?.is_supervisor;
     const tiendaActualInfo = stores.find(s => s.nombre === selectedStoreSlug);
     const tiendaTieneFacturacion = !!tiendaActualInfo && tiendaActualInfo.tipo_facturacion && tiendaActualInfo.tipo_facturacion !== 'NINGUNA';
@@ -203,10 +207,10 @@ const ClienteDetalle = () => {
         const { value: formValues } = await Swal.fire({
             title: 'Datos del Cliente para Factura',
             html: `
-                <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="${(venta.cliente_nombre || cliente?.nombre_razon_social || 'Consumidor Final').replace(/"/g, '&quot;')}" required>
-                <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" type="text" value="${venta.cliente_cuit || cliente?.cuit_cuil || ''}">
+                <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="${(cliente?.nombre_razon_social || venta.cliente_nombre || 'Consumidor Final').replace(/"/g, '&quot;')}" required>
+                <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" type="text" value="${cliente?.cuit_cuil || venta.cliente_cuit || ''}">
                 <p style="margin: -8px 0 8px; font-size: 12px; color: #94a3b8;">Ingresalo solo con números, sin guiones ni puntos (ej: 20123456789)</p>
-                <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)" value="${(venta.cliente_domicilio || cliente?.direccion || '').replace(/"/g, '&quot;')}">
+                <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)" value="${(cliente?.direccion || venta.cliente_domicilio || '').replace(/"/g, '&quot;')}">
                 ${esMonotributista ? '' : `
                 <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #d9d9d9; border-radius: 0.1875em; font-size: 1.125em;">
                     <option value="CF" selected>Consumidor Final</option>

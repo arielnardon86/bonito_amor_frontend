@@ -1585,14 +1585,16 @@ const PuntoVenta = () => {
                                 // Monotributista solo puede emitir Factura C sin importar la condición de IVA
                                 // del cliente: no tiene sentido preguntarla, así que no se la ofrecemos.
                                 const esMonotributista = tiendaActual?.condicion_iva_emisor === 'MT';
-                                // Mostrar formulario para datos del cliente
+                                // Mostrar formulario para datos del cliente -- precargado con los datos
+                                // del cliente de Cuenta Corriente si la venta fue a uno (clienteSeleccionadoCC),
+                                // para no volver a tipear lo que ya está cargado en su ficha.
                                 const { value: formValues } = await Swal.fire({
                                     title: 'Datos del Cliente para Factura',
                                     html: `
-                                        <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="Consumidor Final" required>
-                                        <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" type="text">
+                                        <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="${(clienteSeleccionadoCC?.nombre_razon_social || 'Consumidor Final').replace(/"/g, '&quot;')}" required>
+                                        <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" type="text" value="${clienteSeleccionadoCC?.cuit_cuil || ''}">
                                         <p style="margin: -8px 0 8px; font-size: 12px; color: #94a3b8;">Ingresalo solo con números, sin guiones ni puntos (ej: 20123456789)</p>
-                                        <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)">
+                                        <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)" value="${(clienteSeleccionadoCC?.direccion || '').replace(/"/g, '&quot;')}">
                                         ${esMonotributista ? '' : `
                                         <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #d9d9d9; border-radius: 0.1875em; font-size: 1.125em;">
                                             <option value="CF" selected>Consumidor Final</option>
