@@ -44,13 +44,18 @@ const EtiquetasImpresion = () => {
     const [ajusteHoja4x9, setAjusteHoja4x9] = useState(() => {
         try {
             const guardado = JSON.parse(localStorage.getItem(AJUSTE_HOJA4X9_STORAGE_KEY));
-            if (guardado) return { x: Number(guardado.x) || 0, y: Number(guardado.y) || 0 };
+            if (guardado) {
+                return {
+                    x: Number(guardado.x) || 0,
+                    y: Number(guardado.y) || 0,
+                    // 30mm = 3cm, la mejor estimación que tenemos -- las fotos con regla no
+                    // terminaron de dar un número confiable (ver comentario abajo), así que
+                    // se deja calibrable en vez de perseguir un valor exacto a ciegas.
+                    alturaFila: guardado.alturaFila != null ? Number(guardado.alturaFila) : 30,
+                };
+            }
         } catch { /* nada guardado todavía */ }
-        // Punto de partida sugerido a partir de las fotos con regla del cliente
-        // (Oxford Indumentaria): el contenido caía más abajo de lo que el margen
-        // "centrado" calculado preveía -- no es una medición exacta, solo ahorra
-        // el primer tanteo a ciegas.
-        return { x: 0, y: 10 };
+        return { x: 0, y: 10, alturaFila: 30 };
     });
 
     const handleTipoImpresionChange = (e) => {
@@ -59,9 +64,9 @@ const EtiquetasImpresion = () => {
         localStorage.setItem(TIPO_IMPRESION_STORAGE_KEY, valor);
     };
 
-    const handleAjusteHoja4x9Change = (eje, valor) => {
+    const handleAjusteHoja4x9Change = (campo, valor) => {
         setAjusteHoja4x9(prev => {
-            const nuevo = { ...prev, [eje]: valor === '' ? 0 : Number(valor) };
+            const nuevo = { ...prev, [campo]: valor === '' ? 0 : Number(valor) };
             localStorage.setItem(AJUSTE_HOJA4X9_STORAGE_KEY, JSON.stringify(nuevo));
             return nuevo;
         });
@@ -134,6 +139,13 @@ const EtiquetasImpresion = () => {
                 for (let i = 0; i < producto.labelQuantity; i++) {
                     const tempDiv = document.createElement('div');
                     tempDiv.className = 'label';
+                    if (esHoja4x9) {
+                        // El alto de cada etiqueta tiene que calzar con el alto de fila
+                        // dinámico de la grilla (ver el style del contenedor) -- la clase CSS
+                        // trae un 3cm fijo como valor por defecto, pisado acá si se calibró
+                        // un valor distinto.
+                        tempDiv.style.height = `${ajusteHoja4x9.alturaFila / 10}cm`;
+                    }
 
                     const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                     try {
@@ -170,7 +182,7 @@ const EtiquetasImpresion = () => {
                 }
             });
         }
-    }, [productosParaImprimir, tipoImpresion, mostrarDescuento, descuentoInput, descuentoRedondeo]);
+    }, [productosParaImprimir, tipoImpresion, mostrarDescuento, descuentoInput, descuentoRedondeo, ajusteHoja4x9]);
 
     const handlePrint = () => {
         window.print();
@@ -223,6 +235,15 @@ const EtiquetasImpresion = () => {
                                 style={mobileStyles.ajusteHoja4x9Input}
                             />
                         </label>
+                        <label style={mobileStyles.ajusteHoja4x9Label} title="Si las filas se van desalineando cada vez más a medida que se baja en la hoja (no un corrimiento parejo), el problema es este número, no el ajuste vertical de arriba.">
+                            Alto de fila (mm)
+                            <input
+                                type="number" step="0.1"
+                                value={ajusteHoja4x9.alturaFila}
+                                onChange={(e) => handleAjusteHoja4x9Change('alturaFila', e.target.value)}
+                                style={mobileStyles.ajusteHoja4x9Input}
+                            />
+                        </label>
                     </div>
                 )}
                 <label style={mobileStyles.descuentoLabel}>
@@ -256,14 +277,25 @@ const EtiquetasImpresion = () => {
                     : 'layout-estandar'
                 }`}
                 ref={labelsRef}
-                style={tipoImpresion === 'hoja_4x9_36' ? {
-                    // Pisa el margen calculado por CSS (centrado matemático) sumando el
-                    // ajuste fino cargado arriba -- 0.795cm/0.47cm son el margen izq/sup.
-                    // "centrado" de base, en cm; el ajuste del usuario viene en mm.
-                    marginTop: `${0.47 + ajusteHoja4x9.y / 10}cm`,
-                    marginLeft: `${0.795 + ajusteHoja4x9.x / 10}cm`,
-                    marginRight: 0,
-                } : undefined}
+                style={tipoImpresion === 'hoja_4x9_36' ? (() => {
+                    // Pisa el margen y el alto de fila calculados por CSS con los valores
+                    // cargados arriba -- el alto de fila real de la hoja física no se pudo
+                    // confirmar de forma confiable por fotos con regla (las mediciones no
+                    // cerraban entre sí), así que en vez de perseguir un número exacto a
+                    // ciegas se deja calibrable acá: si las filas se desalinean cada vez más
+                    // a medida que se baja en la hoja, es este valor el que hay que ajustar,
+                    // no el "ajuste vertical" (que corre TODA la grilla pareja, no corrige
+                    // un desfasaje que crece fila a fila).
+                    const alturaFilaCm = ajusteHoja4x9.alturaFila / 10;
+                    const altoGrillaCm = alturaFilaCm * 9;
+                    const margenSuperiorCentradoCm = (27.94 - altoGrillaCm) / 2;
+                    return {
+                        marginTop: `${margenSuperiorCentradoCm + ajusteHoja4x9.y / 10}cm`,
+                        marginLeft: `${0.795 + ajusteHoja4x9.x / 10}cm`,
+                        marginRight: 0,
+                        gridTemplateRows: `repeat(9, ${alturaFilaCm}cm)`,
+                    };
+                })() : undefined}
             >
                 {/* Las etiquetas se renderizarán aquí */}
             </div>
