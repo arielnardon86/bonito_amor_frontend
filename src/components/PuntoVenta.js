@@ -1860,7 +1860,12 @@ const PuntoVenta = () => {
                     />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <MonitorEnVivoBoton token={token} tiendaSlug={selectedStoreSlug} navigate={navigate} />
+                    {/* Solo Administrador (is_superuser): ve facturación/rentabilidad de
+                        toda la tienda, no algo que un supervisor/cajero deba ver, y
+                        además enlaza a Métricas de Ventas, que ya es solo-admin. */}
+                    {user?.is_superuser && (
+                        <MonitorEnVivoBoton token={token} tiendaSlug={selectedStoreSlug} navigate={navigate} />
+                    )}
                     {cierreActivo && cierreActivo.estado !== 'CERRADO' && (
                         <button
                             onClick={() => {
