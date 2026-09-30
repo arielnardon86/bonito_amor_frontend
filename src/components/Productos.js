@@ -1356,7 +1356,6 @@ const Productos = () => {
                                 { label: 'Rubros', onClick: () => setShowGestionRubrosModal(true) },
                                 { label: descargandoExcel ? 'Descargando...' : 'Exportar mis productos', onClick: handleDescargarExcel, disabled: descargandoExcel },
                                 { label: 'Importación masiva', onClick: () => navigate('/productos/carga-masiva') },
-                                { label: 'Importación IA', onClick: () => navigate('/productos/importacion-ia') },
                                 ...(tnConectado && Object.keys(etiquetasSeleccionadas).length > 0
                                     ? [{ label: `Publicar ${Object.keys(etiquetasSeleccionadas).length} seleccionados en Tienda Nube`, onClick: handlePublicarSeleccionadosTN }]
                                     : []),

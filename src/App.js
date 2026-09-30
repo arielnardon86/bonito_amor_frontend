@@ -20,7 +20,6 @@ import Clientes from './components/Clientes';
 import Proveedores from './components/Proveedores';
 import Presupuesto from './components/Presupuesto';
 import CargaMasivaProductos from './components/CargaMasivaProductos';
-import ImportacionIA from './components/ImportacionIA';
 import ClienteDetalle from './components/ClienteDetalle';
 
 import MetricasVentas from './components/MetricasVentas';
@@ -1205,11 +1204,6 @@ const AppContent = () => {
               <Route path="/productos/carga-masiva" element={
                 <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
                   <CargaMasivaProductos />
-                </ProtectedRoute>
-              } />
-              <Route path="/productos/importacion-ia" element={
-                <ProtectedRoute adminOnly={true} supervisorAllowed={true}>
-                  <ImportacionIA />
                 </ProtectedRoute>
               } />
               <Route path="/proveedores" element={
