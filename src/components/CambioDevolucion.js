@@ -467,10 +467,19 @@ const CambioDevolucion = () => {
         }
 
         // Si hay productos nuevos, validar método de pago solo si el cliente tiene algo que pagar
-        // (montoDiferencia redondeado excluye ruidos de float y descuentos totales)
+        // (montoDiferencia redondeado excluye ruidos de float y descuentos totales).
+        // El arancel/plan se valida ACÁ (antes de crear el cambio/devolución), no después:
+        // si se validara recién al crear la venta de la diferencia (como pasaba antes), un
+        // cajero que elige un método financiado y se olvida del plan de cuotas dispara el
+        // error DESPUÉS de que el cambio ya quedó confirmado en el servidor -- irreversible,
+        // sin la venta del cobro, sin forma de reintentarlo.
         if (activeCart && activeCart.items.length > 0 && Math.round(montoDiferencia * 100) / 100 > 0) {
             if (!metodoPagoSeleccionado) {
                 setError('Debe seleccionar un método de pago para la diferencia a pagar');
+                return;
+            }
+            if (isMetodoFinancieroActivo && !arancelSeleccionadoId) {
+                setError('Debe seleccionar el Plan / Arancel para la diferencia a pagar');
                 return;
             }
         }
