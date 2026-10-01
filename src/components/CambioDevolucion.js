@@ -805,10 +805,20 @@ const CambioDevolucion = () => {
                     }
                 } catch (ventaError) {
                     console.error('Error al crear venta por diferencia:', ventaError);
+                    // El cambio en sí (anular los ítems devueltos, restaurar stock) ya quedó
+                    // confirmado del lado del servidor -- lo único que falló fue ESTE paso,
+                    // el cobro de la diferencia. No queda ningún reintento automático: si el
+                    // cajero cierra este cartel pensando que ya está resuelto, la plata nunca
+                    // se registra en Ventas (queda como "diferencia pendiente sin venta",
+                    // visible para un admin en Panel de Administración → Historial).
                     Swal.fire({
-                        title: 'Error',
-                        html: 'Error al crear venta por diferencia: ' + (ventaError.response?.data?.error || ventaError.message),
-                        icon: 'error'
+                        title: 'El cambio se procesó, pero el cobro de la diferencia falló',
+                        html:
+                            `El cambio de productos ya se aplicó (stock restaurado), pero <b>no se pudo registrar el cobro de ${formatearMonto(montoDiferencia)}</b> como venta.<br><br>` +
+                            `Error: ${ventaError.response?.data?.error || ventaError.message}<br><br>` +
+                            'Cargá esa venta a mano desde Punto de Venta por el monto de la diferencia, o avisá a un administrador (en Listado de Ventas le va a aparecer un aviso de "diferencia pendiente sin venta") -- si no, esa plata no va a quedar registrada en ningún lado.',
+                        icon: 'error',
+                        confirmButtonText: 'Entendido',
                     });
                 }
             } else if (cambioDevolucion.nota_credito_generada) {

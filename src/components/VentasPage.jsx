@@ -74,6 +74,12 @@ const VentasPage = () => {
     const barcodeInputRef = React.useRef(null);
     const barcodeInputValueRef = React.useRef(''); // Referencia para mantener el valor sin re-renderizar
 
+    // Cambios/devoluciones que quedaron con la diferencia marcada como pendiente
+    // pero sin la venta de cobro asociada (el paso de crear esa venta falló tras
+    // confirmarse el cambio) -- aviso para admin/supervisor, staff no lo ve.
+    const [diferenciasPendientes, setDiferenciasPendientes] = useState([]);
+    const [mostrarDiferenciasPendientes, setMostrarDiferenciasPendientes] = useState(false);
+
     const [totalesGlobal, setTotalesGlobal] = useState(null);
     const [nextPageUrl, setNextPageUrl] = useState(null);
     const [prevPageUrl, setPrevPageUrl] = useState(null);
@@ -181,13 +187,27 @@ const VentasPage = () => {
         }
     }, [token, selectedStoreSlug]);
 
+    const fetchDiferenciasPendientes = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(
+                `${BASE_API_ENDPOINT}/api/cambios-devoluciones/diferencias-pendientes-sin-venta/`,
+                { headers: { 'Authorization': `Bearer ${token}` }, params: { tienda_slug: selectedStoreSlug } }
+            );
+            setDiferenciasPendientes(response.data.results || []);
+        } catch (err) {
+            console.error('Error fetching diferencias pendientes:', err.response ? err.response.data : err.message);
+        }
+    }, [token, selectedStoreSlug]);
+
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff || user.is_supervisor) && selectedStoreSlug) {
             // OPTIMIZACIÓN: Hacer llamadas en paralelo
-            Promise.all([
-                fetchVentas(),
-                fetchSellers()
-            ]).catch(err => {
+            const llamadas = [fetchVentas(), fetchSellers()];
+            if (user.is_superuser || user.is_supervisor) {
+                llamadas.push(fetchDiferenciasPendientes());
+            }
+            Promise.all(llamadas).catch(err => {
                 console.error('Error al cargar datos iniciales:', err);
             });
         } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_supervisor))) {
@@ -196,7 +216,7 @@ const VentasPage = () => {
         } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_supervisor) && !selectedStoreSlug) {
             setLoading(false);
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchVentas]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchSellers, fetchVentas, fetchDiferenciasPendientes]);
 
     // Sincronizar el input directamente desde el DOM para evitar pérdida de caracteres
     useEffect(() => {
@@ -605,6 +625,49 @@ const VentasPage = () => {
                     ]}
                 />
             </div>
+
+            {!isStaffOnly && diferenciasPendientes.length > 0 && (
+                <div style={{
+                    background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 10,
+                    padding: '12px 16px', margin: '12px 0', fontSize: 14, color: '#9a3412',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                        <span>
+                            ⚠️ Hay <strong>{diferenciasPendientes.length}</strong> cambio{diferenciasPendientes.length !== 1 ? 's' : ''} con diferencia
+                            marcada como pendiente que nunca llegó a registrarse como venta (el cobro falló después de confirmar el cambio) —
+                            no se reconstruyen solos, hay que revisarlos y cargar la venta a mano.
+                        </span>
+                        <button
+                            onClick={() => setMostrarDiferenciasPendientes(v => !v)}
+                            style={{ background: 'none', border: '1px solid #fdba74', borderRadius: 6, padding: '4px 10px', color: '#9a3412', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                        >
+                            {mostrarDiferenciasPendientes ? 'Ocultar' : 'Ver detalle'}
+                        </button>
+                    </div>
+                    {mostrarDiferenciasPendientes && (
+                        <table style={{ width: '100%', marginTop: 10, borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                                <tr style={{ textAlign: 'left', borderBottom: '1px solid #fdba74' }}>
+                                    <th style={{ padding: '4px 8px' }}>Fecha</th>
+                                    <th style={{ padding: '4px 8px' }}>Usuario</th>
+                                    <th style={{ padding: '4px 8px' }}>Devolvió</th>
+                                    <th style={{ padding: '4px 8px' }}>Diferencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {diferenciasPendientes.map(d => (
+                                    <tr key={d.id} style={{ borderBottom: '1px solid #fed7aa' }}>
+                                        <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>{new Date(d.fecha).toLocaleString('es-AR')}</td>
+                                        <td style={{ padding: '4px 8px' }}>{d.usuario_username || '—'}</td>
+                                        <td style={{ padding: '4px 8px' }}>{d.productos_devueltos}</td>
+                                        <td style={{ padding: '4px 8px', fontWeight: 700 }}>{formatearMonto(d.monto_diferencia)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            )}
 
             <div style={styles.filtersContainer}>
                 {!isStaffOnly && (
