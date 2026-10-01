@@ -1,5 +1,6 @@
 // Productos.js
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
@@ -68,30 +69,69 @@ const formatearFechaRelativa = (fechaISO) => {
 // una lista de acciones de texto, se cierra solo al elegir una o al clickear afuera.
 const MenuDesplegable = ({ items, align = 'right', title = 'Más acciones' }) => {
     const [abierto, setAbierto] = useState(false);
-    const ref = useRef(null);
+    const [coords, setCoords] = useState(null);
+    const btnRef = useRef(null);
+    const popoverRef = useRef(null);
+
+    // El popover se porta a document.body (position: fixed, con las coordenadas
+    // calculadas acá) en vez de quedar como position:absolute dentro de la fila --
+    // la tabla de productos tiene overflow (scroll horizontal en mobile, que de
+    // paso vuelve 'auto' el overflow vertical) y recortaba el menú apenas se abría
+    // cerca del borde, con el scroll de la tabla tapando las últimas opciones.
+    const toggle = () => {
+        if (!abierto && btnRef.current) {
+            const rect = btnRef.current.getBoundingClientRect();
+            setCoords({
+                top: rect.bottom + 6,
+                left: align === 'right' ? undefined : rect.left,
+                right: align === 'right' ? window.innerWidth - rect.right : undefined,
+            });
+        }
+        setAbierto(v => !v);
+    };
 
     useEffect(() => {
         if (!abierto) return;
-        const onClickFuera = (e) => { if (ref.current && !ref.current.contains(e.target)) setAbierto(false); };
+        const onClickFuera = (e) => {
+            if (
+                btnRef.current && !btnRef.current.contains(e.target) &&
+                popoverRef.current && !popoverRef.current.contains(e.target)
+            ) {
+                setAbierto(false);
+            }
+        };
+        // El popover ya no vive dentro del contenedor con scroll (está portado a
+        // document.body), así que no se mueve solo si se scrollea la tabla --
+        // más simple cerrarlo que recalcular la posición en cada scroll.
+        const onScroll = () => setAbierto(false);
         document.addEventListener('mousedown', onClickFuera);
-        return () => document.removeEventListener('mousedown', onClickFuera);
+        window.addEventListener('scroll', onScroll, true);
+        return () => {
+            document.removeEventListener('mousedown', onClickFuera);
+            window.removeEventListener('scroll', onScroll, true);
+        };
     }, [abierto]);
 
     if (items.length === 0) return null;
 
     return (
-        <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+        <>
             <button
+                ref={btnRef}
                 type="button"
-                onClick={() => setAbierto(v => !v)}
+                onClick={toggle}
                 title={title}
                 aria-label={title}
                 style={estilosMenuDesplegable.boton}
             >
                 ⋯
             </button>
-            {abierto && (
-                <div style={{ ...estilosMenuDesplegable.popover, [align]: 0 }} className="menu-desplegable-popover">
+            {abierto && coords && createPortal(
+                <div
+                    ref={popoverRef}
+                    style={{ ...estilosMenuDesplegable.popover, position: 'fixed', top: coords.top, left: coords.left, right: coords.right }}
+                    className="menu-desplegable-popover"
+                >
                     <style>{`.menu-desplegable-popover button:hover { background: #f1f5f9; }`}</style>
                     {items.map((item, i) => (
                         <button
@@ -108,9 +148,10 @@ const MenuDesplegable = ({ items, align = 'right', title = 'Más acciones' }) =>
                             {item.label}
                         </button>
                     ))}
-                </div>
+                </div>,
+                document.body
             )}
-        </div>
+        </>
     );
 };
 
@@ -121,7 +162,9 @@ const estilosMenuDesplegable = {
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
     },
     popover: {
-        position: 'absolute', top: 'calc(100% + 6px)', zIndex: 60, minWidth: 220,
+        // zIndex por encima de los modales de esta pantalla (modalOverlay usa 1500)
+        // -- este menú también se abre desde adentro de algunos modales.
+        position: 'absolute', top: 'calc(100% + 6px)', zIndex: 2000, minWidth: 220,
         background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
         boxShadow: '0 8px 24px rgba(15,30,58,0.14)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2,
     },
