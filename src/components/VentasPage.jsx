@@ -79,6 +79,7 @@ const VentasPage = () => {
     // confirmarse el cambio) -- aviso para admin/supervisor, staff no lo ve.
     const [diferenciasPendientes, setDiferenciasPendientes] = useState([]);
     const [mostrarDiferenciasPendientes, setMostrarDiferenciasPendientes] = useState(false);
+    const [resolviendoDiferenciaId, setResolviendoDiferenciaId] = useState(null);
 
     const [totalesGlobal, setTotalesGlobal] = useState(null);
     const [nextPageUrl, setNextPageUrl] = useState(null);
@@ -199,6 +200,36 @@ const VentasPage = () => {
             console.error('Error fetching diferencias pendientes:', err.response ? err.response.data : err.message);
         }
     }, [token, selectedStoreSlug]);
+
+    // No hay forma de vincular automáticamente una venta cargada a mano con el
+    // cambio que quedó huérfano (ver fetchDiferenciasPendientes) -- esto solo
+    // apaga el aviso, a criterio del admin que confirma que ya la cargó.
+    const marcarDiferenciaResuelta = async (diferencia) => {
+        const { isConfirmed } = await Swal.fire({
+            title: '¿Marcar como resuelta?',
+            html: `Esto solo saca el aviso -- confirmá que ya cargaste a mano la venta por <b>${formatearMonto(diferencia.monto_diferencia)}</b> antes de continuar.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, ya la cargué',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#5dc87a',
+        });
+        if (!isConfirmed) return;
+
+        setResolviendoDiferenciaId(diferencia.id);
+        try {
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/cambios-devoluciones/${diferencia.id}/marcar-diferencia-resuelta/`,
+                {},
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            setDiferenciasPendientes(prev => prev.filter(d => d.id !== diferencia.id));
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo marcar como resuelta.', 'error');
+        } finally {
+            setResolviendoDiferenciaId(null);
+        }
+    };
 
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff || user.is_supervisor) && selectedStoreSlug) {
@@ -652,6 +683,7 @@ const VentasPage = () => {
                                     <th style={{ padding: '4px 8px' }}>Usuario</th>
                                     <th style={{ padding: '4px 8px' }}>Devolvió</th>
                                     <th style={{ padding: '4px 8px' }}>Diferencia</th>
+                                    <th style={{ padding: '4px 8px' }}></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -661,6 +693,19 @@ const VentasPage = () => {
                                         <td style={{ padding: '4px 8px' }}>{d.usuario_username || '—'}</td>
                                         <td style={{ padding: '4px 8px' }}>{d.productos_devueltos}</td>
                                         <td style={{ padding: '4px 8px', fontWeight: 700 }}>{formatearMonto(d.monto_diferencia)}</td>
+                                        <td style={{ padding: '4px 8px' }}>
+                                            <button
+                                                onClick={() => marcarDiferenciaResuelta(d)}
+                                                disabled={resolviendoDiferenciaId === d.id}
+                                                style={{
+                                                    background: '#fff', border: '1px solid #9a3412', borderRadius: 6,
+                                                    padding: '3px 10px', color: '#9a3412', cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {resolviendoDiferenciaId === d.id ? 'Guardando...' : 'Ya la cargué, marcar resuelta'}
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
