@@ -50,7 +50,22 @@ const BuscadorProductosDropdown = ({
                 // por barcode ya encontró y agregó el producto, limpiando el input, antes
                 // de que ESTA respuesta llegara) no hay que mostrar un desplegable viejo.
                 if (cancelado) return;
-                setSugerencias((response.data.results || response.data || []).slice(0, 6));
+                const resultados = response.data.results || response.data || [];
+                // Un producto con variantes no es vendible como tal -- cada variante es
+                // el ítem real, con su propio precio/stock. Mismo criterio de "aplanado"
+                // que ya usa la tabla de abajo en Punto de Venta: sin esto, la sugerencia
+                // mostraba el precio/stock del padre (sin sentido para una venta real) y
+                // al elegirla no había forma de saber ni elegir qué variante se agregaba.
+                const aplanados = resultados.flatMap((producto) => {
+                    if (producto.variantes && producto.variantes.length > 0) {
+                        return producto.variantes.map((variante) => ({
+                            ...variante,
+                            nombre: variante.nombre || producto.nombre,
+                        }));
+                    }
+                    return [producto];
+                });
+                setSugerencias(aplanados.slice(0, 6));
                 setMostrar(true);
             } catch {
                 if (!cancelado) setSugerencias([]);
@@ -146,7 +161,12 @@ const BuscadorProductosDropdown = ({
                                     <span style={styles.imagenPlaceholder} aria-hidden="true">📦</span>
                                 )}
                                 <span style={styles.texto}>
-                                    <span style={styles.nombre}>{producto.nombre}</span>
+                                    <span style={styles.nombre}>
+                                        {producto.nombre}
+                                        {[producto.talle, producto.variante2].filter(Boolean).length > 0 && (
+                                            <span style={styles.variante}> · {[producto.talle, producto.variante2].filter(Boolean).join(' · ')}</span>
+                                        )}
+                                    </span>
                                     {(producto.codigo_interno || producto.codigo_barras) && (
                                         <span style={styles.codigo}>{producto.codigo_interno || producto.codigo_barras}</span>
                                     )}
@@ -185,6 +205,7 @@ const styles = {
     },
     texto: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 },
     nombre: { fontSize: 14, fontWeight: 600, color: '#1a2926' },
+    variante: { fontWeight: 500, color: '#64748b' },
     codigo: { fontSize: 11, color: '#94a3b8' },
     dato: { fontSize: 12, color: '#64748b' },
     // display se maneja por CSS (.buscador-productos-camera-btn), no acá: solo se
