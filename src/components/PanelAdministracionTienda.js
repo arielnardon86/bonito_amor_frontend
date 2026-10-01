@@ -733,6 +733,7 @@ Script.complete();
         setLoadingHistorial(true);
         try {
             const params = new URLSearchParams();
+            params.append('tienda_slug', selectedStoreSlug);
             if (historialFechaDesde) params.append('fecha_desde', historialFechaDesde);
             if (historialFechaHasta) params.append('fecha_hasta', historialFechaHasta);
             if (historialUsuarioId)  params.append('usuario_id', historialUsuarioId);
