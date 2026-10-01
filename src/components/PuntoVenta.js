@@ -242,7 +242,10 @@ const PuntoVenta = () => {
     
     // CAMBIO 1: NUEVO ESTADO PARA EL FILTRO INSTANTÁNEO DE LA TABLA
     const [filterTerm, setFilterTerm] = useState('');
-    const [mostrarTalle, setMostrarTalle] = useState(false);
+    // Arranca tildado: si el producto tiene variantes, la columna/fila de variante
+    // es la única forma de distinguir cuál se está por vender -- no debería hacer
+    // falta tildarlo a mano cada vez que se entra a Punto de Venta.
+    const [mostrarTalle, setMostrarTalle] = useState(true);
     
     const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
