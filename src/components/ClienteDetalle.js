@@ -208,8 +208,11 @@ const ClienteDetalle = () => {
             title: 'Datos del Cliente para Factura',
             html: `
                 <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="${(cliente?.nombre_razon_social || venta.cliente_nombre || 'Consumidor Final').replace(/"/g, '&quot;')}" required>
-                <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" type="text" value="${cliente?.cuit_cuil || venta.cliente_cuit || ''}">
-                <p style="margin: -8px 0 8px; font-size: 12px; color: #94a3b8;">Ingresalo solo con números, sin guiones ni puntos (ej: 20123456789)</p>
+                <div style="display: flex; gap: 8px; align-items: center; margin: 1em auto; width: 80%;">
+                    <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" type="text" style="margin: 0; flex: 1;" value="${cliente?.cuit_cuil || venta.cliente_cuit || ''}">
+                    <button type="button" id="btn_buscar_padron" class="swal2-styled" style="margin: 0; padding: 0 14px; height: 40px; font-size: 13px; background: #1e8068; white-space: nowrap;">Buscar en AFIP</button>
+                </div>
+                <p id="padron_status" style="margin: -8px 0 8px; font-size: 12px; color: #64748b; min-height: 14px;">Ingresalo solo con números, sin guiones ni puntos (ej: 20123456789)</p>
                 <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)" value="${(cliente?.direccion || venta.cliente_domicilio || '').replace(/"/g, '&quot;')}">
                 ${esMonotributista ? '' : `
                 <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #d9d9d9; border-radius: 0.1875em; font-size: 1.125em;">
@@ -224,6 +227,46 @@ const ClienteDetalle = () => {
             showCancelButton: true,
             confirmButtonText: 'Emitir Factura',
             cancelButtonText: 'Cancelar',
+            didOpen: () => {
+                const btn = document.getElementById('btn_buscar_padron');
+                const status = document.getElementById('padron_status');
+                if (!btn) return;
+                btn.addEventListener('click', async () => {
+                    const cuit = document.getElementById('cliente_cuit').value;
+                    const cuitLimpio = cuit.replace(/\D/g, '');
+                    if (cuitLimpio.length !== 11) {
+                        status.textContent = 'Ingresá un CUIT de 11 dígitos para buscar en AFIP.';
+                        status.style.color = '#b45309';
+                        return;
+                    }
+                    btn.disabled = true;
+                    btn.textContent = 'Buscando...';
+                    status.textContent = '';
+                    try {
+                        const resp = await axios.get(`${BASE_API_ENDPOINT}/api/consultar-padron-afip/`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                            params: { tienda_slug: selectedStoreSlug, cuit: cuitLimpio },
+                        });
+                        if (resp.data.ok) {
+                            document.getElementById('cliente_nombre').value = resp.data.nombre || '';
+                            document.getElementById('cliente_domicilio').value = resp.data.domicilio || '';
+                            const sel = document.getElementById('cliente_condicion_iva');
+                            if (sel && resp.data.condicion_iva) sel.value = resp.data.condicion_iva;
+                            status.textContent = 'Datos encontrados en AFIP.';
+                            status.style.color = '#15803d';
+                        } else {
+                            status.textContent = resp.data.error || 'No se encontraron datos en AFIP. Completá el formulario manualmente.';
+                            status.style.color = '#64748b';
+                        }
+                    } catch (e) {
+                        status.textContent = 'No se pudo consultar AFIP. Completá el formulario manualmente.';
+                        status.style.color = '#64748b';
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = 'Buscar en AFIP';
+                    }
+                });
+            },
             preConfirm: () => {
                 const nombre = document.getElementById('cliente_nombre').value;
                 const cuit = document.getElementById('cliente_cuit').value;
