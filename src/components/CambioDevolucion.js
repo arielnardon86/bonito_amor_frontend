@@ -788,7 +788,7 @@ const CambioDevolucion = () => {
                                                     document.getElementById('cliente_domicilio').value = resp.data.domicilio || '';
                                                     const sel = document.getElementById('cliente_condicion_iva');
                                                     if (sel && resp.data.condicion_iva) sel.value = resp.data.condicion_iva;
-                                                    status.textContent = 'Datos encontrados en AFIP.';
+                                                    status.textContent = 'Datos encontrados en AFIP. Revisá la condición frente al IVA, no se autocompleta.';
                                                     status.style.color = '#15803d';
                                                 } else {
                                                     status.textContent = resp.data.error || 'No se encontraron datos en AFIP. Completá el formulario manualmente.';
