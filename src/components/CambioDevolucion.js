@@ -743,21 +743,48 @@ const CambioDevolucion = () => {
                                 const { value: formValues } = await Swal.fire({
                                     title: 'Datos del Cliente para Factura',
                                     html: `
-                                        <input id="cliente_nombre" class="swal2-input" placeholder="Nombre del cliente *" value="Consumidor Final" required>
-                                        <div style="display: flex; gap: 8px; align-items: center; margin: 1em auto; width: 80%;">
-                                            <input id="cliente_cuit" class="swal2-input" placeholder="CUIT (opcional)" style="margin: 0; flex: 1;">
-                                            <button type="button" id="btn_buscar_padron" class="swal2-styled" style="margin: 0; padding: 0 14px; height: 40px; font-size: 13px; background: #1e8068; white-space: nowrap;">Buscar en AFIP</button>
+                                        <div class="fc-form">
+                                            <div class="fc-field">
+                                                <label for="cliente_nombre">Nombre del cliente <span class="fc-required">*</span></label>
+                                                <input id="cliente_nombre" class="swal2-input fc-input" placeholder="Ej: Juan Pérez" value="Consumidor Final" required>
+                                            </div>
+                                            <div class="fc-field">
+                                                <label for="cliente_cuit">CUIT (opcional)</label>
+                                                <div class="fc-cuit-row">
+                                                    <input id="cliente_cuit" class="swal2-input fc-input" placeholder="Solo números, sin guiones">
+                                                    <button type="button" id="btn_buscar_padron" class="fc-btn-afip">Buscar en AFIP</button>
+                                                </div>
+                                                <p id="padron_status" class="fc-status"></p>
+                                            </div>
+                                            <div class="fc-field">
+                                                <label for="cliente_domicilio">Domicilio (opcional)</label>
+                                                <input id="cliente_domicilio" class="swal2-input fc-input" placeholder="Ej: Av. Corrientes 1234">
+                                            </div>
+                                            ${esMonotributista ? '' : `
+                                            <div class="fc-field">
+                                                <label for="cliente_condicion_iva">Condición frente al IVA</label>
+                                                <select id="cliente_condicion_iva" class="swal2-input fc-input">
+                                                    <option value="CF" selected>Consumidor Final</option>
+                                                    <option value="RI">Responsable Inscripto</option>
+                                                    <option value="EX">Exento</option>
+                                                    <option value="MT">Monotributo</option>
+                                                </select>
+                                            </div>
+                                            `}
                                         </div>
-                                        <p id="padron_status" style="margin: -8px 0 8px; font-size: 12px; color: #64748b; min-height: 14px;">Ingresalo solo con números, sin guiones ni puntos (ej: 20123456789)</p>
-                                        <input id="cliente_domicilio" class="swal2-input" placeholder="Domicilio (opcional)">
-                                        ${esMonotributista ? '' : `
-                                        <select id="cliente_condicion_iva" class="swal2-input" style="width: 100%; padding: 0.625em; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 1.125em;">
-                                            <option value="CF" selected>Consumidor Final</option>
-                                            <option value="RI">Responsable Inscripto</option>
-                                            <option value="EX">Exento</option>
-                                            <option value="MT">Monotributo</option>
-                                        </select>
-                                        `}
+                                        <style>
+                                            .fc-form { display: flex; flex-direction: column; gap: 14px; text-align: left; margin-top: 4px; }
+                                            .fc-field label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+                                            .fc-required { color: #e25252; }
+                                            .fc-input.swal2-input { width: 100%; box-sizing: border-box; margin: 0; padding: 0.65em 0.9em; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; height: auto; }
+                                            select.fc-input.swal2-input { background: #fff; }
+                                            .fc-cuit-row { display: flex; gap: 8px; }
+                                            .fc-cuit-row .fc-input { flex: 1; min-width: 0; }
+                                            .fc-btn-afip { margin: 0; padding: 0 16px; font-size: 13px; font-weight: 600; color: #fff; background: #1e8068; border: none; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+                                            .fc-btn-afip:hover { background: #176b56; }
+                                            .fc-btn-afip:disabled { opacity: 0.7; cursor: default; }
+                                            .fc-status { margin: 6px 0 0; font-size: 12px; color: #64748b; min-height: 14px; }
+                                        </style>
                                     `,
                                     focusConfirm: false,
                                     showCancelButton: true,
