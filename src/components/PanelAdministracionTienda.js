@@ -632,6 +632,56 @@ Script.complete();
         }
     }, [token, tiendaInfo]);
 
+    // Verificar configuración: corre el diagnóstico de certificados/conexión AFIP
+    // SIN emitir ningún comprobante real (a diferencia de "Probar facturación").
+    // Pensado para encontrar el problema concreto (cert vencido, cert/clave que
+    // no coinciden, punto de venta no habilitado) antes de gastar un intento de
+    // factura real de $1.
+    const handleVerificarConfiguracion = useCallback(async () => {
+        if (!token || !tiendaInfo?.id) {
+            Swal.fire('Error', 'No se encontró la tienda o falta autenticación.', 'error');
+            return;
+        }
+
+        try {
+            Swal.fire({
+                title: 'Verificando configuración...',
+                text: 'Esto puede tardar unos segundos (se chequea el certificado y se contacta a ARCA).',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            const response = await axios.get(
+                `${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/facturacion/diagnostico/`,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+
+            const { ok, pasos = [] } = response.data || {};
+            const icono = (pasoOk) => pasoOk ? '✅' : '❌';
+            const html = `
+                <ul style="text-align:left; list-style:none; padding:0; margin:0;">
+                    ${pasos.map(p => `
+                        <li style="margin-bottom:10px;">
+                            <div><strong>${icono(p.ok)} ${p.titulo}</strong></div>
+                            ${p.detalle ? `<div style="font-size:13px; color:#475569; margin-top:2px;">${p.detalle}</div>` : ''}
+                            ${!p.ok && p.ayuda ? `<div style="font-size:13px; color:#92400e; background:#fffbeb; border-radius:6px; padding:6px 10px; margin-top:6px;">💡 ${p.ayuda}</div>` : ''}
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+
+            Swal.fire({
+                icon: ok ? 'success' : 'warning',
+                title: ok ? 'Todo listo para facturar' : 'Encontramos un problema',
+                html,
+                width: 560,
+            });
+        } catch (err) {
+            const msg = err.response?.data?.error || err.message || 'No se pudo verificar la configuración.';
+            Swal.fire('Error', msg, 'error');
+        }
+    }, [token, tiendaInfo]);
+
     // Generar clave privada y CSR para ARCA (clave se guarda en la tienda en base64; se devuelve CSR para descargar)
     const handleGenerarCsr = useCallback(async () => {
         if (!token || !tiendaInfo?.id) {
@@ -2539,8 +2589,14 @@ Script.complete();
                                                 <li>Confirmá la relación.</li>
                                             </ol>
                                         </div>
-                                        <p style={{ color: '#475569', fontSize: 14, marginBottom: 20 }}>
-                                            Una vez autorizado el certificado en ARCA, Total Stock va a emitir una <strong>factura de prueba por $1</strong> para verificar que la conexión funciona correctamente. El comprobante quedará registrado en ARCA.
+                                        <p style={{ color: '#475569', fontSize: 14, marginBottom: 12 }}>
+                                            Antes de emitir un comprobante real, podés <strong>verificar la configuración</strong>: chequea el certificado, la conexión con ARCA y el punto de venta sin registrar nada. Si algo falla, te decimos exactamente qué paso corregir.
+                                        </p>
+                                        <button style={btnPrimary(!todoListo)} onClick={handleVerificarConfiguracion} disabled={!todoListo}>
+                                            Verificar configuración
+                                        </button>
+                                        <p style={{ color: '#475569', fontSize: 14, margin: '20px 0' }}>
+                                            Una vez que la verificación esté en verde, Total Stock va a emitir una <strong>factura de prueba por $1</strong> para confirmar el flujo completo. El comprobante quedará registrado en ARCA.
                                         </p>
                                         <button style={btnSuccess(!todoListo)} onClick={handleProbarFacturacion} disabled={!todoListo}>
                                             Probar facturación (emitir $1 de prueba)
