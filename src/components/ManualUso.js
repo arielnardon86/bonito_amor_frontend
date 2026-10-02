@@ -418,6 +418,19 @@ const ManualUso = () => {
                         <h3>Habilitar facturador (Factura electrónica ARCA)</h3>
                         <p>Asistente guiado de 6 pasos: cargar CUIT y condición de IVA, generar clave y archivo para ARCA, cargar el certificado, configurar tu punto de venta, y probar con una factura de $1. <span className="mu-pill pro inline">Requiere Pro o Advanced</span></p>
 
+                        <h3>Autocompletar datos del cliente por CUIT (botón "Buscar en AFIP")</h3>
+                        <p>En los formularios de "Datos del Cliente para Factura" (Punto de Venta, Cambio/Devolución, Listado de Ventas y ficha de Cliente) hay un botón junto al campo CUIT que busca el nombre y domicilio del cliente directo en ARCA, para no tipearlos a mano. Si el CUIT es de un <strong>Responsable Inscripto</strong> y tu certificado está adherido al servicio correspondiente, también completa la condición frente al IVA automáticamente.</p>
+                        <p>Si te aparece el error <strong>"Computador no autorizado a acceder al servicio"</strong> al usar este botón, es porque tu certificado de ARCA todavía no está adherido a ningún servicio de Consulta de Padrón. Para solucionarlo:</p>
+                        <ol className="mu-steps">
+                            <li>Ingresá a ARCA con tu clave fiscal.</li>
+                            <li>En el buscador de servicios, buscá e ingresá a <strong>"Administrador de Relaciones de Clave Fiscal"</strong>.</li>
+                            <li>Seleccioná la opción <strong>"Nueva Relación"</strong>.</li>
+                            <li>Elegí <strong>ARCA → Web Services → "Servicio Consulta Padron A4"</strong> (te da también la condición de IVA). Si no te deja adherir a ese, probá con <strong>"Servicio de Consulta Padron A13"</strong> (solo trae nombre y domicilio, sin condición de IVA).</li>
+                            <li>En "Representante", hacé clic en <strong>"Buscar"</strong> y seleccioná el Computador Fiscal que tenés adherido a Total Stock (el mismo que usaste para habilitar la facturación).</li>
+                            <li>Confirmá la relación.</li>
+                        </ol>
+                        <div className="mu-callout">Total Stock prueba automáticamente los dos servicios (A4 y A13) y usa el que tengas adherido — no hace falta avisarle cuál elegiste. Si no adherís ninguno, el botón simplemente no completa nada y tenés que seguir cargando los datos a mano, como si no existiera.</div>
+
                         <h3>Notas de Crédito</h3>
                         <p>Anulá o ajustá una factura ya emitida, buscándola por número. Disponible una vez que la facturación está operativa.</p>
 
