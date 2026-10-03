@@ -313,6 +313,15 @@ const Productos = () => {
     const [barcodeLoading, setBarcodeLoading] = useState(false);
 
     const [etiquetasSeleccionadas, setEtiquetasSeleccionadas] = useState({});
+    // Acumula TODOS los productos (de cualquier página) que se hayan cargado
+    // en esta sesión de Gestión de Productos, keyeado por id. Sin esto, tildar
+    // productos en la página 1, pasar a la página 2 y tildar más ahí hacía que
+    // "Imprimir Etiquetas" perdiera en silencio la selección de la página 1 --
+    // fetchProductos() reemplaza por completo el array `productos` en cada
+    // cambio de página, así que buscar ahí adentro solo encuentra lo de la
+    // página actual. Un ref (no state) porque no necesita re-renderizar nada,
+    // solo persistir entre cambios de página.
+    const productosCacheRef = useRef({});
     const [mostrarTalle, setMostrarTalle] = useState(false);
     const [stockBajoFilter, setStockBajoFilter] = useState(false);
     const STOCK_BAJO_THRESHOLD = 5;
@@ -404,6 +413,7 @@ const Productos = () => {
             });
             setProductos(response.data.results);
             setTotalCount(response.data.count);
+            response.data.results.forEach(p => { productosCacheRef.current[p.id] = p; });
             setLoadingProducts(false);
         } catch (err) {
             setError('Error al cargar productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
@@ -1298,12 +1308,17 @@ const Productos = () => {
     };
 
     const handleConfirmarEtiquetas = () => {
+        // Busca en el cache acumulado de todas las páginas (productosCacheRef),
+        // no en `productos` (que solo tiene la página actualmente cargada) --
+        // ver comentario en la declaración del ref.
+        const productosConocidos = Object.values(productosCacheRef.current);
         const productosParaImprimir = [];
+        const idsNoEncontrados = [];
         Object.entries(cantidadesModal).forEach(([id, cantidadRaw]) => {
             const cantidad = parseInt(cantidadRaw, 10);
             if (!(cantidad > 0)) return;
 
-            const producto = productos.find(p => String(p.id) === String(id));
+            const producto = productosConocidos.find(p => String(p.id) === String(id));
             if (producto) {
                 if (producto.variantes && producto.variantes.length > 0) {
                     // Es un padre con familia de variantes: una etiqueta por cada
@@ -1322,7 +1337,8 @@ const Productos = () => {
                 return;
             }
             // Compatibilidad: por si algún id seleccionado fuera una variante suelta
-            for (const padre of productos) {
+            let encontrada = false;
+            for (const padre of productosConocidos) {
                 const variante = (padre.variantes || []).find(v => String(v.id) === String(id));
                 if (variante) {
                     productosParaImprimir.push({
@@ -1331,10 +1347,17 @@ const Productos = () => {
                         variante_detalle: detalleVariante(variante),
                         labelQuantity: cantidad,
                     });
+                    encontrada = true;
                     break;
                 }
             }
+            if (!encontrada) idsNoEncontrados.push(id);
         });
+        if (idsNoEncontrados.length > 0) {
+            // No debería pasar casi nunca (solo si el producto se borró recién),
+            // pero avisar en vez de imprimir de menos en silencio.
+            alert(`No se pudieron preparar ${idsNoEncontrados.length} etiqueta(s): el producto ya no existe o no se pudo cargar. El resto se va a imprimir igual.`);
+        }
         if (productosParaImprimir.length > 0) {
             setShowEtiquetasModal(false);
             navigate('/etiquetas', { state: { productosParaImprimir } });

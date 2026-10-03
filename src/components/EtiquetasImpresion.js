@@ -43,6 +43,13 @@ const EtiquetasImpresion = () => {
     const [mostrarDescuento, setMostrarDescuento] = useState(false);
     const [descuentoInput, setDescuentoInput] = useState('');
     const [descuentoRedondeo, setDescuentoRedondeo] = useState(''); // '' | 'abajo' | 'arriba'
+    // En qué celda de la hoja 4x9 (1 a 36, orden fila por fila) empezar a
+    // imprimir -- para reaprovechar una hoja a la que ya le faltan etiquetas
+    // (impresa antes, parcial). No se guarda en localStorage a propósito: es
+    // una elección de esta hoja física puntual, no una calibración fija de la
+    // impresora -- si quedara guardada, la próxima vez con una hoja nueva se
+    // arrancaría salteando etiquetas sin querer.
+    const [posicionInicialHoja4x9, setPosicionInicialHoja4x9] = useState(1);
     const [ajusteHoja4x9, setAjusteHoja4x9] = useState(() => {
         try {
             const guardado = JSON.parse(localStorage.getItem(AJUSTE_HOJA4X9_STORAGE_KEY));
@@ -105,6 +112,18 @@ const EtiquetasImpresion = () => {
 
             const truncate = (str, max) =>
                 str && str.length > max ? str.slice(0, max) + '…' : (str || '');
+
+            // Celdas en blanco al principio, para arrancar en una posición
+            // puntual de la hoja 4x9 (reaprovechar una hoja parcialmente usada).
+            if (esHoja4x9 && posicionInicialHoja4x9 > 1) {
+                for (let i = 0; i < posicionInicialHoja4x9 - 1; i++) {
+                    const vacio = document.createElement('div');
+                    vacio.className = 'label';
+                    vacio.style.height = `${ajusteHoja4x9.alturaFila / 10}cm`;
+                    vacio.style.visibility = 'hidden';
+                    labelsRef.current.appendChild(vacio);
+                }
+            }
 
             productosParaImprimir.forEach((producto) => {
                 if (!producto || (!producto.id && !producto.nombre)) return;
@@ -182,7 +201,7 @@ const EtiquetasImpresion = () => {
                 }
             });
         }
-    }, [productosParaImprimir, tipoImpresion, mostrarDescuento, descuentoInput, descuentoRedondeo, ajusteHoja4x9]);
+    }, [productosParaImprimir, tipoImpresion, mostrarDescuento, descuentoInput, descuentoRedondeo, ajusteHoja4x9, posicionInicialHoja4x9]);
 
     const handlePrint = () => {
         window.print();
@@ -215,6 +234,22 @@ const EtiquetasImpresion = () => {
                     <option value="hoja_4x9_36">Hoja de etiquetas 4×9 (A4, 36 por hoja, 52,5x33mm)</option>
                     <option value="xprinter_39x20">Térmica Xprinter XP-410B (rollo 39x20mm)</option>
                 </select>
+                {tipoImpresion === 'hoja_4x9_36' && (
+                    <div style={mobileStyles.ajusteHoja4x9Container} title="Para reaprovechar una hoja a la que ya le faltan etiquetas: elegí en qué casillero (contando de izquierda a derecha, fila por fila) empezar a imprimir. No se guarda -- es por esta hoja puntual.">
+                        <label style={mobileStyles.ajusteHoja4x9Label}>
+                            Empezar en la etiqueta N°
+                            <input
+                                type="number" min="1" max="36" step="1"
+                                value={posicionInicialHoja4x9}
+                                onChange={(e) => {
+                                    const n = parseInt(e.target.value, 10);
+                                    setPosicionInicialHoja4x9(Number.isNaN(n) ? 1 : Math.min(36, Math.max(1, n)));
+                                }}
+                                style={mobileStyles.ajusteHoja4x9Input}
+                            />
+                        </label>
+                    </div>
+                )}
                 {tipoImpresion === 'hoja_4x9_36' && (
                     <div style={mobileStyles.ajusteHoja4x9Container} title="Corrige la posición de toda la grilla si no cae justo sobre el troquelado físico. Se guarda para la próxima vez.">
                         <label style={mobileStyles.ajusteHoja4x9Label}>
