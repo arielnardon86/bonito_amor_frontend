@@ -739,6 +739,10 @@ const CambioDevolucion = () => {
                                 // Monotributista solo puede emitir Factura C sin importar la condición de IVA
                                 // del cliente: no tiene sentido preguntarla, así que no se la ofrecemos.
                                 const esMonotributista = tiendaInfo?.condicion_iva_emisor === 'MT';
+                                // Solo un emisor RI puede elegir entre Factura A o B -- MT siempre
+                                // emite C y el resto de condiciones de emisor siempre emiten B, así
+                                // que el selector de tipo de factura no tiene sentido para ellos.
+                                const esRI = tiendaInfo?.condicion_iva_emisor === 'RI';
                                 // Mostrar formulario para factura
                                 const { value: formValues } = await Swal.fire({
                                     title: 'Datos del Cliente para Factura',
@@ -770,6 +774,16 @@ const CambioDevolucion = () => {
                                                     <option value="MT">Monotributo</option>
                                                 </select>
                                             </div>
+                                            ${esRI ? `
+                                            <div class="fc-field">
+                                                <label for="cliente_tipo_comprobante">Tipo de factura</label>
+                                                <select id="cliente_tipo_comprobante" class="swal2-input fc-input">
+                                                    <option value="A">Factura A</option>
+                                                    <option value="B" selected>Factura B</option>
+                                                </select>
+                                                <p id="tipo_comprobante_hint" class="fc-status"></p>
+                                            </div>
+                                            ` : ''}
                                             `}
                                         </div>
                                         <style>
@@ -791,6 +805,27 @@ const CambioDevolucion = () => {
                                     confirmButtonText: 'Emitir Factura',
                                     cancelButtonText: 'Cancelar',
                                     didOpen: () => {
+                                        // Factura A exige cliente RI identificado con CUIT (AFIP la
+                                        // rechaza si no); sincroniza el selector de tipo de factura
+                                        // con eso cada vez que cambia el CUIT o la condición IVA, en
+                                        // vez de dejar que el usuario elija A en un estado inválido
+                                        // y recién enterarse del rechazo del lado del backend.
+                                        const actualizarTipoComprobante = () => {
+                                            const tipoSel = document.getElementById('cliente_tipo_comprobante');
+                                            if (!tipoSel) return;
+                                            const condicionSel = document.getElementById('cliente_condicion_iva');
+                                            const cuitVal = document.getElementById('cliente_cuit').value.replace(/\D/g, '');
+                                            const puedeSerA = condicionSel?.value === 'RI' && cuitVal.length === 11;
+                                            const optA = tipoSel.querySelector('option[value="A"]');
+                                            if (optA) optA.disabled = !puedeSerA;
+                                            if (!puedeSerA && tipoSel.value === 'A') tipoSel.value = 'B';
+                                            const hint = document.getElementById('tipo_comprobante_hint');
+                                            if (hint) hint.textContent = puedeSerA ? '' : 'Factura A requiere cliente Responsable Inscripto con CUIT cargado.';
+                                        };
+                                        actualizarTipoComprobante();
+                                        document.getElementById('cliente_cuit')?.addEventListener('input', actualizarTipoComprobante);
+                                        document.getElementById('cliente_condicion_iva')?.addEventListener('change', actualizarTipoComprobante);
+
                                         const btn = document.getElementById('btn_buscar_padron');
                                         const status = document.getElementById('padron_status');
                                         if (!btn) return;
@@ -815,6 +850,11 @@ const CambioDevolucion = () => {
                                                     document.getElementById('cliente_domicilio').value = resp.data.domicilio || '';
                                                     const sel = document.getElementById('cliente_condicion_iva');
                                                     if (sel && resp.data.condicion_iva) sel.value = resp.data.condicion_iva;
+                                                    actualizarTipoComprobante();
+                                                    const tipoSel = document.getElementById('cliente_tipo_comprobante');
+                                                    if (tipoSel && resp.data.condicion_iva === 'RI' && !tipoSel.querySelector('option[value="A"]').disabled) {
+                                                        tipoSel.value = 'A';
+                                                    }
                                                     status.textContent = resp.data.condicion_iva
                                                         ? 'Datos encontrados en AFIP.'
                                                         : 'Datos encontrados en AFIP. Revisá la condición frente al IVA, no se autocompleta.';
@@ -834,6 +874,7 @@ const CambioDevolucion = () => {
                                     },
                                     preConfirm: () => {
                                         const nombre = document.getElementById('cliente_nombre').value;
+                                        const tipoComprobanteSel = document.getElementById('cliente_tipo_comprobante');
                                         if (!nombre || nombre.trim() === '') {
                                             Swal.showValidationMessage('El nombre del cliente es requerido');
                                             return false;
@@ -844,7 +885,8 @@ const CambioDevolucion = () => {
                                             cliente_domicilio: document.getElementById('cliente_domicilio').value.trim() || null,
                                             cliente_condicion_iva: esMonotributista
                                                 ? 'CF'
-                                                : document.getElementById('cliente_condicion_iva').value
+                                                : document.getElementById('cliente_condicion_iva').value,
+                                            ...(tipoComprobanteSel ? { tipo_comprobante_solicitado: tipoComprobanteSel.value } : {})
                                         };
                                     }
                                 });
