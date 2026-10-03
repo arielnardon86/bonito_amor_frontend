@@ -116,13 +116,19 @@ const ReciboImpresion = () => {
                 fechaLimitePagoHtml = `<p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha límite de pago: ${fechaLimiteTexto}</p>`;
             }
 
-            // Observaciones (solo Cuenta Corriente, ej. quién retira la mercadería)
+            // Observaciones (cualquier método de pago, ej. quién retira la mercadería)
             let observacionesHtml = '';
-            if (venta.metodo_pago === 'Cuenta Corriente' && venta.observaciones) {
+            if (venta.observaciones) {
                 const observacionesEscapadas = String(venta.observaciones).replace(/[&<>"']/g, (c) => ({
                     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
                 }[c]));
                 observacionesHtml = `<p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Observaciones: ${observacionesEscapadas}</p>`;
+            }
+
+            // Número de tarjeta (últimos 4 dígitos, si se cargó al procesar la venta)
+            let numeroTarjetaHtml = '';
+            if (venta.numero_tarjeta) {
+                numeroTarjetaHtml = `<p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tarjeta: **** ${venta.numero_tarjeta}</p>`;
             }
 
             // Información adicional si viene de un cambio/devolución
@@ -145,6 +151,7 @@ const ReciboImpresion = () => {
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Fecha: ${formatFecha(venta.fecha_venta) || 'N/A'}</p>
                         <p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">ID de Venta: ${codigoNumerico}</p>
                         ${fechaLimitePagoHtml}
+                        ${numeroTarjetaHtml}
                         ${observacionesHtml}
                         ${infoCambioDevolucion}
                         <hr>

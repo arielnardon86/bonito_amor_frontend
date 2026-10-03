@@ -873,14 +873,15 @@ Script.complete();
             // emitida la NC, esta alerta desaparece sola al volver a exportar.
             const textoAlerta = (c) => c.venta_anulada_sin_nc ? '⚠ Venta anulada sin Nota de Crédito -- revisar' : '';
             const filasSubdiario = [
-                ['Fecha', 'Sucursal', 'Tipo', 'Comprobante', 'Cliente', 'CUIT', 'Cond. IVA', 'Neto', 'IVA', 'Total', 'CAE', 'Alerta'],
+                ['Fecha', 'Sucursal', 'Tipo', 'Comprobante', 'Cliente', 'CUIT', 'Cond. IVA', 'Neto', 'IVA', 'Total', 'CAE', 'Tarjeta', 'Alerta'],
                 ...comprobantes.map(c => [
                     formatFecha(c.fecha), c.tienda_nombre, c.tipo === 'NOTA_CREDITO' ? 'Nota de Crédito' : `Factura ${c.tipo_comprobante}`,
                     c.numero_completo, c.cliente_nombre, c.cliente_cuit, condicionIvaText[c.condicion_iva] || c.condicion_iva,
-                    parseFloat(c.neto), parseFloat(c.iva), parseFloat(c.total), c.cae, textoAlerta(c),
+                    parseFloat(c.neto), parseFloat(c.iva), parseFloat(c.total), c.cae,
+                    c.numero_tarjeta ? `**** ${c.numero_tarjeta}` : '', textoAlerta(c),
                 ]),
                 [],
-                ['', '', '', '', '', '', 'TOTALES', parseFloat(totales.neto || 0), parseFloat(totales.iva || 0), parseFloat(totales.total || 0), '', ''],
+                ['', '', '', '', '', '', 'TOTALES', parseFloat(totales.neto || 0), parseFloat(totales.iva || 0), parseFloat(totales.total || 0), '', '', ''],
             ];
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasSubdiario), 'Subdiario IVA');
 

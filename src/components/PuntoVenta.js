@@ -271,9 +271,14 @@ const PuntoVenta = () => {
 
     // Cuenta Corriente: fecha límite acordada para cancelar el pago (informativa, sale en recibo/factura)
     const [fechaLimitePago, setFechaLimitePago] = useState('');
-    // Cuenta Corriente: observación libre (ej. quién retira la mercadería), sale en recibo/factura
+    // Observación libre de la venta (ej. quién retira la mercadería), disponible
+    // para cualquier método de pago -- sale en recibo/factura.
     const [observacionesCC, setObservacionesCC] = useState('');
     const OBSERVACIONES_CC_MAX_LENGTH = 120;
+    // Últimos 4 dígitos de la tarjeta (solo tiene sentido si el método de pago
+    // es una tarjeta) -- sale en recibo/factura y en el Subdiario de IVA, para
+    // matchear cada venta contra el resumen que manda la procesadora.
+    const [numeroTarjeta, setNumeroTarjeta] = useState('');
 
     const [redondearMonto, setRedondearMonto] = useState(false);
     const [redondearMontoArriba, setRedondearMontoArriba] = useState(false);
@@ -1081,6 +1086,10 @@ const PuntoVenta = () => {
     const isMercadoLibre = metodoPagoSeleccionado === 'Mercado Libre';
     const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero && !isMercadoLibre; // ML usa aranceles por producto, no Plan/Arancel
     const isCuentaCorriente = metodoPagoSeleccionado === 'Cuenta Corriente';
+    // El nombre del método de pago es texto libre por tienda (no hay un
+    // choices fijo para "tarjeta" en el modelo), así que se detecta por
+    // substring -- cubre "Tarjeta de Débito", "Tarjeta de Crédito", etc.
+    const isTarjeta = !!metodoPagoSeleccionado?.toLowerCase().includes('tarjeta');
 
     // Cuenta Corriente: si el cliente tiene un día de cierre configurado, autocompletar
     // la fecha límite de pago con la próxima ocurrencia de ese día (en vez de pedirla a
@@ -1470,8 +1479,11 @@ const PuntoVenta = () => {
                     if (isCuentaCorriente && fechaLimitePago) {
                         ventaData.fecha_limite_pago = fechaLimitePago;
                     }
-                    if (isCuentaCorriente && observacionesCC.trim()) {
+                    if (observacionesCC.trim()) {
                         ventaData.observaciones = observacionesCC.trim();
+                    }
+                    if (isTarjeta && numeroTarjeta.trim()) {
+                        ventaData.numero_tarjeta = numeroTarjeta.trim();
                     }
 
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
@@ -1518,6 +1530,7 @@ const PuntoVenta = () => {
                     setClientesEncontradosCC([]);
                     setFechaLimitePago('');
                     setObservacionesCC('');
+                    setNumeroTarjeta('');
                     setDescuentoPorcentaje('');
                     setDescuentoMonto('');
                     setRecargoPorcentaje('');
@@ -2709,7 +2722,22 @@ const PuntoVenta = () => {
                                 />
                             </div>
                         )}
-                        {!formasPago.length && isCuentaCorriente && (
+                        {!formasPago.length && isTarjeta && (
+                            <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
+                                <label htmlFor="numeroTarjeta" style={styles.paymentMethodLabel}>Número de Tarjeta</label>
+                                <input
+                                    type="text"
+                                    id="numeroTarjeta"
+                                    placeholder="Ingresar los últimos 4 números"
+                                    inputMode="numeric"
+                                    value={numeroTarjeta}
+                                    maxLength={4}
+                                    onChange={(e) => setNumeroTarjeta(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                    style={{ ...styles.inputField, marginBottom: 0, flex: 1 }}
+                                />
+                            </div>
+                        )}
+                        {!formasPago.length && (
                             <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
                                 <label htmlFor="observacionesCC" style={styles.paymentMethodLabel}>Observaciones</label>
                                 <input

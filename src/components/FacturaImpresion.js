@@ -249,6 +249,8 @@ const FacturaImpresion = () => {
                         <p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>Comprobante:</strong> ${String(factura.punto_venta || 0).padStart(4, '0')}-${String(factura.numero_comprobante || 0).padStart(8, '0')}</p>
                         ${factura.cae ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>CAE:</strong> ${factura.cae}</p>` : ''}
                         ${factura.fecha_vencimiento_cae ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>CAE Vto:</strong> ${new Date(factura.fecha_vencimiento_cae).toLocaleDateString('es-AR')}</p>` : ''}
+                        ${venta?.numero_tarjeta ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>Tarjeta:</strong> **** ${venta.numero_tarjeta}</p>` : ''}
+                        ${venta?.observaciones ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>Observaciones:</strong> ${String(venta.observaciones).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</p>` : ''}
                     </div>
 
                     <div class="client-info" style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 3mm 0; margin-bottom: 5mm;">
