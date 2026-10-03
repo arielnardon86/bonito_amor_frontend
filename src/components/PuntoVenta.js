@@ -1588,9 +1588,13 @@ const PuntoVenta = () => {
                                 // Monotributista solo puede emitir Factura C sin importar la condición de IVA
                                 // del cliente: no tiene sentido preguntarla, así que no se la ofrecemos.
                                 const esMonotributista = tiendaActual?.condicion_iva_emisor === 'MT';
-                                // Solo un emisor RI puede elegir entre Factura A o B -- MT siempre
-                                // emite C y el resto de condiciones de emisor siempre emiten B, así
-                                // que el selector de tipo de factura no tiene sentido para ellos.
+                                // Exento como emisor, igual que Monotributista, SIEMPRE emite Factura
+                                // C sin importar el cliente (tabla oficial AFIP) -- no tiene sentido
+                                // preguntarle condición IVA ni tipo de factura.
+                                const esExento = tiendaActual?.condicion_iva_emisor === 'EX';
+                                // Solo un emisor RI puede elegir entre Factura A o B -- MT/EX siempre
+                                // emiten C, así que el selector de tipo de factura no tiene sentido
+                                // para ellos.
                                 const esRI = tiendaActual?.condicion_iva_emisor === 'RI';
                                 // Mostrar formulario para datos del cliente -- precargado con los datos
                                 // del cliente de Cuenta Corriente si la venta fue a uno (clienteSeleccionadoCC),
@@ -1615,7 +1619,7 @@ const PuntoVenta = () => {
                                                 <label for="cliente_domicilio">Domicilio (opcional)</label>
                                                 <input id="cliente_domicilio" class="swal2-input fc-input" placeholder="Ej: Av. Corrientes 1234" value="${(clienteSeleccionadoCC?.direccion || '').replace(/"/g, '&quot;')}">
                                             </div>
-                                            ${esMonotributista ? '' : `
+                                            ${(esMonotributista || esExento) ? '' : `
                                             <div class="fc-field">
                                                 <label for="cliente_condicion_iva">Condición frente al IVA</label>
                                                 <select id="cliente_condicion_iva" class="swal2-input fc-input">
@@ -1666,12 +1670,12 @@ const PuntoVenta = () => {
                                             if (!tipoSel) return;
                                             const condicionSel = document.getElementById('cliente_condicion_iva');
                                             const cuitVal = document.getElementById('cliente_cuit').value.replace(/\D/g, '');
-                                            const puedeSerA = condicionSel?.value === 'RI' && cuitVal.length === 11;
+                                            const puedeSerA = ['RI', 'MT'].includes(condicionSel?.value) && cuitVal.length === 11;
                                             const optA = tipoSel.querySelector('option[value="A"]');
                                             if (optA) optA.disabled = !puedeSerA;
                                             if (!puedeSerA && tipoSel.value === 'A') tipoSel.value = 'B';
                                             const hint = document.getElementById('tipo_comprobante_hint');
-                                            if (hint) hint.textContent = puedeSerA ? '' : 'Factura A requiere cliente Responsable Inscripto con CUIT cargado.';
+                                            if (hint) hint.textContent = puedeSerA ? '' : 'Factura A requiere cliente Responsable Inscripto o Monotributista con CUIT cargado.';
                                         };
                                         actualizarTipoComprobante();
                                         document.getElementById('cliente_cuit')?.addEventListener('input', actualizarTipoComprobante);
@@ -1703,7 +1707,7 @@ const PuntoVenta = () => {
                                                     if (sel && resp.data.condicion_iva) sel.value = resp.data.condicion_iva;
                                                     actualizarTipoComprobante();
                                                     const tipoSel = document.getElementById('cliente_tipo_comprobante');
-                                                    if (tipoSel && resp.data.condicion_iva === 'RI' && !tipoSel.querySelector('option[value="A"]').disabled) {
+                                                    if (tipoSel && ['RI', 'MT'].includes(resp.data.condicion_iva) && !tipoSel.querySelector('option[value="A"]').disabled) {
                                                         tipoSel.value = 'A';
                                                     }
                                                     status.textContent = resp.data.condicion_iva
@@ -1727,7 +1731,7 @@ const PuntoVenta = () => {
                                         const nombre = document.getElementById('cliente_nombre').value;
                                         const cuit = document.getElementById('cliente_cuit').value;
                                         const domicilio = document.getElementById('cliente_domicilio').value;
-                                        const condicionIva = esMonotributista
+                                        const condicionIva = (esMonotributista || esExento)
                                             ? 'CF'
                                             : document.getElementById('cliente_condicion_iva').value;
                                         const tipoComprobanteSel = document.getElementById('cliente_tipo_comprobante');
