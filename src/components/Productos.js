@@ -1737,7 +1737,7 @@ const Productos = () => {
                                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                             <thead>
                                                 <tr>
-                                                    {['Foto', 'Talle / Valor', 'Variante 2 (opcional)', 'Precio', 'Costo', 'Margen %', 'Stock', 'Código de barras', ''].map(h => (
+                                                    {['Foto', 'Variante 1', 'Variante 2 (opcional)', 'Precio', 'Costo', 'Margen %', 'Stock', 'Código de barras', ''].map(h => (
                                                         <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                                                     ))}
                                                 </tr>
@@ -2836,7 +2836,7 @@ const Productos = () => {
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                 <thead>
                                     <tr>
-                                        {['Foto', 'Talle / Valor', 'Variante 2 (opcional)', 'Precio', 'Costo', 'Margen %', 'Stock', 'Código de barras', ''].map(h => (
+                                        {['Foto', 'Variante 1', 'Variante 2 (opcional)', 'Precio', 'Costo', 'Margen %', 'Stock', 'Código de barras', ''].map(h => (
                                             <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                                         ))}
                                     </tr>
