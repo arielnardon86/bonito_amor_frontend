@@ -23,6 +23,15 @@ const normalizeApiUrl = (url) => {
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
+// Sin timeout, una request colgada (red inestable del cliente, proxy
+// corporativo, etc.) deja la promesa sin resolver ni rechazar para siempre --
+// y como loadUserInitial espera a fetchStores() antes de poner loading en
+// false, la pantalla queda trabada en "Cargando autenticación..." sin forma
+// de salir sola. Se aplica a las llamadas del camino de arranque/sesión
+// (fetchStores, login, refresh de token) para que un cuelgue de red termine
+// en "mostrar el login" en vez de en una pantalla muerta.
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
+
 // Estado del interceptor de refresh de token, compartido entre todas las requests
 // (vive a nivel de módulo porque axios es un singleton, no depende de renders de React).
 let refrescandoToken = false;
@@ -58,7 +67,8 @@ export const AuthProvider = ({ children }) => {
                 headers: {
                     'Content-Type': 'application/json',
                     ...(token && { 'Authorization': `Bearer ${token}` })
-                }
+                },
+                timeout: AUTH_REQUEST_TIMEOUT_MS,
             });
             const data = response.data;
             const list = Array.isArray(data) ? data : (data?.results ?? []);
@@ -90,7 +100,9 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         setAuthError(null);
         try {
-            const response = await axios.post(`${BASE_API_ENDPOINT}/api/token/`, { username, password });
+            const response = await axios.post(`${BASE_API_ENDPOINT}/api/token/`, { username, password }, {
+                timeout: AUTH_REQUEST_TIMEOUT_MS,
+            });
             const newToken = response.data.access;
             const newRefreshToken = response.data.refresh;
             const decodedUser = jwtDecode(newToken);
@@ -249,6 +261,8 @@ export const AuthProvider = ({ children }) => {
                 try {
                     const refreshResponse = await axios.post(`${BASE_API_ENDPOINT}/api/token/refresh/`, {
                         refresh: storedRefreshToken,
+                    }, {
+                        timeout: AUTH_REQUEST_TIMEOUT_MS,
                     });
                     const nuevoAccessToken = refreshResponse.data.access;
                     localStorage.setItem('token', nuevoAccessToken);
