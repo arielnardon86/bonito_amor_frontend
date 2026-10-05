@@ -843,7 +843,11 @@ const Productos = () => {
         const file = e.target.files?.[0];
         if (!file) return;
         try {
-            const base64 = await resizeLogoToBase64(file, 300);
+            // 160px: en toda la pantalla esta foto nunca se muestra a más de 56px
+            // (el preview al cargar/editar) -- 160px da margen de sobra para
+            // retina sin mandar de más. Importa en especial acá porque viaja en
+            // CADA fila del listado de productos como base64 embebido.
+            const base64 = await resizeLogoToBase64(file, 160);
             setNewProduct(prev => ({ ...prev, imagen: base64 }));
         } catch (err) {
             setError('No se pudo procesar la imagen. Probá con otro archivo.');
@@ -892,7 +896,11 @@ const Productos = () => {
     const handleVarianteImagenChange = async (i, file) => {
         if (!file) return;
         try {
-            const base64 = await resizeLogoToBase64(file, 300);
+            // 160px: en toda la pantalla esta foto nunca se muestra a más de 56px
+            // (el preview al cargar/editar) -- 160px da margen de sobra para
+            // retina sin mandar de más. Importa en especial acá porque viaja en
+            // CADA fila del listado de productos como base64 embebido.
+            const base64 = await resizeLogoToBase64(file, 160);
             setVariantesNuevas(prev => prev.map((x, j) => j === i ? { ...x, imagen: base64 } : x));
         } catch (err) {
             setError('No se pudo procesar la imagen de la variante. Probá con otro archivo.');
@@ -1014,7 +1022,11 @@ const Productos = () => {
         const file = e.target.files?.[0];
         if (!file) return;
         try {
-            const base64 = await resizeLogoToBase64(file, 300);
+            // 160px: en toda la pantalla esta foto nunca se muestra a más de 56px
+            // (el preview al cargar/editar) -- 160px da margen de sobra para
+            // retina sin mandar de más. Importa en especial acá porque viaja en
+            // CADA fila del listado de productos como base64 embebido.
+            const base64 = await resizeLogoToBase64(file, 160);
             setEditProduct(prev => ({ ...prev, imagen: base64 }));
         } catch (err) {
             setError('No se pudo procesar la imagen. Probá con otro archivo.');
