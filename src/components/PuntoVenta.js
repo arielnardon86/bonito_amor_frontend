@@ -279,6 +279,14 @@ const PuntoVenta = () => {
     // es una tarjeta) -- sale en recibo/factura y en el Subdiario de IVA, para
     // matchear cada venta contra el resumen que manda la procesadora.
     const [numeroTarjeta, setNumeroTarjeta] = useState('');
+    // Marca de la tarjeta (opcional, igual que numeroTarjeta) -- sale en recibo/factura.
+    const [tipoTarjeta, setTipoTarjeta] = useState('');
+    const TIPOS_TARJETA = [
+        { value: 'VISA', label: 'Visa' },
+        { value: 'MASTERCARD', label: 'Mastercard' },
+        { value: 'NARANJA_X', label: 'Naranja X' },
+        { value: 'AMEX', label: 'Amex' },
+    ];
 
     const [redondearMonto, setRedondearMonto] = useState(false);
     const [redondearMontoArriba, setRedondearMontoArriba] = useState(false);
@@ -1485,6 +1493,9 @@ const PuntoVenta = () => {
                     if (isTarjeta && numeroTarjeta.trim()) {
                         ventaData.numero_tarjeta = numeroTarjeta.trim();
                     }
+                    if (isTarjeta && tipoTarjeta) {
+                        ventaData.tipo_tarjeta = tipoTarjeta;
+                    }
 
                     const response = await axios.post(`${BASE_API_ENDPOINT}/api/ventas/`, ventaData, {
                         headers: { 'Authorization': `Bearer ${token}` },
@@ -1531,6 +1542,7 @@ const PuntoVenta = () => {
                     setFechaLimitePago('');
                     setObservacionesCC('');
                     setNumeroTarjeta('');
+                    setTipoTarjeta('');
                     setDescuentoPorcentaje('');
                     setDescuentoMonto('');
                     setRecargoPorcentaje('');
@@ -2735,6 +2747,18 @@ const PuntoVenta = () => {
                                     onChange={(e) => setNumeroTarjeta(e.target.value.replace(/\D/g, '').slice(0, 4))}
                                     style={{ ...styles.inputField, marginBottom: 0, flex: 1 }}
                                 />
+                                <label htmlFor="tipoTarjeta" style={styles.paymentMethodLabel}>Tarjeta</label>
+                                <select
+                                    id="tipoTarjeta"
+                                    value={tipoTarjeta}
+                                    onChange={(e) => setTipoTarjeta(e.target.value)}
+                                    style={{ ...styles.inputField, marginBottom: 0, flex: 1 }}
+                                >
+                                    <option value="">Elegir (opcional)</option>
+                                    {TIPOS_TARJETA.map(t => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </select>
                             </div>
                         )}
                         {!formasPago.length && (

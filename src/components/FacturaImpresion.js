@@ -171,6 +171,13 @@ const FacturaImpresion = () => {
                 'EX': 'Exento', 'MT': 'Monotributo', 'NR': 'No Responsable'
             }[factura.cliente_condicion_iva] || factura.cliente_condicion_iva;
 
+            // Marca y últimos 4 dígitos de la tarjeta (si se cargaron al procesar la venta)
+            const marcaTarjetaText = venta?.tipo_tarjeta
+                ? ({ VISA: 'Visa', MASTERCARD: 'Mastercard', NARANJA_X: 'Naranja X', AMEX: 'Amex' }[venta.tipo_tarjeta] || venta.tipo_tarjeta)
+                : '';
+            const numeroTarjetaText = venta?.numero_tarjeta ? `**** ${venta.numero_tarjeta}` : '';
+            const tarjetaText = [marcaTarjetaText, numeroTarjetaText].filter(Boolean).join(' ');
+
             const detalles = venta?.detalles || [];
 
             let subtotalInicialConIva = 0;
@@ -249,7 +256,7 @@ const FacturaImpresion = () => {
                         <p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>Comprobante:</strong> ${String(factura.punto_venta || 0).padStart(4, '0')}-${String(factura.numero_comprobante || 0).padStart(8, '0')}</p>
                         ${factura.cae ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>CAE:</strong> ${factura.cae}</p>` : ''}
                         ${factura.fecha_vencimiento_cae ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>CAE Vto:</strong> ${new Date(factura.fecha_vencimiento_cae).toLocaleDateString('es-AR')}</p>` : ''}
-                        ${venta?.numero_tarjeta ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>Tarjeta:</strong> **** ${venta.numero_tarjeta}</p>` : ''}
+                        ${tarjetaText ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>Tarjeta:</strong> ${tarjetaText}</p>` : ''}
                         ${venta?.observaciones ? `<p style="font-size: 2.5mm; color: #000; margin: 1mm 0; -webkit-font-smoothing: none;"><strong>Observaciones:</strong> ${String(venta.observaciones).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</p>` : ''}
                     </div>
 

@@ -125,10 +125,13 @@ const ReciboImpresion = () => {
                 observacionesHtml = `<p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Observaciones: ${observacionesEscapadas}</p>`;
             }
 
-            // Número de tarjeta (últimos 4 dígitos, si se cargó al procesar la venta)
+            // Marca y últimos 4 dígitos de la tarjeta (si se cargaron al procesar la venta)
+            const TIPOS_TARJETA_LABEL = { VISA: 'Visa', MASTERCARD: 'Mastercard', NARANJA_X: 'Naranja X', AMEX: 'Amex' };
             let numeroTarjetaHtml = '';
-            if (venta.numero_tarjeta) {
-                numeroTarjetaHtml = `<p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tarjeta: **** ${venta.numero_tarjeta}</p>`;
+            if (venta.numero_tarjeta || venta.tipo_tarjeta) {
+                const marca = venta.tipo_tarjeta ? (TIPOS_TARJETA_LABEL[venta.tipo_tarjeta] || venta.tipo_tarjeta) : '';
+                const numero = venta.numero_tarjeta ? `**** ${venta.numero_tarjeta}` : '';
+                numeroTarjetaHtml = `<p style="font-weight: bold; color: #000; -webkit-font-smoothing: none;">Tarjeta: ${[marca, numero].filter(Boolean).join(' ')}</p>`;
             }
 
             // Información adicional si viene de un cambio/devolución
