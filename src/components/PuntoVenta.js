@@ -242,6 +242,10 @@ const PuntoVenta = () => {
     
     // CAMBIO 1: NUEVO ESTADO PARA EL FILTRO INSTANTÁNEO DE LA TABLA
     const [filterTerm, setFilterTerm] = useState('');
+    // Cancela la búsqueda anterior si todavía está en vuelo cuando se dispara una
+    // nueva -- sin esto, si una respuesta vieja tarda más que una más nueva, puede
+    // llegar después y pisar la tabla con un resultado desactualizado.
+    const fetchProductosAbortRef = useRef(null);
     // Arranca tildado: si el producto tiene variantes, la columna/fila de variante
     // es la única forma de distinguir cuál se está por vender -- no debería hacer
     // falta tildarlo a mano cada vez que se entra a Punto de Venta.
@@ -598,6 +602,9 @@ const PuntoVenta = () => {
         if (!token || !selectedStoreSlug) {
             return;
         }
+        fetchProductosAbortRef.current?.abort();
+        const controller = new AbortController();
+        fetchProductosAbortRef.current = controller;
         setError(null);
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
@@ -607,6 +614,7 @@ const PuntoVenta = () => {
                     search: searchQuery,
                     page: page,
                 },
+                signal: controller.signal,
             });
             setProductos(response.data.results);
             setPageInfo(prev => ({
@@ -615,9 +623,10 @@ const PuntoVenta = () => {
                 previous: response.data.previous,
                 count: response.data.count,
                 currentPage: page,
-                totalPages: Math.ceil(response.data.count / 10), 
+                totalPages: Math.ceil(response.data.count / 10),
             }));
         } catch (err) {
+            if (axios.isCancel(err) || err.code === 'ERR_CANCELED') return; // reemplazada por una búsqueda más nueva, no es un error real
             console.error("Error al cargar productos:", err.response ? err.response.data : err.message);
             setError('Error al cargar productos.');
             throw err;

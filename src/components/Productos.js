@@ -233,6 +233,15 @@ const Productos = () => {
     // Modal de "actualizá tu plan" cuando se llega al tope de productos (Free, etc).
     const [upgradeInfo, setUpgradeInfo] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    // searchTerm es lo que se ve tipeado (responde al instante); searchTermDebounced
+    // es lo que efectivamente dispara fetchProductos/fetchResumen, 300ms después de
+    // que el usuario deja de tipear -- antes cada letra disparaba 2 requests
+    // inmediatos (el listado Y el resumen), sin ningún debounce.
+    const [searchTermDebounced, setSearchTermDebounced] = useState('');
+    useEffect(() => {
+        const handler = setTimeout(() => setSearchTermDebounced(searchTerm), 300);
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
     const [currentPage, setCurrentPage] = useState(1);
     const [currentPageUrl, setCurrentPageUrl] = useState(null);
 
@@ -322,6 +331,12 @@ const Productos = () => {
     // página actual. Un ref (no state) porque no necesita re-renderizar nada,
     // solo persistir entre cambios de página.
     const productosCacheRef = useRef({});
+    // Cancela la request anterior si todavía está en vuelo cuando se dispara una
+    // nueva (ej. búsqueda más reciente, cambio de página/filtro) -- sin esto, si
+    // una respuesta vieja tarda más que una nueva, puede llegar después y
+    // pisar el resultado correcto con uno desactualizado.
+    const fetchProductosAbortRef = useRef(null);
+    const fetchResumenAbortRef = useRef(null);
     const [mostrarTalle, setMostrarTalle] = useState(false);
     const [stockBajoFilter, setStockBajoFilter] = useState(false);
     const STOCK_BAJO_THRESHOLD = 5;
@@ -396,6 +411,10 @@ const Productos = () => {
             return;
         }
 
+        fetchProductosAbortRef.current?.abort();
+        const controller = new AbortController();
+        fetchProductosAbortRef.current = controller;
+
         setLoadingProducts(true);
         setError(null);
         try {
@@ -405,21 +424,23 @@ const Productos = () => {
                 headers: { 'Authorization': `Bearer ${token}` },
                 params: {
                     tienda_slug: selectedStoreSlug,
-                    search: searchTerm,
+                    search: searchTermDebounced,
                     rubro_id: filtroRubroId || undefined,
                     stock_bajo: stockBajoFilter ? '1' : undefined,
                     page_size: PRODUCTOS_POR_PAGINA,
-                }
+                },
+                signal: controller.signal,
             });
             setProductos(response.data.results);
             setTotalCount(response.data.count);
             response.data.results.forEach(p => { productosCacheRef.current[p.id] = p; });
             setLoadingProducts(false);
         } catch (err) {
+            if (axios.isCancel(err) || err.code === 'ERR_CANCELED') return; // reemplazada por una búsqueda más nueva
             setError('Error al cargar productos: ' + (err.response ? JSON.stringify(err.response.data) : err.message));
             setLoadingProducts(false);
         }
-    }, [token, selectedStoreSlug, searchTerm, filtroRubroId, stockBajoFilter]);
+    }, [token, selectedStoreSlug, searchTermDebounced, filtroRubroId, stockBajoFilter]);
 
     // Resumen para el header: total del catálogo, cuántos en stock bajo y el
     // valorizado -- independiente de la paginación/del chip "Stock bajo" (ver
@@ -427,16 +448,21 @@ const Productos = () => {
     // acá para poder mostrar siempre "M con stock bajo" sea cual sea el chip).
     const fetchResumen = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
+        fetchResumenAbortRef.current?.abort();
+        const controller = new AbortController();
+        fetchResumenAbortRef.current = controller;
         try {
             const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/resumen/`, {
                 headers: { 'Authorization': `Bearer ${token}` },
-                params: { tienda_slug: selectedStoreSlug, search: searchTerm, rubro_id: filtroRubroId || undefined },
+                params: { tienda_slug: selectedStoreSlug, search: searchTermDebounced, rubro_id: filtroRubroId || undefined },
+                signal: controller.signal,
             });
             setResumen(response.data);
         } catch (err) {
+            if (axios.isCancel(err) || err.code === 'ERR_CANCELED') return; // reemplazada por una búsqueda más nueva
             console.error('Error al cargar el resumen de productos:', err);
         }
-    }, [token, selectedStoreSlug, searchTerm, filtroRubroId]);
+    }, [token, selectedStoreSlug, searchTermDebounced, filtroRubroId]);
 
     // Ambas listas se usan para chequear duplicados antes de crear uno nuevo (el
     // desplegable "+ Crear nuevo...") y para poblar los <select>: si la API pagina

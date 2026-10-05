@@ -33,23 +33,26 @@ const BuscadorProductosDropdown = ({
     const [mostrar, setMostrar] = useState(false);
 
     useEffect(() => {
-        let cancelado = false;
         const termino = value.trim();
         if (termino.length < 2 || !tiendaSlug || !token) {
             setSugerencias([]);
             setMostrar(false);
             return;
         }
+        // AbortController en vez de un simple flag "cancelado": así, si el valor
+        // cambia antes de que llegue la respuesta (ej. se escaneó un código y la
+        // búsqueda directa por barcode ya encontró y agregó el producto, limpiando
+        // el input), la request vieja se cancela de verdad en vez de solo ignorar
+        // su resultado -- menos carga al backend y sin riesgo de que una respuesta
+        // vieja que tarda más que una nueva pise el desplegable con algo desactualizado.
+        const controller = new AbortController();
         const timeoutId = setTimeout(async () => {
             try {
                 const response = await axios.get(`${BASE_API_ENDPOINT}/api/productos/`, {
                     headers: { Authorization: `Bearer ${token}` },
                     params: { tienda_slug: tiendaSlug, search: termino, page: 1 },
+                    signal: controller.signal,
                 });
-                // Si el valor ya cambió (ej. se escaneó un código y la búsqueda directa
-                // por barcode ya encontró y agregó el producto, limpiando el input, antes
-                // de que ESTA respuesta llegara) no hay que mostrar un desplegable viejo.
-                if (cancelado) return;
                 const resultados = response.data.results || response.data || [];
                 // Un producto con variantes no es vendible como tal -- cada variante es
                 // el ítem real, con su propio precio/stock. Mismo criterio de "aplanado"
@@ -67,12 +70,13 @@ const BuscadorProductosDropdown = ({
                 });
                 setSugerencias(aplanados.slice(0, 6));
                 setMostrar(true);
-            } catch {
-                if (!cancelado) setSugerencias([]);
+            } catch (err) {
+                if (axios.isCancel(err) || err.code === 'ERR_CANCELED') return; // reemplazada por una búsqueda más nueva
+                setSugerencias([]);
             }
         }, 300);
         return () => {
-            cancelado = true;
+            controller.abort();
             clearTimeout(timeoutId);
         };
     }, [value, tiendaSlug, token]);
