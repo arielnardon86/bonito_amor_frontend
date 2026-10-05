@@ -2760,11 +2760,15 @@ const Productos = () => {
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 340, overflowY: 'auto', paddingRight: 4 }}>
                             {Object.keys(cantidadesModal).map(id => {
-                                let producto = productos.find(p => String(p.id) === String(id));
+                                // Busca en el cache acumulado de todas las páginas, no en
+                                // `productos` (solo la página actual) -- mismo motivo que en
+                                // handleConfirmarEtiquetas, ver comentario en productosCacheRef.
+                                const productosConocidos = Object.values(productosCacheRef.current);
+                                let producto = productosConocidos.find(p => String(p.id) === String(id));
                                 let nombreDisplay = producto?.nombre;
                                 const esFamilia = !!(producto?.variantes && producto.variantes.length > 0);
                                 if (!producto) {
-                                    for (const padre of productos) {
+                                    for (const padre of productosConocidos) {
                                         const v = (padre.variantes || []).find(v => String(v.id) === String(id));
                                         if (v) { producto = v; nombreDisplay = v.nombre || padre.nombre; break; }
                                     }
