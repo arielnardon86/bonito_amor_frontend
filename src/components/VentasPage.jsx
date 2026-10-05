@@ -153,7 +153,7 @@ const VentasPage = () => {
             setVentas(ventasData);
             setNextPageUrl(response.data.next);
             setPrevPageUrl(response.data.previous);
-            setTotalPages(Math.ceil((response.data.count || 0) / 10) || 1);
+            setTotalPages(Math.ceil((response.data.count || 0) / 25) || 1);
             if (response.data.totales_global) {
                 setTotalesGlobal(response.data.totales_global);
             } else {
@@ -951,6 +951,24 @@ const VentasPage = () => {
                 <p style={styles.noDataMessage}>No hay ventas disponibles para esta tienda con los filtros aplicados.</p>
             ) : (
                 <>
+                    {(() => {
+                        const activas  = totalesGlobal ? totalesGlobal.total_activas  : ventas.filter(v => !v.anulada).length;
+                        const anuladas = totalesGlobal ? totalesGlobal.total_anuladas : ventas.filter(v => v.anulada).length;
+                        const montoActivas  = totalesGlobal ? parseFloat(totalesGlobal.monto_activas  || 0) : ventas.filter(v => !v.anulada).reduce((s, v) => s + parseFloat(v.total || 0), 0);
+                        const montoAnuladas = totalesGlobal ? parseFloat(totalesGlobal.monto_anuladas || 0) : ventas.filter(v => v.anulada).reduce((s, v) => s + parseFloat(v.total || 0), 0);
+                        return (
+                            <div style={{ padding: '10px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, marginBottom: 12 }}>
+                                <span style={{ fontWeight: 700, color: '#1a2926' }}>
+                                    {activas} venta{activas !== 1 ? 's' : ''}: {formatearMonto(montoActivas)}
+                                </span>
+                                {anuladas > 0 && (
+                                    <span style={{ marginLeft: 16, color: '#e25252', fontWeight: 600 }}>
+                                        · {anuladas} anulada{anuladas !== 1 ? 's' : ''}: {formatearMonto(montoAnuladas)}
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })()}
                     <div style={styles.tableResponsive}>
                     <table style={styles.table}>
                         <thead>
@@ -1241,28 +1259,6 @@ const VentasPage = () => {
                                 </React.Fragment>
                             ))}
                         </tbody>
-                        <tfoot>
-                            <tr>
-                                {(() => {
-                                    const activas  = totalesGlobal ? totalesGlobal.total_activas  : ventas.filter(v => !v.anulada).length;
-                                    const anuladas = totalesGlobal ? totalesGlobal.total_anuladas : ventas.filter(v => v.anulada).length;
-                                    const montoActivas  = totalesGlobal ? parseFloat(totalesGlobal.monto_activas  || 0) : ventas.filter(v => !v.anulada).reduce((s, v) => s + parseFloat(v.total || 0), 0);
-                                    const montoAnuladas = totalesGlobal ? parseFloat(totalesGlobal.monto_anuladas || 0) : ventas.filter(v => v.anulada).reduce((s, v) => s + parseFloat(v.total || 0), 0);
-                                    return (
-                                        <td colSpan={6} style={{ padding: '10px 12px', background: '#f8fafc', borderTop: '2px solid #e2e8f0', fontSize: 13 }}>
-                                            <span style={{ fontWeight: 700, color: '#1a2926' }}>
-                                                {activas} venta{activas !== 1 ? 's' : ''}: {formatearMonto(montoActivas)}
-                                            </span>
-                                            {anuladas > 0 && (
-                                                <span style={{ marginLeft: 16, color: '#e25252', fontWeight: 600 }}>
-                                                    · {anuladas} anulada{anuladas !== 1 ? 's' : ''}: {formatearMonto(montoAnuladas)}
-                                                </span>
-                                            )}
-                                        </td>
-                                    );
-                                })()}
-                            </tr>
-                        </tfoot>
                     </table>
                     </div>
 
