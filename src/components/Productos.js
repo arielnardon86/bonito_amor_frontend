@@ -1854,6 +1854,9 @@ const Productos = () => {
                                         style={{ marginTop: 8, padding: '5px 12px', background: '#e8f5ec', color: '#1a7a3f', border: '1px solid #b7dfc7', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
                                         + Agregar variante
                                     </button>
+                                    <p style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: '#1a2926' }}>
+                                        Total de unidades a cargar: {variantesNuevas.reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0)}
+                                    </p>
                                 </div>
                             )}
 
@@ -2953,6 +2956,9 @@ const Productos = () => {
                             style={{ marginTop: 8, padding: '5px 12px', background: '#e8f5ec', color: '#1a7a3f', border: '1px solid #b7dfc7', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
                             + Agregar variante
                         </button>
+                        <p style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: '#1a2926' }}>
+                            Total de unidades a cargar: {variantesNuevas.reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0)}
+                        </p>
 
                         {error && (
                             <p style={{ color: '#e25252', fontSize: 13, marginTop: 12 }}>{error}</p>
