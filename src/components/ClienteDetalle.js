@@ -674,18 +674,31 @@ const ClienteDetalle = () => {
                                     // juntar -- mismo criterio que el backend (ClienteViewSet.
                                     // facturar_consumos_mes): no anulada y todavía no facturada.
                                     const pendientesDelMes = grupoMes.ventas.filter(v => !v.anulada && !(v.tiene_factura || v.facturada));
+                                    // Si YA hay algún consumo de este mes facturado (individualmente
+                                    // con el botón "Facturar" de la fila, o en una consolidada previa),
+                                    // no se deja consolidar el resto: terminaríamos con 2+ comprobantes
+                                    // para el mismo mes, justo lo que esta función busca evitar. El
+                                    // backend aplica la misma regla (ver facturar_consumos_mes).
+                                    const algunaFacturadaDelMes = grupoMes.ventas.some(v => !v.anulada && (v.tiene_factura || v.facturada));
                                     const facturandoEsteMes = facturandoMesKey === grupoMes.key;
+                                    const hayNoAnuladasEsteMes = grupoMes.ventas.some(v => !v.anulada);
+                                    const botonDeshabilitado = facturandoEsteMes || pendientesDelMes.length === 0 || algunaFacturadaDelMes;
+                                    const tooltipBoton = algunaFacturadaDelMes
+                                        ? 'Ya hay consumos de este mes facturados (individualmente o en otra factura consolidada) -- no se puede generar otra factura consolidada para no duplicar comprobantes del mismo período.'
+                                        : pendientesDelMes.length === 0
+                                            ? 'No hay consumos pendientes de facturar este mes.'
+                                            : `Junta los ${pendientesDelMes.length} consumo(s) pendientes de ${grupoMes.label} en una sola factura`;
                                     return (
                                         <React.Fragment key={grupoMes.key}>
                                             <tr style={styles.tableMonthRow}>
                                                 <td colSpan={3} style={styles.tdMonthLabel}>{grupoMes.label}</td>
                                                 <td style={styles.td}>
-                                                    {tiendaTieneFacturacion && !isStaffOnly && pendientesDelMes.length > 0 && (
+                                                    {tiendaTieneFacturacion && !isStaffOnly && hayNoAnuladasEsteMes && (
                                                         <button
                                                             onClick={() => handleFacturarConsumosMes(grupoMes.key, pendientesDelMes.length)}
-                                                            disabled={facturandoEsteMes}
-                                                            style={styles.smallButtonGreen}
-                                                            title={`Junta los ${pendientesDelMes.length} consumo(s) pendientes de ${grupoMes.label} en una sola factura`}
+                                                            disabled={botonDeshabilitado}
+                                                            style={{ ...styles.smallButtonGreen, ...(botonDeshabilitado ? styles.btnDisabled : {}) }}
+                                                            title={tooltipBoton}
                                                         >
                                                             {facturandoEsteMes ? 'Facturando...' : 'Facturar consumos del mes'}
                                                         </button>
@@ -835,6 +848,7 @@ const styles = {
     secondaryButton: { padding: '10px 15px', backgroundColor: '#94a3b8', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' },
     smallButton: { fontSize: 13, padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', cursor: 'pointer', fontWeight: 600 },
     smallButtonGreen: { fontSize: 14, padding: '10px 18px', borderRadius: 8, border: 'none', background: '#5dc87a', color: 'white', cursor: 'pointer', fontWeight: 700 },
+    btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
     tableResponsive: { overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
     table: { width: '100%', borderCollapse: 'collapse', marginTop: '15px' },
     tableHeaderRow: { backgroundColor: '#f1f5f9' },
