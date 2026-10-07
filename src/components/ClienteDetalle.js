@@ -49,6 +49,10 @@ const ClienteDetalle = () => {
     // mensual, no un solo booleano global: cada mes tiene su propio botón.
     const [descargandoResumenKey, setDescargandoResumenKey] = useState(null);
 
+    // Facturar consumos del mes consolidados -- key del mes en curso (evita que
+    // dos botones de meses distintos queden "cargando" a la vez).
+    const [facturandoMesKey, setFacturandoMesKey] = useState(null);
+
     const fetchDatos = useCallback(async () => {
         if (!token || !clienteId) return;
         setLoading(true);
@@ -201,7 +205,12 @@ const ClienteDetalle = () => {
         }
     };
 
-    const handleFacturarVenta = async (venta) => {
+    // Formulario "Datos del Cliente para Factura" -- compartido entre Facturar
+    // una venta puntual y Facturar consumos del mes consolidados (misma UI,
+    // mismos campos; solo cambia con qué valores arranca precargado el
+    // formulario y el texto del botón). Devuelve los formValues del
+    // preConfirm, o null si se canceló.
+    const pedirDatosParaFactura = async ({ nombreInicial, cuitInicial, domicilioInicial, confirmButtonText }) => {
         const esMonotributista = tiendaActualInfo?.condicion_iva_emisor === 'MT';
         // Exento como emisor, igual que Monotributista, SIEMPRE emite Factura
         // C sin importar el cliente (tabla oficial AFIP) -- no tiene sentido
@@ -218,19 +227,19 @@ const ClienteDetalle = () => {
                 <div class="fc-form">
                     <div class="fc-field">
                         <label for="cliente_nombre">Nombre del cliente <span class="fc-required">*</span></label>
-                        <input id="cliente_nombre" class="swal2-input fc-input" placeholder="Ej: Juan Pérez" value="${(cliente?.nombre_razon_social || venta.cliente_nombre || 'Consumidor Final').replace(/"/g, '&quot;')}" required>
+                        <input id="cliente_nombre" class="swal2-input fc-input" placeholder="Ej: Juan Pérez" value="${(nombreInicial || 'Consumidor Final').replace(/"/g, '&quot;')}" required>
                     </div>
                     <div class="fc-field">
                         <label for="cliente_cuit">CUIT (opcional)</label>
                         <div class="fc-cuit-row">
-                            <input id="cliente_cuit" class="swal2-input fc-input" placeholder="Solo números, sin guiones" type="text" value="${cliente?.cuit_cuil || venta.cliente_cuit || ''}">
+                            <input id="cliente_cuit" class="swal2-input fc-input" placeholder="Solo números, sin guiones" type="text" value="${cuitInicial || ''}">
                             <button type="button" id="btn_buscar_padron" class="fc-btn-afip">Buscar en AFIP</button>
                         </div>
                         <p id="padron_status" class="fc-status"></p>
                     </div>
                     <div class="fc-field">
                         <label for="cliente_domicilio">Domicilio (opcional)</label>
-                        <input id="cliente_domicilio" class="swal2-input fc-input" placeholder="Ej: Av. Corrientes 1234" value="${(cliente?.direccion || venta.cliente_domicilio || '').replace(/"/g, '&quot;')}">
+                        <input id="cliente_domicilio" class="swal2-input fc-input" placeholder="Ej: Av. Corrientes 1234" value="${(domicilioInicial || '').replace(/"/g, '&quot;')}">
                     </div>
                     ${(esMonotributista || esExento) ? '' : `
                     <div class="fc-field">
@@ -270,7 +279,7 @@ const ClienteDetalle = () => {
             `,
             focusConfirm: false,
             showCancelButton: true,
-            confirmButtonText: 'Emitir Factura',
+            confirmButtonText,
             cancelButtonText: 'Cancelar',
             didOpen: () => {
                 // Factura A exige cliente RI identificado con CUIT (AFIP la
@@ -360,6 +369,16 @@ const ClienteDetalle = () => {
             },
         });
 
+        return formValues || null;
+    };
+
+    const handleFacturarVenta = async (venta) => {
+        const formValues = await pedirDatosParaFactura({
+            nombreInicial: cliente?.nombre_razon_social || venta.cliente_nombre,
+            cuitInicial: cliente?.cuit_cuil || venta.cliente_cuit,
+            domicilioInicial: cliente?.direccion || venta.cliente_domicilio,
+            confirmButtonText: 'Emitir Factura',
+        });
         if (!formValues) return;
 
         try {
@@ -382,6 +401,48 @@ const ClienteDetalle = () => {
             }
         } catch (err) {
             Swal.fire('Error', 'Error al emitir factura: ' + (err.response?.data?.error || (err.response ? JSON.stringify(err.response.data) : err.message)), 'error');
+        }
+    };
+
+    // Facturar TODOS los consumos pendientes (no anulados, no facturados) de un
+    // mes puntual en un solo comprobante -- ver backend
+    // ClienteViewSet.facturar_consumos_mes. mesKey viene como "2026-07".
+    const handleFacturarConsumosMes = async (mesKey, cantidadConsumos) => {
+        const [anioStr, mesStr] = mesKey.split('-');
+        const formValues = await pedirDatosParaFactura({
+            nombreInicial: cliente?.nombre_razon_social,
+            cuitInicial: cliente?.cuit_cuil,
+            domicilioInicial: cliente?.direccion,
+            confirmButtonText: `Facturar ${cantidadConsumos} consumo(s) del mes`,
+        });
+        if (!formValues) return;
+
+        setFacturandoMesKey(mesKey);
+        try {
+            const resp = await axios.post(
+                `${BASE_API_ENDPOINT}/api/clientes/${clienteId}/facturar-consumos-mes/`,
+                { mes: parseInt(mesStr, 10), anio: parseInt(anioStr, 10), ...formValues },
+                { headers: { 'Authorization': `Bearer ${token}` } },
+            );
+            await fetchDatos();
+            const { factura, ventas } = resp.data;
+            const irAVerla = await Swal.fire({
+                title: 'Factura consolidada emitida con éxito',
+                text: `${ventas.length} consumo(s) facturados juntos.`,
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Ver factura',
+                cancelButtonText: 'Quedarme acá',
+            });
+            if (irAVerla.isConfirmed) {
+                // skipReciboPrompt: true -- el prompt de "¿imprimir recibo?" post-impresión
+                // asume UNA venta puntual; acá son varias, no hay un solo recibo que ofrecer.
+                navigate('/factura', { state: { factura, venta: ventas[0], ventasLote: ventas, skipReciboPrompt: true } });
+            }
+        } catch (err) {
+            Swal.fire('Error', 'Error al facturar consumos del mes: ' + (err.response?.data?.error || (err.response ? JSON.stringify(err.response.data) : err.message)), 'error');
+        } finally {
+            setFacturandoMesKey(null);
         }
     };
 
@@ -411,6 +472,25 @@ const ClienteDetalle = () => {
             if (m.tipo === 'CREDITO' && (m.concepto || '').startsWith('Cobro cuenta corriente')) {
                 obtenerBucket(m.fecha).pagos += parseFloat(m.monto || 0);
             }
+        });
+        return Array.from(porMes.values()).sort((a, b) => b.key.localeCompare(a.key));
+    }, [historial]);
+
+    // Tabla de Consumos agrupada por mes calendario -- mismo criterio de mesKey
+    // que resumenMensual, para habilitar "Facturar consumos del mes" por grupo.
+    // historial.ventas ya viene ordenado -fecha_venta (más reciente primero,
+    // ver ClienteViewSet.historial), así que alcanza con separarlas en baldes
+    // sin reordenar cada una.
+    const consumosPorMes = useMemo(() => {
+        const porMes = new Map();
+        (historial?.ventas || []).forEach(v => {
+            const fecha = new Date(v.fecha_venta);
+            const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+            if (!porMes.has(key)) {
+                const label = fecha.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+                porMes.set(key, { key, label: label.charAt(0).toUpperCase() + label.slice(1), ventas: [] });
+            }
+            porMes.get(key).ventas.push(v);
         });
         return Array.from(porMes.values()).sort((a, b) => b.key.localeCompare(a.key));
     }, [historial]);
@@ -589,34 +669,60 @@ const ClienteDetalle = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {historial.ventas.map(v => {
-                                    const estaFacturada = v.tiene_factura || v.facturada;
+                                {consumosPorMes.map(grupoMes => {
+                                    // Habilita "Facturar consumos del mes" solo si hay algo para
+                                    // juntar -- mismo criterio que el backend (ClienteViewSet.
+                                    // facturar_consumos_mes): no anulada y todavía no facturada.
+                                    const pendientesDelMes = grupoMes.ventas.filter(v => !v.anulada && !(v.tiene_factura || v.facturada));
+                                    const facturandoEsteMes = facturandoMesKey === grupoMes.key;
                                     return (
-                                        <tr key={v.id} style={styles.tableRow}>
-                                            <td style={styles.td}>{new Date(v.fecha_venta).toLocaleString()}</td>
-                                            <td style={styles.td}>{v.metodo_pago}</td>
-                                            <td style={styles.td}>{formatearMonto(v.total)}</td>
-                                            <td style={styles.td}>
-                                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                                    {estaFacturada ? (
-                                                        <button onClick={() => handleVerFactura(v)} style={styles.smallButton}>
-                                                            Ver factura
+                                        <React.Fragment key={grupoMes.key}>
+                                            <tr style={styles.tableMonthRow}>
+                                                <td colSpan={3} style={styles.tdMonthLabel}>{grupoMes.label}</td>
+                                                <td style={styles.td}>
+                                                    {tiendaTieneFacturacion && !isStaffOnly && pendientesDelMes.length > 0 && (
+                                                        <button
+                                                            onClick={() => handleFacturarConsumosMes(grupoMes.key, pendientesDelMes.length)}
+                                                            disabled={facturandoEsteMes}
+                                                            style={styles.smallButtonGreen}
+                                                            title={`Junta los ${pendientesDelMes.length} consumo(s) pendientes de ${grupoMes.label} en una sola factura`}
+                                                        >
+                                                            {facturandoEsteMes ? 'Facturando...' : 'Facturar consumos del mes'}
                                                         </button>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => navigate('/recibo', { state: { venta: v } })} style={styles.smallButton}>
-                                                                Ver recibo
-                                                            </button>
-                                                            {tiendaTieneFacturacion && !isStaffOnly && !v.anulada && (
-                                                                <button onClick={() => handleFacturarVenta(v)} style={styles.smallButtonGreen}>
-                                                                    Facturar
-                                                                </button>
-                                                            )}
-                                                        </>
                                                     )}
-                                                </div>
-                                            </td>
-                                        </tr>
+                                                </td>
+                                            </tr>
+                                            {grupoMes.ventas.map(v => {
+                                                const estaFacturada = v.tiene_factura || v.facturada;
+                                                return (
+                                                    <tr key={v.id} style={styles.tableRow}>
+                                                        <td style={styles.td}>{new Date(v.fecha_venta).toLocaleString()}</td>
+                                                        <td style={styles.td}>{v.metodo_pago}</td>
+                                                        <td style={styles.td}>{formatearMonto(v.total)}</td>
+                                                        <td style={styles.td}>
+                                                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                                                {estaFacturada ? (
+                                                                    <button onClick={() => handleVerFactura(v)} style={styles.smallButton}>
+                                                                        Ver factura
+                                                                    </button>
+                                                                ) : (
+                                                                    <>
+                                                                        <button onClick={() => navigate('/recibo', { state: { venta: v } })} style={styles.smallButton}>
+                                                                            Ver recibo
+                                                                        </button>
+                                                                        {tiendaTieneFacturacion && !isStaffOnly && !v.anulada && (
+                                                                            <button onClick={() => handleFacturarVenta(v)} style={styles.smallButtonGreen}>
+                                                                                Facturar
+                                                                            </button>
+                                                                        )}
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>
@@ -734,6 +840,8 @@ const styles = {
     tableHeaderRow: { backgroundColor: '#f1f5f9' },
     th: { padding: '10px', borderBottom: '2px solid #e2e8f0', textAlign: 'left' },
     tableRow: { '&:nth-child(even)': { backgroundColor: '#f1f5f9' } },
+    tableMonthRow: { backgroundColor: '#e2e8f0' },
+    tdMonthLabel: { padding: '8px 10px', fontWeight: 700, color: '#334155', borderBottom: '1px solid #cbd5e1' },
     td: { padding: '10px', borderBottom: '1px solid #e2e8f0', verticalAlign: 'middle' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 },
     modalContent: { backgroundColor: 'white', padding: '24px', borderRadius: '10px', width: '90%', maxWidth: '480px', boxShadow: '0 10px 30px rgba(0,0,0,0.10)', maxHeight: '90vh', overflowY: 'auto' },

@@ -44,7 +44,14 @@ const FacturaImpresion = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { token } = useAuth();
-    const { factura, venta, skipReciboPrompt } = location.state || {};
+    const { factura, venta, skipReciboPrompt, ventasLote } = location.state || {};
+    // Factura de "consumos del mes" consolidada (ver ClienteDetalle.js ->
+    // facturarConsumosMes): `venta` es solo la "representativa" del lote, con
+    // detalles/total de ESA venta puntual, no del comprobante entero. Cuando
+    // viene `ventasLote` con más de un elemento, se itemiza una línea por
+    // venta del lote en vez de los detalles de productos (mismo criterio que
+    // el PDF del backend, ver FacturaViewSet._construir_pdf_factura).
+    const esConsolidada = Array.isArray(ventasLote) && ventasLote.length > 1;
     // Una Factura en estado 'ERROR' (intento de emisión que ARCA rechazó, ver
     // ProductoViewSet.emitir_factura) no tiene CAE y nunca fue autorizada -- no debe
     // poder imprimirse/enviarse como si fuera un comprobante válido.
@@ -178,29 +185,36 @@ const FacturaImpresion = () => {
             const numeroTarjetaText = venta?.numero_tarjeta ? `**** ${venta.numero_tarjeta}` : '';
             const tarjetaText = [marcaTarjetaText, numeroTarjetaText].filter(Boolean).join(' ');
 
-            const detalles = venta?.detalles || [];
+            const detalles = esConsolidada ? [] : (venta?.detalles || []);
 
-            let subtotalInicialConIva = 0;
-            detalles.forEach(item => {
-                if (!item.anulado_individualmente) {
-                    subtotalInicialConIva += parseFloat(item.precio_unitario || 0) * (item.cantidad || 0);
-                }
-            });
+            // Consolidada: no hay descuento/recargo de producto que calcular
+            // (cada venta del lote ya tiene su propio total cerrado) -- el
+            // subtotal con IVA es directamente el total facturado.
+            let subtotalInicialConIva = esConsolidada ? parseFloat(factura.total) : 0;
+            if (!esConsolidada) {
+                detalles.forEach(item => {
+                    if (!item.anulado_individualmente) {
+                        subtotalInicialConIva += parseFloat(item.precio_unitario || 0) * (item.cantidad || 0);
+                    }
+                });
+            }
 
             let descuentoMonto = 0;
             let recargoMonto = 0;
-            if (venta?.descuento_porcentaje > 0) {
-                descuentoMonto = subtotalInicialConIva * (venta.descuento_porcentaje / 100);
-            } else if (venta?.descuento_monto > 0) {
-                descuentoMonto = parseFloat(venta.descuento_monto);
-            }
-            if (venta?.recargo_porcentaje > 0) {
-                recargoMonto = (subtotalInicialConIva - descuentoMonto) * (venta.recargo_porcentaje / 100);
-            } else if (venta?.recargo_monto > 0) {
-                recargoMonto = parseFloat(venta.recargo_monto);
+            if (!esConsolidada) {
+                if (venta?.descuento_porcentaje > 0) {
+                    descuentoMonto = subtotalInicialConIva * (venta.descuento_porcentaje / 100);
+                } else if (venta?.descuento_monto > 0) {
+                    descuentoMonto = parseFloat(venta.descuento_monto);
+                }
+                if (venta?.recargo_porcentaje > 0) {
+                    recargoMonto = (subtotalInicialConIva - descuentoMonto) * (venta.recargo_porcentaje / 100);
+                } else if (venta?.recargo_monto > 0) {
+                    recargoMonto = parseFloat(venta.recargo_monto);
+                }
             }
 
-            const totalFinal = parseFloat(venta?.total || factura.total);
+            const totalFinal = esConsolidada ? parseFloat(factura.total) : parseFloat(venta?.total || factura.total);
             const subtotalFinalSinIva = totalFinal / 1.21;
             const ivaFinal = totalFinal - subtotalFinalSinIva;
 
@@ -279,7 +293,17 @@ const FacturaImpresion = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${detalles.length > 0 ? detalles.map(item => {
+                                ${esConsolidada ? ventasLote.map(v => {
+                                    const fechaStr = v.fecha_venta ? new Date(v.fecha_venta).toLocaleDateString('es-AR') : 'N/A';
+                                    const total = parseFloat(v.total || 0);
+                                    return `
+                                    <tr style="border-bottom: 1px dashed #ccc;">
+                                        <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none;">1</td>
+                                        <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none;">Consumo Cuenta Corriente del ${fechaStr}</td>
+                                        <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(total)}</td>
+                                        <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(total)}</td>
+                                    </tr>`;
+                                }).join('') : (detalles.length > 0 ? detalles.map(item => {
                                     if (item.anulado_individualmente) return '';
                                     let nombre = item.producto?.nombre || item.producto_nombre || 'Producto eliminado';
                                     const variante = [item.producto_talle, item.producto_variante2].filter(Boolean).join(', ');
@@ -294,7 +318,7 @@ const FacturaImpresion = () => {
                                         <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(precio)}</td>
                                         <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(subtotal)}</td>
                                     </tr>`;
-                                }).join('') : '<tr><td colspan="4" style="text-align: center; padding: 2mm; color: #000;">No hay detalles disponibles</td></tr>'}
+                                }).join('') : '<tr><td colspan="4" style="text-align: center; padding: 2mm; color: #000;">No hay detalles disponibles</td></tr>')}
                             </tbody>
                         </table>
                     </div>
@@ -317,7 +341,7 @@ const FacturaImpresion = () => {
         };
 
         renderFactura();
-    }, [factura, venta]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [factura, venta, ventasLote]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handlePrint = () => {
         window.print();
@@ -450,9 +474,11 @@ const FacturaImpresion = () => {
                         </button>
                     </>
                 )}
-                <button onClick={handleTicketCambio} style={styles.btnTicket}>
-                    Ticket de cambio
-                </button>
+                {!esConsolidada && (
+                    <button onClick={handleTicketCambio} style={styles.btnTicket}>
+                        Ticket de cambio
+                    </button>
+                )}
                 <button onClick={handleGoBack} style={styles.btnNeutralDark}>
                     Volver
                 </button>
