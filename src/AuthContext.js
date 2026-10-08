@@ -62,22 +62,43 @@ export const AuthProvider = ({ children }) => {
     const unlockSession = useCallback(() => setSessionLocked(false), []);
 
     const fetchStores = useCallback(async () => {
+        const pedir = () => axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` })
+            },
+            timeout: AUTH_REQUEST_TIMEOUT_MS,
+        });
         try {
-            const response = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                },
-                timeout: AUTH_REQUEST_TIMEOUT_MS,
-            });
+            const response = await pedir();
             const data = response.data;
             const list = Array.isArray(data) ? data : (data?.results ?? []);
             setStores(list);
             return list;
         } catch (err) {
-            console.error('Error fetching stores:', err);
-            setStores([]);
-            return [];
+            // Un solo intento fallido (red del cliente inestable, o el backend
+            // recién despertando de un cold start en Render) dejaba `stores`
+            // vacío por el resto de la sesión -- stores solo se pide acá, una
+            // vez, al cargar/loguear (ver loadUserInitial), así que
+            // `tiendaTieneFacturacion` (VentasPage.jsx, ClienteDetalle.js)
+            // quedaba en false para TODAS las tiendas hasta que el usuario
+            // hacía un refresh manual de la página. Reportado por un cliente:
+            // el botón "Facturar" de Listado de Ventas desaparecía "cada
+            // tanto" y volvía al actualizar. Un reintento cubre el caso típico
+            // de blip de red o cold start que ya terminó para cuando se
+            // reintenta.
+            console.warn('fetchStores: primer intento falló, reintentando...', err);
+            try {
+                const response = await pedir();
+                const data = response.data;
+                const list = Array.isArray(data) ? data : (data?.results ?? []);
+                setStores(list);
+                return list;
+            } catch (err2) {
+                console.error('Error fetching stores (tras reintento):', err2);
+                setStores([]);
+                return [];
+            }
         }
     }, [token]);
 

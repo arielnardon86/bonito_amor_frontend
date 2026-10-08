@@ -109,7 +109,7 @@ const notificacionesSoportadas = () =>
     typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
 
 const PanelAdministracionTienda = () => {
-    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas, logout, renombrarTiendaLocal, updateUser } = useAuth();
+    const { user, isAuthenticated, loading: authLoading, selectedStoreSlug, token, tiendasAutorizadas, logout, renombrarTiendaLocal, updateUser, fetchStores } = useAuth();
     const navigate = useNavigate();
     const { notificationPermission, fcmToken, solicitarPermiso, eliminarToken, error: notificationError } = useNotifications();
     const [searchParams] = useSearchParams();
@@ -536,6 +536,11 @@ Script.complete();
             );
             await fetchAfipEstado(tiendaInfo.id);
             await fetchTiendaInfo();
+            // `stores` (AuthContext) se pide una sola vez al loguearse -- sin esto,
+            // tiendaTieneFacturacion (VentasPage.jsx, ClienteDetalle.js) seguía en
+            // false después de activar/cambiar tipo_facturacion acá hasta un
+            // refresh manual de la página.
+            await fetchStores();
             Swal.fire({ icon: 'success', title: 'Configuración guardada', timer: 1800, showConfirmButton: false });
             if (siguientePaso === 6) setPuntoVentaGuardadoLocal(true);
             setAfipPasoActivo(siguientePaso);
@@ -545,7 +550,7 @@ Script.complete();
         } finally {
             setAfipSaving(false);
         }
-    }, [token, tiendaInfo, afipForm, fetchAfipEstado, fetchTiendaInfo]);
+    }, [token, tiendaInfo, afipForm, fetchAfipEstado, fetchTiendaInfo, fetchStores]);
 
     // Cargar certificado ARCA (paso 4)
     const handleCargarCertificado = useCallback(async () => {
