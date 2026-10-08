@@ -1060,7 +1060,13 @@ const VentasPage = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faFileInvoiceDollar} />
                                                 </button>
-                                                {tiendaTieneFacturacion && !isStaffOnly && !venta.anulada && !(venta.tiene_factura || venta.facturada) && !venta.es_nota_credito && !venta.es_diferencia_pendiente && (
+                                                {/* es_diferencia_pendiente NO se excluye acá a propósito: en Cambio/Devolución
+                                                    (CambioDevolucion.js) se le pregunta al vendedor si quiere facturar la
+                                                    diferencia apenas se crea esa venta -- si contesta "Solo recibo" o "No",
+                                                    esa venta queda sin facturar para siempre y este es el único lugar donde
+                                                    puede volver a intentarlo (ver comentario de handleFacturarVenta arriba:
+                                                    "Facturar una venta que salió 'solo recibo'", el caso exacto que cubre). */}
+                                                {tiendaTieneFacturacion && !isStaffOnly && !venta.anulada && !(venta.tiene_factura || venta.facturada) && !venta.es_nota_credito && (
                                                     <button
                                                         className="icon-btn"
                                                         onClick={() => handleFacturarVenta(venta)}
