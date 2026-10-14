@@ -207,6 +207,8 @@ const ReciboImpresion = () => {
                         
                         <p style="font-size: 4mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Total:</strong> ${formatearMonto(venta.total)}</p>
                         <p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Método de pago:</strong> ${venta.metodo_pago}</p>
+                        ${venta.monto_recibido ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Recibido:</strong> ${formatearMonto(venta.monto_recibido)}</p>` : ''}
+                        ${(venta.vuelto || 0) > 0 ? `<p style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;"><strong>Vuelto:</strong> ${formatearMonto(venta.vuelto)}</p>` : ''}
                         <hr>
                     </div>
                     <div class="footer">

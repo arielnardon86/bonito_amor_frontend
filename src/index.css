@@ -89,6 +89,20 @@ code {
 a { color: var(--ts-green-dark); text-decoration: none; }
 a:hover { text-decoration: underline; color: var(--ts-green-darker); }
 
+/* Sin flechas en inputs numéricos en toda la app -- varios clientes reportaron
+   que al girar la rueda del mouse sobre uno (con foco, aunque no se esté
+   apuntando a las flechas) el navegador les suma/resta al monto cargado sin
+   que se den cuenta. Esto solo saca el dibujo de las flechas; el bloqueo real
+   del scroll está en App.js (blur global al hacer wheel sobre un input number). */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 /* ── SweetAlert2 theme ──────────────────────────────────────────────────────── */
 .swal2-confirm {
   background: var(--ts-gradient) !important;

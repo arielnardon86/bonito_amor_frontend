@@ -224,7 +224,12 @@ const PuntoVenta = () => {
     const [upgradeInfo, setUpgradeInfo] = useState(null);
     const [metodosPago, setMetodosPago] = useState([]);
     const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
-    
+    // Dar vuelto (solo Efectivo, pago simple -- no combinado): vacío = pago
+    // exacto, igual que el comportamiento de siempre, cero fricción para quien
+    // no usa el campo. String (no number) para no pelear con el cursor mientras
+    // se escribe un monto parcial como "1".
+    const [montoRecibidoEfectivo, setMontoRecibidoEfectivo] = useState('');
+
     const [arancelesTienda, setArancelesTienda] = useState([]);
     const [arancelSeleccionadoId, setArancelSeleccionadoId] = useState('');
     const [arancelesML, setArancelesML] = useState([]);
@@ -1107,6 +1112,9 @@ const PuntoVenta = () => {
     // choices fijo para "tarjeta" en el modelo), así que se detecta por
     // substring -- cubre "Tarjeta de Débito", "Tarjeta de Crédito", etc.
     const isTarjeta = !!metodoPagoSeleccionado?.toLowerCase().includes('tarjeta');
+    // Mismo criterio por substring que montoEfectivoVenta en handleProcesarVenta
+    // (más abajo) -- cubre cualquier variante del nombre que incluya "efectivo".
+    const isEfectivo = !!metodoPagoSeleccionado?.toLowerCase().includes('efectivo');
 
     // Cuenta Corriente: si el cliente tiene un día de cierre configurado, autocompletar
     // la fecha límite de pago con la próxima ocurrencia de ese día (en vez de pedirla a
@@ -1343,7 +1351,25 @@ const PuntoVenta = () => {
 
         // --- LÓGICA DE CÁLCULO PARA BACKEND ---
         const subtotalCrudo = activeCart.total; // Subtotal sin ajustes
-        const finalTotal = calculateFinalTotal(); // Total FINAL (con ajustes Y redondeo si aplica) 
+        const finalTotal = calculateFinalTotal(); // Total FINAL (con ajustes Y redondeo si aplica)
+
+        // Dar vuelto: campo opcional, solo para Efectivo sin combinar. Vacío =
+        // pago exacto (comportamiento de siempre). Si se cargó, no puede ser
+        // menor al total -- no hay forma de dar vuelto negativo.
+        const montoRecibidoNum = (!isModoCombinado && isEfectivo && montoRecibidoEfectivo.trim() !== '')
+            ? parseFloat(montoRecibidoEfectivo)
+            : null;
+        if (montoRecibidoNum !== null) {
+            if (isNaN(montoRecibidoNum) || montoRecibidoNum < 0) {
+                Swal.fire('Error', 'El monto recibido en efectivo no es válido.', 'error');
+                return;
+            }
+            if (montoRecibidoNum < finalTotal) {
+                Swal.fire('Error', `El monto recibido (${formatearMonto(montoRecibidoNum)}) es menor al total (${formatearMonto(finalTotal)}).`, 'error');
+                return;
+            }
+        }
+        const vueltoCalculado = montoRecibidoNum !== null ? Math.round((montoRecibidoNum - finalTotal) * 100) / 100 : 0;
 
         let datosAjusteParaBackend = {
             descuento_porcentaje: parseFloat(descuentoPorcentaje) || 0,
@@ -1441,6 +1467,13 @@ const PuntoVenta = () => {
             htmlMessage += adjustmentMessage;
         }
 
+        if (montoRecibidoNum !== null) {
+            htmlMessage += `<br><br>Recibe: <strong>${formatearMonto(montoRecibidoNum)}</strong>`;
+            if (vueltoCalculado > 0) {
+                htmlMessage += `<br>Vuelto: <strong>${formatearMonto(vueltoCalculado)}</strong>`;
+            }
+        }
+
         Swal.fire({
             title: '¿Confirmar venta?',
             html: htmlMessage,
@@ -1463,6 +1496,7 @@ const PuntoVenta = () => {
                         tienda_slug: selectedStoreSlug,
                         metodo_pago: metodoPagoParaBackend,
                         monto_efectivo: montoEfectivoVenta,
+                        ...(vueltoCalculado > 0 ? { vuelto: vueltoCalculado } : {}),
                         ...datosAjusteParaBackend,
                         arancel_aplicado_id: arancelIdParaBackend || null,
                         detalles: activeCart.items.map(item => ({
@@ -1530,6 +1564,8 @@ const PuntoVenta = () => {
                         fecha_venta: response.data.fecha_venta, 
                         usuario_nombre: user?.first_name || user?.username || 'Usuario Desconocido',
                         metodo_pago: metodoPagoParaBackend,
+                        monto_recibido: montoRecibidoNum,
+                        vuelto: vueltoCalculado > 0 ? vueltoCalculado : null,
                         formas_pago_combinadas: isModoCombinado ? formasPago : null,
                         arancel_aplicado_nombre: arancelInfo?.nombre_plan || null,
                         arancel_aplicado_porcentaje: arancelInfo?.arancel_porcentaje || null,
@@ -1552,6 +1588,7 @@ const PuntoVenta = () => {
                     setObservacionesCC('');
                     setNumeroTarjeta('');
                     setTipoTarjeta('');
+                    setMontoRecibidoEfectivo('');
                     setDescuentoPorcentaje('');
                     setDescuentoMonto('');
                     setRecargoPorcentaje('');
@@ -2871,6 +2908,34 @@ const PuntoVenta = () => {
                             <label htmlFor="redondearMontoArriba" style={styles.redondearLabel}>Redondear total (múlt. 100 ↑)</label>
                         </div>
                         <h4 style={styles.finalTotalVenta}>Total: {formatearMonto(calculateFinalTotal())}</h4>
+                        {!formasPago.length && isEfectivo && (() => {
+                            const totalActual = calculateFinalTotal();
+                            const recibidoNum = montoRecibidoEfectivo.trim() === '' ? null : parseFloat(montoRecibidoEfectivo);
+                            const vuelto = (recibidoNum !== null && !isNaN(recibidoNum))
+                                ? Math.round((recibidoNum - totalActual) * 100) / 100
+                                : null;
+                            return (
+                                <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
+                                    <label htmlFor="montoRecibidoEfectivo" style={styles.paymentMethodLabel}>Paga con $</label>
+                                    <input
+                                        type="number"
+                                        id="montoRecibidoEfectivo"
+                                        placeholder="Opcional"
+                                        value={montoRecibidoEfectivo}
+                                        onChange={(e) => setMontoRecibidoEfectivo(e.target.value)}
+                                        style={styles.vueltoInput}
+                                        min="0"
+                                    />
+                                    {vuelto !== null && (
+                                        vuelto >= 0 ? (
+                                            <span style={styles.vueltoDisplay}>Vuelto: {formatearMonto(vuelto)}</span>
+                                        ) : (
+                                            <span style={styles.vueltoFaltante}>Falta {formatearMonto(Math.abs(vuelto))}</span>
+                                        )
+                                    )}
+                                </div>
+                            );
+                        })()}
                         <button
                             onClick={handleProcesarVenta}
                             style={{ ...styles.processSaleButton, ...(procesandoVenta ? { opacity: 0.65, cursor: 'not-allowed' } : {}) }}
@@ -3471,6 +3536,9 @@ const styles = {
     },
     cartUnitsLabel: { fontSize: '12px', color: '#94a3b8' },
     arancelWarning: { padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', color: '#92400e', fontSize: '0.9em', margin: 0 },
+    vueltoInput: { width: '90px', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', color: '#1a2926', fontSize: '0.9em' },
+    vueltoDisplay: { fontSize: '0.95em', color: '#1a6a40', fontWeight: 700, whiteSpace: 'nowrap' },
+    vueltoFaltante: { fontSize: '0.9em', color: '#e25252', fontWeight: 600, whiteSpace: 'nowrap' },
     redondearRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' },
     redondearLabel: { margin: 0, fontSize: '0.9em', cursor: 'pointer', color: '#475569' },
     inputField: { padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', boxSizing: 'border-box', color: '#1a2926', fontSize: '14px' },

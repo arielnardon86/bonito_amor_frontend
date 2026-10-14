@@ -20,6 +20,20 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Evita que el scroll del mouse cambie el valor de un <input type="number">
+// con foco -- comportamiento nativo de Chrome/Edge/Safari (no es un bug de
+// esta app), pero varios clientes reportaron que al scrollear la página con
+// el cursor arriba de un campo de monto cargado, el valor se les modificaba
+// solo sin que se dieran cuenta. Blur global en captura, antes de que el
+// navegador aplique su +/-1 por defecto -- cubre todos los inputs numéricos
+// de la app sin tener que tocarlos uno por uno.
+document.addEventListener('wheel', (e) => {
+  const el = e.target;
+  if (el && el.tagName === 'INPUT' && el.type === 'number' && document.activeElement === el) {
+    el.blur();
+  }
+}, { passive: true, capture: true });
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
