@@ -72,6 +72,10 @@ const RegistroCompras = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
 
+    // Total del mes en curso (no de la página actual) -- independiente de
+    // paginación/filtros, ver fetchTotalMes.
+    const [totalMes, setTotalMes] = useState({ total: 0, cantidad: 0, porCategoria: [] });
+
     // New egreso form
     const [formExpanded, setFormExpanded] = useState(false);
     const [newPurchaseDate, setNewPurchaseDate] = useState('');
@@ -83,7 +87,8 @@ const RegistroCompras = () => {
     const [editingCompra, setEditingCompra] = useState(null);
     const [editDate, setEditDate] = useState('');
     const [editTotal, setEditTotal] = useState('');
-    const [editConcepto, setEditConcepto] = useState('');
+    const [editCategory, setEditCategory] = useState('');
+    const [editDetail, setEditDetail] = useState('');
 
     // Filters
     const [pendingDateFrom, setPendingDateFrom] = useState('');
@@ -135,6 +140,27 @@ const RegistroCompras = () => {
         }
     }, [token, selectedStoreSlug, buildParams]);
 
+    // Total real del mes en curso para la tienda -- independiente de la
+    // página/filtro activos de la lista de abajo (antes el cartel de "Total"
+    // sumaba solo los 10 egresos de la página actual).
+    const fetchTotalMes = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/compras/total-mes/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug },
+            });
+            const data = response.data || {};
+            setTotalMes({
+                total: data.total || 0,
+                cantidad: data.cantidad || 0,
+                porCategoria: data.por_categoria || [],
+            });
+        } catch (err) {
+            console.error('Error fetching total del mes:', err.response || err.message);
+        }
+    }, [token, selectedStoreSlug]);
+
     const handleCreateCompra = async (e) => {
         e.preventDefault();
         if (!newPurchaseDate || !newPurchaseTotal || !selectedStoreSlug) {
@@ -169,6 +195,7 @@ const RegistroCompras = () => {
                     });
                     Swal.fire('¡Registrado!', 'El egreso se registró exitosamente.', 'success');
                     fetchCompras();
+                    fetchTotalMes();
                     setNewPurchaseDate('');
                     setNewPurchaseTotal('');
                     setNewPurchaseCategory('');
@@ -185,7 +212,9 @@ const RegistroCompras = () => {
         setEditingCompra(compra);
         setEditDate((compra.fecha_compra || '').split('T')[0]);
         setEditTotal(String(compra.total));
-        setEditConcepto(compra.proveedor || '');
+        const { category, detail } = parseConcepto(compra.proveedor);
+        setEditCategory(category || '');
+        setEditDetail(detail || '');
     };
 
     const handleEditCompra = async () => {
@@ -194,15 +223,20 @@ const RegistroCompras = () => {
             Swal.fire('Error', 'La fecha y el monto son obligatorios.', 'error');
             return;
         }
+        if (editCategory === 'Otros' && !editDetail.trim()) {
+            Swal.fire('Aviso', 'Para la categoría "Otros", el detalle es obligatorio.', 'warning');
+            return;
+        }
         try {
             await axios.patch(`${BASE_API_ENDPOINT}/api/compras/${editingCompra.id}/`, {
                 fecha_compra: editDate,
                 total: editTotal,
-                proveedor: editConcepto.trim(),
+                proveedor: buildConcepto(editCategory, editDetail),
             }, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
             Swal.fire('¡Actualizado!', 'El egreso se actualizó correctamente.', 'success');
             setEditingCompra(null);
             fetchCompras();
+            fetchTotalMes();
         } catch (err) {
             Swal.fire('Error', 'Error al actualizar: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
         }
@@ -226,6 +260,7 @@ const RegistroCompras = () => {
                     });
                     Swal.fire('¡Eliminado!', 'El egreso fue eliminado.', 'success');
                     fetchCompras();
+                    fetchTotalMes();
                 } catch (err) {
                     Swal.fire('Error', 'Error al eliminar: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
                 }
@@ -236,13 +271,14 @@ const RegistroCompras = () => {
     useEffect(() => {
         if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff || user.is_supervisor) && selectedStoreSlug) {
             fetchCompras();
+            fetchTotalMes();
         } else if (!authLoading && (!isAuthenticated || !user || (!user.is_superuser && !user.is_staff && !user.is_supervisor))) {
             setError("Acceso denegado. Solo el personal autorizado puede ver esta página.");
             setLoadingCompras(false);
         } else if (!authLoading && isAuthenticated && user && (user.is_superuser || user.is_staff || user.is_supervisor) && !selectedStoreSlug) {
             setLoadingCompras(false);
         }
-    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchCompras]);
+    }, [isAuthenticated, user, authLoading, selectedStoreSlug, fetchCompras, fetchTotalMes]);
 
     const handleApplyFilters = () => {
         if (pendingDateFrom && pendingDateTo && pendingDateFrom > pendingDateTo) {
@@ -279,16 +315,7 @@ const RegistroCompras = () => {
     };
 
     // Computed
-    const totalPaginaActual = compras.reduce((sum, c) => sum + parseFloat(c.total || 0), 0);
     const hasActiveFilter = !!(filterDateFrom || filterDateTo || filterSearch);
-
-    // Per-category totals for summary
-    const totalsPorCategoria = compras.reduce((acc, c) => {
-        const { category } = parseConcepto(c.proveedor);
-        const cat = category || 'Sin categoría';
-        acc[cat] = (acc[cat] || 0) + parseFloat(c.total || 0);
-        return acc;
-    }, {});
 
     if (authLoading || (isAuthenticated && !user)) {
         return <div style={styles.loadingMessage}>Cargando datos de usuario...</div>;
@@ -510,31 +537,30 @@ const RegistroCompras = () => {
                     {validationError && <p style={styles.validationError}>{validationError}</p>}
                 </div>
 
-                {/* ── Resumen del período ──────────────────────────────────────── */}
-                {compras.length > 0 && (
+                {/* ── Resumen del mes en curso (no de la página actual) ──────────── */}
+                {totalMes.cantidad > 0 && (
                     <div style={styles.summaryCard} className="rc-summary-card">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: Object.keys(totalsPorCategoria).length > 0 ? 12 : 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: totalMes.porCategoria.length > 0 ? 12 : 0 }}>
                             <span style={{ fontSize: 20 }}>💸</span>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                    Total{hasActiveFilter ? ' · filtro activo' : ' · página actual'}
+                                    Total del mes
                                 </span>
                                 <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1a2926', lineHeight: 1.1 }}>
-                                    {formatearMonto(totalPaginaActual)}
+                                    {formatearMonto(totalMes.total)}
                                 </span>
                             </div>
                             <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4, borderLeft: '1px solid #fcd34d', paddingLeft: 12 }}>
-                                {compras.length} egreso{compras.length !== 1 ? 's' : ''} en esta página
-                                {totalCount > compras.length && ` · ${totalCount} en total`}
+                                {totalMes.cantidad} egreso{totalMes.cantidad !== 1 ? 's' : ''} este mes
                             </span>
                         </div>
-                        {Object.keys(totalsPorCategoria).length > 1 && (
+                        {totalMes.porCategoria.length > 1 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, borderTop: '1px solid #fcd34d', paddingTop: 10 }}>
-                                {Object.entries(totalsPorCategoria).sort((a, b) => b[1] - a[1]).map(([cat, total]) => {
-                                    const c = categoryColor(cat);
+                                {totalMes.porCategoria.map(({ categoria, total }) => {
+                                    const c = categoryColor(categoria);
                                     return (
-                                        <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: c.bg, border: `1px solid ${c.border}` }}>
-                                            <span style={{ fontSize: 11, fontWeight: 700, color: c.color }}>{cat}</span>
+                                        <div key={categoria} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: c.bg, border: `1px solid ${c.border}` }}>
+                                            <span style={{ fontSize: 11, fontWeight: 700, color: c.color }}>{categoria}</span>
                                             <span style={{ fontSize: 12, fontWeight: 800, color: '#1a2926' }}>{formatearMonto(total)}</span>
                                         </div>
                                     );
@@ -694,18 +720,50 @@ const RegistroCompras = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label style={styles.formLabel}>Concepto</label>
+                                    <label style={styles.formLabel}>Categoría</label>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                                        {CATEGORIAS.map(cat => {
+                                            const c = categoryColor(cat);
+                                            const selected = editCategory === cat;
+                                            return (
+                                                <button
+                                                    key={cat}
+                                                    type="button"
+                                                    onClick={() => setEditCategory(selected ? '' : cat)}
+                                                    style={{
+                                                        padding: '5px 14px',
+                                                        borderRadius: '9999px',
+                                                        border: `1.5px solid ${selected ? c.color : c.border}`,
+                                                        backgroundColor: selected ? c.color : c.bg,
+                                                        color: selected ? '#fff' : c.color,
+                                                        fontSize: 13, fontWeight: 600,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s ease',
+                                                        fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+                                                    }}
+                                                >
+                                                    {cat}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={styles.formLabel}>
+                                        Detalle{editCategory === 'Otros'
+                                            ? <span style={{ color: '#e25252', fontWeight: 700, marginLeft: 4 }}>*</span>
+                                            : <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> (opcional)</span>
+                                        }
+                                    </label>
                                     <input
                                         type="text"
-                                        value={editConcepto}
-                                        onChange={(e) => setEditConcepto(e.target.value)}
-                                        style={{ ...styles.input, marginTop: 6 }}
+                                        value={editDetail}
+                                        onChange={(e) => setEditDetail(e.target.value)}
+                                        style={{ ...styles.input, marginTop: 6, ...(editCategory === 'Otros' && !editDetail.trim() ? { borderColor: '#fca5a5' } : {}) }}
                                         className="rc-input"
-                                        placeholder="Ej: Alquiler — mes de marzo"
+                                        placeholder={editCategory === 'Otros' ? 'Obligatorio: describí el egreso' : (editCategory ? `Ej: ${editCategory} mes de marzo` : 'Ej: Luz mes de marzo')}
+                                        required={editCategory === 'Otros'}
                                     />
-                                    <p style={{ margin: '6px 0 0', fontSize: 11, color: '#94a3b8' }}>
-                                        Formato sugerido: Categoría — Detalle (ej: Servicios — Luz)
-                                    </p>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>
