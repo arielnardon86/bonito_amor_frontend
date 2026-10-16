@@ -16,6 +16,7 @@ import FacturaImpresion from './components/FacturaImpresion';
 import TicketCambioImpresion from './components/TicketCambioImpresion';
 import CambioDevolucion from './components/CambioDevolucion';
 import PanelAdministracionTienda from './components/PanelAdministracionTienda';
+import ClientesSaaS from './components/ClientesSaaS';
 import Clientes from './components/Clientes';
 import Proveedores from './components/Proveedores';
 import Presupuesto from './components/Presupuesto';
@@ -337,6 +338,17 @@ const Navbar = () => {
                   </Link>
                 </li>
               </>
+            )}
+
+            {/* NO es.is_superuser (lo tienen todos los dueños de tienda) --
+                ver User.es_operador_plataforma en el backend. Exclusivo de Ariel. */}
+            {user && user.es_operador_plataforma && (
+              <li onClick={handleNavClick}>
+                <Link to="/clientes-saas" className={location.pathname === '/clientes-saas' ? 'active' : ''}>
+                  <FontAwesomeIcon icon={faStore} className="nav-icon" />
+                  <span className="sidebar-label">Clientes SaaS</span>
+                </Link>
+              </li>
             )}
 
             {user && (user.is_superuser || user.is_supervisor) && tiendasAutorizadas.some(t => t.nombre === selectedStoreSlug && t.tiene_cierre_caja) && (
@@ -1240,6 +1252,11 @@ const AppContent = () => {
               <Route path="/panel-administracion-tienda" element={
                 <ProtectedRoute adminOnly={true}>
                   <PanelAdministracionTienda />
+                </ProtectedRoute>
+              } />
+              <Route path="/clientes-saas" element={
+                <ProtectedRoute platformAdminOnly={true}>
+                  <ClientesSaaS />
                 </ProtectedRoute>
               } />
             </>

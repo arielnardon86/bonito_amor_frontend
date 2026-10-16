@@ -149,6 +149,11 @@ export const AuthProvider = ({ children }) => {
                 is_staff: decodedUser.is_staff,
                 is_superuser: decodedUser.is_superuser,
                 is_supervisor: decodedUser.is_supervisor || false,
+                // NO es lo mismo que is_superuser: todos los dueños de tienda
+                // se registran con is_superuser=True (son dueños de SU
+                // tienda). Esto es estrictamente Ariel -- único gate válido
+                // para mostrar/permitir /clientes-saas.
+                es_operador_plataforma: decodedUser.es_operador_plataforma || false,
                 cierre_caja_habilitado: decodedUser.cierre_caja_habilitado || false,
                 tienda_tiene_cierre_caja: decodedUser.tienda_tiene_cierre_caja || false,
             };
@@ -191,6 +196,7 @@ export const AuthProvider = ({ children }) => {
                     is_staff: decodedToken.is_staff,
                     is_superuser: decodedToken.is_superuser,
                     is_supervisor: decodedToken.is_supervisor || false,
+                    es_operador_plataforma: decodedToken.es_operador_plataforma || false,
                     cierre_caja_habilitado: decodedToken.cierre_caja_habilitado || false,
                     tienda_tiene_cierre_caja: decodedToken.tienda_tiene_cierre_caja || false,
                 };
