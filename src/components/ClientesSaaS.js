@@ -223,7 +223,7 @@ export default function ClientesSaaS() {
                     <table style={s.table}>
                         <thead>
                             <tr>
-                                {['Tienda', 'Plan', 'Estado', 'Próximo cobro', 'Último pago manual', 'Acciones'].map(h => (
+                                {['Tienda', 'Mail MP', 'Plan', 'Estado', 'Próximo cobro', 'Último pago manual', 'Acciones'].map(h => (
                                     <th key={h} style={s.th}>{h}</th>
                                 ))}
                             </tr>
@@ -240,6 +240,7 @@ export default function ClientesSaaS() {
                                             <div style={{ ...s.hint, color: '#f59e0b', fontWeight: 700 }}>⚠️ Pago atrasado (MP reintentando)</div>
                                         )}
                                     </td>
+                                    <td style={s.td}>{c.mp_payer_email || '—'}</td>
                                     <td style={s.td}>{c.plan_display || (c.legacy ? '—' : '—')}</td>
                                     <td style={s.td}><EstadoBadge cliente={c} /></td>
                                     <td style={s.td}>{c.legacy ? '—' : fmtFecha(c.fecha_proximo_cobro)}</td>
