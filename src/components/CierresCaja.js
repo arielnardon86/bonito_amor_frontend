@@ -70,15 +70,30 @@ export default function CierresCaja() {
     useEffect(() => { fetchCierres(); }, [fetchCierres]);
 
     const [ventasResumen, setVentasResumen] = useState({ por_metodo: [], ventas: [], total_ventas_efectivo: null });
+    // Ventas de Tienda Nube en efectivo sin atribuir a ninguna caja (ver
+    // backend CierreCajaViewSet.pendientes_tiendanube) -- un supervisor puede
+    // sumarlas acá a una caja todavía abierta, igual que el cajero dueño.
+    const [pendientesTN, setPendientesTN] = useState({ cantidad: 0, total: 0, ventas: [] });
+    // false, o el id de la venta puntual que se está asignando en este momento.
+    const [asignandoPendientesTN, setAsignandoPendientesTN] = useState(false);
 
     const abrirDetalle = async (cierre) => {
         setDetalle(cierre);
         setLoadingDetalle(true);
+        setPendientesTN({ cantidad: 0, total: 0, ventas: [] });
         try {
-            const res = await axios.get(
-                `${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/ventas-resumen/`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const peticiones = [
+                axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/ventas-resumen/`, { headers: { Authorization: `Bearer ${token}` } }),
+            ];
+            if (cierre.estado !== 'CERRADO') {
+                peticiones.push(
+                    axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/pendientes-tiendanube/`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                        params: { tienda: selectedStoreSlug },
+                    })
+                );
+            }
+            const [res, resPendientesTN] = await Promise.all(peticiones);
             const data = res.data || {};
             setVentasResumen({
                 por_metodo: data.por_metodo || [],
@@ -88,6 +103,13 @@ export default function CierresCaja() {
             setVentasDetalle((data.ventas || []).filter(v =>
                 v.metodo_pago && v.metodo_pago.toLowerCase().includes('efectivo')
             ));
+            if (resPendientesTN) {
+                setPendientesTN({
+                    cantidad: resPendientesTN.data?.cantidad || 0,
+                    total: resPendientesTN.data?.total || 0,
+                    ventas: resPendientesTN.data?.ventas || [],
+                });
+            }
         } catch {
             setVentasResumen({ por_metodo: [], ventas: [], total_ventas_efectivo: null });
             setVentasDetalle([]);
@@ -96,10 +118,31 @@ export default function CierresCaja() {
         }
     };
 
+    // Asigna a esta caja UNA venta puntual de Tienda Nube en efectivo -- por
+    // venta, no todo el total junto: con 2+ cajas abiertas, cada venta de TN
+    // puede ser de un cajero distinto.
+    const handleAsignarVentaTN = async (ventaId) => {
+        if (!detalle) return;
+        setAsignandoPendientesTN(ventaId);
+        try {
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/cierre-caja/${detalle.id}/asignar-ventas-tn-pendientes/`,
+                { venta_ids: [ventaId] },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            await abrirDetalle(detalle);
+        } catch (err) {
+            alert('No se pudo asignar esa venta a esta caja: ' + (err.response?.data?.error || err.message));
+        } finally {
+            setAsignandoPendientesTN(false);
+        }
+    };
+
     const cerrarDetalle = () => {
         setDetalle(null);
         setVentasDetalle([]);
         setVentasResumen({ por_metodo: [], ventas: [], total_ventas_efectivo: null });
+        setPendientesTN({ cantidad: 0, total: 0, ventas: [] });
         setMostrarModalCerrar(false);
         setBilletes(BILLETES_INIT);
         setNotasCierre('');
@@ -316,6 +359,41 @@ export default function CierresCaja() {
                             {fmtFecha(detalle.fecha_apertura)}
                             {detalle.fecha_cierre ? ` → ${fmtFecha(detalle.fecha_cierre)}` : ' (turno abierto)'}
                         </p>
+
+                        {pendientesTN.cantidad > 0 && (
+                            <div style={{
+                                background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10,
+                                padding: '12px 16px', marginBottom: 16,
+                            }}>
+                                <p style={{ color: '#92400e', fontSize: 13, margin: '0 0 8px' }}>
+                                    ⚠️ Hay {pendientesTN.cantidad} venta{pendientesTN.cantidad === 1 ? '' : 's'} de Tienda Nube en efectivo
+                                    ({fmt(pendientesTN.total)}) sin asignar a ninguna caja de esta tienda -- con varias cajas abiertas, cada
+                                    venta puede ser de un cajero distinto.
+                                </p>
+                                {pendientesTN.ventas.map(v => (
+                                    <div key={v.id} style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        gap: 10, padding: '6px 0', borderTop: '1px solid #fde68a', flexWrap: 'wrap',
+                                    }}>
+                                        <span style={{ color: '#92400e', fontSize: 13 }}>
+                                            {fmtFecha(v.fecha_venta)}
+                                            {v.tn_order_number ? ` — Pedido #${v.tn_order_number}` : ''}
+                                            {' — '}<strong>{fmt(v.total)}</strong>
+                                        </span>
+                                        <button
+                                            onClick={() => handleAsignarVentaTN(v.id)}
+                                            disabled={!!asignandoPendientesTN}
+                                            style={{
+                                                padding: '5px 12px', borderRadius: 8, border: 'none',
+                                                cursor: asignandoPendientesTN ? 'not-allowed' : 'pointer',
+                                                background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
+                                            }}>
+                                            {asignandoPendientesTN === v.id ? 'Sumando...' : 'Sumar a esta caja'}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Resumen financiero */}
                         <div style={s.section}>

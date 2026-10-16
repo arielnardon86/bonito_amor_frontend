@@ -209,6 +209,7 @@ const PuntoVenta = () => {
         removeProductFromCart,
         decrementProductQuantity,
         setProductQuantityInCart,
+        setDescuentoItemEnCarrito,
         finalizeCart,
         deleteCart
     } = useSales();
@@ -330,6 +331,20 @@ const PuntoVenta = () => {
     });
     const [mostrarFormEgreso, setMostrarFormEgreso]   = useState(false);
     const [guardandoCierre, setGuardandoCierre]       = useState(false);
+    // Ventas de Tienda Nube en efectivo que no se pudieron atribuir solas a
+    // ninguna caja (0 o 2+ cajas abiertas en la tienda cuando llegó el webhook,
+    // ver _procesar_orden_tiendanube en el backend) -- se ofrece sumarlas acá
+    // antes de cerrar, si el cajero reconoce que esa plata la cobró él.
+    const [pendientesTN, setPendientesTN] = useState({ cantidad: 0, total: 0, ventas: [] });
+    // false, o el id de la venta puntual que se está asignando en este momento.
+    const [asignandoPendientesTN, setAsignandoPendientesTN] = useState(false);
+    // "Cobrar venta de Tienda Nube": versión en el momento (no al cerrar) de lo
+    // mismo -- el cajero la usa apenas cobra en mano una venta de TN en
+    // efectivo (ej. contraentrega), sin tener que acordarse después al cerrar.
+    const [mostrarModalCobrarTN, setMostrarModalCobrarTN] = useState(false);
+    const [pendientesTNCobro, setPendientesTNCobro] = useState({ cantidad: 0, ventas: [] });
+    const [cargandoPendientesTNCobro, setCargandoPendientesTNCobro] = useState(false);
+    const [cobrandoTNId, setCobrandoTNId] = useState(false);
     // ── Modal Abrir Caja ─────────────────────────────────────────────────────
     const [mostrarModalAbrirCaja, setMostrarModalAbrirCaja] = useState(false);
     const [cambioAbrirInput, setCambioAbrirInput]           = useState('');
@@ -422,17 +437,80 @@ const PuntoVenta = () => {
         setMostrarModalCierre(true);
         if (!cierre) return;
         try {
-            const [resEfectivo, resResumen] = await Promise.all([
+            const [resEfectivo, resResumen, resPendientesTN] = await Promise.all([
                 axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/ventas-efectivo/`, { headers: { Authorization: `Bearer ${token}` } }),
                 axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/ventas-resumen/`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/pendientes-tiendanube/`, { headers: { Authorization: `Bearer ${token}` }, params: { tienda: selectedStoreSlug } }),
             ]);
             setVentasEfectivo(resEfectivo.data || []);
             setVentasPorMetodo(resResumen.data?.por_metodo || []);
+            setPendientesTN({
+                cantidad: resPendientesTN.data?.cantidad || 0,
+                total: resPendientesTN.data?.total || 0,
+                ventas: resPendientesTN.data?.ventas || [],
+            });
         } catch {
             setVentasEfectivo([]);
             setVentasPorMetodo([]);
+            setPendientesTN({ cantidad: 0, total: 0, ventas: [] });
         }
     }, [token, selectedStoreSlug, cierreActivo]);
+
+    // Suma a la caja activa UNA venta puntual de Tienda Nube en efectivo que
+    // quedó sin asignar (ver comentario de pendientesTN) -- por venta, no todo
+    // el total junto: con 2+ cajas abiertas, cada una pudo haber cobrado una
+    // venta de TN distinta, no necesariamente todas la misma persona.
+    const handleAsignarVentaTN = useCallback(async (ventaId) => {
+        if (!cierreActivo) return;
+        setAsignandoPendientesTN(ventaId);
+        try {
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/cierre-caja/${cierreActivo.id}/asignar-ventas-tn-pendientes/`,
+                { venta_ids: [ventaId] },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            const [resEfectivo, resResumen] = await Promise.all([
+                axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierreActivo.id}/ventas-efectivo/`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/${cierreActivo.id}/ventas-resumen/`, { headers: { Authorization: `Bearer ${token}` } }),
+            ]);
+            setVentasEfectivo(resEfectivo.data || []);
+            setVentasPorMetodo(resResumen.data?.por_metodo || []);
+            setPendientesTN(p => {
+                const ventasRestantes = p.ventas.filter(v => v.id !== ventaId);
+                const ventaAsignada = p.ventas.find(v => v.id === ventaId);
+                return {
+                    cantidad: ventasRestantes.length,
+                    total: p.total - Number(ventaAsignada?.total || 0),
+                    ventas: ventasRestantes,
+                };
+            });
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo asignar esa venta a esta caja.', 'error');
+        } finally {
+            setAsignandoPendientesTN(false);
+        }
+    }, [token, cierreActivo]);
+
+    // "Cobrar venta de Tienda Nube" -- el cajero la usa apenas cobra en mano
+    // una venta de TN en efectivo (ej. contraentrega), para que quede sumada a
+    // SU caja en el momento. Reusa el mismo endpoint que el aviso del cierre;
+    // solo cambia cuándo se dispara.
+    const abrirModalCobrarTN = useCallback(async () => {
+        setMostrarModalCobrarTN(true);
+        if (!token || !selectedStoreSlug) return;
+        setCargandoPendientesTNCobro(true);
+        try {
+            const res = await axios.get(`${BASE_API_ENDPOINT}/api/cierre-caja/pendientes-tiendanube/`, {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { tienda: selectedStoreSlug },
+            });
+            setPendientesTNCobro({ cantidad: res.data?.cantidad || 0, ventas: res.data?.ventas || [] });
+        } catch {
+            setPendientesTNCobro({ cantidad: 0, ventas: [] });
+        } finally {
+            setCargandoPendientesTNCobro(false);
+        }
+    }, [token, selectedStoreSlug]);
 
     const _getCierreActivo = useCallback(async () => {
         let cierre = cierreActivo;
@@ -448,6 +526,31 @@ const PuntoVenta = () => {
         }
         return cierre;
     }, [token, selectedStoreSlug, cierreActivo]);
+
+    const handleCobrarVentaTN = useCallback(async (ventaId) => {
+        const cierre = await _getCierreActivo();
+        if (!cierre || cierre.estado === 'CERRADO') {
+            Swal.fire('Abrí tu caja primero', 'Necesitás tener una caja abierta para sumarle esta venta.', 'warning');
+            return;
+        }
+        setCobrandoTNId(ventaId);
+        try {
+            await axios.post(
+                `${BASE_API_ENDPOINT}/api/cierre-caja/${cierre.id}/asignar-ventas-tn-pendientes/`,
+                { venta_ids: [ventaId] },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setPendientesTNCobro(p => {
+                const ventasRestantes = p.ventas.filter(v => v.id !== ventaId);
+                return { cantidad: ventasRestantes.length, ventas: ventasRestantes };
+            });
+            Swal.fire({ icon: 'success', title: 'Sumado a tu caja', timer: 1500, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo asignar esa venta a tu caja.', 'error');
+        } finally {
+            setCobrandoTNId(false);
+        }
+    }, [token, _getCierreActivo]);
 
     const handleEliminarEgreso = useCallback(async (egresoId) => {
         const confirm = await Swal.fire({
@@ -1499,17 +1602,35 @@ const PuntoVenta = () => {
                         ...(vueltoCalculado > 0 ? { vuelto: vueltoCalculado } : {}),
                         ...datosAjusteParaBackend,
                         arancel_aplicado_id: arancelIdParaBackend || null,
-                        detalles: activeCart.items.map(item => ({
-                            producto: item.product.id,
-                            cantidad: item.quantity,
-                            // Venta fraccionada: el backend recalcula precio_unitario a partir del
-                            // precio por Kg/Metro de todas formas (nunca confía en esto para ese
-                            // caso), pero se manda ya coherente para que un eventual preview no
-                            // muestre otro número.
-                            precio_unitario: item.product.se_vende_por_peso
-                                ? parseFloat(item.product.precio) / (DIVISOR_UNIDAD_FRACCIONADA[item.product.unidad_fraccionada] || 1000)
-                                : parseFloat(item.product.precio),
-                        })),
+                        detalles: activeCart.items.map(item => {
+                            if (item.product.se_vende_por_peso) {
+                                // Venta fraccionada: el backend recalcula precio_unitario a partir del
+                                // precio por Kg/Metro de todas formas (nunca confía en esto para ese
+                                // caso), pero se manda ya coherente para que un eventual preview no
+                                // muestre otro número. No soporta descuentoItemPorcentaje (ver celda
+                                // de la tabla, deshabilitada para estos productos).
+                                return {
+                                    producto: item.product.id,
+                                    cantidad: item.quantity,
+                                    precio_unitario: parseFloat(item.product.precio) / (DIVISOR_UNIDAD_FRACCIONADA[item.product.unidad_fraccionada] || 1000),
+                                };
+                            }
+                            // Descuento por línea en % (no por unidad -- ver calcularSubtotalItem/
+                            // setDescuentoItemEnCarrito en SalesContext): el backend no tiene un
+                            // campo de descuento por detalle, así que se hornea acá en el
+                            // precio_unitario -- un % sobre el total de la línea es matemáticamente
+                            // lo mismo que ese % sobre el precio unitario.
+                            const precioBase = parseFloat(item.product.precio);
+                            const porcentaje = Math.min(100, Math.max(0, parseFloat(item.descuentoItemPorcentaje) || 0));
+                            const precioUnitario = porcentaje > 0
+                                ? Math.round(precioBase * (1 - porcentaje / 100) * 100) / 100
+                                : precioBase;
+                            return {
+                                producto: item.product.id,
+                                cantidad: item.quantity,
+                                precio_unitario: precioUnitario,
+                            };
+                        }),
                     };
                     if (arancelMLParaBackend !== undefined) {
                         ventaData.arancel_total_ml = arancelMLParaBackend;
@@ -1569,13 +1690,25 @@ const PuntoVenta = () => {
                         formas_pago_combinadas: isModoCombinado ? formasPago : null,
                         arancel_aplicado_nombre: arancelInfo?.nombre_plan || null,
                         arancel_aplicado_porcentaje: arancelInfo?.arancel_porcentaje || null,
-                        detalles: activeCart.items.map(item => ({
-                            producto_nombre: item.product.nombre,
-                            producto_talle: item.product.talle,
-                            producto_variante2: item.product.variante2,
-                            cantidad: item.quantity,
-                            precio_unitario: parseFloat(item.product.precio)
-                        }))
+                        detalles: activeCart.items.map(item => {
+                            // Mismo cálculo que el detalles de más arriba (lo que realmente se
+                            // guardó) -- así el recibo impreso coincide con lo cobrado, no con
+                            // el precio de catálogo sin descuento.
+                            const precioBase = parseFloat(item.product.precio);
+                            const porcentaje = !item.product.se_vende_por_peso
+                                ? Math.min(100, Math.max(0, parseFloat(item.descuentoItemPorcentaje) || 0))
+                                : 0;
+                            const precioUnitario = porcentaje > 0
+                                ? Math.round(precioBase * (1 - porcentaje / 100) * 100) / 100
+                                : precioBase;
+                            return {
+                                producto_nombre: item.product.nombre,
+                                producto_talle: item.product.talle,
+                                producto_variante2: item.product.variante2,
+                                cantidad: item.quantity,
+                                precio_unitario: precioUnitario,
+                            };
+                        })
                     };
 
                     finalizeCart(activeCartId);
@@ -2076,6 +2209,64 @@ const PuntoVenta = () => {
                 </div>
             </div>
 
+            {/* Modal Cobrar venta de Tienda Nube */}
+            {mostrarModalCobrarTN && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)',
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+                    zIndex: 2000, overflowY: 'auto', padding: '40px 10px',
+                }}>
+                    <div style={{
+                        background: '#fff', borderRadius: 16, padding: '24px 24px 20px', width: '100%', maxWidth: 480,
+                        boxShadow: '0 20px 60px rgba(0,0,0,.15)',
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1a2926' }}>
+                                Cobrar venta de Tienda Nube
+                            </h2>
+                            <button onClick={() => setMostrarModalCobrarTN(false)}
+                                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}
+                                aria-label="Cerrar">✕</button>
+                        </div>
+                        <p style={{ color: '#475569', fontSize: 13, marginBottom: 16 }}>
+                            Elegí la venta de Tienda Nube que acabás de cobrar en efectivo -- se suma al toque a tu caja abierta.
+                        </p>
+                        {cargandoPendientesTNCobro ? (
+                            <p style={{ color: '#94a3b8', fontSize: 14, textAlign: 'center' }}>Buscando...</p>
+                        ) : pendientesTNCobro.cantidad === 0 ? (
+                            <p style={{ color: '#94a3b8', fontSize: 14, textAlign: 'center' }}>No hay ventas de Tienda Nube en efectivo pendientes de asignar.</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {pendientesTNCobro.ventas.map(v => (
+                                    <div key={v.id} style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                                        padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 10, flexWrap: 'wrap',
+                                    }}>
+                                        <span style={{ fontSize: 13, color: '#1a2926' }}>
+                                            {v.tn_order_number ? <strong>Pedido #{v.tn_order_number}</strong> : <strong>Venta TN</strong>}
+                                            <br />
+                                            <span style={{ color: '#94a3b8' }}>{new Date(v.fecha_venta).toLocaleString('es-AR')}</span>
+                                            {' — '}
+                                            <strong>{formatearMonto(v.total)}</strong>
+                                        </span>
+                                        <button
+                                            onClick={() => handleCobrarVentaTN(v.id)}
+                                            disabled={!!cobrandoTNId}
+                                            style={{
+                                                padding: '7px 14px', borderRadius: 8, border: 'none',
+                                                cursor: cobrandoTNId ? 'not-allowed' : 'pointer',
+                                                background: '#5dc87a', color: '#fff', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap',
+                                            }}>
+                                            {cobrandoTNId === v.id ? 'Sumando...' : 'Es esta'}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Modal Abrir Caja */}
             {mostrarModalAbrirCaja && (
                 <div style={{
@@ -2163,6 +2354,41 @@ const PuntoVenta = () => {
                             <p style={{ color: '#475569' }}>La caja ya fue cerrada. Para un nuevo turno, cerrá sesión e iniciá nuevamente.</p>
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+                                {pendientesTN.cantidad > 0 && (
+                                    <div style={{
+                                        gridColumn: '1 / -1', background: '#fffbeb', border: '1px solid #fcd34d',
+                                        borderRadius: 10, padding: '12px 16px',
+                                    }}>
+                                        <p style={{ color: '#92400e', fontSize: 13, margin: '0 0 8px' }}>
+                                            ⚠️ Hay {pendientesTN.cantidad} venta{pendientesTN.cantidad === 1 ? '' : 's'} de Tienda Nube en efectivo
+                                            ({formatearMonto(pendientesTN.total)}) sin asignar a ninguna caja. Si alguna la cobraste vos, sumala a esta
+                                            caja antes de cerrar -- con varias cajas abiertas, cada venta puede ser de un cajero distinto.
+                                        </p>
+                                        {pendientesTN.ventas.map(v => (
+                                            <div key={v.id} style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                gap: 10, padding: '6px 0', borderTop: '1px solid #fde68a', flexWrap: 'wrap',
+                                            }}>
+                                                <span style={{ color: '#92400e', fontSize: 13 }}>
+                                                    {new Date(v.fecha_venta).toLocaleString('es-AR')}
+                                                    {v.tn_order_number ? ` — Pedido #${v.tn_order_number}` : ''}
+                                                    {' — '}<strong>{formatearMonto(v.total)}</strong>
+                                                </span>
+                                                <button
+                                                    onClick={() => handleAsignarVentaTN(v.id)}
+                                                    disabled={!!asignandoPendientesTN}
+                                                    style={{
+                                                        padding: '5px 12px', borderRadius: 8, border: 'none',
+                                                        cursor: asignandoPendientesTN ? 'not-allowed' : 'pointer',
+                                                        background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
+                                                    }}>
+                                                    {asignandoPendientesTN === v.id ? 'Sumando...' : 'Sumar a esta caja'}
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
 
                                 {/* ── Columna izquierda: ventas y egresos ── */}
                                 <div>
@@ -2520,6 +2746,16 @@ const PuntoVenta = () => {
                             autoFocus
                         />
                     </div>
+                    {tiendaInfo?.tn_sync_habilitado && (
+                        <button
+                            type="button"
+                            onClick={abrirModalCobrarTN}
+                            style={styles.cobrarTNButton}
+                            title="Asignar a tu caja una venta de Tienda Nube cobrada en efectivo"
+                        >
+                            Cobrar venta de Tienda Nube
+                        </button>
+                    )}
                 </div>
 
                 {productoSeleccionado && !productoPesoPendiente && !productoPrecioVariablePendiente && (
@@ -2559,6 +2795,7 @@ const PuntoVenta = () => {
                                             <th style={styles.th}>Producto</th>
                                             <th style={styles.th}>Cant.</th>
                                             <th style={styles.th}>P. unit.</th>
+                                            <th style={styles.th}>Descuento</th>
                                             <th style={styles.th}>Subtotal</th>
                                             <th style={styles.th}>Acciones</th>
                                         </tr>
@@ -2617,6 +2854,28 @@ const PuntoVenta = () => {
                                                     )}
                                                 </td>
                                                 <td style={styles.td}>{formatearMonto(item.product.precio)}{item.product.se_vende_por_peso ? ` /${unidadDe(item.product).abrev}` : ''}</td>
+                                                <td style={styles.td}>
+                                                    {item.product.se_vende_por_peso ? (
+                                                        <span style={{ color: '#94a3b8' }}>—</span>
+                                                    ) : (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                max="100"
+                                                                placeholder="0"
+                                                                value={item.descuentoItemPorcentaje || ''}
+                                                                onChange={(e) => {
+                                                                    const val = Math.min(100, Math.max(0, parseFloat(e.target.value) || 0));
+                                                                    setDescuentoItemEnCarrito(activeCartId, item.product.id, val);
+                                                                }}
+                                                                style={styles.descuentoItemInput}
+                                                                aria-label={`% de descuento para ${item.product.nombre}`}
+                                                            />
+                                                            <span style={{ color: '#94a3b8', fontSize: '0.9em' }}>%</span>
+                                                        </div>
+                                                    )}
+                                                </td>
                                                 <td style={styles.td}>{formatearMonto(calcularSubtotalItem(item))}</td>
                                                 <td style={styles.td}>
                                                     <button onClick={() => handleRemoveProductoEnVenta(item.product.id)} style={styles.removeButton}>
@@ -3525,6 +3784,10 @@ const styles = {
         boxSizing: 'border-box', color: '#1a2926', fontSize: '14px', width: 160,
     },
     searchRow: { marginTop: '12px', marginBottom: '12px' },
+    cobrarTNButton: {
+        marginTop: '10px', padding: '9px 16px', borderRadius: 10, border: '1px solid #93c5fd',
+        background: '#eff6ff', color: '#1e4a8a', cursor: 'pointer', fontWeight: 600, fontSize: '13px',
+    },
     cartTableWrap: { marginTop: '16px', marginBottom: '8px', overflow: 'hidden' },
     subtotalRow: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', margin: '12px 0 4px' },
     cartUnitsRow: { display: 'flex', alignItems: 'center', gap: '8px' },
@@ -3537,6 +3800,7 @@ const styles = {
     cartUnitsLabel: { fontSize: '12px', color: '#94a3b8' },
     arancelWarning: { padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', color: '#92400e', fontSize: '0.9em', margin: 0 },
     vueltoInput: { width: '90px', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', color: '#1a2926', fontSize: '0.9em' },
+    descuentoItemInput: { width: '55px', padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: '6px', color: '#1a2926', fontSize: '0.9em' },
     vueltoDisplay: { fontSize: '0.95em', color: '#1a6a40', fontWeight: 700, whiteSpace: 'nowrap' },
     vueltoFaltante: { fontSize: '0.9em', color: '#e25252', fontWeight: 600, whiteSpace: 'nowrap' },
     redondearRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '8px' },

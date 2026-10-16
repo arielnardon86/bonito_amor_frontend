@@ -10,13 +10,17 @@ const SalesContext = createContext();
 // cantidad, no precio * quantity directo como el resto de los productos.
 export const DIVISOR_UNIDAD_FRACCIONADA = { KG: 1000, METRO: 100 };
 
+// descuentoItemPorcentaje: % que se le resta al TOTAL de la línea (no por
+// unidad, no importa la cantidad) -- ver setDescuentoItemEnCarrito. Clamp a
+// 0-100 para que un valor fuera de rango no vuelva el subtotal negativo ni
+// lo infle.
 export const calcularSubtotalItem = (item) => {
   const precio = parseFloat(item.product.precio) || 0;
-  if (item.product.se_vende_por_peso) {
-    const divisor = DIVISOR_UNIDAD_FRACCIONADA[item.product.unidad_fraccionada] || 1000;
-    return (precio / divisor) * item.quantity;
-  }
-  return precio * item.quantity;
+  const bruto = item.product.se_vende_por_peso
+    ? (precio / (DIVISOR_UNIDAD_FRACCIONADA[item.product.unidad_fraccionada] || 1000)) * item.quantity
+    : precio * item.quantity;
+  const porcentaje = Math.min(100, Math.max(0, parseFloat(item.descuentoItemPorcentaje) || 0));
+  return bruto * (1 - porcentaje / 100);
 };
 
 export const useSales = () => {
@@ -116,7 +120,7 @@ export const SalesProvider = ({ children }) => {
           );
         } else {
           // Store the product with its price ensured as a number
-          updatedItems = [...cart.items, { product: { ...productToAdd, precio: productPrice }, quantity: quantity }];
+          updatedItems = [...cart.items, { product: { ...productToAdd, precio: productPrice }, quantity: quantity, descuentoItemPorcentaje: 0 }];
         }
         
         // Recalculate total based on the numerical price
@@ -135,7 +139,7 @@ export const SalesProvider = ({ children }) => {
     setCarts(prevCarts => prevCarts.map(cart => {
       if (cart.id === cartId) { // Use cartId to find the correct cart
         const updatedItems = cart.items.filter(item => item.product.id !== productId);
-        const updatedTotal = updatedItems.reduce((sum, item) => sum + (parseFloat(item.product.precio) * item.quantity), 0);
+        const updatedTotal = updatedItems.reduce((sum, item) => sum + calcularSubtotalItem(item), 0);
         return { ...cart, items: updatedItems, total: updatedTotal };
       }
       return cart;
@@ -199,6 +203,23 @@ export const SalesProvider = ({ children }) => {
     }));
   };
 
+  // Descuento en % por línea del carrito (no por unidad): se aplica al total
+  // de esa línea sin importar la cantidad cargada -- ver calcularSubtotalItem,
+  // que lo resta del bruto (precio * cantidad).
+  const setDescuentoItemEnCarrito = (cartId, productId, descuentoPorcentaje) => {
+    if (!cartId) return;
+
+    setCarts(prevCarts => prevCarts.map(cart => {
+      if (cart.id !== cartId) return cart;
+
+      const updatedItems = cart.items.map(item =>
+        item.product.id === productId ? { ...item, descuentoItemPorcentaje: descuentoPorcentaje } : item
+      );
+      const updatedTotal = updatedItems.reduce((sum, item) => sum + calcularSubtotalItem(item), 0);
+      return { ...cart, items: updatedItems, total: updatedTotal };
+    }));
+  };
+
   const deleteCart = (cartIdToDelete) => {
     setCarts(prevCarts => {
       const remainingCarts = prevCarts.filter(cart => cart.id !== cartIdToDelete);
@@ -233,6 +254,7 @@ export const SalesProvider = ({ children }) => {
     removeProductFromCart,
     decrementProductQuantity,
     setProductQuantityInCart,
+    setDescuentoItemEnCarrito,
     finalizeCart,
     deleteCart,
   };
