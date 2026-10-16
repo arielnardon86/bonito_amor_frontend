@@ -156,6 +156,27 @@ export default function ClientesSaaS() {
         }
     };
 
+    // Diagnóstico puntual: trae el payload crudo que devuelve MP para esta
+    // suscripción -- para cuando el panel no coincide con lo que se ve en el
+    // dashboard de MP (ej. "Cobro: Al día" acá pero "Atrasado" en MP).
+    const verDiagnosticoMP = async (cliente) => {
+        Swal.fire({ title: 'Consultando Mercado Pago...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+        try {
+            const res = await axios.get(
+                `${BASE_API_ENDPOINT}/api/admin-saas/clientes/${cliente.tienda_id}/diagnostico-mp/`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            Swal.fire({
+                title: `MP — ${res.data.tienda}`,
+                html: `<pre style="text-align:left; font-size:11px; max-height:60vh; overflow:auto; background:#f1f5f9; padding:10px; border-radius:8px;">${JSON.stringify(res.data, null, 2)}</pre>`,
+                width: 650,
+                confirmButtonText: 'Cerrar',
+            });
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo consultar Mercado Pago.', 'error');
+        }
+    };
+
     const eliminarPago = async (pagoId) => {
         const confirm = await Swal.fire({
             title: '¿Eliminar este pago?',
@@ -262,6 +283,11 @@ export default function ClientesSaaS() {
                                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                             <button onClick={() => abrirMarcarPago(c)} style={s.btnGreen}>Marcar pago</button>
                                             <button onClick={() => abrirHistorial(c)} style={s.btnBlue}>Historial</button>
+                                            {!c.legacy && (
+                                                <button onClick={() => verDiagnosticoMP(c)} style={s.btnGris} title="Ver el dato crudo que devuelve Mercado Pago para esta suscripción">
+                                                    🔍 MP
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -340,7 +366,7 @@ export default function ClientesSaaS() {
 }
 
 const s = {
-    page: { padding: '24px 20px', maxWidth: 1100, margin: '0 auto', fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" },
+    page: { padding: '24px 20px', maxWidth: 1600, margin: '0 auto', fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" },
     titulo: { fontSize: 22, fontWeight: 700, color: '#1a2926', margin: '0 0 4px' },
     subtitulo: { fontSize: 13, color: '#94a3b8', margin: '0 0 18px' },
     buscador: {
@@ -373,6 +399,10 @@ const s = {
     btnMuted: {
         padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
         background: '#e2e8f0', color: '#475569', fontWeight: 700, fontSize: 13,
+    },
+    btnGris: {
+        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+        background: '#94a3b8', color: '#fff', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
     },
     btnRojoChico: {
         background: 'none', border: 'none', color: '#e25252', cursor: 'pointer',
