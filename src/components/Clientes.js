@@ -205,6 +205,7 @@ const Clientes = () => {
                                     <th style={styles.th}>Nombre / Razón Social</th>
                                     <th style={styles.th}>CUIT-CUIL</th>
                                     <th style={styles.th}>Teléfono</th>
+                                    <th style={styles.th}>Dirección</th>
                                     <th style={styles.th}>Saldo pendiente</th>
                                     <th style={styles.th}>Acciones</th>
                                 </tr>
@@ -217,6 +218,7 @@ const Clientes = () => {
                                             <td style={styles.td}>{cliente.nombre_razon_social}</td>
                                             <td style={styles.td}>{cliente.cuit_cuil}</td>
                                             <td style={styles.td}>{cliente.telefono || '—'}</td>
+                                            <td style={styles.td}>{cliente.direccion || '—'}</td>
                                             <td style={{ ...styles.td, fontWeight: 700, color: saldo > 0 ? '#e25252' : '#1a6a40' }}>
                                                 {formatearMonto(saldo)}
                                                 {cliente.tiene_deuda_vencida && (
