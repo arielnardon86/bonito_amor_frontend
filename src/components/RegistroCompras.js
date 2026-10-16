@@ -24,6 +24,9 @@ const PAGE_SIZE = 10;
 
 const CATEGORIAS = ['Alquiler', 'Servicios', 'Impuestos', 'Sueldos', 'Otros'];
 
+// Fila vacía del modal "Nuevo egreso" -- ver EGRESOS_NUEVOS/handleRegistrarEgresosLote.
+const EGRESO_VACIO = { fecha: '', categoria: '', detalle: '', monto: '' };
+
 // Assembles proveedor string from category + detail
 const buildConcepto = (category, detail) => {
     const d = (detail || '').trim();
@@ -76,12 +79,11 @@ const RegistroCompras = () => {
     // paginación/filtros, ver fetchTotalMes.
     const [totalMes, setTotalMes] = useState({ total: 0, cantidad: 0, porCategoria: [] });
 
-    // New egreso form
-    const [formExpanded, setFormExpanded] = useState(false);
-    const [newPurchaseDate, setNewPurchaseDate] = useState('');
-    const [newPurchaseTotal, setNewPurchaseTotal] = useState('');
-    const [newPurchaseCategory, setNewPurchaseCategory] = useState(() => sessionStorage.getItem('rc_lastCategory') || '');
-    const [newPurchaseDetail, setNewPurchaseDetail] = useState('');
+    // Modal "Nuevo egreso" -- carga varios a la vez, igual que "Agregar variante"
+    // en Productos.js: una fila editable por egreso, se registran todos juntos.
+    const [showNuevoEgresoModal, setShowNuevoEgresoModal] = useState(false);
+    const [egresosNuevos, setEgresosNuevos] = useState([{ ...EGRESO_VACIO }]);
+    const [guardandoEgresosLote, setGuardandoEgresosLote] = useState(false);
 
     // Edit state
     const [editingCompra, setEditingCompra] = useState(null);
@@ -161,51 +163,91 @@ const RegistroCompras = () => {
         }
     }, [token, selectedStoreSlug]);
 
-    const handleCreateCompra = async (e) => {
-        e.preventDefault();
-        if (!newPurchaseDate || !newPurchaseTotal || !selectedStoreSlug) {
-            Swal.fire('Error', 'La fecha y el monto son obligatorios.', 'error');
+    const abrirModalNuevoEgreso = () => {
+        const hoy = new Date().toISOString().split('T')[0];
+        const ultimaCategoria = sessionStorage.getItem('rc_lastCategory') || '';
+        setEgresosNuevos([{ ...EGRESO_VACIO, fecha: hoy, categoria: ultimaCategoria }]);
+        setShowNuevoEgresoModal(true);
+    };
+
+    const agregarFilaEgreso = () => {
+        setEgresosNuevos(prev => {
+            const ultima = prev[prev.length - 1];
+            // Repite fecha y categoría de la última fila -- lo más probable es
+            // que se repitan entre egresos cargados juntos (ej. varios sueldos
+            // del mismo día), así solo hay que tipear monto/detalle de nuevo.
+            return [...prev, { ...EGRESO_VACIO, fecha: ultima?.fecha || '', categoria: ultima?.categoria || '' }];
+        });
+    };
+
+    const quitarFilaEgreso = (index) => {
+        setEgresosNuevos(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const actualizarFilaEgreso = (index, campo, valor) => {
+        setEgresosNuevos(prev => prev.map((fila, i) => i === index ? { ...fila, [campo]: valor } : fila));
+    };
+
+    // Carga varios egresos juntos, uno por fila -- mismo patrón que "Agregar
+    // variante" en Productos.js: se registran en secuencia (no hay un
+    // endpoint de creación en lote) y las filas ya registradas se van sacando
+    // de la lista a medida que confirman, para que un error a mitad de camino
+    // no las vuelva a mandar duplicadas si se reintenta.
+    const handleRegistrarEgresosLote = async () => {
+        const filas = egresosNuevos.filter(f => f.fecha || f.monto || f.categoria || f.detalle.trim());
+        if (filas.length === 0) {
+            Swal.fire('Error', 'Cargá al menos un egreso.', 'error');
             return;
         }
-        if (newPurchaseCategory === 'Otros' && !newPurchaseDetail.trim()) {
-            Swal.fire('Aviso', 'Para la categoría "Otros", el detalle es obligatorio.', 'warning');
-            return;
+        for (const fila of filas) {
+            if (!fila.fecha || !fila.monto) {
+                Swal.fire('Error', 'Todas las filas cargadas deben tener fecha y monto.', 'error');
+                return;
+            }
+            if (fila.categoria === 'Otros' && !fila.detalle.trim()) {
+                Swal.fire('Aviso', 'Para la categoría "Otros", el detalle es obligatorio.', 'warning');
+                return;
+            }
         }
-        if (newPurchaseCategory) {
-            sessionStorage.setItem('rc_lastCategory', newPurchaseCategory);
-        }
-        const concepto = buildConcepto(newPurchaseCategory, newPurchaseDetail);
-        Swal.fire({
-            title: '¿Confirmar registro?',
-            text: `Se registrará un egreso de ${formatearMonto(newPurchaseTotal)}${concepto ? ` · ${concepto}` : ''}.`,
+        const totalLote = filas.reduce((s, f) => s + (parseFloat(f.monto) || 0), 0);
+        const confirm = await Swal.fire({
+            title: `¿Registrar ${filas.length} egreso${filas.length !== 1 ? 's' : ''}?`,
+            text: `Total: ${formatearMonto(totalLote)}`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Sí, registrar',
             cancelButtonText: 'Cancelar',
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                try {
-                    await axios.post(`${BASE_API_ENDPOINT}/api/compras/`, {
-                        fecha_compra: newPurchaseDate,
-                        total: newPurchaseTotal,
-                        proveedor: concepto,
-                        tienda_slug: selectedStoreSlug,
-                    }, {
-                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-                    });
-                    Swal.fire('¡Registrado!', 'El egreso se registró exitosamente.', 'success');
-                    fetchCompras();
-                    fetchTotalMes();
-                    setNewPurchaseDate('');
-                    setNewPurchaseTotal('');
-                    setNewPurchaseCategory('');
-                    setNewPurchaseDetail('');
-                    setFormExpanded(false);
-                } catch (err) {
-                    Swal.fire('Error', 'Error al registrar: ' + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
-                }
-            }
         });
+        if (!confirm.isConfirmed) return;
+
+        setGuardandoEgresosLote(true);
+        let pendientes = filas;
+        try {
+            for (const fila of filas) {
+                const concepto = buildConcepto(fila.categoria, fila.detalle);
+                await axios.post(`${BASE_API_ENDPOINT}/api/compras/`, {
+                    fecha_compra: fila.fecha,
+                    total: fila.monto,
+                    proveedor: concepto,
+                    tienda_slug: selectedStoreSlug,
+                }, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                });
+                pendientes = pendientes.slice(1);
+                if (fila.categoria) sessionStorage.setItem('rc_lastCategory', fila.categoria);
+            }
+            Swal.fire('¡Registrado!', `${filas.length} egreso${filas.length !== 1 ? 's' : ''} registrado${filas.length !== 1 ? 's' : ''} correctamente.`, 'success');
+            setShowNuevoEgresoModal(false);
+            setEgresosNuevos([{ ...EGRESO_VACIO }]);
+            fetchCompras();
+            fetchTotalMes();
+        } catch (err) {
+            setEgresosNuevos(pendientes.length > 0 ? pendientes : [{ ...EGRESO_VACIO }]);
+            const registrados = filas.length - pendientes.length;
+            Swal.fire('Error', `Se registraron ${registrados} de ${filas.length}. ` + (err.response ? JSON.stringify(err.response.data) : err.message), 'error');
+        } finally {
+            setGuardandoEgresosLote(false);
+        }
     };
 
     const handleOpenEdit = (compra) => {
@@ -353,104 +395,114 @@ const RegistroCompras = () => {
                             ]}
                         />
                     </div>
-                    <button
-                        onClick={() => setFormExpanded(v => !v)}
-                        style={{ ...styles.newButton, ...(formExpanded ? styles.newButtonCancel : {}) }}
-                    >
-                        {formExpanded ? '✕  Cancelar' : '+ Nuevo egreso'}
+                    <button onClick={abrirModalNuevoEgreso} style={styles.newButton}>
+                        + Nuevo egreso
                     </button>
                 </div>
 
-                {/* ── Formulario colapsable ────────────────────────────────────── */}
-                {formExpanded && (
-                    <div style={styles.formCard} className="rc-form-card">
-                        <h2 style={styles.cardTitle}>Nuevo egreso</h2>
+                {/* ── Formulario colapsable (legado, ver modal más abajo) ─────────── */}
+                {/* ── Modal: Nuevo egreso (carga varios a la vez) ──────────────── */}
+                {showNuevoEgresoModal && (
+                    <div style={styles.modalOverlay} onClick={() => setShowNuevoEgresoModal(false)}>
+                        <div style={{ ...styles.modalCard, maxWidth: 900 }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <h3 style={{ margin: 0, color: '#1a2926', fontSize: '1.05rem', fontWeight: 700 }}>Nuevo egreso</h3>
+                                <button
+                                    onClick={() => setShowNuevoEgresoModal(false)}
+                                    style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8', lineHeight: 1, padding: 4 }}
+                                >✕</button>
+                            </div>
+                            <p style={{ fontSize: 13, color: '#475569', marginBottom: 14 }}>
+                                Cargá todos los egresos que necesites y se registran juntos de una sola vez.
+                            </p>
 
-                        {/* Categorías */}
-                        <div style={{ marginBottom: 18 }}>
-                            <label style={styles.formLabel}>Categoría</label>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                                {CATEGORIAS.map(cat => {
-                                    const c = categoryColor(cat);
-                                    const selected = newPurchaseCategory === cat;
-                                    return (
-                                        <button
-                                            key={cat}
-                                            type="button"
-                                            onClick={() => {
-                                                const next = selected ? '' : cat;
-                                                setNewPurchaseCategory(next);
-                                                if (next) sessionStorage.setItem('rc_lastCategory', next);
-                                            }}
-                                            style={{
-                                                padding: '5px 14px',
-                                                borderRadius: '9999px',
-                                                border: `1.5px solid ${selected ? c.color : c.border}`,
-                                                backgroundColor: selected ? c.color : c.bg,
-                                                color: selected ? '#fff' : c.color,
-                                                fontSize: 13, fontWeight: 600,
-                                                cursor: 'pointer',
-                                                transition: 'all 0.15s ease',
-                                                fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
-                                            }}
-                                        >
-                                            {cat}
-                                        </button>
-                                    );
-                                })}
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                    <thead>
+                                        <tr>
+                                            {['Fecha*', 'Categoría', 'Detalle', 'Monto*', ''].map(h => (
+                                                <th key={h} style={{ padding: '6px 8px', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: 600, color: '#475569' }}>{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {egresosNuevos.map((fila, i) => (
+                                            <tr key={i}>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    <input
+                                                        type="date"
+                                                        value={fila.fecha}
+                                                        onChange={(e) => actualizarFilaEgreso(i, 'fecha', e.target.value)}
+                                                        style={{ ...styles.input, width: 145 }}
+                                                        className="rc-input"
+                                                    />
+                                                </td>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    <select
+                                                        value={fila.categoria}
+                                                        onChange={(e) => actualizarFilaEgreso(i, 'categoria', e.target.value)}
+                                                        style={{ ...styles.input, width: 130 }}
+                                                        className="rc-input"
+                                                    >
+                                                        <option value="">Sin categoría</option>
+                                                        {CATEGORIAS.map(cat => (
+                                                            <option key={cat} value={cat}>{cat}</option>
+                                                        ))}
+                                                    </select>
+                                                </td>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    <input
+                                                        type="text"
+                                                        value={fila.detalle}
+                                                        onChange={(e) => actualizarFilaEgreso(i, 'detalle', e.target.value)}
+                                                        style={{ ...styles.input, width: 180, ...(fila.categoria === 'Otros' && !fila.detalle.trim() ? { borderColor: '#fca5a5' } : {}) }}
+                                                        className="rc-input"
+                                                        placeholder={fila.categoria === 'Otros' ? 'Obligatorio' : 'Ej: Luz mes de marzo'}
+                                                    />
+                                                </td>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    <input
+                                                        type="number"
+                                                        value={fila.monto}
+                                                        onChange={(e) => actualizarFilaEgreso(i, 'monto', e.target.value)}
+                                                        style={{ ...styles.input, width: 100 }}
+                                                        className="rc-input"
+                                                        step="0.01"
+                                                        min="0"
+                                                        placeholder="0.00"
+                                                    />
+                                                </td>
+                                                <td style={{ padding: '4px 8px' }}>
+                                                    {egresosNuevos.length > 1 && (
+                                                        <button type="button" onClick={() => quitarFilaEgreso(i)}
+                                                            style={{ background: 'none', border: 'none', color: '#e25252', cursor: 'pointer', fontSize: 16 }}>✕</button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
-                        </div>
+                            <button type="button" onClick={agregarFilaEgreso}
+                                style={{ marginTop: 8, padding: '5px 12px', background: '#e8f5ec', color: '#1a7a3f', border: '1px solid #b7dfc7', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
+                                + Agregar otro egreso
+                            </button>
+                            <p style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: '#1a2926' }}>
+                                Total a cargar: {formatearMonto(egresosNuevos.reduce((sum, f) => sum + (parseFloat(f.monto) || 0), 0))}
+                            </p>
 
-                        <form onSubmit={handleCreateCompra} style={styles.form} className="rc-form">
-                            <div style={styles.formGroup} className="rc-form-group">
-                                <label style={styles.formLabel}>Fecha*</label>
-                                <input
-                                    type="date"
-                                    value={newPurchaseDate}
-                                    onChange={(e) => setNewPurchaseDate(e.target.value)}
-                                    required
-                                    style={styles.input}
-                                    className="rc-input"
-                                />
-                            </div>
-                            <div style={styles.formGroup} className="rc-form-group">
-                                <label style={styles.formLabel}>Monto*</label>
-                                <input
-                                    type="number"
-                                    value={newPurchaseTotal}
-                                    onChange={(e) => setNewPurchaseTotal(e.target.value)}
-                                    required
-                                    style={styles.input}
-                                    className="rc-input"
-                                    step="0.01"
-                                    min="0"
-                                    placeholder="0.00"
-                                />
-                            </div>
-                            <div style={{ ...styles.formGroup, flex: 2 }} className="rc-form-group">
-                                <label style={styles.formLabel}>
-                                    Detalle{newPurchaseCategory === 'Otros'
-                                        ? <span style={{ color: '#e25252', fontWeight: 700, marginLeft: 4 }}>*</span>
-                                        : <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> (opcional)</span>
-                                    }
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newPurchaseDetail}
-                                    onChange={(e) => setNewPurchaseDetail(e.target.value)}
-                                    style={{ ...styles.input, ...(newPurchaseCategory === 'Otros' && !newPurchaseDetail.trim() ? { borderColor: '#fca5a5' } : {}) }}
-                                    className="rc-input"
-                                    placeholder={newPurchaseCategory === 'Otros' ? 'Obligatorio: describí el egreso' : (newPurchaseCategory ? `Ej: ${newPurchaseCategory} mes de marzo` : 'Ej: Luz mes de marzo')}
-                                    required={newPurchaseCategory === 'Otros'}
-                                />
-                            </div>
-                            <div style={{ ...styles.formGroup, minWidth: 'auto', flex: 'none' }} className="rc-form-group rc-submit-group">
-                                <label style={{ ...styles.formLabel, visibility: 'hidden' }}>_</label>
-                                <button type="submit" style={styles.submitButton} className="rc-submit-btn">
-                                    Registrar
+                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
+                                <button
+                                    onClick={() => setShowNuevoEgresoModal(false)}
+                                    style={{ ...styles.filterButton, ...styles.filterButtonMuted }}
+                                >
+                                    Cancelar
+                                </button>
+                                <button onClick={handleRegistrarEgresosLote} style={styles.submitButton} disabled={guardandoEgresosLote}>
+                                    {guardandoEgresosLote ? 'Registrando…' : 'Registrar'}
                                 </button>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 )}
 
