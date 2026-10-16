@@ -58,12 +58,22 @@ const badgeStyle = {
     color: '#fff', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
 };
 
+const ESTADOS_FILTRO = ['pending', 'trial', 'activa', 'gracia', 'pausada', 'cancelada', 'requiere_plan'];
+
 export default function ClientesSaaS() {
     const { token } = useAuth();
     const [clientes, setClientes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [busqueda, setBusqueda] = useState('');
+    const [filtroEstado, setFiltroEstado] = useState('todos');
+    const [soloAtrasados, setSoloAtrasados] = useState(false);
+    const [sortConfig, setSortConfig] = useState({ key: 'nombre', dir: 'asc' });
+
+    // Recaudación mensual (Mercado Pago + pagos manuales), para el panel de
+    // resumen arriba de la tabla.
+    const [recaudacion, setRecaudacion] = useState(null);
+    const [mostrarHistorial, setMostrarHistorial] = useState(false);
 
     // Modal marcar pago manual
     const [tiendaPago, setTiendaPago] = useState(null);
@@ -95,6 +105,20 @@ export default function ClientesSaaS() {
     }, [token]);
 
     useEffect(() => { fetchClientes(); }, [fetchClientes]);
+
+    const fetchRecaudacion = useCallback(async () => {
+        if (!token) return;
+        try {
+            const res = await axios.get(`${BASE_API_ENDPOINT}/api/admin-saas/recaudacion/?meses=12`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setRecaudacion(res.data.historial || []);
+        } catch {
+            setRecaudacion([]);
+        }
+    }, [token]);
+
+    useEffect(() => { fetchRecaudacion(); }, [fetchRecaudacion]);
 
     const abrirMarcarPago = (cliente) => {
         const hoy = new Date();
@@ -133,6 +157,7 @@ export default function ClientesSaaS() {
             }));
             Swal.fire({ icon: 'success', title: 'Pago registrado', timer: 1400, showConfirmButton: false });
             setTiendaPago(null);
+            fetchRecaudacion();
         } catch (err) {
             Swal.fire('Error', err.response?.data?.error || 'No se pudo registrar el pago.', 'error');
         } finally {
@@ -208,49 +233,142 @@ export default function ClientesSaaS() {
                     : c
                 ));
             }
+            fetchRecaudacion();
         } catch (err) {
             Swal.fire('Error', 'No se pudo eliminar el pago.', 'error');
         }
     };
 
-    const clientesFiltrados = clientes.filter(c =>
-        !busqueda.trim() || (c.nombre || '').toLowerCase().includes(busqueda.trim().toLowerCase())
-    );
+    const clientesFiltrados = clientes.filter(c => {
+        if (busqueda.trim() && !(c.nombre || '').toLowerCase().includes(busqueda.trim().toLowerCase())) return false;
+        if (soloAtrasados && !c.pago_atrasado) return false;
+        if (filtroEstado === 'legacy') return c.legacy;
+        if (filtroEstado !== 'todos') return !c.legacy && c.estado === filtroEstado;
+        return true;
+    });
+
+    const valorOrden = (c, key) => {
+        switch (key) {
+            case 'nombre': return (c.nombre || '').toLowerCase();
+            case 'estado': return c.legacy ? 'legacy' : (c.estado || '');
+            case 'cobro': return c.pago_atrasado ? 0 : 1;
+            case 'cobrado_mp': return c.cobrado_mp_mes_actual !== null && c.cobrado_mp_mes_actual !== undefined ? Number(c.cobrado_mp_mes_actual) : -1;
+            case 'proximo_cobro': return c.fecha_proximo_cobro ? new Date(c.fecha_proximo_cobro).getTime() : Infinity;
+            default: return '';
+        }
+    };
+
+    const clientesOrdenados = [...clientesFiltrados].sort((a, b) => {
+        const va = valorOrden(a, sortConfig.key);
+        const vb = valorOrden(b, sortConfig.key);
+        const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+        return sortConfig.dir === 'asc' ? cmp : -cmp;
+    });
+
+    const toggleSort = (key) => {
+        setSortConfig(prev => prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' });
+    };
+
+    const SortTh = ({ label, sortKey }) => {
+        const activo = sortConfig.key === sortKey;
+        return (
+            <th style={{ ...s.th, cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort(sortKey)}>
+                {label} <span style={{ opacity: activo ? 1 : 0.25 }}>{activo && sortConfig.dir === 'desc' ? '▼' : '▲'}</span>
+            </th>
+        );
+    };
 
     const anioActual = new Date().getFullYear();
     const aniosDisponibles = [anioActual - 1, anioActual, anioActual + 1];
+
+    const mesActual = recaudacion && recaudacion[0];
+    const historialAnterior = recaudacion ? recaudacion.slice(1) : [];
 
     return (
         <div style={s.page}>
             <h1 style={s.titulo}>Clientes SaaS</h1>
             <p style={s.subtitulo}>Tiendas que pagan la suscripción de Total Stock -- estado automático vía Mercado Pago y pagos manuales para las legacy.</p>
 
-            <input
-                type="text"
-                placeholder="Buscar por nombre de tienda..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                style={s.buscador}
-            />
+            {recaudacion && (
+                <div style={s.resumenBox}>
+                    <div>
+                        <div style={s.resumenLabel}>
+                            Recaudado {mesActual ? `en ${MESES[mesActual.mes - 1]} ${mesActual.anio}` : 'este mes'}
+                        </div>
+                        <div style={s.resumenTotal}>{fmt(mesActual?.total)}</div>
+                        <div style={s.hint}>Mercado Pago: {fmt(mesActual?.total_mp)} · Manual: {fmt(mesActual?.total_manual)}</div>
+                    </div>
+                    <button onClick={() => setMostrarHistorial(v => !v)} style={s.btnGris}>
+                        {mostrarHistorial ? 'Ocultar meses anteriores' : 'Ver meses anteriores'}
+                    </button>
+                </div>
+            )}
+
+            {mostrarHistorial && (
+                <div style={{ ...s.tableWrap, marginBottom: 18 }}>
+                    <table style={s.table}>
+                        <thead>
+                            <tr>
+                                {['Mes', 'Mercado Pago', 'Manual', 'Total'].map(h => <th key={h} style={s.th}>{h}</th>)}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {historialAnterior.map(h => (
+                                <tr key={`${h.anio}-${h.mes}`}>
+                                    <td style={s.td}>{MESES[h.mes - 1]} {h.anio}</td>
+                                    <td style={s.td}>{fmt(h.total_mp)}</td>
+                                    <td style={s.td}>{fmt(h.total_manual)}</td>
+                                    <td style={s.td}><strong>{fmt(h.total)}</strong></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            <div style={s.filtrosRow}>
+                <input
+                    type="text"
+                    placeholder="Buscar por nombre de tienda..."
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                    style={s.buscador}
+                />
+                <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={s.selectFiltro}>
+                    <option value="todos">Todos los estados</option>
+                    {ESTADOS_FILTRO.map(est => <option key={est} value={est}>{ESTADO_LABEL[est]}</option>)}
+                    <option value="legacy">Legacy (sin plan)</option>
+                </select>
+                <label style={s.checkboxLabel}>
+                    <input type="checkbox" checked={soloAtrasados} onChange={(e) => setSoloAtrasados(e.target.checked)} />
+                    Solo atrasados
+                </label>
+            </div>
 
             {loading ? (
                 <p style={s.mensaje}>Cargando...</p>
             ) : error ? (
                 <p style={{ ...s.mensaje, color: '#e25252' }}>{error}</p>
-            ) : clientesFiltrados.length === 0 ? (
+            ) : clientesOrdenados.length === 0 ? (
                 <p style={s.mensaje}>No hay tiendas para mostrar.</p>
             ) : (
                 <div style={s.tableWrap}>
                     <table style={s.table}>
                         <thead>
                             <tr>
-                                {['Tienda', 'Mail MP', 'Plan', 'Estado', 'Cobro', 'Próximo cobro', 'Último pago manual', 'Acciones'].map(h => (
-                                    <th key={h} style={s.th}>{h}</th>
-                                ))}
+                                <SortTh label="Tienda" sortKey="nombre" />
+                                <th style={s.th}>Mail MP</th>
+                                <th style={s.th}>Plan</th>
+                                <SortTh label="Estado" sortKey="estado" />
+                                <SortTh label="Cobro" sortKey="cobro" />
+                                <SortTh label="Cobrado MP (mes)" sortKey="cobrado_mp" />
+                                <SortTh label="Próximo cobro" sortKey="proximo_cobro" />
+                                <th style={s.th}>Último pago manual</th>
+                                <th style={s.th}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {clientesFiltrados.map(c => (
+                            {clientesOrdenados.map(c => (
                                 <tr key={c.tienda_id} style={s.tr}>
                                     <td style={s.td}>
                                         <strong>{c.nombre}</strong>
@@ -270,6 +388,7 @@ export default function ClientesSaaS() {
                                             <span style={{ color: '#16a34a', fontSize: 12, fontWeight: 600 }}>Al día</span>
                                         ) : '—'}
                                     </td>
+                                    <td style={s.td}>{c.cobrado_mp_mes_actual !== null && c.cobrado_mp_mes_actual !== undefined ? fmt(c.cobrado_mp_mes_actual) : '—'}</td>
                                     <td style={s.td}>{c.legacy ? '—' : fmtFecha(c.fecha_proximo_cobro)}</td>
                                     <td style={s.td}>
                                         {c.ultimo_pago_manual ? (
@@ -369,11 +488,24 @@ const s = {
     page: { padding: '24px 20px', maxWidth: 1600, margin: '0 auto', fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" },
     titulo: { fontSize: 22, fontWeight: 700, color: '#1a2926', margin: '0 0 4px' },
     subtitulo: { fontSize: 13, color: '#94a3b8', margin: '0 0 18px' },
+    resumenBox: {
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+        padding: '16px 20px', marginBottom: 18, borderRadius: 14,
+        background: '#f0fdf4', border: '1px solid #bbf7d0',
+    },
+    resumenLabel: { fontSize: 12, fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em' },
+    resumenTotal: { fontSize: 26, fontWeight: 800, color: '#14532d', margin: '2px 0' },
+    filtrosRow: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, flexWrap: 'wrap' },
     buscador: {
-        width: '100%', maxWidth: 360, padding: '9px 12px', marginBottom: 18,
+        flex: '1 1 260px', maxWidth: 360, padding: '9px 12px',
         border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: 14, color: '#1a2926',
         backgroundColor: '#f8fafc', boxSizing: 'border-box',
     },
+    selectFiltro: {
+        padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: 14,
+        color: '#1a2926', backgroundColor: '#f8fafc',
+    },
+    checkboxLabel: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569' },
     mensaje: { color: '#94a3b8', textAlign: 'center', padding: 30 },
     tableWrap: {
         overflowX: 'auto', backgroundColor: '#fff', borderRadius: 16,
