@@ -109,14 +109,30 @@ export default function ClientesSaaS() {
         if (!tiendaPago || !pagoMes || !pagoAnio) return;
         setGuardandoPago(true);
         try {
-            await axios.post(
+            const res = await axios.post(
                 `${BASE_API_ENDPOINT}/api/admin-saas/clientes/${tiendaPago.tienda_id}/pagos-manuales/`,
                 { mes: parseInt(pagoMes, 10), anio: parseInt(pagoAnio, 10), monto: pagoMonto || null, nota: pagoNota.trim() },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            // Actualiza solo esta fila con lo que ya devuelve el POST, en vez de
+            // volver a pedir la lista entera (antes recargaba toda la sección
+            // después de cada pago -- lenta con muchas tiendas).
+            const nuevoPago = res.data;
+            const hoy = new Date();
+            const esMesActual = nuevoPago.mes === hoy.getMonth() + 1 && nuevoPago.anio === hoy.getFullYear();
+            setClientes(prev => prev.map(c => {
+                if (c.tienda_id !== tiendaPago.tienda_id) return c;
+                const ultimoActual = c.ultimo_pago_manual;
+                const esMasReciente = !ultimoActual || nuevoPago.anio > ultimoActual.anio ||
+                    (nuevoPago.anio === ultimoActual.anio && nuevoPago.mes >= ultimoActual.mes);
+                return {
+                    ...c,
+                    ultimo_pago_manual: esMasReciente ? nuevoPago : ultimoActual,
+                    pago_manual_mes_actual: c.pago_manual_mes_actual || esMesActual,
+                };
+            }));
             Swal.fire({ icon: 'success', title: 'Pago registrado', timer: 1400, showConfirmButton: false });
             setTiendaPago(null);
-            fetchClientes();
         } catch (err) {
             Swal.fire('Error', err.response?.data?.error || 'No se pudo registrar el pago.', 'error');
         } finally {
@@ -154,8 +170,23 @@ export default function ClientesSaaS() {
             await axios.delete(`${BASE_API_ENDPOINT}/api/admin-saas/pagos-manuales/${pagoId}/`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setHistorial(prev => prev.filter(p => p.id !== pagoId));
-            fetchClientes();
+            // El historial ya viene ordenado -anio/-mes (ver backend), así que
+            // tras sacar el pago borrado el primero que queda es el nuevo
+            // "último pago manual" -- se actualiza la fila sin recargar toda
+            // la lista de tiendas.
+            const historialRestante = historial.filter(p => p.id !== pagoId);
+            setHistorial(historialRestante);
+            if (tiendaHistorial) {
+                const hoy = new Date();
+                const nuevoUltimo = historialRestante[0] || null;
+                const siguePagoMesActual = historialRestante.some(
+                    p => p.mes === hoy.getMonth() + 1 && p.anio === hoy.getFullYear()
+                );
+                setClientes(prev => prev.map(c => c.tienda_id === tiendaHistorial.tienda_id
+                    ? { ...c, ultimo_pago_manual: nuevoUltimo, pago_manual_mes_actual: siguePagoMesActual }
+                    : c
+                ));
+            }
         } catch (err) {
             Swal.fire('Error', 'No se pudo eliminar el pago.', 'error');
         }
