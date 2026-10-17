@@ -202,6 +202,27 @@ export default function ClientesSaaS() {
         }
     };
 
+    // Diagnóstico puntual: por qué "Cobrado MP (mes)" puede estar dando $0 --
+    // las ventas de suscripción de antes de tienda_cliente dependen de un
+    // backfill por CUIT/nombre que puede no haber matcheado.
+    const verDiagnosticoVentasMP = async () => {
+        Swal.fire({ title: 'Consultando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+        try {
+            const res = await axios.get(
+                `${BASE_API_ENDPOINT}/api/admin-saas/recaudacion/diagnostico-ventas/`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            Swal.fire({
+                title: 'Diagnóstico — Ventas de suscripción MP',
+                html: `<pre style="text-align:left; font-size:11px; max-height:60vh; overflow:auto; background:#f1f5f9; padding:10px; border-radius:8px;">${JSON.stringify(res.data, null, 2)}</pre>`,
+                width: 700,
+                confirmButtonText: 'Cerrar',
+            });
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo consultar el diagnóstico.', 'error');
+        }
+    };
+
     const eliminarPago = async (pagoId) => {
         const confirm = await Swal.fire({
             title: '¿Eliminar este pago?',
@@ -298,9 +319,14 @@ export default function ClientesSaaS() {
                         <div style={s.resumenTotal}>{fmt(mesActual?.total)}</div>
                         <div style={s.hint}>Mercado Pago: {fmt(mesActual?.total_mp)} · Manual: {fmt(mesActual?.total_manual)}</div>
                     </div>
-                    <button onClick={() => setMostrarHistorial(v => !v)} style={s.btnGris}>
-                        {mostrarHistorial ? 'Ocultar meses anteriores' : 'Ver meses anteriores'}
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={verDiagnosticoVentasMP} style={s.btnGris} title="Ver por qué el total de Mercado Pago puede estar dando $0">
+                            🔍 Diagnóstico
+                        </button>
+                        <button onClick={() => setMostrarHistorial(v => !v)} style={s.btnGris}>
+                            {mostrarHistorial ? 'Ocultar meses anteriores' : 'Ver meses anteriores'}
+                        </button>
+                    </div>
                 </div>
             )}
 
