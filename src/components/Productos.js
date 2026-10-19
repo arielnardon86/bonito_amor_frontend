@@ -819,13 +819,15 @@ const Productos = () => {
     };
 
     // Margen de ganancia (nuevo producto, sin variantes): al completarlo, calcula el
-    // precio a partir del costo (markup sobre costo). Si se deja vacío, el precio vuelve
-    // a ser editable a mano y se muestra el margen actual (precio vs. costo) informativo.
+    // precio a partir del costo. Margen = ganancia / precio de venta (utilidad sobre
+    // la venta), no markup (ganancia / costo) -- despejando precio: costo / (1 - margen/100).
+    // Si se deja vacío, el precio vuelve a ser editable a mano y se muestra el margen
+    // actual (precio vs. costo) informativo.
     const calcularPrecioDesdeMargen = (costo, margen) => {
         const costoNum = parseFloat(costo);
         const margenNum = parseFloat(margen);
-        if (isNaN(costoNum) || isNaN(margenNum) || costoNum <= 0) return null;
-        return (costoNum * (1 + margenNum / 100)).toFixed(2);
+        if (isNaN(costoNum) || isNaN(margenNum) || costoNum <= 0 || margenNum >= 100) return null;
+        return (costoNum / (1 - margenNum / 100)).toFixed(2);
     };
 
     const handleMargenChangeNuevo = (value) => {
@@ -861,7 +863,7 @@ const Productos = () => {
         const costoNum = parseFloat(newProduct.costo);
         const precioNum = parseFloat(newProduct.precio);
         if (!costoNum || !precioNum || precioNum <= 0) return null;
-        return ((precioNum - costoNum) / costoNum * 100).toFixed(1);
+        return ((precioNum - costoNum) / precioNum * 100).toFixed(1);
     })();
     const margenBloqueadoNuevo = margenCalculadoNuevo !== null;
 
@@ -916,7 +918,7 @@ const Productos = () => {
         const costoNum = parseFloat(v.costo);
         const precioNum = parseFloat(v.precio);
         if (!costoNum || !precioNum || precioNum <= 0) return null;
-        return ((precioNum - costoNum) / costoNum * 100).toFixed(1);
+        return ((precioNum - costoNum) / precioNum * 100).toFixed(1);
     };
 
     const handleVarianteImagenChange = async (i, file) => {
@@ -1698,7 +1700,7 @@ const Productos = () => {
                             {!tieneVariantes && (
                                 <div style={styles.inputGroupModal}>
                                     <label style={styles.label}>
-                                        Margen de ganancia <span style={styles.opcionalTag}>(Opcional, % sobre costo)</span>
+                                        Margen de ganancia <span style={styles.opcionalTag}>(Opcional, % sobre precio de venta)</span>
                                     </label>
                                     <input
                                         type="number"
@@ -1985,12 +1987,13 @@ const Productos = () => {
                                         const costo = parseFloat(producto.costo) || 0;
                                         const ivaPct = parseFloat(producto.iva_porcentaje) || 0;
                                         const costoConIva = costo * (1 + ivaPct / 100);
-                                        // % sobre costo (markup), igual criterio que "Margen de ganancia" al cargar el
-                                        // producto y que la edición masiva por rubro (precio = costoConIva * (1+%)) --
-                                        // antes esto calculaba el margen bruto sobre el precio de venta, un número
-                                        // distinto que nunca coincidía con el % que se había cargado.
-                                        const margen = precio > 0 && costoConIva > 0 ? ((precio - costoConIva) / costoConIva * 100) : null;
-                                        const margenColor = margen === null ? '#94a3b8' : margen >= 40 ? '#1a6a40' : margen >= 20 ? '#d97706' : '#e25252';
+                                        // Margen = ganancia / precio de venta (utilidad sobre la venta), no markup
+                                        // (ganancia / costo) -- mismo criterio que "Margen de ganancia" al cargar el
+                                        // producto y la edición masiva por rubro (precio = costoConIva / (1-%)).
+                                        // Umbrales de color recalibrados: eran 40%/20% sobre markup (equivalen a
+                                        // ~29%/~17% de margen real), no 40%/20% de margen.
+                                        const margen = precio > 0 && costoConIva > 0 ? ((precio - costoConIva) / precio * 100) : null;
+                                        const margenColor = margen === null ? '#94a3b8' : margen >= 30 ? '#1a6a40' : margen >= 15 ? '#d97706' : '#e25252';
                                         const tieneVars = producto.variantes && producto.variantes.length > 0;
                                         const expandido = !!expandedVariants[producto.id];
                                         const stockBajo = !tieneVars && !producto.se_vende_por_peso && !producto.precio_variable && producto.stock <= STOCK_BAJO_THRESHOLD;
@@ -2148,9 +2151,9 @@ const Productos = () => {
                                             // IVA y Rubro no son campos por variante: se heredan del producto padre.
                                             const vIvaPct = parseFloat(producto.iva_porcentaje) || 0;
                                             const vCostoConIva = vCosto * (1 + vIvaPct / 100);
-                                            // % sobre costo con IVA (markup), mismo criterio que la fila del padre.
-                                            const vMargen = vPrecio > 0 && vCostoConIva > 0 ? ((vPrecio - vCostoConIva) / vCostoConIva * 100) : null;
-                                            const vMargenColor = vMargen === null ? '#94a3b8' : vMargen >= 40 ? '#1a6a40' : vMargen >= 20 ? '#d97706' : '#e25252';
+                                            // Margen sobre precio de venta, mismo criterio que la fila del padre.
+                                            const vMargen = vPrecio > 0 && vCostoConIva > 0 ? ((vPrecio - vCostoConIva) / vPrecio * 100) : null;
+                                            const vMargenColor = vMargen === null ? '#94a3b8' : vMargen >= 30 ? '#1a6a40' : vMargen >= 15 ? '#d97706' : '#e25252';
                                             const vStockBajo = v.stock <= STOCK_BAJO_THRESHOLD;
                                             const nombreVariante = `${producto.nombre}${detalleVariante(v) ? ` · ${detalleVariante(v)}` : ''}`;
                                             const menuItemsVariante = [
