@@ -2210,42 +2210,27 @@ Script.complete();
             {/* TAB: MEDIOS DE PAGO Y ARANCELES */}
             {activeTab === 'medios-pago-aranceles' && (
                 <div style={styles.tabContent}>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        gap: 10, background: mpPosStatus?.connected ? '#eafaf3' : '#eaf7fd',
-                        border: `1px solid ${mpPosStatus?.connected ? '#8fe0bd' : '#aee4f7'}`,
-                        borderRadius: 10, padding: '8px 12px', marginBottom: 12, maxWidth: 360,
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <MercadoPagoBadge size={22} />
-                            <div>
-                                <div style={{ fontSize: 12.5, fontWeight: 600, color: '#00799e', lineHeight: 1.2 }}>Mercado Pago</div>
-                                <div style={{ fontSize: 11.5, color: '#5b7b87', lineHeight: 1.2 }}>
-                                    {mpPosStatus?.connected ? 'Cuenta conectada' : 'No conectada'}
+                    {mpPosStatus?.connected && (
+                        <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            gap: 10, background: '#eafaf3', border: '1px solid #8fe0bd',
+                            borderRadius: 10, padding: '8px 12px', marginBottom: 12, maxWidth: 360,
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <MercadoPagoBadge size={22} />
+                                <div>
+                                    <div style={{ fontSize: 12.5, fontWeight: 600, color: '#00799e', lineHeight: 1.2 }}>Mercado Pago</div>
+                                    <div style={{ fontSize: 11.5, color: '#5b7b87', lineHeight: 1.2 }}>Cuenta conectada</div>
                                 </div>
                             </div>
-                        </div>
-                        {mpPosStatus?.connected ? (
                             <button type="button" onClick={handleDesconectarMercadoPago} style={{
                                 fontSize: 11.5, color: '#c0392b', background: 'transparent', border: '1px solid #e2a3a3',
                                 borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontWeight: 500,
                             }}>
                                 Desvincular
                             </button>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={handleConectarMercadoPago}
-                                disabled={mpPosConectando}
-                                style={{
-                                    fontSize: 11.5, fontWeight: 600, color: '#fff', background: '#00aaef', border: 'none',
-                                    borderRadius: 8, padding: '6px 12px', cursor: 'pointer', opacity: mpPosConectando ? 0.6 : 1,
-                                }}
-                            >
-                                {mpPosConectando ? 'Conectando...' : 'Conectar'}
-                            </button>
-                        )}
-                    </div>
+                        </div>
+                    )}
                     <div style={styles.sectionHeader} className="panel-admin-section-header">
                         <button onClick={() => {
                             setArancelForm({
