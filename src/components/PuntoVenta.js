@@ -1315,10 +1315,15 @@ const PuntoVenta = () => {
     }, [metodoPagoSeleccionado, isMetodoFinancieroActivo, arancelesDisponibles, arancelSeleccionadoId]);
 
 
-    // Métodos visibles en los selects: todos los no-financieros + financieros con arancel configurado
+    // Métodos visibles en los selects: todos los no-financieros + financieros con arancel configurado.
+    // "Tienda Nube" se excluye siempre -- es de uso interno, lo asigna solo el
+    // webhook de Tienda Nube al crear la venta (ver _procesar_orden_tiendanube
+    // en el backend), nunca lo elige el cajero a mano.
     const metodosPagoVisibles = metodosPago.filter(m =>
-        !m.es_financiero ||
-        arancelesTienda.some(a => (a.metodo_pago_nombre || '').trim() === m.nombre.trim())
+        m.nombre !== 'Tienda Nube' && (
+            !m.es_financiero ||
+            arancelesTienda.some(a => (a.metodo_pago_nombre || '').trim() === m.nombre.trim())
+        )
     );
 
     // --- FUNCIÓN handleProcesarVenta (LÓGICA DE REDONDEO INCLUIDA) ---

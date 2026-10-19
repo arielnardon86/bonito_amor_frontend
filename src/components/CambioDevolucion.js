@@ -1476,7 +1476,7 @@ const CambioDevolucion = () => {
                                             style={styles.inputField}
                                         >
                                             <option value="">Selecciona un método de pago</option>
-                                            {metodosPago.map(method => (
+                                            {metodosPago.filter(m => m.nombre !== 'Tienda Nube').map(method => (
                                                 <option key={method.id} value={method.nombre}>{method.nombre}</option>
                                             ))}
                                         </select>

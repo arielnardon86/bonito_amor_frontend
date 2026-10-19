@@ -805,7 +805,7 @@ const ClienteDetalle = () => {
                         <label style={styles.formLabel}>Método de pago
                             <select style={styles.inputField} value={metodoPagoCobro} onChange={(e) => setMetodoPagoCobro(e.target.value)}>
                                 <option value="">Selecciona un método de pago</option>
-                                {metodosPago.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
+                                {metodosPago.filter(m => m.nombre !== 'Tienda Nube').map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
                             </select>
                         </label>
                         <p style={{ fontSize: 13, color: '#94a3b8' }}>

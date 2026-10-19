@@ -2366,12 +2366,12 @@ Script.complete();
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {metodosPago.length === 0 ? (
+                                    {metodosPago.filter(m => m.nombre !== 'Tienda Nube').length === 0 ? (
                                         <tr>
                                             <td colSpan="4" style={styles.td}>No hay métodos de pago registrados</td>
                                         </tr>
                                     ) : (
-                                        metodosPago.map(metodo => (
+                                        metodosPago.filter(m => m.nombre !== 'Tienda Nube').map(metodo => (
                                             <tr key={metodo.id}>
                                                 <td style={styles.td}>{metodo.nombre}</td>
                                                 <td style={styles.td}>{metodo.descripcion || '-'}</td>

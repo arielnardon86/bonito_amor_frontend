@@ -703,7 +703,7 @@ const Presupuesto = () => {
                                     style={{ ...styles.inputField, flex: 1 }}
                                 >
                                     <option value="">Sin especificar</option>
-                                    {metodosPago.map(m => (
+                                    {metodosPago.filter(m => m.nombre !== 'Tienda Nube').map(m => (
                                         <option key={m.id} value={m.nombre}>{m.nombre}</option>
                                     ))}
                                 </select>
