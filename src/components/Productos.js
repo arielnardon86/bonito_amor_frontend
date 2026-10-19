@@ -865,7 +865,12 @@ const Productos = () => {
         if (!costoNum || !precioNum || precioNum <= 0) return null;
         return ((precioNum - costoNum) / precioNum * 100).toFixed(1);
     })();
-    const margenBloqueadoNuevo = margenCalculadoNuevo !== null;
+    // Bloqueado (de solo lectura, calculado) SOLO cuando el precio se cargó
+    // por fuera de este campo (margen vacío) -- si no, escribir "55" acá
+    // quedaba imposible: al tipear "5" ya se autocompletaba el precio, lo que
+    // en el render siguiente volvía a costo+precio "ya cargados" y bloqueaba
+    // el input antes de poder escribir el segundo dígito.
+    const margenBloqueadoNuevo = newProduct.margen === '' && margenCalculadoNuevo !== null;
 
     const handleImagenNuevoProducto = async (e) => {
         const file = e.target.files?.[0];
@@ -1814,7 +1819,9 @@ const Productos = () => {
                                                         <td style={{ padding: '4px 8px' }}>
                                                             {(() => {
                                                                 const vMargenCalc = margenCalculadoVariante(v);
-                                                                const vMargenBloqueado = vMargenCalc !== null;
+                                                                // Igual criterio que margenBloqueadoNuevo: solo bloqueado si
+                                                                // el precio se cargó por fuera de este campo (margen vacío).
+                                                                const vMargenBloqueado = v.margen === '' && vMargenCalc !== null;
                                                                 return (
                                                                     <input
                                                                         type="number" step="0.01"
@@ -2917,7 +2924,7 @@ const Productos = () => {
                                             <td style={{ padding: '4px 8px' }}>
                                                 {(() => {
                                                     const vMargenCalc = margenCalculadoVariante(v);
-                                                    const vMargenBloqueado = vMargenCalc !== null;
+                                                    const vMargenBloqueado = v.margen === '' && vMargenCalc !== null;
                                                     return (
                                                         <input
                                                             type="number" step="0.01"
