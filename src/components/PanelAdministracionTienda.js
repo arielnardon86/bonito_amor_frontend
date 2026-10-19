@@ -185,6 +185,10 @@ const PanelAdministracionTienda = () => {
     // Estados para aranceles
     const [aranceles, setAranceles] = useState([]);
     const [showArancelForm, setShowArancelForm] = useState(false);
+    // Conexión de Mercado Pago (cobro con QR) -- la pide el método "QR
+    // Mercado Pago" (MetodoPago.requiere_integracion_mp), ver handleCreateArancel.
+    const [mpPosStatus, setMpPosStatus] = useState(null);
+    const [mpPosConectando, setMpPosConectando] = useState(false);
     const [showEditArancelModal, setShowEditArancelModal] = useState(false);
     const [editArancelData, setEditArancelData] = useState(null);
     const [arancelForm, setArancelForm] = useState({
@@ -776,6 +780,7 @@ Script.complete();
                 } else if (activeTab === 'medios-pago-aranceles') {
                     fetchMetodosPago();
                     fetchAranceles();
+                    fetchMpPosStatus();
                 }
             }
         }
@@ -1223,6 +1228,52 @@ Script.complete();
         }
     }, [token]);
 
+    // ========== MERCADO PAGO (cobro con QR) ==========
+    const fetchMpPosStatus = useCallback(async () => {
+        if (!token || !tiendaInfo?.id) return;
+        try {
+            const res = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/mercadopago-pos/status/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setMpPosStatus(res.data);
+        } catch (err) {
+            console.error('Error al consultar estado de Mercado Pago:', err);
+        }
+    }, [token, tiendaInfo?.id]);
+
+    const handleConectarMercadoPago = async () => {
+        if (!tiendaInfo?.id) return;
+        setMpPosConectando(true);
+        try {
+            const res = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/mercadopago-pos/auth-url/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const authUrl = res.data.auth_url;
+
+            const messageHandler = async (event) => {
+                if (event.data?.type === 'MP_POS_OAUTH_SUCCESS') {
+                    window.removeEventListener('message', messageHandler);
+                    await fetchMpPosStatus();
+                    Swal.fire({ icon: 'success', title: '¡Mercado Pago conectado!', timer: 1800, showConfirmButton: false });
+                    setMpPosConectando(false);
+                }
+            };
+            window.addEventListener('message', messageHandler);
+
+            const popup = window.open(authUrl, 'mp_pos_oauth', 'width=600,height=700');
+            const interval = setInterval(() => {
+                if (popup?.closed) {
+                    clearInterval(interval);
+                    window.removeEventListener('message', messageHandler);
+                    setMpPosConectando(false);
+                }
+            }, 800);
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.error || 'No se pudo obtener la URL de autorización.', 'error');
+            setMpPosConectando(false);
+        }
+    };
+
     // ========== FUNCIONES PARA ARANCELES ==========
     const fetchAranceles = useCallback(async () => {
         if (!token || !selectedStoreSlug) return;
@@ -1458,6 +1509,11 @@ Script.complete();
             </div>
         );
     }
+
+    // Método elegido en "Nuevo Arancel" requiere cuenta de Mercado Pago
+    // conectada (ver requiere_integracion_mp) y todavía no lo está.
+    const metodoArancelSeleccionado = metodosPago.find(m => m.id === arancelForm.metodo_pago);
+    const arancelRequiereMpNoConectado = !!metodoArancelSeleccionado?.requiere_integracion_mp && !mpPosStatus?.connected;
 
     return (
         <>
@@ -2151,47 +2207,73 @@ Script.complete();
                                             ))}
                                         </select>
                                     </div>
-                                    <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
-                                        <label>Plan *</label>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                                <input type="radio" name="plan_modo" checked={!arancelForm.plan_custom} onChange={() => setArancelForm({ ...arancelForm, plan_custom: false })} />
-                                                Seleccionar existente
-                                            </label>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                                <input type="radio" name="plan_modo" checked={arancelForm.plan_custom} onChange={() => setArancelForm({ ...arancelForm, plan_custom: true })} />
-                                                Crear nuevo
-                                            </label>
+                                    {arancelRequiereMpNoConectado && (
+                                        <div style={{
+                                            ...styles.formGroup, gridColumn: '1 / -1', background: '#fff7ed',
+                                            border: '1px solid #fdba74', borderRadius: 10, padding: '14px 16px',
+                                        }}>
+                                            <p style={{ margin: '0 0 10px', fontSize: 13, color: '#9a3412' }}>
+                                                Para usar <strong>{metodoArancelSeleccionado?.nombre}</strong> primero tenés que
+                                                conectar la cuenta de Mercado Pago de esta tienda -- así puede cobrar a sus
+                                                clientes con QR desde el Punto de Venta.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={handleConectarMercadoPago}
+                                                disabled={mpPosConectando}
+                                                style={{ ...styles.saveButton, opacity: mpPosConectando ? 0.6 : 1 }}
+                                            >
+                                                {mpPosConectando ? 'Conectando...' : 'Conectar con Mercado Pago'}
+                                            </button>
                                         </div>
-                                        {!arancelForm.plan_custom ? (
-                                            <select name="nombre_plan" value={arancelForm.nombre_plan} onChange={handleArancelFormChange} required={!arancelForm.plan_custom} style={styles.input}>
-                                                {PLAN_CHOICES.map(plan => (
-                                                    <option key={plan.value} value={plan.value}>{plan.label}</option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <input type="text" name="plan_custom_nombre" value={arancelForm.plan_custom_nombre} onChange={handleArancelFormChange} placeholder="Nombre del plan (ej: 18 cuotas)" style={styles.input} required={arancelForm.plan_custom} />
-                                        )}
-                                    </div>
-                                    <div style={styles.formGroup}>
-                                        <label>Arancel (%) *</label>
-                                        <input
-                                            type="number"
-                                            name="arancel_porcentaje"
-                                            value={arancelForm.arancel_porcentaje}
-                                            onChange={handleArancelFormChange}
-                                            required
-                                            min="0"
-                                            max="100"
-                                            step="0.01"
-                                            style={styles.input}
-                                        />
-                                    </div>
+                                    )}
+                                    {!arancelRequiereMpNoConectado && (
+                                        <>
+                                            <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
+                                                <label>Plan *</label>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                        <input type="radio" name="plan_modo" checked={!arancelForm.plan_custom} onChange={() => setArancelForm({ ...arancelForm, plan_custom: false })} />
+                                                        Seleccionar existente
+                                                    </label>
+                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                        <input type="radio" name="plan_modo" checked={arancelForm.plan_custom} onChange={() => setArancelForm({ ...arancelForm, plan_custom: true })} />
+                                                        Crear nuevo
+                                                    </label>
+                                                </div>
+                                                {!arancelForm.plan_custom ? (
+                                                    <select name="nombre_plan" value={arancelForm.nombre_plan} onChange={handleArancelFormChange} required={!arancelForm.plan_custom} style={styles.input}>
+                                                        {PLAN_CHOICES.map(plan => (
+                                                            <option key={plan.value} value={plan.value}>{plan.label}</option>
+                                                        ))}
+                                                    </select>
+                                                ) : (
+                                                    <input type="text" name="plan_custom_nombre" value={arancelForm.plan_custom_nombre} onChange={handleArancelFormChange} placeholder="Nombre del plan (ej: 18 cuotas)" style={styles.input} required={arancelForm.plan_custom} />
+                                                )}
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label>Arancel (%) *</label>
+                                                <input
+                                                    type="number"
+                                                    name="arancel_porcentaje"
+                                                    value={arancelForm.arancel_porcentaje}
+                                                    onChange={handleArancelFormChange}
+                                                    required
+                                                    min="0"
+                                                    max="100"
+                                                    step="0.01"
+                                                    style={styles.input}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 <div style={styles.formActions} className="panel-admin-form-actions">
-                                    <button type="submit" style={styles.saveButton}>
-                                        Crear
-                                    </button>
+                                    {!arancelRequiereMpNoConectado && (
+                                        <button type="submit" style={styles.saveButton}>
+                                            Crear
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={() => {

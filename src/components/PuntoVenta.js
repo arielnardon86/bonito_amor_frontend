@@ -312,6 +312,13 @@ const PuntoVenta = () => {
     
     const [tiendaInfo, setTiendaInfo] = useState(null);
 
+    // ── Cobro con QR de Mercado Pago ─────────────────────────────────────────
+    const [mostrarModalQR, setMostrarModalQR] = useState(false);
+    const [qrImagenData, setQrImagenData] = useState(null);
+    const [qrEstado, setQrEstado] = useState('esperando'); // esperando | pagado | cancelado | error
+    const [qrMontoMostrado, setQrMontoMostrado] = useState(0);
+    const cancelarQRRef = useRef(null); // el botón "Cancelar" del modal llama a esto
+
     // ── Pago combinado ────────────────────────────────────────────────────────
     const [mostrarModalPago,  setMostrarModalPago]  = useState(false);
     const [formasPago,        setFormasPago]        = useState([]);   // [{id,metodo,monto,arancelId,arancelPct,arancelMonto}]
@@ -1383,6 +1390,78 @@ const PuntoVenta = () => {
         setMostrarModalPago(false);
     };
 
+    // ── Cobro con QR de Mercado Pago ─────────────────────────────────────────
+    // Crea la orden QR por `monto`, abre el modal, y resuelve cuando el
+    // cliente paga (true) o el cajero cancela (false). Mientras el modal está
+    // abierto hace polling cada 3s contra GET .../mercadopago-pos/orden/{id}/.
+    const esperarPagoQR = (monto) => {
+        return new Promise(async (resolve) => {
+            if (!tiendaInfo?.id) {
+                Swal.fire('Error', 'No se pudo identificar la tienda para generar el QR.', 'error');
+                resolve(false);
+                return;
+            }
+            setQrEstado('esperando');
+            setQrImagenData(null);
+            setQrMontoMostrado(monto);
+            setMostrarModalQR(true);
+
+            let orderId = null;
+            try {
+                const res = await axios.post(
+                    `${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/mercadopago-pos/crear-orden/`,
+                    { monto },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                orderId = res.data.order_id;
+                setQrImagenData(res.data.qr_image);
+            } catch (err) {
+                setQrEstado('error');
+                const mensaje = err.response?.data?.error || 'No se pudo generar el QR de Mercado Pago.';
+                setTimeout(() => {
+                    setMostrarModalQR(false);
+                    Swal.fire('Error', mensaje, 'error');
+                    resolve(false);
+                }, 1200);
+                return;
+            }
+
+            let cancelado = false;
+            const limpiar = (pagado) => {
+                clearInterval(intervalo);
+                if (!pagado && orderId && !cancelado) {
+                    axios.post(
+                        `${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/mercadopago-pos/cancelar-orden/`,
+                        { order_id: orderId },
+                        { headers: { Authorization: `Bearer ${token}` } }
+                    ).catch(() => {});
+                }
+                setMostrarModalQR(false);
+                resolve(pagado);
+            };
+
+            cancelarQRRef.current = () => {
+                cancelado = true;
+                limpiar(false);
+            };
+
+            const intervalo = setInterval(async () => {
+                try {
+                    const res = await axios.get(
+                        `${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/mercadopago-pos/orden/${orderId}/`,
+                        { headers: { Authorization: `Bearer ${token}` } }
+                    );
+                    if (res.data.pagada) {
+                        setQrEstado('pagado');
+                        setTimeout(() => limpiar(true), 900);
+                    }
+                } catch (err) {
+                    // Error de red puntual: seguimos intentando, no se corta el polling.
+                }
+            }, 3000);
+        });
+    };
+
     const handleProcesarVenta = async () => {
         const isModoCombinado = formasPago.length > 0;
 
@@ -1586,6 +1665,14 @@ const PuntoVenta = () => {
             cancelButtonText: 'Cancelar',
         }).then(async (result) => {
             if (result.isConfirmed) {
+                // QR Mercado Pago: antes de crear la venta, mostrar el QR y
+                // esperar a que el cliente pague (o el cajero cancele). Solo
+                // modo simple (no combinado) -- combinar QR con otros medios
+                // de pago en una misma venta queda para una iteración futura.
+                if (!isModoCombinado && metodoPagoSeleccionado === 'QR Mercado Pago') {
+                    const pagado = await esperarPagoQR(finalTotal);
+                    if (!pagado) return;
+                }
                 setProcesandoVenta(true);
                 try {
                     // Calcular monto en efectivo real para el cierre de caja
@@ -2316,6 +2403,57 @@ const PuntoVenta = () => {
                                 {guardandoAbrirCaja ? 'Abriendo...' : 'Confirmar'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Cobro con QR de Mercado Pago */}
+            {mostrarModalQR && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000,
+                }}>
+                    <div style={{
+                        background: '#fff', borderRadius: 16, padding: '28px 32px',
+                        width: '100%', maxWidth: 380, boxShadow: '0 20px 60px rgba(0,0,0,.2)',
+                        textAlign: 'center',
+                    }}>
+                        <h3 style={{ margin: '0 0 6px', color: '#1a2926' }}>Cobrar con Mercado Pago</h3>
+                        <p style={{ margin: '0 0 18px', fontSize: 22, fontWeight: 800, color: '#1a2926' }}>
+                            {formatearMonto(qrMontoMostrado)}
+                        </p>
+
+                        {qrEstado === 'esperando' && !qrImagenData && (
+                            <p style={{ color: '#64748b' }}>Generando QR...</p>
+                        )}
+                        {qrImagenData && qrEstado !== 'pagado' && (
+                            <>
+                                <img src={qrImagenData} alt="QR de Mercado Pago" style={{ width: 220, height: 220, margin: '0 auto 14px' }} />
+                                <p style={{ color: '#3b9ede', fontWeight: 700, margin: '0 0 18px' }}>
+                                    Esperando que el cliente pague...
+                                </p>
+                            </>
+                        )}
+                        {qrEstado === 'pagado' && (
+                            <p style={{ color: '#1a7a3f', fontWeight: 800, fontSize: 18, margin: '20px 0' }}>
+                                ✅ ¡Pago recibido!
+                            </p>
+                        )}
+                        {qrEstado === 'error' && (
+                            <p style={{ color: '#e25252', margin: '20px 0' }}>No se pudo generar el QR.</p>
+                        )}
+
+                        {qrEstado === 'esperando' && (
+                            <button
+                                onClick={() => cancelarQRRef.current && cancelarQRRef.current()}
+                                style={{
+                                    marginTop: 8, padding: '9px 20px', borderRadius: 10, border: 'none',
+                                    background: '#e2e8f0', color: '#475569', cursor: 'pointer', fontWeight: 700,
+                                }}
+                            >
+                                Cancelar
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
