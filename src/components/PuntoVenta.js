@@ -1459,6 +1459,13 @@ const PuntoVenta = () => {
                     if (res.data.pagada) {
                         setQrEstado('pagado');
                         setTimeout(() => limpiar(true), 900);
+                    } else if (res.data.status === 'expired' || res.data.status === 'canceled') {
+                        // La orden venció (15 min sin pagar) o se canceló del lado de MP --
+                        // sin esto, el polling seguía preguntando para siempre sin avisar
+                        // nada, y el cajero se quedaba mirando "Esperando..." a ciegas.
+                        cancelado = true;
+                        setQrEstado('cancelado');
+                        setTimeout(() => limpiar(false), 1800);
                     }
                 } catch (err) {
                     // Error de red puntual: seguimos intentando, no se corta el polling.
@@ -2431,7 +2438,7 @@ const PuntoVenta = () => {
                         {qrEstado === 'esperando' && !qrImagenData && (
                             <p style={{ color: '#64748b' }}>Generando QR...</p>
                         )}
-                        {qrImagenData && qrEstado !== 'pagado' && (
+                        {qrImagenData && qrEstado !== 'pagado' && qrEstado !== 'cancelado' && (
                             <>
                                 <img src={qrImagenData} alt="QR de Mercado Pago" style={{ width: 220, height: 220, margin: '0 auto 14px' }} />
                                 <p style={{ color: '#3b9ede', fontWeight: 700, margin: '0 0 18px' }}>
@@ -2442,6 +2449,11 @@ const PuntoVenta = () => {
                         {qrEstado === 'pagado' && (
                             <p style={{ color: '#1a7a3f', fontWeight: 800, fontSize: 18, margin: '20px 0' }}>
                                 ✅ ¡Pago recibido!
+                            </p>
+                        )}
+                        {qrEstado === 'cancelado' && (
+                            <p style={{ color: '#e25252', fontWeight: 700, margin: '20px 0' }}>
+                                ⏱️ Se agotó el tiempo para pagar o la orden se canceló. Generá un QR nuevo para cobrar.
                             </p>
                         )}
                         {qrEstado === 'error' && (
