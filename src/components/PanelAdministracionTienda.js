@@ -1230,14 +1230,16 @@ Script.complete();
 
     // ========== MERCADO PAGO (cobro con QR) ==========
     const fetchMpPosStatus = useCallback(async () => {
-        if (!token || !tiendaInfo?.id) return;
+        if (!token || !tiendaInfo?.id) return null;
         try {
             const res = await axios.get(`${BASE_API_ENDPOINT}/api/tiendas/${tiendaInfo.id}/mercadopago-pos/status/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setMpPosStatus(res.data);
+            return res.data;
         } catch (err) {
             console.error('Error al consultar estado de Mercado Pago:', err);
+            return null;
         }
     }, [token, tiendaInfo?.id]);
 
@@ -1250,12 +1252,28 @@ Script.complete();
             });
             const authUrl = res.data.auth_url;
 
-            const messageHandler = async (event) => {
-                if (event.data?.type === 'MP_POS_OAUTH_SUCCESS') {
-                    window.removeEventListener('message', messageHandler);
-                    await fetchMpPosStatus();
+            // El popup de MP postea un mensaje y se autocierra a los 2s -- pero no
+            // hay garantía de que el mensaje llegue a tiempo (ventana ya cerrada,
+            // fetchMpPosStatus lento, etc.), así que NO confiamos solo en el
+            // postMessage para avisar: tanto recibir el mensaje como detectar que
+            // el popup se cerró (por cualquier motivo) disparan el mismo chequeo
+            // real contra el backend antes de mostrar nada.
+            let finalizado = false;
+            const finalizar = async () => {
+                if (finalizado) return;
+                finalizado = true;
+                window.removeEventListener('message', messageHandler);
+                clearInterval(interval);
+                const datos = await fetchMpPosStatus();
+                setMpPosConectando(false);
+                if (datos?.connected) {
                     Swal.fire({ icon: 'success', title: '¡Mercado Pago conectado!', timer: 1800, showConfirmButton: false });
-                    setMpPosConectando(false);
+                }
+            };
+
+            const messageHandler = (event) => {
+                if (event.data?.type === 'MP_POS_OAUTH_SUCCESS') {
+                    finalizar();
                 }
             };
             window.addEventListener('message', messageHandler);
@@ -1263,9 +1281,7 @@ Script.complete();
             const popup = window.open(authUrl, 'mp_pos_oauth', 'width=600,height=700');
             const interval = setInterval(() => {
                 if (popup?.closed) {
-                    clearInterval(interval);
-                    window.removeEventListener('message', messageHandler);
-                    setMpPosConectando(false);
+                    finalizar();
                 }
             }, 800);
         } catch (err) {
