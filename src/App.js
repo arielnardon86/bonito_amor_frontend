@@ -1,52 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useCallback, useRef } from 'react';
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
-import Productos from './components/Productos';
-import PuntoVenta from './components/PuntoVenta';
-import Login from './components/Login';
-import RegistroCompras from './components/RegistroCompras'; 
-import ProtectedRoute from './components/ProtectedRoute'; 
-import { AuthProvider, useAuth } from './AuthContext'; 
-import { SalesProvider } from './components/SalesContext'; 
-import EtiquetasImpresion from './components/EtiquetasImpresion';
-import ReciboImpresion from './components/ReciboImpresion';
-import ReciboCobroCuentaCorriente from './components/ReciboCobroCuentaCorriente';
-import FacturaImpresion from './components/FacturaImpresion';
-import TicketCambioImpresion from './components/TicketCambioImpresion';
-import CambioDevolucion from './components/CambioDevolucion';
-import PanelAdministracionTienda from './components/PanelAdministracionTienda';
-import ClientesSaaS from './components/ClientesSaaS';
-import Clientes from './components/Clientes';
-import Proveedores from './components/Proveedores';
-import Presupuesto from './components/Presupuesto';
-import CargaMasivaProductos from './components/CargaMasivaProductos';
-import ClienteDetalle from './components/ClienteDetalle';
-
-import MetricasVentas from './components/MetricasVentas';
-import ComprasStock from './components/ComprasStock';
-import VentasPage from './components/VentasPage';
-import HomePage from './components/HomePage';
-import PoliticaPrivacidad from './components/PoliticaPrivacidad';
-import PreguntasFrecuentes from './components/PreguntasFrecuentes';
-import SistemaParaIndumentaria from './components/verticals/SistemaParaIndumentaria';
-import SistemaParaDeportes from './components/verticals/SistemaParaDeportes';
-import SistemaParaFerreterias from './components/verticals/SistemaParaFerreterias';
-import SistemaParaKioscos from './components/verticals/SistemaParaKioscos';
-import IntegracionMercadoLibrePage from './components/integraciones/IntegracionMercadoLibre';
-import IntegracionTiendaNubePage from './components/integraciones/IntegracionTiendaNube';
-import FacturacionArca from './components/integraciones/FacturacionArca';
-import CierresCaja from './components/CierresCaja';
-import Registro from './components/Registro';
-import SuscripcionResultado from './components/SuscripcionResultado';
-import ManualUso from './components/ManualUso';
-import TiendaNubeInstalar from './components/TiendaNubeInstalar';
-import NuevaContrasena from './components/NuevaContrasena';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider, useAuth } from './AuthContext';
+import { SalesProvider } from './components/SalesContext';
 import { useNotifications } from './hooks/useNotifications';
 import Swal from 'sweetalert2';
-
-import './App.css';
-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faBars,
@@ -72,6 +31,52 @@ import {
   faFileInvoiceDollar,
   faIndustry,
 } from '@fortawesome/free-solid-svg-icons';
+
+import './App.css';
+
+// Code-splitting por ruta: antes TODOS los componentes de página (Punto de
+// Venta, Panel de Administración, Productos -- más de 10.000 líneas entre
+// los tres) se cargaban en un único bundle de 2MB sin importar qué página
+// visitara cada usuario. Con React.lazy, cada uno se baja recién cuando se
+// navega a su ruta. Los que no son páginas (ProtectedRoute, AuthProvider,
+// SalesProvider, arriba) se mantienen con import normal -- se necesitan siempre.
+const Productos = lazy(() => import('./components/Productos'));
+const PuntoVenta = lazy(() => import('./components/PuntoVenta'));
+const Login = lazy(() => import('./components/Login'));
+const RegistroCompras = lazy(() => import('./components/RegistroCompras'));
+const EtiquetasImpresion = lazy(() => import('./components/EtiquetasImpresion'));
+const ReciboImpresion = lazy(() => import('./components/ReciboImpresion'));
+const ReciboCobroCuentaCorriente = lazy(() => import('./components/ReciboCobroCuentaCorriente'));
+const FacturaImpresion = lazy(() => import('./components/FacturaImpresion'));
+const TicketCambioImpresion = lazy(() => import('./components/TicketCambioImpresion'));
+const CambioDevolucion = lazy(() => import('./components/CambioDevolucion'));
+const PanelAdministracionTienda = lazy(() => import('./components/PanelAdministracionTienda'));
+const ClientesSaaS = lazy(() => import('./components/ClientesSaaS'));
+const Clientes = lazy(() => import('./components/Clientes'));
+const Proveedores = lazy(() => import('./components/Proveedores'));
+const Presupuesto = lazy(() => import('./components/Presupuesto'));
+const CargaMasivaProductos = lazy(() => import('./components/CargaMasivaProductos'));
+const ClienteDetalle = lazy(() => import('./components/ClienteDetalle'));
+
+const MetricasVentas = lazy(() => import('./components/MetricasVentas'));
+const ComprasStock = lazy(() => import('./components/ComprasStock'));
+const VentasPage = lazy(() => import('./components/VentasPage'));
+const HomePage = lazy(() => import('./components/HomePage'));
+const PoliticaPrivacidad = lazy(() => import('./components/PoliticaPrivacidad'));
+const PreguntasFrecuentes = lazy(() => import('./components/PreguntasFrecuentes'));
+const SistemaParaIndumentaria = lazy(() => import('./components/verticals/SistemaParaIndumentaria'));
+const SistemaParaDeportes = lazy(() => import('./components/verticals/SistemaParaDeportes'));
+const SistemaParaFerreterias = lazy(() => import('./components/verticals/SistemaParaFerreterias'));
+const SistemaParaKioscos = lazy(() => import('./components/verticals/SistemaParaKioscos'));
+const IntegracionMercadoLibrePage = lazy(() => import('./components/integraciones/IntegracionMercadoLibre'));
+const IntegracionTiendaNubePage = lazy(() => import('./components/integraciones/IntegracionTiendaNube'));
+const FacturacionArca = lazy(() => import('./components/integraciones/FacturacionArca'));
+const CierresCaja = lazy(() => import('./components/CierresCaja'));
+const Registro = lazy(() => import('./components/Registro'));
+const SuscripcionResultado = lazy(() => import('./components/SuscripcionResultado'));
+const ManualUso = lazy(() => import('./components/ManualUso'));
+const TiendaNubeInstalar = lazy(() => import('./components/TiendaNubeInstalar'));
+const NuevaContrasena = lazy(() => import('./components/NuevaContrasena'));
 
 // Soporte de notificaciones push (gesto de usuario requerido en móvil)
 const notificacionesSoportadas = () =>
@@ -1137,6 +1142,11 @@ const AppContent = () => {
 
       <div className={`main-content ${isAuthenticated && selectedStoreSlug ? 'with-sidebar' : 'no-sidebar'}`}>
         <div className="container">
+        <Suspense fallback={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#64748b', fontSize: 15 }}>
+            Cargando...
+          </div>
+        }>
         <Routes>
           <Route path="/login/:storeSlug" element={<Login />} />
           <Route path="/login" element={<Login />} />
@@ -1276,6 +1286,7 @@ const AppContent = () => {
           }
 
         </Routes>
+        </Suspense>
         </div>
       </div>
     </>
