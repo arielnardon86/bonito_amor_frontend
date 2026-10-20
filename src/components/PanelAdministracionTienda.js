@@ -7,7 +7,7 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { resizeLogoToBase64 } from '../utils/resizeLogo';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPencil, faTrash, faKey, faStore } from '@fortawesome/free-solid-svg-icons';
+import { faPencil, faTrash, faKey, faStore, faMoneyBillWave, faRightLeft, faCreditCard, faQrcode, faFileInvoiceDollar, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 import HelpButton from './HelpButton';
 import NotasCreditoPage from './NotasCreditoPage';
 import IntegracionTiendaNube from './IntegracionTiendaNube';
@@ -186,22 +186,24 @@ const PanelAdministracionTienda = () => {
     const [aranceles, setAranceles] = useState([]);
     const [showArancelForm, setShowArancelForm] = useState(false);
     // Conexión de Mercado Pago (cobro con QR) -- la pide el método "QR
-    // Mercado Pago" (MetodoPago.requiere_integracion_mp), ver handleCreateArancel.
+    // Mercado Pago" (MetodoPago.requiere_integracion_mp). Su checkbox en
+    // "Medios de Pago Disponibles" dispara este flujo en vez de un toggle
+    // simple, ver handleToggleMetodoPago.
     const [mpPosStatus, setMpPosStatus] = useState(null);
     const [mpPosConectando, setMpPosConectando] = useState(false);
     const [showEditArancelModal, setShowEditArancelModal] = useState(false);
     const [editArancelData, setEditArancelData] = useState(null);
-    const [arancelForm, setArancelForm] = useState({
-        metodo_pago: '',
-        metodo_pago_nuevo: false,
-        nuevo_metodo_nombre: '',
-        nuevo_metodo_descripcion: '',
-        nombre_plan: 'CONTADO',
-        plan_custom: false,
-        plan_custom_nombre: '',
-        arancel_porcentaje: '0.00',
-        tienda: selectedStoreSlug || ''
-    });
+    // Qué métodos habilitó esta tienda (independiente de tener o no un
+    // arancel configurado) -- ver "Medios de Pago Disponibles".
+    const [metodosPagoTienda, setMetodosPagoTienda] = useState([]);
+    // "Nuevo Arancel": elegís UN método, tildás los planes que apliquen y le
+    // ponés a CADA UNO su propio % -- planes es {nombre_plan: porcentaje}.
+    const [bulkArancelForm, setBulkArancelForm] = useState({ metodo_pago: '', planes: {} });
+    // "Aranceles Configurados" agrupado por método -- qué métodos están
+    // desplegados mostrando sus planes.
+    const [metodosArancelExpandidos, setMetodosArancelExpandidos] = useState({});
+    const [planesPersonalizados, setPlanesPersonalizados] = useState([]); // chips extra agregados en esta sesión del form
+    const [nuevoPlanPersonalizado, setNuevoPlanPersonalizado] = useState('');
 
     // Estados para Mi Plan
     const [planInfo, setPlanInfo] = useState(null);
@@ -781,6 +783,7 @@ Script.complete();
                     fetchMetodosPago();
                     fetchAranceles();
                     fetchMpPosStatus();
+                    fetchMetodosPagoTienda();
                 }
             }
         }
@@ -1314,17 +1317,35 @@ Script.complete();
         }
     };
 
-    // Insignia celeste de Mercado Pago (lettermark, sin usar el isotipo oficial)
-    const MercadoPagoBadge = ({ size = 24 }) => (
-        <div style={{
-            width: size, height: size, borderRadius: '50%', background: '#00aaef',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, fontWeight: 700, fontSize: size * 0.4, color: '#fff',
-            fontFamily: 'Arial, sans-serif', letterSpacing: '-0.5px',
-        }}>
-            MP
-        </div>
-    );
+    // Ícono por método de pago en "Medios de Pago Disponibles" -- "QR
+    // Mercado Pago" y "Go Cuotas" usan su logo real (public/integraciones/),
+    // el resto un ícono genérico acorde.
+    const METODO_ICONO_CONFIG = {
+        'Efectivo': { icon: faMoneyBillWave, color: '#16a34a' },
+        'Transferencia': { icon: faRightLeft, color: '#2563eb' },
+        'Tarjeta de Crédito': { icon: faCreditCard, color: '#7c3aed' },
+        'Tarjeta de Débito': { icon: faCreditCard, color: '#0d9488' },
+        'QR': { icon: faQrcode, color: '#334155' },
+        'Cuenta Corriente': { icon: faFileInvoiceDollar, color: '#d97706' },
+    };
+    const MetodoPagoIcono = ({ nombre, size = 22 }) => {
+        if (nombre === 'QR Mercado Pago') {
+            return <img src="/integraciones/mercado-pago.jpeg" alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
+        }
+        if (nombre === 'Go Cuotas') {
+            return <img src="/integraciones/go-cuotas.png" alt="" style={{ width: size, height: size, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />;
+        }
+        const config = METODO_ICONO_CONFIG[nombre];
+        if (!config) return null;
+        return (
+            <div style={{
+                width: size, height: size, borderRadius: '50%', background: `${config.color}1a`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+                <FontAwesomeIcon icon={config.icon} style={{ fontSize: size * 0.55, color: config.color }} />
+            </div>
+        );
+    };
 
     // ========== FUNCIONES PARA ARANCELES ==========
     const fetchAranceles = useCallback(async () => {
@@ -1344,82 +1365,108 @@ Script.complete();
         }
     }, [token, selectedStoreSlug]);
 
-    const handleArancelFormChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setArancelForm({
-            ...arancelForm,
-            [name]: type === 'checkbox' ? checked : value
+    const fetchMetodosPagoTienda = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago-tienda/?tienda_slug=${selectedStoreSlug}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setMetodosPagoTienda(response.data.results || response.data || []);
+        } catch (err) {
+            console.error('Error al cargar métodos de pago habilitados:', err);
+        }
+    }, [token, selectedStoreSlug]);
+
+    // Tildar/destildar un método en "Medios de Pago Disponibles". "QR
+    // Mercado Pago" es un caso especial: su checkbox no es un toggle
+    // directo, dispara el flujo real de conectar/desconectar la cuenta
+    // (así nunca queda "habilitado" sin estar realmente conectado).
+    const handleToggleMetodoPago = async (metodo) => {
+        const habilitado = metodosPagoTienda.find(m => m.metodo_pago === metodo.id);
+        const nuevoActivo = !habilitado?.activo;
+        if (metodo.nombre === 'QR Mercado Pago') {
+            if (nuevoActivo && !mpPosStatus?.connected) {
+                handleConectarMercadoPago();
+                return;
+            }
+            if (!nuevoActivo && mpPosStatus?.connected) {
+                handleDesconectarMercadoPago();
+                return;
+            }
+        }
+        try {
+            await axios.post(`${BASE_API_ENDPOINT}/api/metodos-pago-tienda/`, {
+                tienda: selectedStoreSlug, metodo_pago: metodo.id, activo: nuevoActivo,
+            }, { headers: { 'Authorization': `Bearer ${token}` } });
+            fetchMetodosPagoTienda();
+        } catch (err) {
+            Swal.fire('Error', err.response?.data?.metodo_pago || err.response?.data?.error || 'No se pudo actualizar.', 'error');
+        }
+    };
+
+    // Tilda/destilda un plan -- al tildarlo arranca en 0.00%, listo para
+    // editar en la lista de abajo.
+    const handleBulkArancelPlanToggle = (planValue) => {
+        setBulkArancelForm(prev => {
+            const planes = { ...prev.planes };
+            if (planValue in planes) {
+                delete planes[planValue];
+            } else {
+                planes[planValue] = '0.00';
+            }
+            return { ...prev, planes };
         });
     };
 
-    const handleCreateArancel = async (e) => {
+    const handleBulkArancelPorcentajeChange = (planValue, value) => {
+        setBulkArancelForm(prev => ({ ...prev, planes: { ...prev.planes, [planValue]: value } }));
+    };
+
+    // Agrega un plan que no está en la lista estándar (ej. "18 cuotas") como
+    // una opción más para tildar, ya tildada.
+    const handleAgregarPlanPersonalizado = () => {
+        const nombre = nuevoPlanPersonalizado.trim();
+        if (!nombre) return;
+        if (!planesPersonalizados.includes(nombre) && !PLAN_CHOICES.some(p => p.value === nombre)) {
+            setPlanesPersonalizados(prev => [...prev, nombre]);
+        }
+        setBulkArancelForm(prev => ({ ...prev, planes: { ...prev.planes, [nombre]: '0.00' } }));
+        setNuevoPlanPersonalizado('');
+    };
+
+    // "Nuevo Arancel": un solo método, varios planes tildados a la vez, cada
+    // uno con su propio % -- se guardan todos juntos (ver bulk-crear en el
+    // backend).
+    const handleBulkCrearArancel = async (e) => {
         e.preventDefault();
-        
-        if (arancelForm.metodo_pago_nuevo && !arancelForm.nuevo_metodo_nombre?.trim()) {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Ingresa el nombre del nuevo método de pago.' });
+        if (!bulkArancelForm.metodo_pago) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Elegí un método de pago.' });
             return;
         }
-        if (!arancelForm.metodo_pago_nuevo && !arancelForm.metodo_pago) {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Selecciona un método de pago o crea uno nuevo.' });
+        const planesLista = Object.entries(bulkArancelForm.planes);
+        if (planesLista.length === 0) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Tildá al menos un plan.' });
             return;
         }
-        if (arancelForm.plan_custom && !arancelForm.plan_custom_nombre?.trim()) {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Ingresa el nombre del plan personalizado.' });
-            return;
-        }
-        
         try {
-            let metodoPagoId = arancelForm.metodo_pago;
-            
-            if (arancelForm.metodo_pago_nuevo && arancelForm.nuevo_metodo_nombre?.trim()) {
-                const metodoRes = await axios.post(`${BASE_API_ENDPOINT}/api/metodos-pago/`, {
-                    nombre: arancelForm.nuevo_metodo_nombre.trim(),
-                    descripcion: arancelForm.nuevo_metodo_descripcion?.trim() || '',
-                    activo: true,
-                    es_financiero: true
-                }, { headers: { 'Authorization': `Bearer ${token}` } });
-                metodoPagoId = metodoRes.data.id;
-                fetchMetodosPago();
-            }
-            
-            const planFinal = arancelForm.plan_custom && arancelForm.plan_custom_nombre?.trim()
-                ? arancelForm.plan_custom_nombre.trim()
-                : arancelForm.nombre_plan;
-            
-            await axios.post(`${BASE_API_ENDPOINT}/api/aranceles-tienda/`, {
-                metodo_pago: metodoPagoId,
-                nombre_plan: planFinal,
-                arancel_porcentaje: parseFloat(arancelForm.arancel_porcentaje) || 0,
-                tienda: selectedStoreSlug
-            }, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Éxito',
-                text: 'Arancel creado correctamente.'
-            });
-            
+            await axios.post(`${BASE_API_ENDPOINT}/api/aranceles-tienda/bulk-crear/`, {
+                tienda: selectedStoreSlug,
+                metodo_pago: bulkArancelForm.metodo_pago,
+                planes: planesLista.map(([nombre_plan, arancel_porcentaje]) => ({
+                    nombre_plan, arancel_porcentaje: parseFloat(arancel_porcentaje) || 0,
+                })),
+            }, { headers: { 'Authorization': `Bearer ${token}` } });
+            Swal.fire({ icon: 'success', title: 'Listo', text: 'Arancel guardado.', timer: 1500, showConfirmButton: false });
             setShowArancelForm(false);
-            setArancelForm({
-                metodo_pago: '',
-                metodo_pago_nuevo: false,
-                nuevo_metodo_nombre: '',
-                nuevo_metodo_descripcion: '',
-                nombre_plan: 'CONTADO',
-                plan_custom: false,
-                plan_custom_nombre: '',
-                arancel_porcentaje: '0.00',
-                tienda: selectedStoreSlug
-            });
+            setBulkArancelForm({ metodo_pago: '', planes: {} });
+            setPlanesPersonalizados([]);
             fetchAranceles();
         } catch (err) {
-            console.error('Error al crear arancel:', err);
+            console.error('Error al guardar arancel:', err);
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || (typeof err.response?.data === 'object' ? Object.values(err.response.data).flat().join(' ') : 'Error al crear el arancel.')
+                text: err.response?.data?.error || err.response?.data?.metodo_pago || 'No se pudo guardar el arancel.',
             });
         }
     };
@@ -1566,8 +1613,14 @@ Script.complete();
 
     // Método elegido en "Nuevo Arancel" requiere cuenta de Mercado Pago
     // conectada (ver requiere_integracion_mp) y todavía no lo está.
-    const metodoArancelSeleccionado = metodosPago.find(m => m.id === arancelForm.metodo_pago);
-    const arancelRequiereMpNoConectado = !!metodoArancelSeleccionado?.requiere_integracion_mp && !mpPosStatus?.connected;
+    // Métodos financieros ya habilitados por esta tienda -- son los únicos
+    // que tiene sentido ofrecer en "Nuevo Arancel" (Efectivo/Transferencia/
+    // Cuenta Corriente no usan plan ni %, y un método deshabilitado no
+    // debería poder configurarse).
+    const metodosFinancierosHabilitados = metodosPago.filter(m => {
+        if (!m.es_financiero) return false;
+        return metodosPagoTienda.find(h => h.metodo_pago === m.id)?.activo;
+    });
 
     return (
         <>
@@ -2228,231 +2281,234 @@ Script.complete();
             {/* TAB: MEDIOS DE PAGO Y ARANCELES */}
             {activeTab === 'medios-pago-aranceles' && (
                 <div style={styles.tabContent}>
-                    {mpPosStatus?.connected && (
-                        <div style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            gap: 10, background: '#eafaf3', border: '1px solid #8fe0bd',
-                            borderRadius: 10, padding: '8px 12px', marginBottom: 12, maxWidth: 360,
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <MercadoPagoBadge size={22} />
-                                <div>
-                                    <div style={{ fontSize: 12.5, fontWeight: 600, color: '#00799e', lineHeight: 1.2 }}>Mercado Pago</div>
-                                    <div style={{ fontSize: 11.5, color: '#5b7b87', lineHeight: 1.2 }}>Cuenta conectada</div>
-                                </div>
-                            </div>
-                            <button type="button" onClick={handleDesconectarMercadoPago} style={{
-                                fontSize: 11.5, color: '#c0392b', background: 'transparent', border: '1px solid #e2a3a3',
-                                borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontWeight: 500,
-                            }}>
-                                Desvincular
-                            </button>
-                        </div>
-                    )}
-                    <div style={styles.sectionHeader} className="panel-admin-section-header">
-                        <button onClick={() => {
-                            setArancelForm({
-                                metodo_pago: '',
-                                metodo_pago_nuevo: false,
-                                nuevo_metodo_nombre: '',
-                                nuevo_metodo_descripcion: '',
-                                nombre_plan: 'CONTADO',
-                                plan_custom: false,
-                                plan_custom_nombre: '',
-                                arancel_porcentaje: '0.00',
-                                tienda: selectedStoreSlug
-                            });
-                            setShowArancelForm(true);
-                        }} style={styles.addButton} className="panel-admin-add-button">
-                            + Nuevo Arancel
-                        </button>
+                    <h3 style={{ marginTop: 0, marginBottom: '4px' }}>Medios de Pago Disponibles</h3>
+                    <p style={{ marginBottom: '12px', fontSize: 13, color: '#64748b' }}>
+                        Tildá los que esta tienda ofrece en el Punto de Venta.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 440, marginBottom: 32 }}>
+                        {metodosPago
+                            .filter(m => !['Mercado Libre', 'Tienda Nube'].includes(m.nombre))
+                            .map(metodo => {
+                                const activo = !!metodosPagoTienda.find(h => h.metodo_pago === metodo.id)?.activo;
+                                const esMP = metodo.nombre === 'QR Mercado Pago';
+                                return (
+                                    <label key={metodo.id} style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '9px 14px', borderRadius: 9, border: `1px solid ${activo ? '#bbf0d1' : '#e2e8f0'}`,
+                                        background: activo ? '#f0fdf4' : '#fff', cursor: esMP && mpPosConectando ? 'not-allowed' : 'pointer',
+                                    }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={activo}
+                                                disabled={esMP && mpPosConectando}
+                                                onChange={() => handleToggleMetodoPago(metodo)}
+                                            />
+                                            <MetodoPagoIcono nombre={metodo.nombre} size={20} />
+                                            <span style={{ fontSize: 14, color: '#1a2926' }}>{metodo.nombre}</span>
+                                        </span>
+                                        {esMP && (
+                                            <span style={{ fontSize: 11.5, color: mpPosStatus?.connected ? '#1a7a3f' : '#94a3b8' }}>
+                                                {mpPosConectando ? 'Conectando...' : mpPosStatus?.connected ? 'Conectada' : 'Tildar para conectar'}
+                                            </span>
+                                        )}
+                                    </label>
+                                );
+                            })}
                     </div>
 
-                    {showArancelForm && (
-                        <div style={styles.formContainer} className="panel-admin-form-container">
-                            <h3>Nuevo Arancel</h3>
-                            <form onSubmit={handleCreateArancel}>
-                                <div style={styles.formGrid} className="panel-admin-form-grid">
-                                    <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
-                                        <label>Método de Pago *</label>
-                                        <select name="metodo_pago" value={arancelForm.metodo_pago} onChange={handleArancelFormChange} required style={styles.input}>
-                                            <option value="">Seleccionar método...</option>
-                                            {metodosPago.filter(m => m.es_financiero && m.nombre !== 'Mercado Libre').map(metodo => (
-                                                <option key={metodo.id} value={metodo.id}>{metodo.nombre}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    {arancelRequiereMpNoConectado && (
-                                        <div style={{
-                                            ...styles.formGroup, gridColumn: '1 / -1', background: '#eaf7fd',
-                                            border: '1px solid #aee4f7', borderRadius: 10, padding: '10px 14px',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <MercadoPagoBadge size={20} />
-                                                <p style={{ margin: 0, fontSize: 12.5, color: '#00799e' }}>
-                                                    <strong>{metodoArancelSeleccionado?.nombre}</strong> requiere conectar
-                                                    la cuenta de Mercado Pago de esta tienda.
-                                                </p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={handleConectarMercadoPago}
-                                                disabled={mpPosConectando}
-                                                style={{
-                                                    fontSize: 11.5, fontWeight: 600, color: '#fff', background: '#00aaef',
-                                                    border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
-                                                    opacity: mpPosConectando ? 0.6 : 1, whiteSpace: 'nowrap', flexShrink: 0,
-                                                }}
-                                            >
-                                                {mpPosConectando ? 'Conectando...' : 'Conectar'}
-                                            </button>
-                                        </div>
-                                    )}
-                                    {!arancelRequiereMpNoConectado && (
-                                        <>
-                                            <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
-                                                <label>Plan *</label>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                                        <input type="radio" name="plan_modo" checked={!arancelForm.plan_custom} onChange={() => setArancelForm({ ...arancelForm, plan_custom: false })} />
-                                                        Seleccionar existente
-                                                    </label>
-                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                                        <input type="radio" name="plan_modo" checked={arancelForm.plan_custom} onChange={() => setArancelForm({ ...arancelForm, plan_custom: true })} />
-                                                        Crear nuevo
-                                                    </label>
-                                                </div>
-                                                {!arancelForm.plan_custom ? (
-                                                    <select name="nombre_plan" value={arancelForm.nombre_plan} onChange={handleArancelFormChange} required={!arancelForm.plan_custom} style={styles.input}>
-                                                        {PLAN_CHOICES.map(plan => (
-                                                            <option key={plan.value} value={plan.value}>{plan.label}</option>
-                                                        ))}
-                                                    </select>
-                                                ) : (
-                                                    <input type="text" name="plan_custom_nombre" value={arancelForm.plan_custom_nombre} onChange={handleArancelFormChange} placeholder="Nombre del plan (ej: 18 cuotas)" style={styles.input} required={arancelForm.plan_custom} />
-                                                )}
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label>Arancel (%) *</label>
-                                                <input
-                                                    type="number"
-                                                    name="arancel_porcentaje"
-                                                    value={arancelForm.arancel_porcentaje}
-                                                    onChange={handleArancelFormChange}
-                                                    required
-                                                    min="0"
-                                                    max="100"
-                                                    step="0.01"
-                                                    style={styles.input}
-                                                />
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                                <div style={styles.formActions} className="panel-admin-form-actions">
-                                    {!arancelRequiereMpNoConectado && (
-                                        <button type="submit" style={styles.saveButton}>
-                                            Crear
+                    <h3 style={{ marginTop: 0, marginBottom: 14 }}>Aranceles Configurados</h3>
+
+                    {metodosFinancierosHabilitados.length === 0 ? (
+                        <div style={{ padding: 18, textAlign: 'center', color: '#94a3b8', fontSize: 13, border: '1px dashed #e2e8f0', borderRadius: 9 }}>
+                            Todavía no tenés métodos financieros habilitados -- activá alguno arriba, en "Medios de Pago Disponibles".
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {metodosFinancierosHabilitados.map(metodo => {
+                                const items = aranceles.filter(a => a.metodo_pago_nombre === metodo.nombre);
+                                const expandido = !!metodosArancelExpandidos[metodo.id];
+                                const formAbierto = showArancelForm && bulkArancelForm.metodo_pago === metodo.id;
+                                return (
+                                    <div key={metodo.id} style={{ border: '1px solid #e2e8f0', borderRadius: 9, overflow: 'hidden' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setMetodosArancelExpandidos(prev => ({ ...prev, [metodo.id]: !prev[metodo.id] }))}
+                                            style={{
+                                                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                padding: '10px 14px', background: '#fff', border: 'none', cursor: 'pointer', textAlign: 'left',
+                                            }}
+                                        >
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <MetodoPagoIcono nombre={metodo.nombre} size={20} />
+                                                <span style={{ fontSize: 14, fontWeight: 600, color: '#1a2926' }}>{metodo.nombre}</span>
+                                                <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                                                    {items.length === 0 ? 'sin planes' : `${items.length} plan${items.length !== 1 ? 'es' : ''}`}
+                                                </span>
+                                            </span>
+                                            <FontAwesomeIcon icon={expandido ? faChevronUp : faChevronDown} style={{ color: '#94a3b8', fontSize: 12 }} />
                                         </button>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setShowArancelForm(false);
-                                        }}
-                                        style={styles.cancelButton}
-                                    >
-                                        Cancelar
-                                    </button>
-                                </div>
-                            </form>
+
+                                        {expandido && (
+                                            <div style={{ borderTop: '1px solid #e2e8f0' }}>
+                                                {items.length > 0 && (
+                                                    <table style={styles.table} className="panel-admin-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th style={styles.th}>Plan</th>
+                                                                <th style={styles.th}>Arancel (%)</th>
+                                                                <th style={styles.th}>Acciones</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {items.map(arancel => (
+                                                                <tr key={arancel.id}>
+                                                                    <td style={styles.td}>
+                                                                        {PLAN_CHOICES.find(p => p.value === arancel.nombre_plan)?.label || arancel.nombre_plan}
+                                                                    </td>
+                                                                    <td style={styles.td}>{parseFloat(arancel.arancel_porcentaje).toFixed(2)}%</td>
+                                                                    <td style={styles.td}>
+                                                                        <div style={styles.actionButtons} className="panel-admin-action-buttons">
+                                                                            <button
+                                                                                className="icon-btn"
+                                                                                onClick={() => handleEditArancel(arancel)}
+                                                                                style={{ color: 'white', backgroundColor: '#f59e0b' }}
+                                                                                data-tooltip="Editar arancel"
+                                                                            >
+                                                                                <FontAwesomeIcon icon={faPencil} />
+                                                                            </button>
+                                                                            <button
+                                                                                className="icon-btn"
+                                                                                onClick={() => handleDeleteArancel(arancel.id)}
+                                                                                style={{ color: 'white', backgroundColor: '#e25252' }}
+                                                                                data-tooltip="Eliminar arancel"
+                                                                            >
+                                                                                <FontAwesomeIcon icon={faTrash} />
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                )}
+                                                {!formAbierto && (
+                                                    <div style={{ padding: '10px 14px' }}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setBulkArancelForm({ metodo_pago: metodo.id, planes: {} });
+                                                                setPlanesPersonalizados([]);
+                                                                setShowArancelForm(true);
+                                                            }}
+                                                            style={{
+                                                                fontSize: 12, fontWeight: 600, color: '#1a7a3f',
+                                                                background: '#ecfdf3', border: '1px solid #bbf0d1',
+                                                                borderRadius: 8, padding: '5px 12px', cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            + Agregar plan
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                        {formAbierto && (
+                                            <div style={{ borderTop: '1px solid #e2e8f0', padding: 14, background: '#f8fafc' }}>
+                                                <form onSubmit={handleBulkCrearArancel}>
+                                                    <div style={{ ...styles.formGroup, marginBottom: 14 }}>
+                                                        <label>Planes * <span style={{ fontWeight: 400, color: '#94a3b8' }}>(tildá los que apliquen)</span></label>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                                                            {[...PLAN_CHOICES, ...planesPersonalizados.map(p => ({ value: p, label: p }))].map(plan => (
+                                                                <label key={plan.value} style={{
+                                                                    display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
+                                                                    borderRadius: 20, border: `1px solid ${plan.value in bulkArancelForm.planes ? '#7dd3fc' : '#cbd5e1'}`,
+                                                                    cursor: 'pointer', fontSize: 13,
+                                                                    background: plan.value in bulkArancelForm.planes ? '#e0f2fe' : '#fff',
+                                                                }}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={plan.value in bulkArancelForm.planes}
+                                                                        onChange={() => handleBulkArancelPlanToggle(plan.value)}
+                                                                    />
+                                                                    {plan.label}
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                                                            <input
+                                                                type="text"
+                                                                value={nuevoPlanPersonalizado}
+                                                                onChange={(e) => setNuevoPlanPersonalizado(e.target.value)}
+                                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAgregarPlanPersonalizado(); } }}
+                                                                placeholder="Agregar otro plan (ej: 18 cuotas)"
+                                                                style={{ ...styles.input, flex: 1, fontSize: 13 }}
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleAgregarPlanPersonalizado}
+                                                                disabled={!nuevoPlanPersonalizado.trim()}
+                                                                style={{
+                                                                    fontSize: 13, fontWeight: 600, color: '#334155', background: '#f1f5f9',
+                                                                    border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 16px', cursor: 'pointer',
+                                                                    opacity: nuevoPlanPersonalizado.trim() ? 1 : 0.5,
+                                                                }}
+                                                            >
+                                                                + Agregar
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {Object.keys(bulkArancelForm.planes).length > 0 && (
+                                                        <div style={{ ...styles.formGroup, marginBottom: 14 }}>
+                                                            <label>Arancel (%) por plan *</label>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6 }}>
+                                                                {Object.entries(bulkArancelForm.planes).map(([planValue, porcentaje]) => (
+                                                                    <div key={planValue} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                                        <span style={{ fontSize: 13, color: '#334155', width: 150, flexShrink: 0 }}>
+                                                                            {PLAN_CHOICES.find(p => p.value === planValue)?.label || planValue}
+                                                                        </span>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={porcentaje}
+                                                                            onChange={(e) => handleBulkArancelPorcentajeChange(planValue, e.target.value)}
+                                                                            required
+                                                                            min="0"
+                                                                            max="100"
+                                                                            step="0.01"
+                                                                            style={{ ...styles.input, maxWidth: 110 }}
+                                                                        />
+                                                                        <span style={{ fontSize: 13, color: '#94a3b8' }}>%</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div style={styles.formActions} className="panel-admin-form-actions">
+                                                        <button type="submit" style={styles.saveButton} disabled={Object.keys(bulkArancelForm.planes).length === 0}>
+                                                            Guardar
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setShowArancelForm(false);
+                                                                setPlanesPersonalizados([]);
+                                                            }}
+                                                            style={styles.cancelButton}
+                                                        >
+                                                            Cancelar
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
-
-                    <div style={styles.infoBox}>
-                        <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Medios de Pago Disponibles</h3>
-                        <p style={{ marginBottom: '10px' }}>Los medios de pago se configuran globalmente. A continuación puedes configurar los aranceles para cada método de pago que lo permita.</p>
-                        <div style={styles.tableContainer} className="panel-admin-table-container">
-                            <table style={styles.table} className="panel-admin-table">
-                                <thead>
-                                    <tr>
-                                        <th style={styles.th}>Nombre</th>
-                                        <th style={styles.th}>Descripción</th>
-                                        <th style={styles.th}>Activo</th>
-                                        <th style={styles.th}>Permite Aranceles</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {metodosPago.filter(m => m.nombre !== 'Tienda Nube').length === 0 ? (
-                                        <tr>
-                                            <td colSpan="4" style={styles.td}>No hay métodos de pago registrados</td>
-                                        </tr>
-                                    ) : (
-                                        metodosPago.filter(m => m.nombre !== 'Tienda Nube').map(metodo => (
-                                            <tr key={metodo.id}>
-                                                <td style={styles.td}>{metodo.nombre}</td>
-                                                <td style={styles.td}>{metodo.descripcion || '-'}</td>
-                                                <td style={styles.td}>{metodo.activo ? 'Sí' : 'No'}</td>
-                                                <td style={styles.td}>{metodo.es_financiero ? 'Sí' : 'No'}</td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <h3 style={{ marginTop: '30px', marginBottom: '15px' }}>Aranceles Configurados</h3>
-                    <div style={styles.tableContainer} className="panel-admin-table-container">
-                        <table style={styles.table} className="panel-admin-table">
-                            <thead>
-                                <tr>
-                                    <th style={styles.th}>Método de Pago</th>
-                                    <th style={styles.th}>Plan</th>
-                                    <th style={styles.th}>Arancel (%)</th>
-                                    <th style={styles.th}>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {aranceles.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="4" style={styles.td}>No hay aranceles configurados</td>
-                                    </tr>
-                                ) : (
-                                    aranceles.map(arancel => (
-                                        <tr key={arancel.id}>
-                                            <td style={styles.td}>{arancel.metodo_pago_nombre || '-'}</td>
-                                            <td style={styles.td}>
-                                                {PLAN_CHOICES.find(p => p.value === arancel.nombre_plan)?.label || arancel.nombre_plan}
-                                            </td>
-                                            <td style={styles.td}>{parseFloat(arancel.arancel_porcentaje).toFixed(2)}%</td>
-                                            <td style={styles.td}>
-                                                <div style={styles.actionButtons} className="panel-admin-action-buttons">
-                                                    <button
-                                                        className="icon-btn"
-                                                        onClick={() => handleEditArancel(arancel)}
-                                                        style={{ color: 'white', backgroundColor: '#f59e0b' }}
-                                                        data-tooltip="Editar arancel"
-                                                    >
-                                                        <FontAwesomeIcon icon={faPencil} />
-                                                    </button>
-                                                    <button
-                                                        className="icon-btn"
-                                                        onClick={() => handleDeleteArancel(arancel.id)}
-                                                        style={{ color: 'white', backgroundColor: '#e25252' }}
-                                                        data-tooltip="Eliminar arancel"
-                                                    >
-                                                        <FontAwesomeIcon icon={faTrash} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
             )}
 

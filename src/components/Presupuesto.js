@@ -49,6 +49,7 @@ const Presupuesto = () => {
     const [recargoMonto, setRecargoMonto] = useState('');
 
     const [metodosPago, setMetodosPago] = useState([]);
+    const [metodosPagoTienda, setMetodosPagoTienda] = useState([]);
     const [metodoPagoSugerido, setMetodoPagoSugerido] = useState('');
     const [notas, setNotas] = useState('');
     const [fechaVigencia, setFechaVigencia] = useState('');
@@ -128,6 +129,27 @@ const Presupuesto = () => {
     }, [token]);
 
     useEffect(() => { fetchMetodosPago(); }, [fetchMetodosPago]);
+
+    const fetchMetodosPagoTienda = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago-tienda/`, {
+                headers: { 'Authorization': `Bearer ${token}` }, params: { tienda_slug: selectedStoreSlug },
+            });
+            setMetodosPagoTienda(response.data.results || response.data || []);
+        } catch (err) {
+            console.error('Error al cargar métodos de pago habilitados:', err);
+        }
+    }, [token, selectedStoreSlug]);
+
+    useEffect(() => { fetchMetodosPagoTienda(); }, [fetchMetodosPagoTienda]);
+
+    // "Mercado Libre"/"Tienda Nube" son de uso interno, y solo se sugiere un
+    // método si la tienda lo habilitó desde "Medios de Pago Disponibles".
+    const metodosPagoVisibles = metodosPago.filter(m => {
+        if (['Mercado Libre', 'Tienda Nube'].includes(m.nombre)) return false;
+        return metodosPagoTienda.find(h => h.metodo_pago === m.id)?.activo;
+    });
 
     // ── Cliente obligatorio ──────────────────────────────────────────────────
     const buscarCliente = useCallback(async () => {
@@ -703,7 +725,7 @@ const Presupuesto = () => {
                                     style={{ ...styles.inputField, flex: 1 }}
                                 >
                                     <option value="">Sin especificar</option>
-                                    {metodosPago.filter(m => m.nombre !== 'Tienda Nube').map(m => (
+                                    {metodosPagoVisibles.map(m => (
                                         <option key={m.id} value={m.nombre}>{m.nombre}</option>
                                     ))}
                                 </select>

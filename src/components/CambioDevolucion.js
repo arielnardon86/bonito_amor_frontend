@@ -70,6 +70,7 @@ const CambioDevolucion = () => {
     const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('');
     const [arancelesTienda, setArancelesTienda] = useState([]);
     const [arancelSeleccionadoId, setArancelSeleccionadoId] = useState('');
+    const [metodosPagoTienda, setMetodosPagoTienda] = useState([]);
     
     // Descuentos y recargos
     const [descuentoPorcentaje, setDescuentoPorcentaje] = useState('');
@@ -161,6 +162,19 @@ const CambioDevolucion = () => {
         }
     }, [token, tiendaOperativaSlug]);
 
+    const fetchMetodosPagoTienda = useCallback(async () => {
+        if (!token || !tiendaOperativaSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago-tienda/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: tiendaOperativaSlug }
+            });
+            setMetodosPagoTienda(response.data.results || response.data || []);
+        } catch (err) {
+            console.error('Error al cargar métodos de pago habilitados:', err);
+        }
+    }, [token, tiendaOperativaSlug]);
+
     // Cargar productos disponibles (siempre de la tienda de la venta original, no de la tienda activa)
     const fetchProductos = useCallback(async (page = 1, searchQuery = '') => {
         if (!token || !tiendaOperativaSlug) return;
@@ -188,9 +202,10 @@ const CambioDevolucion = () => {
         if (tiendaOperativaSlug && token) {
             fetchMetodosPago();
             fetchAranceles();
+            fetchMetodosPagoTienda();
             fetchProductos(1, filterTerm);
         }
-    }, [tiendaOperativaSlug, token, fetchMetodosPago, fetchAranceles, fetchProductos, filterTerm]);
+    }, [tiendaOperativaSlug, token, fetchMetodosPago, fetchAranceles, fetchMetodosPagoTienda, fetchProductos, filterTerm]);
 
     // Manejar lectura de código de barras para buscar venta
     useEffect(() => {
@@ -341,9 +356,21 @@ const CambioDevolucion = () => {
     // Verificar si el método de pago seleccionado es financiero
     const metodoPagoObj = metodosPago.find(m => m.nombre === metodoPagoSeleccionado);
     const isMetodoFinancieroActivo = metodoPagoObj?.es_financiero;
-    
+
     // Filtrar los aranceles disponibles para el método de pago seleccionado
     const arancelesDisponibles = arancelesTienda.filter(a => a.metodo_pago_nombre === metodoPagoSeleccionado);
+
+    // "Mercado Libre" y "Tienda Nube" son de uso interno (los asignan los
+    // webhooks de esos canales), nunca los elige nadie a mano. El resto solo
+    // se muestra si la tienda lo habilitó desde "Medios de Pago Disponibles"
+    // -- y si es financiero, que tenga al menos un plan/arancel configurado.
+    const metodosPagoVisibles = metodosPago.filter(m => {
+        if (['Mercado Libre', 'Tienda Nube'].includes(m.nombre)) return false;
+        const habilitado = metodosPagoTienda.find(h => h.metodo_pago === m.id);
+        if (!habilitado?.activo) return false;
+        if (!m.es_financiero) return true;
+        return arancelesTienda.some(a => (a.metodo_pago_nombre || '').trim() === m.nombre.trim());
+    });
 
     // Calcular monto a devolver considerando descuentos/recargos de la venta original
     const calcularMontoDevolucion = () => {
@@ -1476,7 +1503,7 @@ const CambioDevolucion = () => {
                                             style={styles.inputField}
                                         >
                                             <option value="">Selecciona un método de pago</option>
-                                            {metodosPago.filter(m => m.nombre !== 'Tienda Nube').map(method => (
+                                            {metodosPagoVisibles.map(method => (
                                                 <option key={method.id} value={method.nombre}>{method.nombre}</option>
                                             ))}
                                         </select>

@@ -37,6 +37,7 @@ const ClienteDetalle = () => {
     const [montoCobro, setMontoCobro] = useState('');
     const [metodoPagoCobro, setMetodoPagoCobro] = useState('');
     const [metodosPago, setMetodosPago] = useState([]);
+    const [metodosPagoTienda, setMetodosPagoTienda] = useState([]);
     const [cobrando, setCobrando] = useState(false);
 
     // Edición inline de los datos del cliente
@@ -80,6 +81,22 @@ const ClienteDetalle = () => {
             .then(r => setMetodosPago((r.data.results || r.data || []).filter(m => m.nombre !== 'Cuenta Corriente' && m.activo)))
             .catch(() => {});
     }, [token]);
+
+    useEffect(() => {
+        if (!token || !selectedStoreSlug) return;
+        axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago-tienda/`, {
+            headers: { 'Authorization': `Bearer ${token}` }, params: { tienda_slug: selectedStoreSlug }
+        })
+            .then(r => setMetodosPagoTienda(r.data.results || r.data || []))
+            .catch(() => {});
+    }, [token, selectedStoreSlug]);
+
+    // "Mercado Libre"/"Tienda Nube" son de uso interno, y solo se muestra un
+    // método si la tienda lo habilitó desde "Medios de Pago Disponibles".
+    const metodosPagoVisibles = metodosPago.filter(m => {
+        if (['Mercado Libre', 'Tienda Nube'].includes(m.nombre)) return false;
+        return metodosPagoTienda.find(h => h.metodo_pago === m.id)?.activo;
+    });
 
     const abrirCobro = () => {
         setMontoCobro(historial?.saldo_pendiente || '');
@@ -805,7 +822,7 @@ const ClienteDetalle = () => {
                         <label style={styles.formLabel}>Método de pago
                             <select style={styles.inputField} value={metodoPagoCobro} onChange={(e) => setMetodoPagoCobro(e.target.value)}>
                                 <option value="">Selecciona un método de pago</option>
-                                {metodosPago.filter(m => m.nombre !== 'Tienda Nube').map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
+                                {metodosPagoVisibles.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
                             </select>
                         </label>
                         <p style={{ fontSize: 13, color: '#94a3b8' }}>

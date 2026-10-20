@@ -234,6 +234,10 @@ const PuntoVenta = () => {
     const [arancelesTienda, setArancelesTienda] = useState([]);
     const [arancelSeleccionadoId, setArancelSeleccionadoId] = useState('');
     const [arancelesML, setArancelesML] = useState([]);
+    // Qué métodos de pago habilitó esta tienda (independiente de tener o no
+    // un arancel configurado) -- ver "Medios de Pago Disponibles" en el
+    // Panel de Administración.
+    const [metodosPagoTienda, setMetodosPagoTienda] = useState([]);
 
     // Cuenta Corriente: cliente obligatorio, buscable por CUIT/CUIL
     const [busquedaClienteCC, setBusquedaClienteCC] = useState('');
@@ -778,6 +782,21 @@ const PuntoVenta = () => {
         }
     }, [token, selectedStoreSlug, user]);
 
+    // FUNCIÓN 2b: Fetch de Métodos de Pago habilitados por esta tienda
+    const fetchMetodosPagoTienda = useCallback(async () => {
+        if (!token || !selectedStoreSlug) return;
+        try {
+            const response = await axios.get(`${BASE_API_ENDPOINT}/api/metodos-pago-tienda/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { tienda_slug: selectedStoreSlug }
+            });
+            setMetodosPagoTienda(response.data.results || response.data || []);
+        } catch (err) {
+            console.error('Error al cargar métodos de pago habilitados:', err.response ? err.response.data : err.message);
+            setMetodosPagoTienda([]);
+        }
+    }, [token, selectedStoreSlug]);
+
     // Cuenta Corriente: búsqueda de cliente por CUIT/CUIL, acotada a la tienda activa
     // (misma tienda que se resolverá para la venta, nunca al conjunto de tiendas autorizadas).
     const buscarClienteCC = useCallback(async () => {
@@ -893,6 +912,7 @@ const PuntoVenta = () => {
                     await Promise.all([
                         fetchMetodosPago(),
                         fetchAranceles(),
+                        fetchMetodosPagoTienda(),
                         fetchArancelesML(),
                         fetchTiendaInfo(),
                         fetchCierreActivo(),
@@ -915,7 +935,7 @@ const PuntoVenta = () => {
         loadInitialData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, user, authLoading, selectedStoreSlug, token,
-        fetchMetodosPago, fetchAranceles, fetchArancelesML, fetchTiendaInfo, fetchProductos, fetchCierreActivo, fetchTieneCodigoInterno]);
+        fetchMetodosPago, fetchAranceles, fetchMetodosPagoTienda, fetchArancelesML, fetchTiendaInfo, fetchProductos, fetchCierreActivo, fetchTieneCodigoInterno]);
         // NOTA: filterTerm NO está en las dependencias para evitar llamadas duplicadas
 
     // **********************************************
@@ -1315,16 +1335,20 @@ const PuntoVenta = () => {
     }, [metodoPagoSeleccionado, isMetodoFinancieroActivo, arancelesDisponibles, arancelSeleccionadoId]);
 
 
-    // Métodos visibles en los selects: todos los no-financieros + financieros con arancel configurado.
-    // "Tienda Nube" se excluye siempre -- es de uso interno, lo asigna solo el
-    // webhook de Tienda Nube al crear la venta (ver _procesar_orden_tiendanube
-    // en el backend), nunca lo elige el cajero a mano.
-    const metodosPagoVisibles = metodosPago.filter(m =>
-        m.nombre !== 'Tienda Nube' && (
-            !m.es_financiero ||
-            arancelesTienda.some(a => (a.metodo_pago_nombre || '').trim() === m.nombre.trim())
-        )
-    );
+    // "Mercado Libre" y "Tienda Nube" se excluyen siempre -- son de uso
+    // interno, los asignan solo los webhooks de esos canales al crear la
+    // venta, nunca los elige el cajero a mano.
+    const METODOS_EXCLUIDOS_SIEMPRE = ['Mercado Libre', 'Tienda Nube'];
+    // Métodos visibles en los selects: los que la tienda habilitó desde
+    // "Medios de Pago Disponibles" (ver metodosPagoTienda) -- y si además
+    // son financieros, que tengan al menos un plan/arancel configurado.
+    const metodosPagoVisibles = metodosPago.filter(m => {
+        if (METODOS_EXCLUIDOS_SIEMPRE.includes(m.nombre)) return false;
+        const habilitado = metodosPagoTienda.find(h => h.metodo_pago === m.id);
+        if (!habilitado?.activo) return false;
+        if (!m.es_financiero) return true;
+        return arancelesTienda.some(a => (a.metodo_pago_nombre || '').trim() === m.nombre.trim());
+    });
 
     // --- FUNCIÓN handleProcesarVenta (LÓGICA DE REDONDEO INCLUIDA) ---
     // ── Helpers de pago combinado ─────────────────────────────────────────────
@@ -3053,7 +3077,7 @@ const PuntoVenta = () => {
                         <div style={styles.paymentMethodSelectContainer} className="payment-method-select-container">
                             <label htmlFor="metodoPago" style={styles.paymentMethodLabel}>Método de pago</label>
                             {formasPago.length === 0 ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                                     <select
                                         id="metodoPago"
                                         value={metodoPagoSeleccionado}
@@ -3072,6 +3096,18 @@ const PuntoVenta = () => {
                                     >
                                         Combinar métodos de pago
                                     </button>
+                                    {user?.is_superuser && (
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate('/panel-administracion-tienda?tab=medios-pago-aranceles')}
+                                            style={{
+                                                background: 'none', border: 'none', color: '#3b9ede', fontSize: 12,
+                                                cursor: 'pointer', padding: 0, whiteSpace: 'nowrap', textDecoration: 'underline',
+                                            }}
+                                        >
+                                            Administrá los métodos de pago
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <div style={{ background: '#edfaf3', border: '1px solid #a8e6c5', borderRadius: 10, padding: '8px 12px', fontSize: 13 }}>
