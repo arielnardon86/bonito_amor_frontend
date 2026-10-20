@@ -1540,7 +1540,9 @@ Script.complete();
     const PLAN_CHOICES = [
         { value: 'CONTADO', label: 'Contado / Pago Único' },
         { value: '1', label: '1 Cuota' },
+        { value: '2', label: '2 Cuotas' },
         { value: '3', label: '3 Cuotas' },
+        { value: '4', label: '4 Cuotas' },
         { value: '6', label: '6 Cuotas' },
         { value: '12', label: '12 Cuotas' },
         { value: 'Z', label: 'Z (Plan Z)' }
