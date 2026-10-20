@@ -8,7 +8,7 @@ export default function MarketingFooter() {
     return (
         <footer style={s.footer}>
             <div style={s.footerInner}>
-                <img src="/logo-completo.png" alt="Total Stock" style={s.footerLogo} />
+                <img src="/logo-completo.png" alt="Total Stock" style={s.footerLogo} loading="lazy" />
                 <p style={s.footerText}>© {new Date().getFullYear()} Total Stock · Todos los derechos reservados.</p>
                 <p style={s.footerSub}>Software de gestión para comercios argentinos.</p>
                 <p style={{ margin: '14px 0 0', fontSize: '0.85em', color: '#475569' }}>

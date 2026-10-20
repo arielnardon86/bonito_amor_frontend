@@ -122,7 +122,7 @@ export default function PreguntasFrecuentes() {
 
             <footer style={s.footer}>
                 <div style={s.footerInner}>
-                    <img src="/logo-completo.png" alt="Total Stock" style={s.footerLogo} />
+                    <img src="/logo-completo.png" alt="Total Stock" style={s.footerLogo} loading="lazy" />
                     <p style={s.footerText}>© {new Date().getFullYear()} Total Stock · Todos los derechos reservados.</p>
                     <p style={{ margin: '10px 0 0', fontSize: '0.85em' }}>
                         <Link to="/privacidad" style={{ color: '#475569', textDecoration: 'none' }}>

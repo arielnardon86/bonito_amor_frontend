@@ -466,7 +466,7 @@ export default function HomePage() {
                         {INTEGRACIONES.map((ig, i) => (
                             <div key={i} style={s.integCard} className="integ-card">
                                 <div style={s.integLogo}>
-                                    <img src={ig.src} alt={ig.nombre} style={s.integImg} />
+                                    <img src={ig.src} alt={ig.nombre} style={s.integImg} loading="lazy" />
                                 </div>
                                 <div style={s.integName}>{ig.nombre}</div>
                                 <div style={s.integDesc}>{ig.desc}</div>
@@ -491,7 +491,7 @@ export default function HomePage() {
                         {[...CLIENTES, ...CLIENTES].map((cl, i) => (
                             <div key={i} style={s.clienteItem}>
                                 <div style={s.clienteCircle}>
-                                    <img src={cl.src} alt={cl.nombre} style={s.clienteImg} />
+                                    <img src={cl.src} alt={cl.nombre} style={s.clienteImg} loading="lazy" />
                                 </div>
                                 <span style={s.clienteNombre}>{cl.nombre}</span>
                             </div>

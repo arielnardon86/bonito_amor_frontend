@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* Fuente Inter: se carga desde public/index.html (preconnect + <link>), no acá
+   -- un @import en CSS es render-blocking y retrasa el descubrimiento de la
+   fuente hasta que el navegador baja y parsea este archivo. */
 
 /* ── Design tokens ─────────────────────────────────────────────────────────── */
 :root {
