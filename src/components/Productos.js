@@ -1069,9 +1069,25 @@ const Productos = () => {
 
     const handleVincularTN = async (tnVariantIdElegida) => {
         if (!editProduct) return;
+        const idLimpio = tnLinkInput.trim();
+        // El ID de producto de Tienda Nube siempre es numérico -- el error más común acá
+        // es pegar el "slug" de la URL pública del producto (ej. "musculosa-turin-11vv1")
+        // en vez del ID (ej. "123456789"), que se parecen pero no sirven: la API de TN
+        // devuelve 404 para el slug, y recién ahí el backend intenta (sin éxito) tratarlo
+        // como ID de variante. Cortar acá ahorra esa ida y vuelta y explica el error real
+        // en vez de un genérico "no se encontró el producto".
+        if (!/^\d+$/.test(idLimpio)) {
+            setError(
+                'Ese valor no parece un ID de producto de Tienda Nube (tiene que ser solo números). '
+                + 'Si copiaste la URL de la tienda online, ese es el "slug" del producto, no el ID. '
+                + 'Buscá el ID en el panel de administración de Tienda Nube → Productos → abrí el producto: '
+                + 'el número aparece en la URL del navegador (ej. .../productos/123456789).'
+            );
+            return;
+        }
         setTnLinking(true);
         try {
-            const body = { tn_product_id: tnLinkInput.trim() };
+            const body = { tn_product_id: idLimpio };
             if (tnVariantIdElegida) body.tn_variant_id = tnVariantIdElegida;
             const { data } = await axios.post(
                 `${BASE_API_ENDPOINT}/api/productos/${editProduct.id}/vincular-tienda-nube/`,
@@ -2534,6 +2550,9 @@ const Productos = () => {
                                         <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 8px' }}>
                                             Si ya creaste este producto directamente en Tienda Nube, pegá acá su ID para vincularlo (el stock se sincroniza solo desde ese momento). Si en Tienda Nube tiene varios talles/variantes: cuando este producto todavía no tiene variantes cargadas acá, se crean automáticamente (con stock en 0 para redistribuir a mano); si este producto ya es una variante de una familia local, te vamos a pedir que elijas cuál talle de Tienda Nube le corresponde — repetí este paso en cada variante local, con el mismo ID de producto.
                                         </p>
+                                        <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 8px' }}>
+                                            El ID es un número (ej. 123456789) — lo encontrás en el panel de administración de Tienda Nube, abriendo el producto: aparece en la URL del navegador. <strong>No</strong> es el nombre del producto ni el texto que aparece en el link de la tienda online (ej. "musculosa-turin-11vv1").
+                                        </p>
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <input
                                                 type="text"
@@ -2547,7 +2566,7 @@ const Productos = () => {
                                                     setTnVariantesParaElegir(null);
                                                     setTnVarianteElegida('');
                                                 }}
-                                                placeholder="ID de producto en Tienda Nube"
+                                                placeholder="Solo números, ej. 123456789"
                                                 style={{ ...styles.modalInput, flex: 1 }}
                                             />
                                             <button
