@@ -2610,6 +2610,16 @@ const Productos = () => {
                             </div>
                         )}
 
+                        {!tnConectado && (
+                            <div style={{ ...styles.inputGroupModal, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 12 }}>
+                                <label style={styles.label}>Tienda Nube:</label>
+                                <p style={{ fontSize: 12, color: '#92400e', margin: 0 }}>
+                                    Esta tienda todavía no está conectada a Tienda Nube, así que no se puede vincular este producto todavía.
+                                    Para conectarla: andá a <strong>Panel de Administración → Tienda Nube</strong> y tocá <strong>"Conectar con Tienda Nube"</strong>.
+                                </p>
+                            </div>
+                        )}
+
                         <div style={styles.modalActions}>
                             <button onClick={handleEditProduct} style={styles.modalConfirmButton}>Guardar</button>
                             {!editProduct.producto_padre_id && (
