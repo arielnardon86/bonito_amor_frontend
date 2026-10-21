@@ -356,7 +356,7 @@ const Navbar = () => {
               </li>
             )}
 
-            {user && (user.is_superuser || user.is_supervisor) && tiendasAutorizadas.some(t => t.nombre === selectedStoreSlug && t.tiene_cierre_caja) && (
+            {user && (user.is_superuser || user.is_supervisor) && tiendasAutorizadas?.some(t => t.nombre === selectedStoreSlug && t.tiene_cierre_caja) && (
               <li onClick={handleNavClick}>
                 <Link to="/cierres-caja" className={location.pathname === '/cierres-caja' ? 'active' : ''}>
                   <FontAwesomeIcon icon={faCashRegister} className="nav-icon" />

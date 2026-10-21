@@ -5,6 +5,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { AuthProvider } from './AuthContext'; // <--- NUEVO: Importa AuthProvider
 import { BrowserRouter as Router } from 'react-router-dom'; // Asegúrate de que Router esté importado
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Registrar Service Worker de Firebase de forma opcional (no bloquea la app si falla)
 if ('serviceWorker' in navigator) {
@@ -37,11 +38,13 @@ document.addEventListener('wheel', (e) => {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <Router> {/* Si no lo tenías, envuelve aquí */}
-      <AuthProvider> {/* <--- NUEVO: Envuelve App con AuthProvider */}
-        <App />
-      </AuthProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router> {/* Si no lo tenías, envuelve aquí */}
+        <AuthProvider> {/* <--- NUEVO: Envuelve App con AuthProvider */}
+          <App />
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   </React.StrictMode>
 );
 
