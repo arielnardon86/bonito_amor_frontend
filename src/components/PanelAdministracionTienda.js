@@ -133,6 +133,13 @@ const PanelAdministracionTienda = () => {
     const [descuentoEfectivoRedondearArriba, setDescuentoEfectivoRedondearArriba] = useState(false);
     const [guardandoDatosTienda, setGuardandoDatosTienda] = useState(false);
     const [errorDatosTienda, setErrorDatosTienda] = useState('');
+    // Datos de contacto/fiscales de la tienda (se muestran en el PDF de
+    // factura cuando están cargados -- direccion, cuit, ingresos_brutos).
+    const [direccionInput, setDireccionInput] = useState('');
+    const [telefonoInput, setTelefonoInput] = useState('');
+    const [emailTiendaInput, setEmailTiendaInput] = useState('');
+    const [cuitDatosInput, setCuitDatosInput] = useState('');
+    const [ingresosBrutosInput, setIngresosBrutosInput] = useState('');
 
     // Widget de ventas del día para iPhone (Scriptable)
     const [mostrarWidgetToken, setMostrarWidgetToken] = useState(false);
@@ -284,6 +291,11 @@ const PanelAdministracionTienda = () => {
                 );
                 setDescuentoEfectivoRedondearAbajo(tienda.descuento_efectivo_redondeo === 'abajo');
                 setDescuentoEfectivoRedondearArriba(tienda.descuento_efectivo_redondeo === 'arriba');
+                setDireccionInput(tienda.direccion || '');
+                setTelefonoInput(tienda.telefono || '');
+                setEmailTiendaInput(tienda.email || '');
+                setCuitDatosInput(tienda.cuit || '');
+                setIngresosBrutosInput(tienda.ingresos_brutos || '');
                 await fetchAfipEstado(tienda.id);
             }
         } catch (err) {
@@ -320,6 +332,17 @@ const PanelAdministracionTienda = () => {
                 return;
             }
         }
+        if (cuitDatosInput.trim() !== '') {
+            const cuitDigits = cuitDatosInput.replace(/\D/g, '');
+            if (cuitDigits.length !== 11) {
+                setErrorDatosTienda('El CUIT/CUIL debe tener exactamente 11 dígitos.');
+                return;
+            }
+        }
+        if (emailTiendaInput.trim() !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTiendaInput.trim())) {
+            setErrorDatosTienda('El email no es válido.');
+            return;
+        }
         setGuardandoDatosTienda(true);
         setErrorDatosTienda('');
         const nombreAnterior = selectedStoreSlug;
@@ -328,12 +351,24 @@ const PanelAdministracionTienda = () => {
         if (logoParaGuardar !== undefined) body.logo = logoParaGuardar;
         body.descuento_efectivo_porcentaje = descuentoEfectivoInput.trim() === '' ? null : parseFloat(descuentoEfectivoInput);
         body.descuento_efectivo_redondeo = descuentoEfectivoRedondearAbajo ? 'abajo' : descuentoEfectivoRedondearArriba ? 'arriba' : '';
+        body.direccion = direccionInput.trim();
+        body.telefono = telefonoInput.trim();
+        body.email = emailTiendaInput.trim();
+        body.cuit = cuitDatosInput.trim();
+        body.ingresos_brutos = ingresosBrutosInput.trim();
 
         try {
             const { data } = await axios.patch(`${BASE_API_ENDPOINT}/api/tienda/actualizar-datos/`, body, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setTiendaInfo(prev => prev ? { ...prev, nombre: data.nombre, logo: data.logo, descuento_efectivo_porcentaje: data.descuento_efectivo_porcentaje, descuento_efectivo_redondeo: data.descuento_efectivo_redondeo } : prev);
+            setTiendaInfo(prev => prev ? {
+                ...prev, nombre: data.nombre, logo: data.logo,
+                descuento_efectivo_porcentaje: data.descuento_efectivo_porcentaje,
+                descuento_efectivo_redondeo: data.descuento_efectivo_redondeo,
+                direccion: data.direccion, telefono: data.telefono, email: data.email,
+                cuit: data.cuit, ingresos_brutos: data.ingresos_brutos,
+            } : prev);
+            setAfipForm(prev => ({ ...prev, cuit: data.cuit || '' }));
             setLogoParaGuardar(undefined);
             if (body.nombre && body.nombre !== nombreAnterior) {
                 renombrarTiendaLocal(nombreAnterior, data.nombre);
@@ -1892,6 +1927,86 @@ Script.complete();
                                     Redondear precio con descuento (múlt. 100 ↑)
                                 </label>
                             </div>
+
+                            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #e2e8f0', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                                <div style={{ flex: '1 1 300px', minWidth: 220 }}>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 6 }}>
+                                        Dirección
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={direccionInput}
+                                        onChange={e => setDireccionInput(e.target.value)}
+                                        placeholder="Ej: Av. Siempre Viva 742, CABA"
+                                        style={{
+                                            width: '100%', maxWidth: 340, padding: '9px 12px', borderRadius: 8,
+                                            border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ flex: '1 1 160px', minWidth: 160 }}>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 6 }}>
+                                        Teléfono
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={telefonoInput}
+                                        onChange={e => setTelefonoInput(e.target.value)}
+                                        placeholder="Ej: 11 5555-5555"
+                                        style={{
+                                            width: '100%', maxWidth: 200, padding: '9px 12px', borderRadius: 8,
+                                            border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ flex: '1 1 220px', minWidth: 220 }}>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 6 }}>
+                                        Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={emailTiendaInput}
+                                        onChange={e => setEmailTiendaInput(e.target.value)}
+                                        placeholder="contacto@tutienda.com"
+                                        style={{
+                                            width: '100%', maxWidth: 280, padding: '9px 12px', borderRadius: 8,
+                                            border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ flex: '1 1 160px', minWidth: 160 }}>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 6 }}>
+                                        CUIT/CUIL
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={cuitDatosInput}
+                                        onChange={e => setCuitDatosInput(e.target.value)}
+                                        placeholder="XX-XXXXXXXX-X"
+                                        style={{
+                                            width: '100%', maxWidth: 200, padding: '9px 12px', borderRadius: 8,
+                                            border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ flex: '1 1 160px', minWidth: 160 }}>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 6 }}>
+                                        N° de Ingresos Brutos
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={ingresosBrutosInput}
+                                        onChange={e => setIngresosBrutosInput(e.target.value)}
+                                        style={{
+                                            width: '100%', maxWidth: 200, padding: '9px 12px', borderRadius: 8,
+                                            border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box',
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 8, marginBottom: 0, maxWidth: 500 }}>
+                                La dirección, el CUIT/CUIL y el N° de Ingresos Brutos se muestran en el PDF de factura cuando están cargados.
+                            </p>
                             {errorDatosTienda && (
                                 <p style={{ color: '#e25252', fontSize: 13, marginTop: 8, marginBottom: 0 }}>{errorDatosTienda}</p>
                             )}
