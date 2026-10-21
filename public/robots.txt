@@ -20,6 +20,3 @@ Disallow: /nueva-contrasena
 Disallow: /suscripcion
 
 Sitemap: https://www.totalstock.com.ar/sitemap.xml
-
-# Catálogo de recursos para agentes de IA (Agentic Resource Discovery)
-Agentmap: https://www.totalstock.com.ar/ai-catalog.json
