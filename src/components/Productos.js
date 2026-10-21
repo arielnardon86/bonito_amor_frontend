@@ -306,6 +306,10 @@ const Productos = () => {
 
     const [editProduct, setEditProduct] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
+    // Vincular con Tienda Nube tiene su propio modal (no requiere permiso de
+    // editar el producto completo) para que supervisor pueda usarlo sin abrir
+    // precio/costo/nombre, que siguen siendo solo de superuser.
+    const [showVincularTNModal, setShowVincularTNModal] = useState(false);
     // Vinculación manual con Tienda Nube (solo visible si la tienda actual la tiene conectada)
     const [tnConectado, setTnConectado] = useState(false);
     const [tnLinkInput, setTnLinkInput] = useState('');
@@ -2033,6 +2037,10 @@ const Productos = () => {
                                                 label: 'Transferir variantes a otra tienda',
                                                 onClick: () => { setFamiliaParaTransferir(producto); setTiendaDestinoFamilia(''); setCantidadesFamilia({}); setShowTransferirFamiliaModal(true); },
                                             }] : []),
+                                            ...((user.is_superuser || user.is_supervisor) ? [{
+                                                label: 'Vincular con Tienda Nube',
+                                                onClick: () => { setEditProduct({ ...producto }); setTnLinkInput(''); setTnVariantesParaElegir(null); setShowVincularTNModal(true); },
+                                            }] : []),
                                             ...(user.is_superuser ? [{
                                                 label: 'Eliminar', peligro: true,
                                                 onClick: () => { setProductToDelete(producto); setShowDeleteModal(true); },
@@ -2183,6 +2191,15 @@ const Productos = () => {
                                                 ...((user.is_superuser || user.is_supervisor) && tiendasAutorizadas.length > 1 ? [{
                                                     label: 'Transferir stock a otra tienda',
                                                     onClick: () => { setProductoParaTransferir({ ...v, nombre: nombreVariante }); setTiendaDestinoTransferir(''); setCantidadTransferir(''); setShowTransferirStockModal(true); },
+                                                }] : []),
+                                                ...((user.is_superuser || user.is_supervisor) ? [{
+                                                    label: 'Vincular con Tienda Nube',
+                                                    onClick: () => {
+                                                        const varianteFull = productos.find(p => p.id === v.id) || v;
+                                                        setEditProduct({ ...varianteFull, nombre: varianteFull.nombre || producto.nombre });
+                                                        setTnLinkInput(''); setTnVariantesParaElegir(null);
+                                                        setShowVincularTNModal(true);
+                                                    },
                                                 }] : []),
                                                 ...(user.is_superuser ? [
                                                     { label: 'Subir en el orden', disabled: esPrimeraVariante || moviendoVarianteId === v.id, onClick: () => handleMoverVariante(v.id, 'arriba') },
@@ -2637,6 +2654,117 @@ const Productos = () => {
                                 </button>
                             )}
                             <button onClick={() => setShowEditModal(false)} style={styles.modalCancelButton}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de vinculación con Tienda Nube -- accesible para superuser y
+                supervisor (a diferencia del modal de Editar de arriba, que solo
+                puede abrir superuser porque incluye precio/costo/nombre). */}
+            {showVincularTNModal && editProduct && (
+                <div style={styles.modalOverlay} onClick={() => setShowVincularTNModal(false)}>
+                    <div style={{ ...styles.modalContent, maxWidth: 440, textAlign: 'left' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ margin: '0 0 4px', color: '#1a2926' }}>Vincular con Tienda Nube</h3>
+                        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
+                            {editProduct.nombre}
+                        </p>
+
+                        {tnConectado ? (
+                            <div style={{ background: '#f0faf5', border: '1px solid #cdeedb', borderRadius: 8, padding: 12 }}>
+                                {editProduct.tn_variant_id ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: 13, color: '#1a6a40' }}>
+                                            ✓ Vinculado (producto {editProduct.tn_product_id})
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={handleDesvincularTN}
+                                            disabled={tnLinking}
+                                            style={{ padding: '4px 10px', fontSize: 12, background: '#fef2f2', color: '#e25252', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer' }}
+                                        >
+                                            {tnLinking ? 'Desvinculando...' : 'Desvincular'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 8px' }}>
+                                            Si ya creaste este producto directamente en Tienda Nube, pegá acá su ID para vincularlo (el stock se sincroniza solo desde ese momento). Si en Tienda Nube tiene varios talles/variantes: cuando este producto todavía no tiene variantes cargadas acá, se crean automáticamente (con stock en 0 para redistribuir a mano); si este producto ya es una variante de una familia local, te vamos a pedir que elijas cuál talle de Tienda Nube le corresponde — repetí este paso en cada variante local, con el mismo ID de producto.
+                                        </p>
+                                        <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 8px' }}>
+                                            El ID es un número (ej. 123456789) — lo encontrás en el panel de administración de Tienda Nube, abriendo el producto: aparece en la URL del navegador. <strong>No</strong> es el nombre del producto ni el texto que aparece en el link de la tienda online (ej. "musculosa-turin-11vv1").
+                                        </p>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <input
+                                                type="text"
+                                                value={tnLinkInput}
+                                                onChange={(e) => {
+                                                    setTnLinkInput(e.target.value);
+                                                    // Si ya había un desplegable de variantes de un ID anterior,
+                                                    // se descarta: si no, al corregir el ID y confirmar, se manda
+                                                    // el tn_variant_id viejo contra el producto nuevo y tira
+                                                    // "la variante no pertenece a ese producto".
+                                                    setTnVariantesParaElegir(null);
+                                                    setTnVarianteElegida('');
+                                                }}
+                                                placeholder="Solo números, ej. 123456789"
+                                                style={{ ...styles.modalInput, flex: 1 }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleVincularTN()}
+                                                disabled={tnLinking || !tnLinkInput.trim()}
+                                                style={{ padding: '8px 14px', background: '#5dc87a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                            >
+                                                {tnLinking ? 'Vinculando...' : 'Vincular'}
+                                            </button>
+                                        </div>
+                                        {tnVariantesParaElegir && (
+                                            <div style={{ marginTop: 10 }}>
+                                                <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 6px' }}>
+                                                    Ese producto tiene varias variantes en Tienda Nube. Elegí cuál corresponde:
+                                                </p>
+                                                <select
+                                                    value={tnVarianteElegida}
+                                                    onChange={(e) => setTnVarianteElegida(e.target.value)}
+                                                    style={{ ...styles.modalInput, marginBottom: 8 }}
+                                                >
+                                                    <option value="">Seleccionar variante...</option>
+                                                    {tnVariantesParaElegir.map(v => (
+                                                        <option key={v.id} value={v.id}>
+                                                            {v.valores || v.sku || v.id}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleVincularTN(tnVarianteElegida)}
+                                                    disabled={tnLinking || !tnVarianteElegida}
+                                                    style={{ padding: '6px 12px', background: '#5dc87a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                                                >
+                                                    Confirmar variante
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 12 }}>
+                                <p style={{ fontSize: 12, color: '#92400e', margin: 0 }}>
+                                    Esta tienda todavía no está conectada a Tienda Nube, así que no se puede vincular este producto todavía.
+                                    Para conectarla: andá a <strong>Panel de Administración → Tienda Nube</strong> y tocá <strong>"Conectar con Tienda Nube"</strong>.
+                                </p>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                            <button
+                                onClick={() => { setShowVincularTNModal(false); setEditProduct(null); }}
+                                style={styles.modalCancelButton}
+                            >
+                                Cerrar
+                            </button>
                         </div>
                     </div>
                 </div>
