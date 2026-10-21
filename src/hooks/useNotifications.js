@@ -3,23 +3,25 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 
-// Importar Firebase de forma segura (no bloquea si falla)
-let requestNotificationPermission = null;
-let getFCMToken = null;
-let onMessageListener = null;
-
-try {
-  const firebaseModule = require('../firebase');
-  requestNotificationPermission = firebaseModule.requestNotificationPermission;
-  getFCMToken = firebaseModule.getFCMToken;
-  onMessageListener = firebaseModule.onMessageListener;
-} catch (error) {
-  console.warn('Firebase no está disponible (notificaciones deshabilitadas):', error);
-  // Funciones dummy para que no falle
-  requestNotificationPermission = async () => null;
-  getFCMToken = async () => null;
-  onMessageListener = () => () => {};
-}
+// Firebase se carga de forma diferida (import dinámico): antes un require()
+// al tope del archivo lo metía en el bundle principal e inicializaba Firebase
+// Analytics en CADA carga de página (incluso sin login), duplicando la carga
+// de gtag.js. Ahora solo se descarga cuando de verdad hace falta: con el
+// usuario autenticado o al pedir permiso de notificaciones.
+let firebaseModulePromise = null;
+const loadFirebaseModule = () => {
+  if (!firebaseModulePromise) {
+    firebaseModulePromise = import('../firebase').catch((error) => {
+      console.warn('Firebase no está disponible (notificaciones deshabilitadas):', error);
+      return {
+        requestNotificationPermission: async () => null,
+        getFCMToken: async () => null,
+        onMessageListener: () => () => {},
+      };
+    });
+  }
+  return firebaseModulePromise;
+};
 
 // Singleton: el listener onMessage se registra solo UNA vez globalmente.
 // Varios componentes (App/Navbar, PanelAdministracionTienda) usan useNotifications,
@@ -166,8 +168,9 @@ export const useNotifications = () => {
             try {
                 // Limpiar cualquier error previo
                 setError(null);
-                
+
                 // Obtener el token directamente sin mostrar diálogo de permiso
+                const { getFCMToken } = await loadFirebaseModule();
                 const token = await getFCMToken(
                     (token) => {
                         console.log('Token FCM obtenido exitosamente:', token);
@@ -206,7 +209,8 @@ export const useNotifications = () => {
         try {
             // Limpiar cualquier error previo
             setError(null);
-            
+
+            const { requestNotificationPermission } = await loadFirebaseModule();
             const token = await requestNotificationPermission(
                 (token) => {
                     console.log('Permiso concedido y token obtenido:', token);
@@ -247,56 +251,66 @@ export const useNotifications = () => {
             return;
         }
 
-        try {
-            // Sincronizar el estado del permiso con el navegador
-            const currentPermission = Notification.permission;
-            setNotificationPermission(currentPermission);
-            
-            // Si ya tiene permiso (y no desactivó manualmente), SIEMPRE obtener y registrar el token
-            // al cargar. Así si el backend marcó el token como inactivo (UnregisteredError), lo
-            // reactivamos en la próxima carga y las notificaciones vuelven a llegar.
-            if (currentPermission === 'granted' && !isManuallyDisabled) {
-                console.log('Refrescando registro de token FCM en el backend...');
-                getFCMToken(
-                    (token) => {
-                        if (token) {
-                            setFcmToken(token);
-                            registrarToken(token);
+        let cancelado = false;
+
+        (async () => {
+            try {
+                const { getFCMToken, onMessageListener } = await loadFirebaseModule();
+                if (cancelado) return;
+
+                // Sincronizar el estado del permiso con el navegador
+                const currentPermission = Notification.permission;
+                setNotificationPermission(currentPermission);
+
+                // Si ya tiene permiso (y no desactivó manualmente), SIEMPRE obtener y registrar el token
+                // al cargar. Así si el backend marcó el token como inactivo (UnregisteredError), lo
+                // reactivamos en la próxima carga y las notificaciones vuelven a llegar.
+                if (currentPermission === 'granted' && !isManuallyDisabled) {
+                    console.log('Refrescando registro de token FCM en el backend...');
+                    getFCMToken(
+                        (token) => {
+                            if (token) {
+                                setFcmToken(token);
+                                registrarToken(token);
+                            }
+                        },
+                        (error) => {
+                            console.warn('Error al obtener token FCM (no crítico):', error);
+                            setError(error);
                         }
-                    },
-                    (error) => {
-                        console.warn('Error al obtener token FCM (no crítico):', error);
-                        setError(error);
-                    }
-                );
-            } else if (isManuallyDisabled) {
-                console.log('Notificaciones desactivadas manualmente, no se reactivan automáticamente');
+                    );
+                } else if (isManuallyDisabled) {
+                    console.log('Notificaciones desactivadas manualmente, no se reactivan automáticamente');
+                }
+
+                // Escuchar mensajes cuando la app está en primer plano
+                // IMPORTANTE: Registrar el listener solo UNA vez globalmente (singleton).
+                // Varios componentes usan useNotifications (App/Navbar, PanelAdministracionTienda)
+                // y cada uno registraba su propio listener, causando notificaciones duplicadas.
+                if (!globalMessageListenerActive) {
+                    console.log('Registrando listener de notificaciones (único global)');
+                    globalMessageListenerActive = true;
+
+                    globalMessageUnsubscribe = onMessageListener((payload) => {
+                        console.log('Notificación recibida en primer plano:', payload);
+                        // No crear new Notification() aquí: el service worker ya maneja la
+                        // notificación del sistema vía onBackgroundMessage. Si ambos crean
+                        // una notificación (incluso con el mismo tag), algunos browsers las
+                        // muestran dos veces. Con la app visible el usuario ya la está viendo.
+                    });
+                }
+            } catch (error) {
+                console.warn('Error al inicializar notificaciones (no crítico):', error);
+                // No bloquear la app si fallan las notificaciones
             }
+        })();
 
-            // Escuchar mensajes cuando la app está en primer plano
-            // IMPORTANTE: Registrar el listener solo UNA vez globalmente (singleton).
-            // Varios componentes usan useNotifications (App/Navbar, PanelAdministracionTienda)
-            // y cada uno registraba su propio listener, causando notificaciones duplicadas.
-            if (!globalMessageListenerActive) {
-                console.log('Registrando listener de notificaciones (único global)');
-                globalMessageListenerActive = true;
-
-                globalMessageUnsubscribe = onMessageListener((payload) => {
-                    console.log('Notificación recibida en primer plano:', payload);
-                    // No crear new Notification() aquí: el service worker ya maneja la
-                    // notificación del sistema vía onBackgroundMessage. Si ambos crean
-                    // una notificación (incluso con el mismo tag), algunos browsers las
-                    // muestran dos veces. Con la app visible el usuario ya la está viendo.
-                });
-            }
-
-            // No desregistrar en cleanup: el listener es global y debe persistir al navegar.
-            // Se desregistra solo en el efecto de logout.
-            return () => {};
-        } catch (error) {
-            console.warn('Error al inicializar notificaciones (no crítico):', error);
-            // No bloquear la app si fallan las notificaciones
-        }
+        // No desregistrar el listener global en cleanup: debe persistir al navegar.
+        // Se desregistra solo en el efecto de logout. `cancelado` solo evita tocar
+        // estado de un efecto ya superseded mientras el import dinámico resolvía.
+        return () => {
+            cancelado = true;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, token, isManuallyDisabled]); // Sin fcmToken para no re-ejecutar al actualizar token y provocar bucle
 

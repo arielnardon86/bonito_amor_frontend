@@ -1,0 +1,72 @@
+{
+  "specVersion": "0.9",
+  "host": {
+    "displayName": "Total Stock",
+    "domain": "totalstock.com.ar"
+  },
+  "entries": [
+    {
+      "identifier": "urn:ai:totalstock.com.ar:website:home",
+      "displayName": "Total Stock - Sistema de gestión y punto de venta",
+      "type": "website",
+      "url": "https://www.totalstock.com.ar/",
+      "description": "Sistema de gestión para comercios en Argentina: punto de venta, stock en tiempo real, facturación electrónica ARCA e integración con Mercado Libre y Tienda Nube. Prueba gratis 7 días."
+    },
+    {
+      "identifier": "urn:ai:totalstock.com.ar:documentation:faq",
+      "displayName": "Preguntas frecuentes de Total Stock",
+      "type": "documentation",
+      "url": "https://www.totalstock.com.ar/preguntas-frecuentes/",
+      "description": "Respuestas sobre facturación electrónica, integraciones con Mercado Libre y Tienda Nube, planes y precios de Total Stock."
+    },
+    {
+      "identifier": "urn:ai:totalstock.com.ar:website:indumentaria",
+      "displayName": "Total Stock para indumentaria",
+      "type": "website",
+      "url": "https://www.totalstock.com.ar/sistema-para-indumentaria",
+      "description": "Gestión de stock por talle y color para tiendas de indumentaria."
+    },
+    {
+      "identifier": "urn:ai:totalstock.com.ar:website:deportes",
+      "displayName": "Total Stock para deportes",
+      "type": "website",
+      "url": "https://www.totalstock.com.ar/sistema-para-deportes",
+      "description": "Punto de venta y control de stock para tiendas de artículos deportivos."
+    },
+    {
+      "identifier": "urn:ai:totalstock.com.ar:website:ferreterias",
+      "displayName": "Total Stock para ferreterías",
+      "type": "website",
+      "url": "https://www.totalstock.com.ar/sistema-para-ferreterias",
+      "description": "Control de stock de alta rotación y múltiples proveedores para ferreterías."
+    },
+    {
+      "identifier": "urn:ai:totalstock.com.ar:website:kioscos",
+      "displayName": "Total Stock para kioscos",
+      "type": "website",
+      "url": "https://www.totalstock.com.ar/sistema-para-kioscos",
+      "description": "Punto de venta rápido para kioscos y almacenes."
+    },
+    {
+      "identifier": "urn:ai:totalstock.com.ar:documentation:mercadolibre",
+      "displayName": "Integración con Mercado Libre",
+      "type": "documentation",
+      "url": "https://www.totalstock.com.ar/integraciones/mercado-libre",
+      "description": "Sincronización de stock y pedidos entre Total Stock y Mercado Libre."
+    },
+    {
+      "identifier": "urn:ai:totalstock.com.ar:documentation:tiendanube",
+      "displayName": "Integración con Tienda Nube",
+      "type": "documentation",
+      "url": "https://www.totalstock.com.ar/integraciones/tienda-nube",
+      "description": "Sincronización de catálogo, stock y ventas online entre Total Stock y Tienda Nube."
+    },
+    {
+      "identifier": "urn:ai:totalstock.com.ar:documentation:facturacion-arca",
+      "displayName": "Facturación electrónica ARCA",
+      "type": "documentation",
+      "url": "https://www.totalstock.com.ar/facturacion-arca",
+      "description": "Emisión de facturas electrónicas homologadas en Argentina desde Total Stock."
+    }
+  ]
+}
