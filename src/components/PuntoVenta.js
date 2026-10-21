@@ -1,6 +1,6 @@
 // components/PuntoVenta.js
 // BONITO_AMOR/frontend/src/components/PuntoVenta.js
-import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
@@ -18,6 +18,12 @@ const BarcodeScannerModal = lazy(() => import('./BarcodeScannerModal'));
 
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+// "Mercado Libre" y "Tienda Nube" se excluyen siempre de los selectores
+// manuales de método de pago -- son de uso interno, los asignan solo los
+// webhooks de esos canales al crear la venta, nunca los elige el cajero a
+// mano. Constante de módulo (no recreada en cada render).
+const METODOS_EXCLUIDOS_SIEMPRE = ['Mercado Libre', 'Tienda Nube'];
 const normalizeApiUrl = (url) => {
     if (!url) {
         return 'http://localhost:8000';
@@ -1335,20 +1341,19 @@ const PuntoVenta = () => {
     }, [metodoPagoSeleccionado, isMetodoFinancieroActivo, arancelesDisponibles, arancelSeleccionadoId]);
 
 
-    // "Mercado Libre" y "Tienda Nube" se excluyen siempre -- son de uso
-    // interno, los asignan solo los webhooks de esos canales al crear la
-    // venta, nunca los elige el cajero a mano.
-    const METODOS_EXCLUIDOS_SIEMPRE = ['Mercado Libre', 'Tienda Nube'];
     // Métodos visibles en los selects: los que la tienda habilitó desde
     // "Medios de Pago Disponibles" (ver metodosPagoTienda) -- y si además
     // son financieros, que tengan al menos un plan/arancel configurado.
-    const metodosPagoVisibles = metodosPago.filter(m => {
+    // useMemo: recién se recalcula si realmente cambió alguna de las 3
+    // listas de las que depende, no en cada render del componente (que acá
+    // pasa seguido -- cada tecla tipeada en el buscador, por ejemplo).
+    const metodosPagoVisibles = useMemo(() => metodosPago.filter(m => {
         if (METODOS_EXCLUIDOS_SIEMPRE.includes(m.nombre)) return false;
         const habilitado = metodosPagoTienda.find(h => h.metodo_pago === m.id);
         if (!habilitado?.activo) return false;
         if (!m.es_financiero) return true;
         return arancelesTienda.some(a => (a.metodo_pago_nombre || '').trim() === m.nombre.trim());
-    });
+    }), [metodosPago, metodosPagoTienda, arancelesTienda]);
 
     // --- FUNCIÓN handleProcesarVenta (LÓGICA DE REDONDEO INCLUIDA) ---
     // ── Helpers de pago combinado ─────────────────────────────────────────────

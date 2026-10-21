@@ -22,6 +22,10 @@ const normalizeApiUrl = (url) => {
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
 
+// "Mercado Libre" y "Tienda Nube" son de uso interno, nunca los elige nadie
+// a mano -- constante de módulo (no recreada en cada render).
+const METODOS_EXCLUIDOS_SIEMPRE = ['Mercado Libre', 'Tienda Nube'];
+
 const ClienteDetalle = () => {
     const { clienteId } = useParams();
     const navigate = useNavigate();
@@ -93,10 +97,10 @@ const ClienteDetalle = () => {
 
     // "Mercado Libre"/"Tienda Nube" son de uso interno, y solo se muestra un
     // método si la tienda lo habilitó desde "Medios de Pago Disponibles".
-    const metodosPagoVisibles = metodosPago.filter(m => {
-        if (['Mercado Libre', 'Tienda Nube'].includes(m.nombre)) return false;
+    const metodosPagoVisibles = useMemo(() => metodosPago.filter(m => {
+        if (METODOS_EXCLUIDOS_SIEMPRE.includes(m.nombre)) return false;
         return metodosPagoTienda.find(h => h.metodo_pago === m.id)?.activo;
-    });
+    }), [metodosPago, metodosPagoTienda]);
 
     const abrirCobro = () => {
         setMontoCobro(historial?.saldo_pendiente || '');

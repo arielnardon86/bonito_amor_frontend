@@ -1,5 +1,5 @@
 // Store/frontend/src/components/SalesContext.js
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid'; 
 
 const SalesContext = createContext();
@@ -35,6 +35,42 @@ export const SalesProvider = ({ children }) => {
   const [carts, setCarts] = useState([]);
   const [activeCartId, setActiveCartId] = useState(null);
 
+  // Memoizadas con useCallback: el value del provider (más abajo) se memoiza
+  // con useMemo, y para que eso sirva de algo las funciones que contiene
+  // tienen que tener una referencia estable -- si no, el objeto value sigue
+  // siendo "nuevo" en cada render igual, y cada componente que usa
+  // useSales() (todo Punto de Venta) se re-renderiza sin necesidad.
+  const createNewCart = useCallback((initialAlias = '') => {
+    const newCartId = uuidv4();
+    const newCart = {
+      id: newCartId,
+      name: `Venta #${carts.length + 1}`, // Default name (e.g., "Sale #1", "Sale #2")
+      alias: initialAlias,
+      items: [],
+      total: 0,
+      createdAt: new Date(),
+    };
+    setCarts(prevCarts => [...prevCarts, newCart]);
+    setActiveCartId(newCartId);
+    return newCartId;
+  }, [carts.length]);
+
+  const selectCart = useCallback((id) => {
+    if (carts.some(cart => cart.id === id)) {
+      setActiveCartId(id);
+    } else {
+      console.warn("Cart not found:", id);
+    }
+  }, [carts]);
+
+  const updateCartAlias = useCallback((cartId, newAlias) => {
+    setCarts(prevCarts =>
+      prevCarts.map(cart =>
+        cart.id === cartId ? { ...cart, alias: newAlias } : cart
+      )
+    );
+  }, []);
+
   // Ensures there is always at least one active cart on load/initialization
   useEffect(() => {
     if (carts.length === 0) { // Only if there are no carts, create a new one
@@ -50,40 +86,9 @@ export const SalesProvider = ({ children }) => {
         createNewCart('Venta #1');
       }
     }
-  }, [carts, activeCartId]); // Dependencies to react to changes in carts or active ID
+  }, [carts, activeCartId, createNewCart]); // Dependencies to react to changes in carts or active ID
 
-  const createNewCart = (initialAlias = '') => {
-    const newCartId = uuidv4(); 
-    const newCart = {
-      id: newCartId,
-      name: `Venta #${carts.length + 1}`, // Default name (e.g., "Sale #1", "Sale #2")
-      alias: initialAlias, 
-      items: [],
-      total: 0,
-      createdAt: new Date(), 
-    };
-    setCarts(prevCarts => [...prevCarts, newCart]);
-    setActiveCartId(newCartId); 
-    return newCartId;
-  };
-
-  const selectCart = (id) => {
-    if (carts.some(cart => cart.id === id)) {
-      setActiveCartId(id);
-    } else {
-      console.warn("Cart not found:", id);
-    }
-  };
-
-  const updateCartAlias = (cartId, newAlias) => {
-    setCarts(prevCarts => 
-      prevCarts.map(cart => 
-        cart.id === cartId ? { ...cart, alias: newAlias } : cart
-      )
-    );
-  };
-
-  const addProductToCart = (productToAdd, quantity = 1) => {
+  const addProductToCart = useCallback((productToAdd, quantity = 1) => {
     if (!activeCartId) {
       console.warn("No active cart. Create one first.");
       return;
@@ -130,10 +135,10 @@ export const SalesProvider = ({ children }) => {
       }
       return cart;
     }));
-  };
+  }, [activeCartId]);
 
   // KEY CHANGE HERE: Accept cartId as the first argument
-  const removeProductFromCart = (cartId, productId) => {
+  const removeProductFromCart = useCallback((cartId, productId) => {
     if (!cartId) return; // Ensure cartId is valid
 
     setCarts(prevCarts => prevCarts.map(cart => {
@@ -144,10 +149,10 @@ export const SalesProvider = ({ children }) => {
       }
       return cart;
     }));
-  };
+  }, []);
 
   // KEY CHANGE HERE: Accept cartId as the first argument
-  const decrementProductQuantity = (cartId, productId) => {
+  const decrementProductQuantity = useCallback((cartId, productId) => {
     if (!cartId) return; // Ensure cartId is valid
 
     setCarts(prevCarts => prevCarts.map(cart => {
@@ -175,12 +180,12 @@ export const SalesProvider = ({ children }) => {
       }
       return cart;
     }));
-  };
+  }, []);
 
   // Setea la cantidad de un ítem directamente (en vez de sumar/restar de a 1) --
   // lo usan los productos "por peso", donde se tipea el peso en gramos en vez de
   // usar el stepper +/-.
-  const setProductQuantityInCart = (cartId, productId, newQuantity) => {
+  const setProductQuantityInCart = useCallback((cartId, productId, newQuantity) => {
     if (!cartId) return;
 
     setCarts(prevCarts => prevCarts.map(cart => {
@@ -201,12 +206,12 @@ export const SalesProvider = ({ children }) => {
       const updatedTotal = updatedItems.reduce((sum, item) => sum + calcularSubtotalItem(item), 0);
       return { ...cart, items: updatedItems, total: updatedTotal };
     }));
-  };
+  }, []);
 
   // Descuento en % por línea del carrito (no por unidad): se aplica al total
   // de esa línea sin importar la cantidad cargada -- ver calcularSubtotalItem,
   // que lo resta del bruto (precio * cantidad).
-  const setDescuentoItemEnCarrito = (cartId, productId, descuentoPorcentaje) => {
+  const setDescuentoItemEnCarrito = useCallback((cartId, productId, descuentoPorcentaje) => {
     if (!cartId) return;
 
     setCarts(prevCarts => prevCarts.map(cart => {
@@ -218,9 +223,9 @@ export const SalesProvider = ({ children }) => {
       const updatedTotal = updatedItems.reduce((sum, item) => sum + calcularSubtotalItem(item), 0);
       return { ...cart, items: updatedItems, total: updatedTotal };
     }));
-  };
+  }, []);
 
-  const deleteCart = (cartIdToDelete) => {
+  const deleteCart = useCallback((cartIdToDelete) => {
     setCarts(prevCarts => {
       const remainingCarts = prevCarts.filter(cart => cart.id !== cartIdToDelete);
       
@@ -234,22 +239,28 @@ export const SalesProvider = ({ children }) => {
       }
       return remainingCarts;
     });
-  };
+  }, [activeCartId]);
 
-  const finalizeCart = async (cartId) => {
+  const finalizeCart = useCallback(async (cartId) => {
     console.log(`Simulating cart finalization: ${cartId}`);
-    deleteCart(cartId); 
-  };
+    deleteCart(cartId);
+  }, [deleteCart]);
 
   const activeCart = carts.find(cart => cart.id === activeCartId);
 
-  const value = {
+  // Sin useMemo, este objeto es nuevo en CADA render del provider -- y como
+  // envuelve todo Punto de Venta, eso hacía re-renderizar a TODO componente
+  // que use useSales() cada vez que cambiaba cualquier cosa acá, tuviera que
+  // ver o no con lo que ese componente realmente usa. Ahora que las
+  // funciones son estables (useCallback arriba), memoizar el objeto final
+  // sirve de algo.
+  const value = useMemo(() => ({
     carts,
     activeCart,
     activeCartId,
     createNewCart,
     selectCart,
-    updateCartAlias, 
+    updateCartAlias,
     addProductToCart,
     removeProductFromCart,
     decrementProductQuantity,
@@ -257,7 +268,11 @@ export const SalesProvider = ({ children }) => {
     setDescuentoItemEnCarrito,
     finalizeCart,
     deleteCart,
-  };
+  }), [
+    carts, activeCart, activeCartId, createNewCart, selectCart, updateCartAlias,
+    addProductToCart, removeProductFromCart, decrementProductQuantity,
+    setProductQuantityInCart, setDescuentoItemEnCarrito, finalizeCart, deleteCart,
+  ]);
 
   return (
     <SalesContext.Provider value={value}>

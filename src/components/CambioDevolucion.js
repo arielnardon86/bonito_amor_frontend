@@ -1,5 +1,5 @@
 // CambioDevolucion.js
-import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense, lazy } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -26,6 +26,10 @@ const normalizeApiUrl = (url) => {
 };
 
 const BASE_API_ENDPOINT = normalizeApiUrl(API_BASE_URL);
+
+// "Mercado Libre" y "Tienda Nube" son de uso interno, nunca los elige nadie
+// a mano -- constante de módulo (no recreada en cada render).
+const METODOS_EXCLUIDOS_SIEMPRE = ['Mercado Libre', 'Tienda Nube'];
 
 const CambioDevolucion = () => {
     const { user, token, selectedStoreSlug } = useAuth();
@@ -364,13 +368,13 @@ const CambioDevolucion = () => {
     // webhooks de esos canales), nunca los elige nadie a mano. El resto solo
     // se muestra si la tienda lo habilitó desde "Medios de Pago Disponibles"
     // -- y si es financiero, que tenga al menos un plan/arancel configurado.
-    const metodosPagoVisibles = metodosPago.filter(m => {
-        if (['Mercado Libre', 'Tienda Nube'].includes(m.nombre)) return false;
+    const metodosPagoVisibles = useMemo(() => metodosPago.filter(m => {
+        if (METODOS_EXCLUIDOS_SIEMPRE.includes(m.nombre)) return false;
         const habilitado = metodosPagoTienda.find(h => h.metodo_pago === m.id);
         if (!habilitado?.activo) return false;
         if (!m.es_financiero) return true;
         return arancelesTienda.some(a => (a.metodo_pago_nombre || '').trim() === m.nombre.trim());
-    });
+    }), [metodosPago, metodosPagoTienda, arancelesTienda]);
 
     // Calcular monto a devolver considerando descuentos/recargos de la venta original
     const calcularMontoDevolucion = () => {

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import Swal from 'sweetalert2';
@@ -345,7 +345,13 @@ export const AuthProvider = ({ children }) => {
         }
     }, [selectedStoreSlug]);
 
-    const contextValue = {
+    // Sin useMemo, este objeto es nuevo en CADA render del provider -- y como
+    // envuelve literalmente toda la app autenticada, eso hacía re-renderizar
+    // a TODO componente que use useAuth() cada vez que cambiaba cualquier
+    // estado acá (sessionLocked, loading, etc.), tuviera que ver o no con lo
+    // que ese componente realmente usa. Las funciones ya estaban en
+    // useCallback, así que solo faltaba memoizar el objeto final.
+    const contextValue = useMemo(() => ({
         user,
         token,
         isAuthenticated,
@@ -365,7 +371,12 @@ export const AuthProvider = ({ children }) => {
         sessionLocked,
         lockSession,
         unlockSession,
-    };
+    }), [
+        user, token, isAuthenticated, loading, login, logout, stores,
+        selectedStoreSlug, selectStore, fetchStores, tiendasAutorizadas,
+        authError, clearError, updateUser, updateTokens, renombrarTiendaLocal,
+        sessionLocked, lockSession, unlockSession,
+    ]);
 
     return (
         <AuthContext.Provider value={contextValue}>
