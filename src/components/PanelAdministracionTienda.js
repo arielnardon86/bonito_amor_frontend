@@ -1686,7 +1686,7 @@ Script.complete();
                             'notas-credito': 'Notas de Crédito',
                             'tiendanube': 'Integración TiendaNube',
                             'mercadolibre-panel': 'Integración MercadoLibre',
-                            'exportar-contador': 'Exportar para contador',
+                            'exportar-contador': 'Detalle Contable',
                         }[activeTab] || 'Panel de Administración'}
                         bullets={{
                             'usuarios': [
@@ -1843,7 +1843,7 @@ Script.complete();
                     style={activeTab === 'exportar-contador' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
                     className="panel-admin-tab"
                 >
-                    Exportar para contador
+                    Detalle Contable
                 </button>
             </div>
 
