@@ -1680,7 +1680,7 @@ Script.complete();
                     <h1 style={styles.title}>Administración</h1>
                     <HelpButton
                         titulo={{
-                            'usuarios': 'Gestión de Usuarios',
+                            'usuarios': 'Configuración de Tienda',
                             'medios-pago-aranceles': 'Medios de Pago y Aranceles',
                             'habilitar-facturador': 'Facturación electrónica (ARCA)',
                             'notas-credito': 'Notas de Crédito',
@@ -1690,6 +1690,8 @@ Script.complete();
                         }[activeTab] || 'Panel de Administración'}
                         bullets={{
                             'usuarios': [
+                                'Editá los datos de la tienda: nombre, logo, dirección, teléfono, email, CUIT/CUIL, Ingresos Brutos.',
+                                'Elegí el formato de impresión física (A4 o Térmico) para Recibo, Factura y Etiquetas, según la impresora que tengas.',
                                 'Creá y administrá los usuarios de la tienda (staff, supervisores y administradores).',
                                 'Asigná roles: Staff solo ve el Punto de Venta, Supervisor puede ver ventas y compras, Admin tiene acceso total.',
                                 'Podés resetear la contraseña de cualquier usuario desde aquí.',
@@ -1742,7 +1744,7 @@ Script.complete();
                     style={activeTab === 'usuarios' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
                     className="panel-admin-tab"
                 >
-                    Usuarios
+                    Configuración de Tienda
                 </button>
                 <button
                     onClick={() => setActiveTab('medios-pago-aranceles')}
