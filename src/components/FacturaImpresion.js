@@ -59,6 +59,10 @@ const FacturaImpresion = () => {
     const facturaRef = useRef(null);
     const [enviandoEmail, setEnviandoEmail] = useState(false);
     const [compartiendo, setCompartiendo] = useState(false);
+    const [imprimiendoA4, setImprimiendoA4] = useState(false);
+    // Formato de impresión FÍSICA configurado por la tienda (Panel de Administración).
+    // No afecta el PDF de mail/WhatsApp, que siempre es A4 (ver /pdf/).
+    const formatoImpresion = factura?.tienda_formato_factura || 'termico';
 
     // Tipo de comprobante → código numérico ARCA
     const TIPO_CMP_CODIGO = { 'A': 1, 'B': 6, 'C': 11 };
@@ -343,9 +347,7 @@ const FacturaImpresion = () => {
         renderFactura();
     }, [factura, venta, ventasLote]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handlePrint = () => {
-        window.print();
-
+    const preguntarPorRecibo = () => {
         if (!skipReciboPrompt) {
             setTimeout(() => {
                 Swal.fire({
@@ -367,6 +369,55 @@ const FacturaImpresion = () => {
             setTimeout(() => {
                 navigate('/punto-venta');
             }, 500);
+        }
+    };
+
+    const handlePrint = () => {
+        window.print();
+        preguntarPorRecibo();
+    };
+
+    // Formato A4: en vez del layout térmico armado a mano, imprime el MISMO PDF
+    // en A4 que ya se usa para mail/WhatsApp (/pdf/) -- evita mantener dos
+    // layouts A4 distintos que podrían desalinearse entre sí.
+    const handlePrintA4 = async () => {
+        if (!factura || !factura.id) {
+            Swal.fire('Error', 'No se encontró información de la factura.', 'error');
+            return;
+        }
+        setImprimiendoA4(true);
+        try {
+            const resp = await axios.get(`${BASE_API_ENDPOINT}/api/facturas/${factura.id}/pdf/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                responseType: 'blob',
+            });
+            const url = URL.createObjectURL(resp.data);
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = 'none';
+            iframe.src = url;
+            iframe.onload = () => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) {
+                    Swal.fire('Error', 'No se pudo abrir el diálogo de impresión.', 'error');
+                }
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    URL.revokeObjectURL(url);
+                }, 60000);
+            };
+            document.body.appendChild(iframe);
+            preguntarPorRecibo();
+        } catch (err) {
+            Swal.fire('Error', 'No se pudo generar el PDF para imprimir.', 'error');
+        } finally {
+            setImprimiendoA4(false);
         }
     };
 
@@ -461,9 +512,15 @@ const FacturaImpresion = () => {
             <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
                 {!facturaNoAutorizada && (
                     <>
-                        <button onClick={handlePrint} style={styles.btnPrint}>
-                            Imprimir Factura
-                        </button>
+                        {formatoImpresion === 'A4' ? (
+                            <button onClick={handlePrintA4} disabled={imprimiendoA4} style={{ ...styles.btnPrint, ...(imprimiendoA4 ? styles.btnDisabled : {}) }}>
+                                {imprimiendoA4 ? 'Preparando...' : 'Imprimir Factura (A4)'}
+                            </button>
+                        ) : (
+                            <button onClick={handlePrint} style={styles.btnPrint}>
+                                Imprimir Factura
+                            </button>
+                        )}
                         <button onClick={enviarPorEmail} disabled={enviandoEmail} style={{ ...styles.btnMail, ...(enviandoEmail ? styles.btnDisabled : {}) }}>
                             <FontAwesomeIcon icon={faEnvelope} />
                             {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}

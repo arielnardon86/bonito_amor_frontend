@@ -47,6 +47,10 @@ const ReciboImpresion = () => {
     const reciboRef = useRef(null);
     const [enviandoEmail, setEnviandoEmail] = useState(false);
     const [compartiendo, setCompartiendo] = useState(false);
+    const [imprimiendoA4, setImprimiendoA4] = useState(false);
+    // Formato de impresión FÍSICA configurado por la tienda (Panel de Administración).
+    // No afecta el PDF de mail/WhatsApp, que siempre es A4 (ver pdf-recibo/).
+    const formatoImpresion = venta?.tienda_formato_recibo || 'termico';
 
     useEffect(() => {
         const detalles = venta?.detalles;
@@ -230,6 +234,50 @@ const ReciboImpresion = () => {
         window.print();
     };
 
+    // Formato A4: en vez del ticket térmico armado a mano, imprime el MISMO PDF
+    // en A4 que ya se usa para mail/WhatsApp (pdf-recibo/) -- evita mantener
+    // dos layouts A4 distintos que podrían desalinearse entre sí.
+    const handlePrintA4 = async () => {
+        if (!venta || !venta.id) {
+            Swal.fire('Error', 'No se encontró información de la venta.', 'error');
+            return;
+        }
+        setImprimiendoA4(true);
+        try {
+            const resp = await axios.get(`${BASE_API_ENDPOINT}/api/ventas/${venta.id}/pdf-recibo/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                responseType: 'blob',
+            });
+            const url = URL.createObjectURL(resp.data);
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = 'none';
+            iframe.src = url;
+            iframe.onload = () => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) {
+                    Swal.fire('Error', 'No se pudo abrir el diálogo de impresión.', 'error');
+                }
+                // Dar tiempo a que el diálogo de impresión del navegador se abra antes de liberar el blob
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    URL.revokeObjectURL(url);
+                }, 60000);
+            };
+            document.body.appendChild(iframe);
+        } catch (err) {
+            Swal.fire('Error', 'No se pudo generar el PDF para imprimir.', 'error');
+        } finally {
+            setImprimiendoA4(false);
+        }
+    };
+
     const handleGoBack = () => {
         if (venta?.metodo_pago === 'Nota de Crédito' || venta?.es_diferencia_pendiente || fromCambioDevolucion) {
             navigate('/punto-venta');
@@ -334,7 +382,13 @@ const ReciboImpresion = () => {
         <div className="receipt-page-container">
             <div className="no-print-controls">
                 <button onClick={handleGoBack} style={styles.btnNeutral}>Volver</button>
-                <button onClick={handlePrint} style={styles.btnNeutralDark}>Imprimir Recibo</button>
+                {formatoImpresion === 'A4' ? (
+                    <button onClick={handlePrintA4} disabled={imprimiendoA4} style={{ ...styles.btnNeutralDark, ...(imprimiendoA4 ? styles.btnDisabled : {}) }}>
+                        {imprimiendoA4 ? 'Preparando...' : 'Imprimir Recibo (A4)'}
+                    </button>
+                ) : (
+                    <button onClick={handlePrint} style={styles.btnNeutralDark}>Imprimir Recibo</button>
+                )}
                 <button onClick={enviarPorEmail} disabled={enviandoEmail} style={{ ...styles.btnMail, ...(enviandoEmail ? styles.btnDisabled : {}) }}>
                     <FontAwesomeIcon icon={faEnvelope} />
                     {enviandoEmail ? 'Enviando...' : 'Enviar por mail'}

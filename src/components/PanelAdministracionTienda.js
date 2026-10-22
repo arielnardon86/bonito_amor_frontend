@@ -140,6 +140,12 @@ const PanelAdministracionTienda = () => {
     const [emailTiendaInput, setEmailTiendaInput] = useState('');
     const [cuitDatosInput, setCuitDatosInput] = useState('');
     const [ingresosBrutosInput, setIngresosBrutosInput] = useState('');
+    // Formato de impresión física (botón "Imprimir" / lector térmico) según la
+    // impresora de cada tienda -- NO afecta el PDF que se manda por mail/WhatsApp,
+    // que siempre sale en A4.
+    const [formatoReciboInput, setFormatoReciboInput] = useState('termico');
+    const [formatoFacturaInput, setFormatoFacturaInput] = useState('termico');
+    const [formatoEtiquetaInput, setFormatoEtiquetaInput] = useState('estandar');
 
     // Widget de ventas del día para iPhone (Scriptable)
     const [mostrarWidgetToken, setMostrarWidgetToken] = useState(false);
@@ -296,6 +302,9 @@ const PanelAdministracionTienda = () => {
                 setEmailTiendaInput(tienda.email || '');
                 setCuitDatosInput(tienda.cuit || '');
                 setIngresosBrutosInput(tienda.ingresos_brutos || '');
+                setFormatoReciboInput(tienda.formato_recibo || 'termico');
+                setFormatoFacturaInput(tienda.formato_factura || 'termico');
+                setFormatoEtiquetaInput(tienda.formato_etiqueta || 'estandar');
                 await fetchAfipEstado(tienda.id);
             }
         } catch (err) {
@@ -356,6 +365,9 @@ const PanelAdministracionTienda = () => {
         body.email = emailTiendaInput.trim();
         body.cuit = cuitDatosInput.trim();
         body.ingresos_brutos = ingresosBrutosInput.trim();
+        body.formato_recibo = formatoReciboInput;
+        body.formato_factura = formatoFacturaInput;
+        body.formato_etiqueta = formatoEtiquetaInput;
 
         try {
             const { data } = await axios.patch(`${BASE_API_ENDPOINT}/api/tienda/actualizar-datos/`, body, {
@@ -367,6 +379,8 @@ const PanelAdministracionTienda = () => {
                 descuento_efectivo_redondeo: data.descuento_efectivo_redondeo,
                 direccion: data.direccion, telefono: data.telefono, email: data.email,
                 cuit: data.cuit, ingresos_brutos: data.ingresos_brutos,
+                formato_recibo: data.formato_recibo, formato_factura: data.formato_factura,
+                formato_etiqueta: data.formato_etiqueta,
             } : prev);
             setAfipForm(prev => ({ ...prev, cuit: data.cuit || '' }));
             setLogoParaGuardar(undefined);
@@ -2006,6 +2020,62 @@ Script.complete();
                             </div>
                             <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 8, marginBottom: 0, maxWidth: 500 }}>
                                 La dirección, el CUIT/CUIL y el N° de Ingresos Brutos se muestran en el PDF de factura cuando están cargados.
+                            </p>
+
+                            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #e2e8f0', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                                <div style={{ flex: '1 1 200px', minWidth: 200 }}>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 6 }}>
+                                        Formato de impresión — Recibo
+                                    </label>
+                                    <select
+                                        value={formatoReciboInput}
+                                        onChange={e => setFormatoReciboInput(e.target.value)}
+                                        style={{
+                                            width: '100%', maxWidth: 240, padding: '9px 12px', borderRadius: 8,
+                                            border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box', background: '#fff',
+                                        }}
+                                    >
+                                        <option value="termico">Térmico (80mm)</option>
+                                        <option value="A4">A4</option>
+                                    </select>
+                                </div>
+                                <div style={{ flex: '1 1 200px', minWidth: 200 }}>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 6 }}>
+                                        Formato de impresión — Factura
+                                    </label>
+                                    <select
+                                        value={formatoFacturaInput}
+                                        onChange={e => setFormatoFacturaInput(e.target.value)}
+                                        style={{
+                                            width: '100%', maxWidth: 240, padding: '9px 12px', borderRadius: 8,
+                                            border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box', background: '#fff',
+                                        }}
+                                    >
+                                        <option value="termico">Térmico (80mm)</option>
+                                        <option value="A4">A4</option>
+                                    </select>
+                                </div>
+                                <div style={{ flex: '1 1 260px', minWidth: 260 }}>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1a2926', marginBottom: 6 }}>
+                                        Formato de impresión — Etiquetas
+                                    </label>
+                                    <select
+                                        value={formatoEtiquetaInput}
+                                        onChange={e => setFormatoEtiquetaInput(e.target.value)}
+                                        style={{
+                                            width: '100%', maxWidth: 320, padding: '9px 12px', borderRadius: 8,
+                                            border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box', background: '#fff',
+                                        }}
+                                    >
+                                        <option value="estandar">Rollo térmico 37×37mm</option>
+                                        <option value="a4_grilla">Hoja A4 — grilla 37×37mm</option>
+                                        <option value="hoja_4x9_36">Hoja A4 — 36 etiquetas (52,5×33mm)</option>
+                                        <option value="xprinter_39x20">Rollo térmico 39×20mm</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 8, marginBottom: 0, maxWidth: 500 }}>
+                                Formato que usa el botón "Imprimir" según la impresora que tenga esta tienda. No afecta lo que se manda por mail o WhatsApp, que siempre sale en A4.
                             </p>
                             {errorDatosTienda && (
                                 <p style={{ color: '#e25252', fontSize: 13, marginTop: 8, marginBottom: 0 }}>{errorDatosTienda}</p>

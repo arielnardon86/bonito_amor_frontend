@@ -6,7 +6,6 @@ import JsBarcode from 'jsbarcode';
 import { formatearMonto } from '../utils/formatearMonto';
 import { useAuth } from '../AuthContext';
 
-const TIPO_IMPRESION_STORAGE_KEY = 'etiquetas_tipo_impresora';
 // Ajuste fino (en mm) de la grilla de la hoja 4x9, sumado a la base confirmada por
 // la ficha del fabricante (JetLabel código 2005: A4 sin margen, etiquetas de
 // 52,5x33mm calzan exacto). Por default debería quedar en 0/0/33 -- este campo es
@@ -37,9 +36,13 @@ const EtiquetasImpresion = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const productosParaImprimir = location.state?.productosParaImprimir || [];
     const labelsRef = useRef(null);
-    const [tipoImpresion, setTipoImpresion] = useState(
-        () => localStorage.getItem(TIPO_IMPRESION_STORAGE_KEY) || 'estandar'
-    );
+    // Default según lo configurado para la tienda en Panel de Administración ›
+    // Datos de la tienda (formato_etiqueta) -- se carga en el useEffect de abajo.
+    // El cambio acá en pantalla es solo para ESTA tanda de etiquetas puntual, no
+    // se guarda (igual criterio que posicionInicialHoja4x9 más abajo): si
+    // quedara persistido localmente, pisaría silenciosamente lo configurado por
+    // la tienda la próxima vez.
+    const [tipoImpresion, setTipoImpresion] = useState('estandar');
     const [mostrarDescuento, setMostrarDescuento] = useState(false);
     const [descuentoInput, setDescuentoInput] = useState('');
     const [descuentoRedondeo, setDescuentoRedondeo] = useState(''); // '' | 'abajo' | 'arriba'
@@ -66,9 +69,7 @@ const EtiquetasImpresion = () => {
     });
 
     const handleTipoImpresionChange = (e) => {
-        const valor = e.target.value;
-        setTipoImpresion(valor);
-        localStorage.setItem(TIPO_IMPRESION_STORAGE_KEY, valor);
+        setTipoImpresion(e.target.value);
     };
 
     const handleAjusteHoja4x9Change = (campo, valor) => {
@@ -79,9 +80,10 @@ const EtiquetasImpresion = () => {
         });
     };
 
-    // Trae el % de descuento por efectivo configurado por defecto para la tienda
-    // (Panel de Administración › Datos de la tienda), para no tener que tipearlo
-    // cada vez. Se puede editar/desactivar acá mismo antes de imprimir.
+    // Trae el % de descuento por efectivo y el formato de etiqueta configurados
+    // por defecto para la tienda (Panel de Administración › Datos de la tienda),
+    // para no tener que elegirlos cada vez. Se pueden editar/pisar acá mismo
+    // antes de imprimir, sin que eso cambie lo guardado para la tienda.
     useEffect(() => {
         if (!token || !selectedStoreSlug) return;
         axios.get(`${BASE_API_ENDPOINT}/api/tiendas/`, {
@@ -97,6 +99,9 @@ const EtiquetasImpresion = () => {
             }
             if (tienda?.descuento_efectivo_redondeo) {
                 setDescuentoRedondeo(tienda.descuento_efectivo_redondeo);
+            }
+            if (tienda?.formato_etiqueta) {
+                setTipoImpresion(tienda.formato_etiqueta);
             }
         }).catch(() => {});
     }, [token, selectedStoreSlug]);
