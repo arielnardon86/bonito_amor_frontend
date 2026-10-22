@@ -1805,6 +1805,10 @@ const PuntoVenta = () => {
                         tienda_nombre: selectedStoreSlug,
                         tienda_direccion: tiendaInfo?.direccion || null,
                         tienda_logo: tiendaInfo?.logo || null,
+                        // response.data acá viene de VentaCreateSerializer (no VentaSerializer),
+                        // que no trae campos de tienda -- por eso se completa a mano con
+                        // tiendaInfo, igual que tienda_direccion/tienda_logo arriba.
+                        tienda_formato_recibo: tiendaInfo?.formato_recibo || 'termico',
                         descuento_porcentaje: datosAjusteParaBackend.descuento_porcentaje,
                         descuento_monto: datosAjusteParaBackend.descuento_monto,
                         recargo_porcentaje: datosAjusteParaBackend.recargo_porcentaje,
