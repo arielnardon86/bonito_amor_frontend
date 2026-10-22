@@ -48,9 +48,28 @@ const ReciboImpresion = () => {
     const [enviandoEmail, setEnviandoEmail] = useState(false);
     const [compartiendo, setCompartiendo] = useState(false);
     const [imprimiendoA4, setImprimiendoA4] = useState(false);
+    const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
     // Formato de impresión FÍSICA configurado por la tienda (Panel de Administración).
     // No afecta el PDF de mail/WhatsApp, que siempre es A4 (ver pdf-recibo/).
     const formatoImpresion = venta?.tienda_formato_recibo || 'termico';
+
+    // En formato A4 la vista previa en pantalla es el PDF real (el mismo que
+    // se imprime y se manda por mail), no el layout térmico armado a mano.
+    useEffect(() => {
+        if (formatoImpresion !== 'A4' || !venta?.id) return;
+        let urlActual = null;
+        axios.get(`${BASE_API_ENDPOINT}/api/ventas/${venta.id}/pdf-recibo/`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            responseType: 'blob',
+        }).then(resp => {
+            urlActual = URL.createObjectURL(resp.data);
+            setPdfPreviewUrl(urlActual);
+        }).catch(() => {});
+        return () => {
+            if (urlActual) URL.revokeObjectURL(urlActual);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formatoImpresion, venta?.id, token]);
 
     useEffect(() => {
         const detalles = venta?.detalles;
@@ -401,7 +420,25 @@ const ReciboImpresion = () => {
                     <button onClick={handleTicketCambio} style={styles.btnTicket}>Ticket de cambio</button>
                 )}
             </div>
-            <div className="receipt-printable-area" ref={reciboRef}>
+            {formatoImpresion === 'A4' && (
+                pdfPreviewUrl ? (
+                    <iframe
+                        src={pdfPreviewUrl}
+                        title="Vista previa del recibo (A4)"
+                        style={{ width: '100%', maxWidth: 820, height: '80vh', border: '1px solid #e2e8f0', borderRadius: 8 }}
+                    />
+                ) : (
+                    <p style={{ color: '#64748b' }}>Generando vista previa…</p>
+                )
+            )}
+            {/* El layout térmico sigue montado (oculto si el formato es A4) -- el
+                efecto de más arriba que arma reciboRef.current.innerHTML asume que
+                la ref siempre está presente, no desmontar este div condicionalmente. */}
+            <div
+                className="receipt-printable-area"
+                ref={reciboRef}
+                style={formatoImpresion === 'A4' ? { display: 'none' } : undefined}
+            >
                 {/* El recibo se renderizará aquí */}
             </div>
 

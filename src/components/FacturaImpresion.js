@@ -60,9 +60,28 @@ const FacturaImpresion = () => {
     const [enviandoEmail, setEnviandoEmail] = useState(false);
     const [compartiendo, setCompartiendo] = useState(false);
     const [imprimiendoA4, setImprimiendoA4] = useState(false);
+    const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
     // Formato de impresión FÍSICA configurado por la tienda (Panel de Administración).
     // No afecta el PDF de mail/WhatsApp, que siempre es A4 (ver /pdf/).
     const formatoImpresion = factura?.tienda_formato_factura || 'termico';
+
+    // En formato A4 la vista previa en pantalla es el PDF real (el mismo que
+    // se imprime y se manda por mail), no el layout térmico armado a mano.
+    useEffect(() => {
+        if (formatoImpresion !== 'A4' || !factura?.id) return;
+        let urlActual = null;
+        axios.get(`${BASE_API_ENDPOINT}/api/facturas/${factura.id}/pdf/`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            responseType: 'blob',
+        }).then(resp => {
+            urlActual = URL.createObjectURL(resp.data);
+            setPdfPreviewUrl(urlActual);
+        }).catch(() => {});
+        return () => {
+            if (urlActual) URL.revokeObjectURL(urlActual);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formatoImpresion, factura?.id, token]);
 
     // Tipo de comprobante → código numérico ARCA
     const TIPO_CMP_CODIGO = { 'A': 1, 'B': 6, 'C': 11 };
@@ -541,7 +560,25 @@ const FacturaImpresion = () => {
                 </button>
             </div>
 
-            <div ref={facturaRef} id="factura-content"></div>
+            {formatoImpresion === 'A4' && (
+                pdfPreviewUrl ? (
+                    <iframe
+                        src={pdfPreviewUrl}
+                        title="Vista previa de la factura (A4)"
+                        style={{ width: '100%', maxWidth: 820, height: '80vh', border: '1px solid #e2e8f0', borderRadius: 8 }}
+                    />
+                ) : (
+                    <p style={{ color: '#64748b' }}>Generando vista previa…</p>
+                )
+            )}
+            {/* El layout térmico sigue montado (oculto si el formato es A4) -- el
+                efecto de más arriba que arma facturaRef.current.innerHTML asume que
+                la ref siempre está presente, no desmontar este div condicionalmente. */}
+            <div
+                ref={facturaRef}
+                id="factura-content"
+                style={formatoImpresion === 'A4' ? { display: 'none' } : undefined}
+            ></div>
 
             <style>{`
                 @page { size: 80mm auto; margin: 0; }
