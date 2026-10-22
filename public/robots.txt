@@ -12,7 +12,7 @@ Disallow: /registro-compras
 Disallow: /cierres-caja
 Disallow: /recibo
 Disallow: /recibo-cobro
-Disallow: /factura
+Disallow: /factura$
 Disallow: /ticket-cambio
 Disallow: /cambio-devolucion
 Disallow: /etiquetas
