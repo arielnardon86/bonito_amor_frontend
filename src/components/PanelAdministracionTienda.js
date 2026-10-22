@@ -1765,7 +1765,7 @@ Script.complete();
                     style={activeTab === 'habilitar-facturador' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
                     className="panel-admin-tab"
                 >
-                    Habilitar facturador
+                    Facturación electrónica
                     {afipEstado && (
                         <span style={{
                             marginLeft: 8, fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
