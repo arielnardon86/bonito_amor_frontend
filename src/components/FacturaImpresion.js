@@ -306,44 +306,38 @@ const FacturaImpresion = () => {
                     </div>
 
                     <div class="items" style="margin-bottom: 5mm;">
-                        <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 2.5mm;">
-                            <thead>
-                                <tr style="background-color: #f0f0f0; border-bottom: 1px solid #000;">
-                                    <th style="width: 10%; text-align: left; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Cant.</th>
-                                    <th style="width: 46%; text-align: left; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Descripción</th>
-                                    <th style="width: 22%; text-align: right; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Precio</th>
-                                    <th style="width: 22%; text-align: right; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${esConsolidada ? ventasLote.map(v => {
-                                    const fechaStr = v.fecha_venta ? new Date(v.fecha_venta).toLocaleDateString('es-AR') : 'N/A';
-                                    const total = parseFloat(v.total || 0);
-                                    return `
-                                    <tr style="border-bottom: 1px dashed #ccc;">
-                                        <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none;">1</td>
-                                        <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none; word-break: break-word; overflow-wrap: break-word;">Consumo Cuenta Corriente del ${fechaStr}</td>
-                                        <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(total)}</td>
-                                        <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(total)}</td>
-                                    </tr>`;
-                                }).join('') : (detalles.length > 0 ? detalles.map(item => {
-                                    if (item.anulado_individualmente) return '';
-                                    let nombre = item.producto?.nombre || item.producto_nombre || 'Producto eliminado';
-                                    const variante = [item.producto_talle, item.producto_variante2].filter(Boolean).join(', ');
-                                    if (variante) nombre += ` (${variante})`;
-                                    const cantidad = item.cantidad || 0;
-                                    const precio = item.precio_unitario || 0;
-                                    const subtotal = cantidad * parseFloat(precio);
-                                    return `
-                                    <tr style="border-bottom: 1px dashed #ccc;">
-                                        <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none;">${cantidad}</td>
-                                        <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none; word-break: break-word; overflow-wrap: break-word;">${nombre}</td>
-                                        <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(precio)}</td>
-                                        <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(subtotal)}</td>
-                                    </tr>`;
-                                }).join('') : '<tr><td colspan="4" style="text-align: center; padding: 2mm; color: #000;">No hay detalles disponibles</td></tr>')}
-                            </tbody>
-                        </table>
+                        <div class="items-grid-header">
+                            <div>Cant.</div>
+                            <div>Descripción</div>
+                            <div style="text-align: right;">Precio</div>
+                            <div style="text-align: right;">Subtotal</div>
+                        </div>
+                        ${esConsolidada ? ventasLote.map(v => {
+                            const fechaStr = v.fecha_venta ? new Date(v.fecha_venta).toLocaleDateString('es-AR') : 'N/A';
+                            const total = parseFloat(v.total || 0);
+                            return `
+                            <div class="items-grid-row">
+                                <div>1</div>
+                                <div>Consumo Cuenta Corriente del ${fechaStr}</div>
+                                <div style="text-align: right;">${formatearMonto(total)}</div>
+                                <div style="text-align: right;">${formatearMonto(total)}</div>
+                            </div>`;
+                        }).join('') : (detalles.length > 0 ? detalles.map(item => {
+                            if (item.anulado_individualmente) return '';
+                            let nombre = item.producto?.nombre || item.producto_nombre || 'Producto eliminado';
+                            const variante = [item.producto_talle, item.producto_variante2].filter(Boolean).join(', ');
+                            if (variante) nombre += ` (${variante})`;
+                            const cantidad = item.cantidad || 0;
+                            const precio = item.precio_unitario || 0;
+                            const subtotal = cantidad * parseFloat(precio);
+                            return `
+                            <div class="items-grid-row">
+                                <div>${cantidad}</div>
+                                <div>${nombre}</div>
+                                <div style="text-align: right;">${formatearMonto(precio)}</div>
+                                <div style="text-align: right;">${formatearMonto(subtotal)}</div>
+                            </div>`;
+                        }).join('') : '<div class="items-grid-row" style="text-align: center;">No hay detalles disponibles</div>')}
                     </div>
 
                     <div class="totals" style="border-top: 2px solid #000; padding-top: 3mm;">
@@ -582,6 +576,30 @@ const FacturaImpresion = () => {
 
             <style>{`
                 @page { size: 80mm auto; margin: 0; }
+                /* Grid de divs en vez de <table> para el listado de productos --
+                   un <table> le exige al driver de la impresora térmica negociar
+                   el alto de fila entre celdas, y terminaba superponiendo texto
+                   cuando la Descripción bajaba de renglón (table-layout: fixed no
+                   alcanzó). Con divs cada fila crece sola según su contenido. */
+                .items-grid-header, .items-grid-row {
+                    display: grid;
+                    grid-template-columns: 10% 46% 22% 22%;
+                    gap: 2px;
+                    font-size: 2.5mm;
+                    color: #000;
+                    -webkit-font-smoothing: none;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                    padding: 1mm 0;
+                }
+                .items-grid-header {
+                    background-color: #f0f0f0;
+                    border-bottom: 1px solid #000;
+                    font-weight: bold;
+                }
+                .items-grid-row {
+                    border-bottom: 1px dashed #ccc;
+                }
                 @media print {
                     body * { visibility: hidden; }
                     #factura-content, #factura-content * { visibility: visible; }

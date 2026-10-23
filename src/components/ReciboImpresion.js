@@ -184,39 +184,40 @@ const ReciboImpresion = () => {
                     </div>
                     <div class="items">
                         <h3 style="font-size: 3mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Productos:</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th style="width: 10%; font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Cant.</th>
-                                    <th style="width: 46%; font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Descripción</th>
-                                    <th style="width: 22%; font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Precio</th>
-                                    <th style="width: 22%; font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${detalles.map(item => {
-                                    let nombre = item.producto_nombre || item.product?.nombre || 'N/A';
-                                    // Si el método de pago es "Nota de Crédito" y no hay producto, mostrar "Nota de Crédito"
-                                    if ((venta.metodo_pago === 'Nota de Crédito' || venta.metodo_pago_nombre === 'Nota de Crédito') && (!item.producto_nombre && !item.product?.nombre)) {
-                                        nombre = 'Nota de Crédito';
-                                    } else {
-                                        const variante = [item.producto_talle, item.producto_variante2].filter(Boolean).join(', ');
-                                        if (variante) nombre += ` (${variante})`;
-                                    }
-                                    const cantidad = item.cantidad || item.quantity;
-                                    const precio = item.precio_unitario || item.product?.precio;
-                                    const subtotal = cantidad * parseFloat(precio || 0);
-                                    return `
-                                    <tr>
-                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${cantidad}</td>
-                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${nombre}</td>
-                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${formatearMonto(precio || 0)}</td>
-                                        <td style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">${formatearMonto(subtotal)}</td>
-                                    </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
+                        <div class="items-grid-header">
+                            <div>Cant.</div>
+                            <div>Descripción</div>
+                            <div>Precio</div>
+                            <div>Subtotal</div>
+                        </div>
+                        ${detalles.map(item => {
+                            let nombre = item.producto_nombre || item.product?.nombre || 'N/A';
+                            // Si el método de pago es "Nota de Crédito" y no hay producto, mostrar "Nota de Crédito"
+                            if ((venta.metodo_pago === 'Nota de Crédito' || venta.metodo_pago_nombre === 'Nota de Crédito') && (!item.producto_nombre && !item.product?.nombre)) {
+                                nombre = 'Nota de Crédito';
+                            } else {
+                                const variante = [item.producto_talle, item.producto_variante2].filter(Boolean).join(', ');
+                                if (variante) nombre += ` (${variante})`;
+                            }
+                            const cantidad = item.cantidad || item.quantity;
+                            const precio = item.precio_unitario || item.product?.precio;
+                            const subtotal = cantidad * parseFloat(precio || 0);
+                            // Grid de divs en vez de <table> -- un <table> le exige al
+                            // driver de la impresora térmica calcular y negociar el alto
+                            // de fila entre celdas, y en la práctica terminaba superponiendo
+                            // el texto cuando la Descripción bajaba de renglón (table-layout:
+                            // fixed por sí solo no alcanzó). Un div por celda con CSS Grid no
+                            // depende de esa negociación: cada fila crece sola según su
+                            // contenido más alto.
+                            return `
+                            <div class="items-grid-row">
+                                <div>${cantidad}</div>
+                                <div>${nombre}</div>
+                                <div>${formatearMonto(precio || 0)}</div>
+                                <div>${formatearMonto(subtotal)}</div>
+                            </div>
+                            `;
+                        }).join('')}
                         <hr>
                     </div>
                     <div class="totals">
@@ -491,27 +492,27 @@ const ReciboImpresion = () => {
                         color: #000; /* Asegura el color negro */
                         -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
                     }
-                    .receipt table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        /* Sin esto, el motor de impresión de Chrome calcula el ancho de
-                           columna a partir del contenido en vez de respetar el 100% de la
-                           tabla -- un nombre de producto largo hacía que la fila entera se
-                           saliera del ticket térmico en vez de bajar de renglón (aunque en
-                           pantalla, antes de imprimir, se veía bien). */
-                        table-layout: fixed;
-                    }
-                    .receipt th, .receipt td {
-                        padding: 1px;
-                        text-align: left;
-                        font-weight: bold; /* Asegura que los datos de la tabla sean gruesos */
-                        color: #000; /* Asegura el color negro */
-                        -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
+                    /* Grid de divs en vez de <table> para el listado de productos --
+                       ver comentario en el JS de por qué (la tabla terminaba
+                       superponiendo texto al imprimir en impresoras térmicas reales,
+                       table-layout: fixed no alcanzó para resolverlo). */
+                    .items-grid-header, .items-grid-row {
+                        display: grid;
+                        grid-template-columns: 10% 46% 22% 22%;
+                        gap: 2px;
+                        font-size: 2.5mm;
+                        font-weight: bold;
+                        color: #000;
+                        -webkit-font-smoothing: none;
                         word-break: break-word;
                         overflow-wrap: break-word;
                     }
-                    .receipt th {
+                    .items-grid-header {
                         border-bottom: 1px solid #000;
+                        padding-bottom: 2px;
+                    }
+                    .items-grid-row {
+                        padding: 1px 0;
                     }
                     .receipt .items {
                         margin-top: 5px;
