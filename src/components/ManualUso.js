@@ -258,7 +258,7 @@ const ManualUso = () => {
                         <h3>Vincular o publicar en Tienda Nube (manual y selectivo)</h3>
                         <p>Si preferís armar la ficha del producto directamente en Tienda Nube (fotos, descripción, SEO) en vez de usar la publicación masiva, o si solo querés subir algunos productos puntuales y no todo el catálogo de una vez, tenés estas dos opciones — ambas aparecen <strong>solo si tu tienda tiene Tienda Nube conectado</strong> (Panel de Administración → Tienda Nube):</p>
                         <ul>
-                            <li><strong>Vincular un producto ya creado en Tienda Nube:</strong> editá el producto en Total Stock, y en la sección "Tienda Nube" del formulario pegá el ID de ese producto (se ve en la URL cuando lo editás en el admin de Tienda Nube) y tocá "Vincular". Desde ese momento el stock se sincroniza solo.</li>
+                            <li><strong>Vincular un producto ya creado en Tienda Nube:</strong> en "Más acciones" del producto (o de la variante puntual), tocá "Vincular con Tienda Nube", pegá el ID de ese producto (se ve en la URL cuando lo editás en el admin de Tienda Nube) y confirmá. Desde ese momento el stock se sincroniza solo. Esta acción también la puede hacer un usuario <strong>Supervisor</strong>, no hace falta ser Administrador.</li>
                             <li><strong>Publicar productos elegidos (crearlos en Tienda Nube):</strong> tildá el checkbox de uno o varios productos en el listado (el mismo que usás para "Imprimir Etiquetas") y tocá "Publicar seleccionados en Tienda Nube" — crea solo esos, sin tocar el resto del catálogo.</li>
                         </ul>
                         <div className="mu-callout">Si el producto de Tienda Nube tiene varios talles/colores y en Total Stock lo tenías cargado como un producto suelto (sin variantes), al vincularlo el sistema lo convierte automáticamente en una familia con una variante por cada una de Tienda Nube. El stock de las nuevas variantes arranca en <b>0</b> — hay que redistribuirlo a mano según lo que tengas físicamente de cada una, porque no hay forma de saber cómo se repartía el número que tenías antes.</div>
@@ -406,16 +406,39 @@ const ManualUso = () => {
                     <p className="mu-what">La sala de máquinas de tu tienda: usuarios, medios de pago, facturación electrónica, integraciones y tu plan de suscripción. Exclusivo del Administrador.</p>
 
                     <div className="mu-body">
+                        <h3>Configuración de Tienda</h3>
+                        <p>Es la primera pestaña del Panel — reúne los datos generales de tu tienda, el formato de impresión y la gestión de usuarios.</p>
+
+                        <h3>Datos de la tienda</h3>
+                        <p>Editá el <strong>nombre</strong> y <strong>logo</strong> que se muestran en el sistema. También podés cargar <strong>dirección, teléfono, email, CUIT/CUIL y N° de Ingresos Brutos</strong> — estos últimos se muestran en el PDF de factura (datos del emisor) cuando están cargados; si los dejás vacíos, simplemente no aparecen.</p>
+
+                        <h3>Formato de impresión (Recibo, Factura y Etiquetas)</h3>
+                        <p>Elegí cómo se imprime físicamente cada comprobante, según la impresora que tenga tu local: <strong>A4</strong>, <strong>Térmico (80mm)</strong> o <strong>Térmico (58mm)</strong>. Hay un selector independiente para Recibo, para Factura y para Etiquetas (en Etiquetas, elegís directamente la medida: rollo térmico 37×37mm, hoja A4 en grilla, hoja A4 de 36 etiquetas, o rollo térmico 39×20mm).</p>
+                        <div className="mu-callout">Esto <b>solo</b> cambia cómo imprime el botón "Imprimir" en pantalla. Lo que se manda por mail o se comparte por WhatsApp siempre sale en A4, sin importar qué elijas acá — así se ve bien al abrirlo en una pantalla o al imprimirlo en una oficina.</div>
+                        <p>Si elegís <strong>A4</strong> para Recibo o Factura, la vista previa en pantalla (antes de imprimir) también cambia: te muestra el PDF real en vez del ticket angosto.</p>
+
+                        <h3>Widget de ventas en el celular (iPhone)</h3>
+                        <p>Generá un token y copiá el script correspondiente para armar un widget de iPhone (app Scriptable) que te muestra, de un vistazo desde la pantalla de inicio, cuánto vendiste en el día — sin tener que entrar al sistema. Es de solo lectura. Si lo regenerás, el widget que ya tenías instalado deja de funcionar hasta que lo actualices con el token nuevo.</p>
+
                         <h3>Usuarios</h3>
-                        <p>Editá el logo y nombre de tu tienda. Creá usuarios nuevos eligiendo sus permisos (Staff / Supervisor / Administrador / Habilitar cierre de caja), editalos, cambiales la contraseña o eliminalos. Si manejás más de una tienda, podés autorizar a un usuario a operar en varias con el mismo login.</p>
+                        <p>Creá usuarios nuevos eligiendo sus permisos (Staff / Supervisor / Administrador / Habilitar cierre de caja), editalos, cambiales la contraseña o eliminalos. Si manejás más de una tienda, podés autorizar a un usuario a operar en varias con el mismo login.</p>
 
                         <h3>Descuento por pago en efectivo</h3>
                         <p>Cargá un % de descuento por pago en efectivo para tu tienda. Se usa en Imprimir Etiquetas para mostrar, además del precio de lista, el precio con ese descuento destacado en un recuadro ("Precio con descuento"). Opcionalmente podés tildar que ese precio se redondee a múltiplo de 100 (hacia arriba o hacia abajo), igual que el redondeo del total en Punto de Venta.</p>
 
                         <h3>Medios de pago y aranceles</h3>
                         <p>Configurá qué medios aceptás y el arancel (comisión %) de cada uno según el plan de cuotas — así el sistema calcula tu ganancia real.</p>
+                        <ul>
+                            <li><strong>Medios de Pago Disponibles:</strong> tildá/destildá cada método para que aparezca o no en Punto de Venta (efectivo, transferencia, tarjeta de débito/crédito, QR Mercado Pago, Go Cuotas, cuenta corriente, etc.).</li>
+                            <li><strong>Aranceles Configurados:</strong> agrupado por método, desplegable. Al abrir uno, aparece "+ Agregar plan": tildás los planes que correspondan (ej. 3, 6, 12 cuotas) y le ponés el % a cada uno por separado — también podés agregar un plan con nombre personalizado si no está en la lista.</li>
+                        </ul>
 
-                        <h3>Habilitar facturador (Factura electrónica ARCA)</h3>
+                        <h3>Conectar el cobro con QR de Mercado Pago</h3>
+                        <p>Es un método más dentro de "Medios de Pago Disponibles": al <strong>tildar el checkbox "QR Mercado Pago"</strong> se abre una ventana emergente para iniciar sesión con tu cuenta de Mercado Pago y autorizar la conexión (es el mismo tipo de login que usás en la app/web de MP). Al confirmar, la ventana se cierra sola y el checkbox pasa a mostrar <strong>"Conectada"</strong>. Desde ese momento, en Punto de Venta aparece la opción de cobrar generando un código QR que el cliente escanea con su MP para pagar.</p>
+                        <p>Para <strong>desconectarlo</strong>, destildá el mismo checkbox — te pide confirmación porque el método deja de funcionar en Punto de Venta hasta que lo conectes de nuevo.</p>
+                        <div className="mu-callout warn">Si el popup de Mercado Pago no te deja completar el login (por bloqueador de ventanas emergentes del navegador), habilitá los popups para el sitio e intentá de nuevo.</div>
+
+                        <h3>Facturación electrónica (ARCA)</h3>
                         <p>Asistente guiado de 6 pasos: cargar CUIT y condición de IVA, generar clave y archivo para ARCA, cargar el certificado, configurar tu punto de venta, y probar con una factura de $1. <span className="mu-pill pro inline">Requiere Pro o Advanced</span></p>
 
                         <h3>Autocompletar datos del cliente por CUIT (botón "Buscar en AFIP")</h3>
@@ -442,6 +465,9 @@ const ManualUso = () => {
                             <li><strong>Tienda Nube:</strong> tasa, IVA y CPT (%) de cada medio de pago (gateway) que tengas activado — los ves en tu propio panel de Tienda Nube, en "Medios de pago". A diferencia de Mercado Libre, Tienda Nube no informa el cargo real cobrado en cada venta, así que acá la carga siempre es manual. Si un medio de pago cobra distinto según débito o crédito (por ejemplo MODO), podés cargar una fila para cada uno con "Se aplica a".</li>
                         </ul>
                         <div className="mu-callout warn">Los medios de pago <b>manuales</b> (transferencia, efectivo, depósito) que vos mismo armás en Tienda Nube —incluida la "Transferencia bancaria" que aparece dentro de Pago Nube— no tienen un gateway fijo: elegí <b>"Otro"</b> en el desplegable y escribí el mismo nombre que le pusiste en Tienda Nube (por ejemplo <code>transferencia</code>), en vez de intentar cargarlo como un "Se aplica a" de Pago Nube — ahí no vas a matchear ninguna venta real.</div>
+
+                        <h3>Detalle Contable</h3>
+                        <p>Descargá en un solo Excel el detalle de ventas y el subdiario de IVA de todas tus tiendas juntas (si administrás más de una). Trae además una hoja aparte, "Subdiario IVA (ARCA)", con el formato puntual que suelen pedir los contadores: Fecha, Tipo de factura, Número, Razón Social, Consumidor Final e Importe. Si hay facturas de ventas anuladas sin su Nota de Crédito correspondiente emitida, te avisa — emitila desde "Notas de Crédito" y volvé a generar el reporte.</p>
 
                         <h3>Mi Plan</h3>
                         <p>Vé tu plan actual, su estado y cuánto uso llevás de productos/usuarios. <strong>Mejorá tu plan</strong> en el momento (te redirige a Mercado Pago si hace falta pagar), o <strong>dá de baja</strong> tu suscripción — tus datos se conservan 30 días antes de eliminarse definitivamente.</p>
@@ -511,7 +537,7 @@ const ManualUso = () => {
                         </table>
                     </div>
 
-                    <div className="mu-callout">Si un pago no se acredita a tiempo, tenés <b>5 días de gracia</b> para regularizarlo antes de que la cuenta se pause — durante esos días seguís operando con normalidad. El sistema avisa visualmente cuando te acercás al límite de productos o usuarios de tu plan, pero eso no bloquea la carga por sí solo; el bloqueo real (con opción de mejorar el plan al instante) ocurre solo al intentar usar Factura electrónica o las integraciones de e-commerce sin el plan correspondiente.</div>
+                    <div className="mu-callout">Si un pago no se acredita a tiempo, tenés <b>5 días de gracia</b> para regularizarlo antes de que la cuenta se pause — durante esos días seguís operando con normalidad. Te avisamos por mail apenas Mercado Pago tiene un problema para cobrarte, incluso antes de que arranquen esos 5 días, para que puedas regularizarlo con tiempo. El sistema avisa visualmente cuando te acercás al límite de productos o usuarios de tu plan, pero eso no bloquea la carga por sí solo; el bloqueo real (con opción de mejorar el plan al instante) ocurre solo al intentar usar Factura electrónica o las integraciones de e-commerce sin el plan correspondiente.</div>
                 </section>
 
                 <footer className="mu-footer">
