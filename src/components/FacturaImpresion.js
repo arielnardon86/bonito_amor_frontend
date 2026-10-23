@@ -64,6 +64,10 @@ const FacturaImpresion = () => {
     // Formato de impresión FÍSICA configurado por la tienda (Panel de Administración).
     // No afecta el PDF de mail/WhatsApp, que siempre es A4 (ver /pdf/).
     const formatoImpresion = factura?.tienda_formato_factura || 'termico';
+    // Ancho real de impresión del ticket térmico -- 'termico' (papel de
+    // 80mm) o 'termico_58' (papel de 58mm, imprime a 48mm, ancho típico de
+    // cabezal para ese tamaño de rollo).
+    const anchoTermico = formatoImpresion === 'termico_58' ? '48mm' : '80mm';
 
     // En formato A4 la vista previa en pantalla es el PDF real (el mismo que
     // se imprime y se manda por mail), no el layout térmico armado a mano.
@@ -268,7 +272,7 @@ const FacturaImpresion = () => {
                 ? 'font-size: 3mm; font-weight: normal; color: #555;'
                 : 'font-size: 5mm; font-weight: bold; color: #000;';
             facturaRef.current.innerHTML = `
-                <div class="invoice" style="font-family: Arial, sans-serif; max-width: 80mm; margin: 0 auto; padding: 5mm;">
+                <div class="invoice" style="font-family: Arial, sans-serif; max-width: ${anchoTermico}; margin: 0 auto; padding: 5mm;">
                     <div class="header" style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5mm; margin-bottom: 5mm;">
                         ${facturaLogo
                             ? `<img src="${facturaLogo}" alt="Logo" style="max-width: 25mm; max-height: 15mm; display: block; margin: 0 auto 2mm; object-fit: contain;" />`
@@ -575,7 +579,7 @@ const FacturaImpresion = () => {
             ></div>
 
             <style>{`
-                @page { size: 80mm auto; margin: 0; }
+                @page { size: ${anchoTermico} auto; margin: 0; }
                 /* Grid de divs en vez de <table> para el listado de productos --
                    un <table> le exige al driver de la impresora térmica negociar
                    el alto de fila entre celdas, y terminaba superponiendo texto
@@ -603,7 +607,7 @@ const FacturaImpresion = () => {
                 @media print {
                     body * { visibility: hidden; }
                     #factura-content, #factura-content * { visibility: visible; }
-                    #factura-content { position: absolute; left: 0; top: 0; width: 80mm; }
+                    #factura-content { position: absolute; left: 0; top: 0; width: ${anchoTermico}; }
                     button { display: none !important; }
                 }
             `}</style>

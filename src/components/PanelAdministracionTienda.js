@@ -2038,6 +2038,7 @@ Script.complete();
                                         }}
                                     >
                                         <option value="termico">Térmico (80mm)</option>
+                                        <option value="termico_58">Térmico (58mm)</option>
                                         <option value="A4">A4</option>
                                     </select>
                                 </div>
@@ -2054,6 +2055,7 @@ Script.complete();
                                         }}
                                     >
                                         <option value="termico">Térmico (80mm)</option>
+                                        <option value="termico_58">Térmico (58mm)</option>
                                         <option value="A4">A4</option>
                                     </select>
                                 </div>

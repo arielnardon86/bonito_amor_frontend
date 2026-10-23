@@ -52,6 +52,10 @@ const ReciboImpresion = () => {
     // Formato de impresión FÍSICA configurado por la tienda (Panel de Administración).
     // No afecta el PDF de mail/WhatsApp, que siempre es A4 (ver pdf-recibo/).
     const formatoImpresion = venta?.tienda_formato_recibo || 'termico';
+    // Ancho real de impresión del ticket térmico -- 'termico' (80mm de papel,
+    // imprime a 72mm) o 'termico_58' (papel de 58mm, imprime a 48mm, ancho
+    // típico de cabezal para ese tamaño de rollo).
+    const anchoTermico = formatoImpresion === 'termico_58' ? '48mm' : '72mm';
 
     // En formato A4 la vista previa en pantalla es el PDF real (el mismo que
     // se imprime y se manda por mail), no el layout térmico armado a mano.
@@ -446,7 +450,7 @@ const ReciboImpresion = () => {
             <style>
                 {`
                     @page {
-                        size: 72mm auto;
+                        size: ${anchoTermico} auto;
                         margin: 0;
                     }
                     .receipt-page-container {
@@ -465,7 +469,7 @@ const ReciboImpresion = () => {
                         margin-bottom: 20px;
                     }
                     .receipt-printable-area {
-                        width: 72mm;
+                        width: ${anchoTermico};
                         padding: 5mm;
                         background: #fff;
                         border: 1px solid #000;
@@ -537,7 +541,7 @@ const ReciboImpresion = () => {
                             position: absolute;
                             left: 0;
                             top: 0;
-                            width: 72mm;
+                            width: ${anchoTermico};
                             margin: 0;
                             padding: 0;
                             box-shadow: none;
