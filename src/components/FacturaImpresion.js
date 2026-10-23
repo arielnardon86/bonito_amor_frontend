@@ -68,6 +68,9 @@ const FacturaImpresion = () => {
     // 80mm) o 'termico_58' (papel de 58mm, imprime a 48mm, ancho típico de
     // cabezal para ese tamaño de rollo).
     const anchoTermico = formatoImpresion === 'termico_58' ? '48mm' : '80mm';
+    // A 48mm "Cant."/"Subtotal" no entraban en una sola línea con el mismo
+    // tamaño de letra que a 80mm -- quedaban partidos y feos.
+    const fuenteGrid = formatoImpresion === 'termico_58' ? '2mm' : '2.5mm';
 
     // En formato A4 la vista previa en pantalla es el PDF real (el mismo que
     // se imprime y se manda por mail), no el layout térmico armado a mano.
@@ -589,12 +592,23 @@ const FacturaImpresion = () => {
                     display: grid;
                     grid-template-columns: 10% 46% 22% 22%;
                     gap: 2px;
-                    font-size: 2.5mm;
+                    font-size: ${fuenteGrid};
                     color: #000;
                     -webkit-font-smoothing: none;
+                    padding: 1mm 0;
+                }
+                /* Solo la columna Descripción (2da) baja de renglón -- Cant./
+                   Precio/Subtotal son valores cortos que no deberían partirse
+                   nunca (ej. "$20.000,00" cortado en "$20.00" / "0,00" queda
+                   ilegible). */
+                .items-grid-header > div:nth-child(2),
+                .items-grid-row > div:nth-child(2) {
                     word-break: break-word;
                     overflow-wrap: break-word;
-                    padding: 1mm 0;
+                }
+                .items-grid-header > div:not(:nth-child(2)),
+                .items-grid-row > div:not(:nth-child(2)) {
+                    white-space: nowrap;
                 }
                 .items-grid-header {
                     background-color: #f0f0f0;
