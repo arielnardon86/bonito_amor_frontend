@@ -741,6 +741,7 @@ const CambioDevolucion = () => {
                         // ventaResponse.data acá viene de VentaCreateSerializer (no
                         // VentaSerializer), que no trae campos de tienda -- se completa
                         // a mano con tiendaInfo, igual que tienda_logo arriba.
+                        tienda_direccion: tiendaInfo?.direccion || null,
                         tienda_formato_recibo: tiendaInfo?.formato_recibo || 'termico',
                         descuento_porcentaje: datosAjusteParaBackend.descuento_porcentaje,
                         descuento_monto: datosAjusteParaBackend.descuento_monto,
