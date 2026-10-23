@@ -187,10 +187,10 @@ const ReciboImpresion = () => {
                         <table>
                             <thead>
                                 <tr>
-                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Cant.</th>
-                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Descripción</th>
-                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Precio</th>
-                                    <th style="font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Subtotal</th>
+                                    <th style="width: 10%; font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Cant.</th>
+                                    <th style="width: 46%; font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Descripción</th>
+                                    <th style="width: 22%; font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Precio</th>
+                                    <th style="width: 22%; font-size: 2.5mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -494,6 +494,12 @@ const ReciboImpresion = () => {
                     .receipt table {
                         width: 100%;
                         border-collapse: collapse;
+                        /* Sin esto, el motor de impresión de Chrome calcula el ancho de
+                           columna a partir del contenido en vez de respetar el 100% de la
+                           tabla -- un nombre de producto largo hacía que la fila entera se
+                           saliera del ticket térmico en vez de bajar de renglón (aunque en
+                           pantalla, antes de imprimir, se veía bien). */
+                        table-layout: fixed;
                     }
                     .receipt th, .receipt td {
                         padding: 1px;
@@ -501,6 +507,8 @@ const ReciboImpresion = () => {
                         font-weight: bold; /* Asegura que los datos de la tabla sean gruesos */
                         color: #000; /* Asegura el color negro */
                         -webkit-font-smoothing: none; /* Desactiva el suavizado de fuentes */
+                        word-break: break-word;
+                        overflow-wrap: break-word;
                     }
                     .receipt th {
                         border-bottom: 1px solid #000;

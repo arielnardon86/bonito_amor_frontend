@@ -306,13 +306,13 @@ const FacturaImpresion = () => {
                     </div>
 
                     <div class="items" style="margin-bottom: 5mm;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 2.5mm;">
+                        <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 2.5mm;">
                             <thead>
                                 <tr style="background-color: #f0f0f0; border-bottom: 1px solid #000;">
-                                    <th style="text-align: left; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Cant.</th>
-                                    <th style="text-align: left; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Descripción</th>
-                                    <th style="text-align: right; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Precio</th>
-                                    <th style="text-align: right; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Subtotal</th>
+                                    <th style="width: 10%; text-align: left; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Cant.</th>
+                                    <th style="width: 46%; text-align: left; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Descripción</th>
+                                    <th style="width: 22%; text-align: right; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Precio</th>
+                                    <th style="width: 22%; text-align: right; padding: 1mm; font-weight: bold; color: #000; -webkit-font-smoothing: none;">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -322,7 +322,7 @@ const FacturaImpresion = () => {
                                     return `
                                     <tr style="border-bottom: 1px dashed #ccc;">
                                         <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none;">1</td>
-                                        <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none;">Consumo Cuenta Corriente del ${fechaStr}</td>
+                                        <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none; word-break: break-word; overflow-wrap: break-word;">Consumo Cuenta Corriente del ${fechaStr}</td>
                                         <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(total)}</td>
                                         <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(total)}</td>
                                     </tr>`;
@@ -337,7 +337,7 @@ const FacturaImpresion = () => {
                                     return `
                                     <tr style="border-bottom: 1px dashed #ccc;">
                                         <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none;">${cantidad}</td>
-                                        <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none;">${nombre}</td>
+                                        <td style="padding: 1mm; color: #000; -webkit-font-smoothing: none; word-break: break-word; overflow-wrap: break-word;">${nombre}</td>
                                         <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(precio)}</td>
                                         <td style="text-align: right; padding: 1mm; color: #000; -webkit-font-smoothing: none;">${formatearMonto(subtotal)}</td>
                                     </tr>`;
