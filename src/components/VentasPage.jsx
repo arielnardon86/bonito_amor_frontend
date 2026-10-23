@@ -969,7 +969,7 @@ const VentasPage = () => {
                             </div>
                         );
                     })()}
-                    <div style={styles.tableResponsive}>
+                    <div className="ventas-tabla-wrap" style={styles.tableResponsive}>
                     <table style={styles.table}>
                         <thead>
                             <tr style={styles.tableHeaderRow}>
@@ -985,7 +985,7 @@ const VentasPage = () => {
                             {ventas.map(venta => (
                                 <React.Fragment key={venta.id}>
                                     <tr style={venta.es_nota_credito || venta.es_diferencia_pendiente ? { backgroundColor: '#f1f5f9' } : {}}>
-                                        <td style={styles.td}>
+                                        <td data-label="Fecha" style={styles.td}>
                                             {new Date(venta.fecha_venta).toLocaleString()}
                                             {venta.es_nota_credito && (
                                                 <span style={{ marginLeft: '10px', padding: '2px 6px', backgroundColor: '#5dc87a', color: 'white', borderRadius: '6px', fontSize: '0.75em' }}>
@@ -1003,9 +1003,9 @@ const VentasPage = () => {
                                                 </>
                                             )}
                                         </td>
-                                        <td style={styles.td}>{formatearMonto(venta.total || 0)}</td>
-                                        <td style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
-                                        <td style={styles.td}>
+                                        <td data-label="Total" style={styles.td}>{formatearMonto(venta.total || 0)}</td>
+                                        <td data-label="Vendedor" style={styles.td}>{venta.usuario ? venta.usuario.username : 'N/A'}</td>
+                                        <td data-label="Método Pago" style={styles.td}>
                                             {venta.metodo_pago || 'N/A'}
                                             {venta.origen_tiendanube && (
                                                 <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#3b9ede', color: 'white', borderRadius: '6px', fontSize: '0.72em', fontWeight: 600 }}>
@@ -1023,10 +1023,10 @@ const VentasPage = () => {
                                                     : <span style={{ marginLeft: 6, padding: '2px 6px', backgroundColor: '#f59e0b', color: '#1a2926', borderRadius: '6px', fontSize: '0.72em', fontWeight: 600 }}>No entregado</span>;
                                             })()}
                                         </td>
-                                        <td style={styles.td}>
+                                        <td data-label="Anulada" style={styles.td}>
                                             {venta.anulada ? 'Sí' : 'No'}
                                         </td>
-                                        <td style={styles.td}>
+                                        <td data-label="Acciones" style={styles.td}>
                                             <div style={styles.actionButtons}>
                                                 <button
                                                     className="icon-btn"
@@ -1099,8 +1099,8 @@ const VentasPage = () => {
                                     </tr>
                                     {expandedSaleId === venta.id && venta.detalles && (
                                         <tr>
-                                            <td colSpan="6" style={styles.detailRow}>
-                                                <h4 style={styles.detailHeader}>Detalles de la Venta {venta.id}</h4>
+                                            <td data-label="Detalle" colSpan="6" style={styles.detailRow}>
+                                                <h4 style={styles.detailHeader}>Detalles de la Venta</h4>
                                                 
                                                 {/* Información de Cambio/Devolución si aplica */}
                                                 {venta.cambio_devolucion_nota_credito && (
@@ -1460,6 +1460,73 @@ const VentasPage = () => {
                     [style*="detailTableWrapper"] table {
                         width: 100%;
                         white-space: nowrap;
+                    }
+
+                    /* Tabla principal -> tarjetas apiladas (mismo criterio que
+                       Gestión de Productos / Clientes SaaS): cada <tr> pasa a
+                       ser una tarjeta con "etiqueta: valor" por dato, usando el
+                       data-label de cada <td> como contenido del ::before.
+                       "Fecha" va arriba sin etiqueta (encabeza la tarjeta),
+                       "Acciones" y el detalle expandido ocupan todo el ancho. */
+                    .ventas-tabla-wrap table,
+                    .ventas-tabla-wrap thead,
+                    .ventas-tabla-wrap tbody {
+                        display: block;
+                        width: 100%;
+                        white-space: normal;
+                    }
+                    .ventas-tabla-wrap thead {
+                        display: none;
+                    }
+                    .ventas-tabla-wrap tbody tr {
+                        display: flex;
+                        flex-wrap: wrap;
+                        background: #fff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 12px;
+                        padding: 12px;
+                        margin-bottom: 10px;
+                        gap: 2px 0;
+                    }
+                    .ventas-tabla-wrap tbody td {
+                        border-bottom: none;
+                        padding: 3px 0;
+                    }
+                    .ventas-tabla-wrap tbody td[data-label="Fecha"] {
+                        order: 1;
+                        flex: 1 1 100%;
+                        min-width: 0;
+                        font-size: 14px;
+                        font-weight: 600;
+                        margin-bottom: 4px;
+                    }
+                    .ventas-tabla-wrap tbody td:not([data-label="Fecha"]):not([data-label="Acciones"]):not([data-label="Detalle"]) {
+                        order: 2;
+                        flex: 1 1 50%;
+                        display: flex !important;
+                        justify-content: space-between;
+                        gap: 8px;
+                        font-size: 13px;
+                    }
+                    .ventas-tabla-wrap tbody td:not([data-label="Fecha"]):not([data-label="Acciones"]):not([data-label="Detalle"])::before {
+                        content: attr(data-label);
+                        font-size: 10.5px;
+                        font-weight: 700;
+                        color: #94a3b8;
+                        text-transform: uppercase;
+                        letter-spacing: 0.02em;
+                    }
+                    .ventas-tabla-wrap tbody td[data-label="Acciones"] {
+                        order: 3;
+                        flex: 1 1 100%;
+                        margin-top: 6px;
+                        padding-top: 8px;
+                        border-top: 1px solid #f1f5f9;
+                    }
+                    .ventas-tabla-wrap tbody td[data-label="Detalle"] {
+                        order: 4;
+                        flex: 1 1 100%;
+                        white-space: normal;
                     }
                     [style*="paginationContainer"] {
                         flex-direction: column;
