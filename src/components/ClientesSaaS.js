@@ -181,48 +181,6 @@ export default function ClientesSaaS() {
         }
     };
 
-    // Diagnóstico puntual: trae el payload crudo que devuelve MP para esta
-    // suscripción -- para cuando el panel no coincide con lo que se ve en el
-    // dashboard de MP (ej. "Cobro: Al día" acá pero "Atrasado" en MP).
-    const verDiagnosticoMP = async (cliente) => {
-        Swal.fire({ title: 'Consultando Mercado Pago...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-        try {
-            const res = await axios.get(
-                `${BASE_API_ENDPOINT}/api/admin-saas/clientes/${cliente.tienda_id}/diagnostico-mp/`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            Swal.fire({
-                title: `MP — ${res.data.tienda}`,
-                html: `<pre style="text-align:left; font-size:11px; max-height:60vh; overflow:auto; background:#f1f5f9; padding:10px; border-radius:8px;">${JSON.stringify(res.data, null, 2)}</pre>`,
-                width: 650,
-                confirmButtonText: 'Cerrar',
-            });
-        } catch (err) {
-            Swal.fire('Error', err.response?.data?.error || 'No se pudo consultar Mercado Pago.', 'error');
-        }
-    };
-
-    // Diagnóstico puntual: por qué "Cobrado MP (mes)" puede estar dando $0 --
-    // las ventas de suscripción de antes de tienda_cliente dependen de un
-    // backfill por CUIT/nombre que puede no haber matcheado.
-    const verDiagnosticoVentasMP = async () => {
-        Swal.fire({ title: 'Consultando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-        try {
-            const res = await axios.get(
-                `${BASE_API_ENDPOINT}/api/admin-saas/recaudacion/diagnostico-ventas/`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            Swal.fire({
-                title: 'Diagnóstico — Ventas de suscripción MP',
-                html: `<pre style="text-align:left; font-size:11px; max-height:60vh; overflow:auto; background:#f1f5f9; padding:10px; border-radius:8px;">${JSON.stringify(res.data, null, 2)}</pre>`,
-                width: 700,
-                confirmButtonText: 'Cerrar',
-            });
-        } catch (err) {
-            Swal.fire('Error', err.response?.data?.error || 'No se pudo consultar el diagnóstico.', 'error');
-        }
-    };
-
     const eliminarPago = async (pagoId) => {
         const confirm = await Swal.fire({
             title: '¿Eliminar este pago?',
@@ -311,7 +269,7 @@ export default function ClientesSaaS() {
             <p style={s.subtitulo}>Tiendas que pagan la suscripción de Total Stock -- estado automático vía Mercado Pago y pagos manuales para las legacy.</p>
 
             {recaudacion && (
-                <div style={s.resumenBox}>
+                <div className="clientes-saas-resumen-box" style={s.resumenBox}>
                     <div>
                         <div style={s.resumenLabel}>
                             Recaudado {mesActual ? `en ${MESES[mesActual.mes - 1]} ${mesActual.anio}` : 'este mes'}
@@ -320,9 +278,6 @@ export default function ClientesSaaS() {
                         <div style={s.hint}>Mercado Pago: {fmt(mesActual?.total_mp)} · Manual: {fmt(mesActual?.total_manual)}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={verDiagnosticoVentasMP} style={s.btnGris} title="Ver por qué el total de Mercado Pago puede estar dando $0">
-                            🔍 Diagnóstico
-                        </button>
                         <button onClick={() => setMostrarHistorial(v => !v)} style={s.btnGris}>
                             {mostrarHistorial ? 'Ocultar meses anteriores' : 'Ver meses anteriores'}
                         </button>
@@ -352,7 +307,7 @@ export default function ClientesSaaS() {
                 </div>
             )}
 
-            <div style={s.filtrosRow}>
+            <div className="clientes-saas-filtros-row" style={s.filtrosRow}>
                 <input
                     type="text"
                     placeholder="Buscar por nombre de tienda..."
@@ -378,7 +333,7 @@ export default function ClientesSaaS() {
             ) : clientesOrdenados.length === 0 ? (
                 <p style={s.mensaje}>No hay tiendas para mostrar.</p>
             ) : (
-                <div style={s.tableWrap}>
+                <div className="clientes-saas-tabla-wrap" style={s.tableWrap}>
                     <table style={s.table}>
                         <thead>
                             <tr>
@@ -396,16 +351,16 @@ export default function ClientesSaaS() {
                         <tbody>
                             {clientesOrdenados.map(c => (
                                 <tr key={c.tienda_id} style={s.tr}>
-                                    <td style={s.td}>
+                                    <td data-label="Tienda" style={s.td}>
                                         <strong>{c.nombre}</strong>
                                         {c.hereda_suscripcion_de && (
                                             <div style={s.hint}>Hereda de: {c.hereda_suscripcion_de}</div>
                                         )}
                                     </td>
-                                    <td style={s.td}>{c.mp_payer_email || '—'}</td>
-                                    <td style={s.td}>{c.plan_display || (c.legacy ? '—' : '—')}</td>
-                                    <td style={s.td}><EstadoBadge cliente={c} /></td>
-                                    <td style={s.td}>
+                                    <td data-label="Mail MP" style={s.td}>{c.mp_payer_email || '—'}</td>
+                                    <td data-label="Plan" style={s.td}>{c.plan_display || (c.legacy ? '—' : '—')}</td>
+                                    <td data-label="Estado" style={s.td}><EstadoBadge cliente={c} /></td>
+                                    <td data-label="Cobro" style={s.td}>
                                         {c.pago_atrasado ? (
                                             <span style={{ ...badgeStyle, background: '#f59e0b' }} title="Mercado Pago no pudo debitar el cobro y está reintentando">
                                                 ⚠️ Atrasado
@@ -414,9 +369,9 @@ export default function ClientesSaaS() {
                                             <span style={{ color: '#16a34a', fontSize: 12, fontWeight: 600 }}>Al día</span>
                                         ) : '—'}
                                     </td>
-                                    <td style={s.td}>{c.cobrado_mp_mes_actual !== null && c.cobrado_mp_mes_actual !== undefined ? fmt(c.cobrado_mp_mes_actual) : '—'}</td>
-                                    <td style={s.td}>{c.legacy ? '—' : fmtFecha(c.fecha_proximo_cobro)}</td>
-                                    <td style={s.td}>
+                                    <td data-label="Cobrado MP (mes)" style={s.td}>{c.cobrado_mp_mes_actual !== null && c.cobrado_mp_mes_actual !== undefined ? fmt(c.cobrado_mp_mes_actual) : '—'}</td>
+                                    <td data-label="Próximo cobro" style={s.td}>{c.legacy ? '—' : fmtFecha(c.fecha_proximo_cobro)}</td>
+                                    <td data-label="Último pago manual" style={s.td}>
                                         {c.ultimo_pago_manual ? (
                                             <span style={{ color: c.pago_manual_mes_actual ? '#16a34a' : '#475569', fontWeight: c.pago_manual_mes_actual ? 700 : 400 }}>
                                                 {MESES[c.ultimo_pago_manual.mes - 1]} {c.ultimo_pago_manual.anio}
@@ -424,15 +379,10 @@ export default function ClientesSaaS() {
                                             </span>
                                         ) : '—'}
                                     </td>
-                                    <td style={s.td}>
+                                    <td data-label="Acciones" style={s.td}>
                                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                             <button onClick={() => abrirMarcarPago(c)} style={s.btnGreen}>Marcar pago</button>
                                             <button onClick={() => abrirHistorial(c)} style={s.btnBlue}>Historial</button>
-                                            {!c.legacy && (
-                                                <button onClick={() => verDiagnosticoMP(c)} style={s.btnGris} title="Ver el dato crudo que devuelve Mercado Pago para esta suscripción">
-                                                    🔍 MP
-                                                </button>
-                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -506,6 +456,92 @@ export default function ClientesSaaS() {
                     </div>
                 </div>
             )}
+
+            <style>{`
+                @media (max-width: 768px) {
+                    .clientes-saas-resumen-box {
+                        flex-direction: column !important;
+                        align-items: stretch !important;
+                    }
+                    .clientes-saas-filtros-row {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+                    .clientes-saas-filtros-row > * {
+                        max-width: none !important;
+                        width: 100%;
+                    }
+
+                    /* Tabla -> tarjetas apiladas (mismo criterio que Gestión de
+                       Productos): cada <tr> pasa a ser una tarjeta con
+                       "etiqueta: valor" por fila, usando el data-label de cada
+                       <td> como contenido del ::before. "Tienda" va arriba sin
+                       etiqueta (es el título de la tarjeta); "Acciones" ocupa
+                       todo el ancho abajo. */
+                    .clientes-saas-tabla-wrap table,
+                    .clientes-saas-tabla-wrap thead,
+                    .clientes-saas-tabla-wrap tbody {
+                        display: block;
+                        width: 100%;
+                    }
+                    .clientes-saas-tabla-wrap thead {
+                        display: none;
+                    }
+                    .clientes-saas-tabla-wrap tbody tr {
+                        display: flex;
+                        flex-wrap: wrap;
+                        background: #fff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 12px;
+                        padding: 12px;
+                        margin-bottom: 10px;
+                        gap: 2px 0;
+                    }
+                    .clientes-saas-tabla-wrap tbody td {
+                        border-bottom: none;
+                        padding: 3px 0;
+                    }
+                    .clientes-saas-tabla-wrap tbody td[data-label="Tienda"] {
+                        order: 1;
+                        flex: 1 1 100%;
+                        min-width: 0;
+                        font-size: 14px;
+                        margin-bottom: 4px;
+                    }
+                    .clientes-saas-tabla-wrap tbody td:not([data-label="Tienda"]):not([data-label="Acciones"]) {
+                        order: 2;
+                        flex: 1 1 50%;
+                        display: flex !important;
+                        justify-content: space-between;
+                        gap: 8px;
+                        font-size: 13px;
+                    }
+                    .clientes-saas-tabla-wrap tbody td:not([data-label="Tienda"]):not([data-label="Acciones"])::before {
+                        content: attr(data-label);
+                        font-size: 10.5px;
+                        font-weight: 700;
+                        color: #94a3b8;
+                        text-transform: uppercase;
+                        letter-spacing: 0.02em;
+                    }
+                    .clientes-saas-tabla-wrap tbody td[data-label="Acciones"] {
+                        order: 3;
+                        flex: 1 1 100%;
+                        display: flex !important;
+                        flex-wrap: wrap;
+                        gap: 6px;
+                        margin-top: 6px;
+                        padding-top: 8px;
+                        border-top: 1px solid #f1f5f9;
+                    }
+                    .clientes-saas-tabla-wrap tbody td[data-label="Acciones"] > div {
+                        width: 100%;
+                    }
+                    .clientes-saas-tabla-wrap tbody td[data-label="Acciones"] button {
+                        flex: 1 1 auto;
+                    }
+                }
+            `}</style>
         </div>
     );
 }
