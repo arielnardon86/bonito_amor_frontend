@@ -70,7 +70,11 @@ const FacturaImpresion = () => {
     const anchoTermico = formatoImpresion === 'termico_58' ? '48mm' : '80mm';
     // A 48mm "Cant."/"Subtotal" no entraban en una sola línea con el mismo
     // tamaño de letra que a 80mm -- quedaban partidos y feos.
-    const fuenteGrid = formatoImpresion === 'termico_58' ? '2mm' : '2.5mm';
+    const fuenteGrid = formatoImpresion === 'termico_58' ? '1.8mm' : '2.5mm';
+    // A 48mm, Precio/Subtotal necesitan más ancho relativo para que un monto
+    // tipo "$20.000,00" entre sin pisarse con la columna de al lado -- se lo
+    // saca a Descripción, que de última sigue pudiendo bajar de renglón.
+    const columnasGrid = formatoImpresion === 'termico_58' ? '8% 36% 28% 28%' : '10% 46% 22% 22%';
 
     // En formato A4 la vista previa en pantalla es el PDF real (el mismo que
     // se imprime y se manda por mail), no el layout térmico armado a mano.
@@ -590,7 +594,7 @@ const FacturaImpresion = () => {
                    alcanzó). Con divs cada fila crece sola según su contenido. */
                 .items-grid-header, .items-grid-row {
                     display: grid;
-                    grid-template-columns: 10% 46% 22% 22%;
+                    grid-template-columns: ${columnasGrid};
                     gap: 2px;
                     font-size: ${fuenteGrid};
                     color: #000;
