@@ -70,6 +70,18 @@ export default function SuscripcionResultado() {
     }
   }, [esOk, preapprovalId, resultado]);
 
+  // Conversión de Meta Pixel: misma condición y mismo criterio de "una sola
+  // vez" que la de Google Ads de arriba -- cubre tanto plan Free (esOk viene
+  // de statusParam==='approved') como suscripción paga (esOk viene de
+  // resultado.activa tras verificar con MP).
+  const metaConversionEnviada = useRef(false);
+  useEffect(() => {
+    if (esOk && !metaConversionEnviada.current && typeof window.fbq === 'function') {
+      metaConversionEnviada.current = true;
+      window.fbq('track', 'CompleteRegistration');
+    }
+  }, [esOk]);
+
   // Auto-redirect cuando esOk
   useEffect(() => {
     if (!esOk) return;
