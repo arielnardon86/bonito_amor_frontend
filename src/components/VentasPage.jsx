@@ -13,6 +13,13 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import HelpButton from './HelpButton';
 
+const TIPO_CAMBIO_DEVOLUCION_LABELS = {
+    DEVOLUCION: 'Devolución total',
+    CAMBIO: 'Cambio de producto',
+    DEVOLUCION_PARCIAL: 'Devolución parcial',
+};
+const tipoCambioDevolucionLabel = (tipo) => TIPO_CAMBIO_DEVOLUCION_LABELS[tipo] || 'Cambio/Devolución';
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const normalizeApiUrl = (url) => {
@@ -1107,10 +1114,7 @@ const VentasPage = () => {
                                                     <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#edfaf3', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
                                                         <h5 style={{ margin: '0 0 10px 0', color: '#1a6a40' }}>Información de Nota de Crédito</h5>
                                                         <p style={{ margin: '5px 0' }}>
-                                                            <strong>Origen:</strong> Cambio/Devolución #{venta.cambio_devolucion_nota_credito.id}
-                                                        </p>
-                                                        <p style={{ margin: '5px 0' }}>
-                                                            <strong>Venta Original:</strong> {venta.cambio_devolucion_nota_credito.venta_original_id}
+                                                            <strong>Origen:</strong> {tipoCambioDevolucionLabel(venta.cambio_devolucion_nota_credito.tipo)} del {new Date(venta.cambio_devolucion_nota_credito.fecha_creacion).toLocaleDateString('es-AR')}
                                                         </p>
                                                         <p style={{ margin: '5px 0' }}>
                                                             <strong>Saldo a Favor:</strong> {formatearMonto(venta.cambio_devolucion_nota_credito.saldo_a_favor || 0)}
@@ -1136,10 +1140,7 @@ const VentasPage = () => {
                                                     <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#fffbeb', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
                                                         <h5 style={{ margin: '0 0 10px 0', color: '#92400e' }}>Información de Diferencia Pendiente</h5>
                                                         <p style={{ margin: '5px 0' }}>
-                                                            <strong>Origen:</strong> Cambio/Devolución #{venta.cambio_devolucion_diferencia.id}
-                                                        </p>
-                                                        <p style={{ margin: '5px 0' }}>
-                                                            <strong>Venta Original:</strong> {venta.cambio_devolucion_diferencia.venta_original_id}
+                                                            <strong>Origen:</strong> {tipoCambioDevolucionLabel(venta.cambio_devolucion_diferencia.tipo)} del {new Date(venta.cambio_devolucion_diferencia.fecha_creacion).toLocaleDateString('es-AR')}
                                                         </p>
                                                         <p style={{ margin: '5px 0' }}>
                                                             <strong>Monto Diferencia:</strong> {formatearMonto(venta.cambio_devolucion_diferencia.monto_diferencia || 0)}
@@ -1161,7 +1162,7 @@ const VentasPage = () => {
                                                     </div>
                                                 )}
                                                 
-                                                <div style={styles.detailTableWrapper}>
+                                                <div style={styles.detailTableWrapper} className="detalle-productos-tabla-wrap">
                                                 <table style={styles.detailTable}>
                                                     <thead>
                                                         <tr>
@@ -1217,12 +1218,12 @@ const VentasPage = () => {
 
                                                                 return (
                                                                     <tr key={detalle.id}>
-                                                                        <td style={styles.detailTd}>{productoNombre}</td>
-                                                                        <td style={styles.detailTd}>{detalle.cantidad}</td>
-                                                                        <td style={styles.detailTd}>{formatearMonto(precioUnitarioAjustado)}</td>
-                                                                        <td style={styles.detailTd}>{formatearMonto(subtotalAjustado)}</td>
-                                                                        <td style={styles.detailTd}>{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
-                                                                        <td style={styles.detailTd}>
+                                                                        <td style={styles.detailTd} data-label="Producto">{productoNombre}</td>
+                                                                        <td style={styles.detailTd} data-label="Cantidad">{detalle.cantidad}</td>
+                                                                        <td style={styles.detailTd} data-label="P. Unitario">{formatearMonto(precioUnitarioAjustado)}</td>
+                                                                        <td style={styles.detailTd} data-label="Subtotal">{formatearMonto(subtotalAjustado)}</td>
+                                                                        <td style={styles.detailTd} data-label="Anulado">{detalle.anulado_individualmente ? 'Sí' : 'No'}</td>
+                                                                        <td style={styles.detailTd} data-label="Acciones">
                                                                             {!venta.anulada && !detalle.anulado_individualmente && !isStaffOnly && (
                                                                                 <button
                                                                                     className="icon-btn"
@@ -1443,13 +1444,6 @@ const VentasPage = () => {
                         width: 100%;
                         box-sizing: border-box;
                     }
-                    [style*="actionButtons"] {
-                        flex-direction: column;
-                        gap: 8px;
-                    }
-                    [style*="actionButtons"] button {
-                        width: 100%;
-                    }
                     [style*="tableResponsive"] {
                         overflow-x: auto;
                     }
@@ -1457,9 +1451,59 @@ const VentasPage = () => {
                         width: 100%;
                         white-space: nowrap;
                     }
-                    [style*="detailTableWrapper"] table {
+                    /* Tabla de productos dentro del detalle expandido -> mismo
+                       criterio de tarjetas apiladas que la tabla principal. */
+                    .detalle-productos-tabla-wrap table,
+                    .detalle-productos-tabla-wrap thead,
+                    .detalle-productos-tabla-wrap tbody {
+                        display: block;
                         width: 100%;
-                        white-space: nowrap;
+                        white-space: normal;
+                    }
+                    .detalle-productos-tabla-wrap thead {
+                        display: none;
+                    }
+                    .detalle-productos-tabla-wrap tbody tr {
+                        display: flex;
+                        flex-wrap: wrap;
+                        background: #fff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 10px;
+                        padding: 10px;
+                        margin-bottom: 8px;
+                        gap: 2px 0;
+                    }
+                    .detalle-productos-tabla-wrap tbody td {
+                        border-bottom: none;
+                        padding: 3px 0;
+                    }
+                    .detalle-productos-tabla-wrap tbody td[data-label="Producto"] {
+                        order: 1;
+                        flex: 1 1 100%;
+                        min-width: 0;
+                        font-weight: 600;
+                        margin-bottom: 4px;
+                    }
+                    .detalle-productos-tabla-wrap tbody td:not([data-label="Producto"]):not([data-label="Acciones"]) {
+                        order: 2;
+                        flex: 1 1 50%;
+                        display: flex !important;
+                        justify-content: space-between;
+                        gap: 8px;
+                        font-size: 13px;
+                    }
+                    .detalle-productos-tabla-wrap tbody td:not([data-label="Producto"]):not([data-label="Acciones"])::before {
+                        content: attr(data-label);
+                        font-size: 10.5px;
+                        font-weight: 700;
+                        color: #94a3b8;
+                        text-transform: uppercase;
+                        letter-spacing: 0.02em;
+                    }
+                    .detalle-productos-tabla-wrap tbody td[data-label="Acciones"] {
+                        order: 3;
+                        flex: 1 1 100%;
+                        margin-top: 4px;
                     }
 
                     /* Tabla principal -> tarjetas apiladas (mismo criterio que
